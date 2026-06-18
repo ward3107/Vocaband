@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,"Segoe UI",system-ui,sans-serif}
+  body{background:#dfe5ef;padding:26px;display:flex;gap:30px;align-items:flex-start}
+  .col{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .label{font-weight:900;font-size:13px;letter-spacing:.04em;color:#1e293b}
+  .tag{font-size:11px;font-weight:800;color:#64748b;text-align:center;line-height:1.45;max-width:300px}
+  .phone{width:300px;height:600px;border-radius:30px;overflow:hidden;border:6px solid #1e293b;box-shadow:0 16px 40px rgba(0,0,0,.28);position:relative}
+  .hud{position:absolute;top:11px;left:11px;right:11px;display:flex;justify-content:space-between;z-index:6}
+  .chip{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;background:rgba(255,255,255,.93);box-shadow:0 1px 4px rgba(0,0,0,.18);font-weight:900;font-size:11px;color:#4338ca}
+  .stick{position:absolute;bottom:18px;right:18px;width:90px;height:90px;border-radius:999px;background:rgba(255,255,255,.32);border:2px solid rgba(255,255,255,.6);box-shadow:0 8px 18px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;z-index:6}
+  .stick .knob{width:40px;height:40px;border-radius:999px;background:linear-gradient(135deg,#6366f1,#7c3aed);border:2px solid rgba(255,255,255,.7)}
+</style></head>
+<body>
+<div class="col">
+  <div class="label">Richer · polished game-map style</div>
+  <div class="phone">
+    <svg width="300" height="600" viewBox="0 0 600 1200">
+      <defs>
+        <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#7ed0ee"/><stop offset="0.5" stop-color="#4eb6e6"/><stop offset="1" stop-color="#2f9fd8"/>
+        </linearGradient>
+        <radialGradient id="seaGlow" cx="50%" cy="35%" r="70%">
+          <stop offset="0" stop-color="#bdeaf8" stop-opacity=".7"/><stop offset="1" stop-color="#bdeaf8" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#9be88f"/><stop offset="1" stop-color="#5fc269"/>
+        </linearGradient>
+        <linearGradient id="grass2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#aef0a0"/><stop offset="1" stop-color="#74cf78"/>
+        </linearGradient>
+        <radialGradient id="vig" cx="50%" cy="45%" r="75%">
+          <stop offset="60%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#0b3a52" stop-opacity=".28"/>
+        </radialGradient>
+        <filter id="ds" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="6" stdDeviation="9" flood-color="#0a3147" flood-opacity=".35"/></filter>
+        <filter id="dsS" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="2" stdDeviation="2.4" flood-opacity=".22"/></filter>
+
+        <!-- a stylized tree -->
+        <g id="tree">
+          <ellipse cx="0" cy="14" rx="13" ry="4" fill="#1f7a3f" opacity=".25"/>
+          <rect x="-2.5" y="2" width="5" height="12" rx="2" fill="#7a4a22"/>
+          <circle cx="0" cy="-6" r="13" fill="#2f8f4e"/>
+          <circle cx="-7" cy="0" r="9" fill="#37a059"/>
+          <circle cx="7" cy="-1" r="9" fill="#37a059"/>
+          <circle cx="-3" cy="-9" r="7" fill="#54bd72"/>
+        </g>
+        <!-- a stylized mountain -->
+        <g id="mtn">
+          <path d="M-46 36 L0 -44 L46 36 Z" fill="#8b94a0"/>
+          <path d="M0 -44 L18 0 L0 8 L-14 -6 Z" fill="#aeb6c2"/>
+          <path d="M0 -44 L13 -16 L0 -10 L-10 -22 Z" fill="#f4f8fc"/>
+          <path d="M-46 36 L0 -44 L-8 36 Z" fill="#717b88" opacity=".55"/>
+        </g>
+        <!-- palm-ish small bush -->
+        <g id="bush"><circle cx="0" cy="0" r="9" fill="#3a9c55"/><circle cx="-6" cy="2" r="6" fill="#46ad62"/><circle cx="6" cy="2" r="6" fill="#46ad62"/></g>
+      </defs>
+
+      <!-- OCEAN -->
+      <rect width="600" height="1200" fill="url(#sea)"/>
+      <rect width="600" height="1200" fill="url(#seaGlow)"/>
+      <!-- wave ticks -->
+      <g stroke="#ffffff" stroke-opacity=".35" stroke-width="3" stroke-linecap="round" fill="none">
+        <path d="M70 150 q10 -8 20 0 q10 8 20 0"/>
+        <path d="M450 250 q10 -8 20 0 q10 8 20 0"/>
+        <path d="M120 1050 q10 -8 20 0 q10 8 20 0"/>
+        <path d="M470 980 q10 -8 20 0 q10 8 20 0"/>
+        <path d="M300 470 q10 -8 20 0 q10 8 20 0" opacity=".7"/>
+      </g>
+      <!-- little sailboat -->
+      <g transform="translate(490,150)"><path d="M-16 6 L16 6 L10 16 L-10 16 Z" fill="#b5651d"/><rect x="-1" y="-22" width="2" height="28" fill="#6b4423"/><path d="M1 -20 L16 2 L1 2 Z" fill="#fff"/></g>
+
+      <!-- BIG LANDMASS (left), with depth shadow + beach + grass -->
+      <g filter="url(#ds)">
+        <!-- beach/sand outer -->
+        <path d="M40 280 C200 220,330 300,320 470 C360 640,300 830,210 900 C90 950,30 800,30 660 C-10 520,10 360,40 280 Z" fill="#f6e4b0"/>
+        <!-- shallow water ring -->
+      </g>
+      <path d="M40 280 C200 220,330 300,320 470 C360 640,300 830,210 900 C90 950,30 800,30 660 C-10 520,10 360,40 280 Z" fill="none" stroke="#bfeaf6" stroke-width="10" opacity=".55"/>
+      <!-- grass on top of sand -->
+      <path d="M62 300 C205 248,310 318,300 470 C338 632,288 808,206 872 C104 916,52 786,52 658 C16 528,34 372,62 300 Z" fill="url(#grass)"/>
+      <!-- grass tone patches for texture -->
+      <path d="M120 360 C200 330,260 380,250 470 C270 560,230 660,170 700 C120 720,96 620,100 540 C92 460,96 400,120 360 Z" fill="url(#grass2)" opacity=".55"/>
+
+      <!-- RIVER across the land -->
+      <path d="M150 320 C 180 430, 120 520, 200 610 C 250 690, 180 780, 220 860" fill="none" stroke="#5bc7ef" stroke-width="20" stroke-linecap="round"/>
+      <path d="M150 320 C 180 430, 120 520, 200 610 C 250 690, 180 780, 220 860" fill="none" stroke="#9fe2f6" stroke-width="8" stroke-linecap="round" opacity=".8"/>
+
+      <!-- winding PATH (dirt) -->
+      <path d="M250 470 C 300 540, 230 640, 280 720" fill="none" stroke="#e7c98f" stroke-width="12" stroke-linecap="round" stroke-dasharray="1 18"/>
+
+      <!-- FOREST clusters (many trees) -->
+      <g>
+        <use href="#tree" x="110" y="430" transform="scale(1.1)"/>
+        <use href="#tree" x="92" y="470"/>
+        <use href="#tree" x="132" y="468"/>
+        <use href="#tree" x="112" y="500" transform="scale(.9)"/>
+      </g>
+      <g>
+        <use href="#tree" x="250" y="800"/>
+        <use href="#tree" x="285" y="820" transform="scale(1.15)"/>
+        <use href="#tree" x="225" y="828"/>
+        <use href="#tree" x="262" y="852" transform="scale(.85)"/>
+      </g>
+      <use href="#bush" x="180" y="690"/>
+      <use href="#bush" x="300" y="560"/>
+
+      <!-- MOUNTAINS -->
+      <use href="#mtn" x="210" y="430" transform="scale(1.15)"/>
+      <use href="#mtn" x="160" y="455" transform="scale(.8)"/>
+
+      <!-- SMALL ISLAND (right) with beach + greenery -->
+      <g filter="url(#ds)"><ellipse cx="470" cy="560" rx="92" ry="74" fill="#f6e4b0"/></g>
+      <ellipse cx="470" cy="560" rx="92" ry="74" fill="none" stroke="#bfeaf6" stroke-width="9" opacity=".55"/>
+      <ellipse cx="470" cy="560" rx="70" ry="54" fill="url(#grass)"/>
+      <use href="#tree" x="455" y="545"/><use href="#tree" x="488" y="560" transform="scale(.9)"/><use href="#bush" x="448" y="585"/>
+
+      <!-- another island bottom -->
+      <g filter="url(#ds)"><ellipse cx="430" cy="1020" rx="78" ry="60" fill="#f6e4b0"/></g>
+      <ellipse cx="430" cy="1020" rx="58" ry="42" fill="url(#grass)"/>
+      <use href="#mtn" x="430" y="1010" transform="scale(.6)"/>
+
+      <!-- WORD LABELS: refined map pin (white chip, soft shadow, amber dot) -->
+      <g font-weight="800" font-family="system-ui">
+        <g transform="translate(120,440)"><rect x="-46" y="-16" width="92" height="32" rx="16" fill="#fff" filter="url(#dsS)"/><circle cx="-31" cy="0" r="5.5" fill="#f59e0b"/><text x="6" y="6" text-anchor="middle" font-size="17" fill="#1f2937">forest</text></g>
+        <g transform="translate(225,420)"><rect x="-54" y="-16" width="108" height="32" rx="16" fill="#fff" filter="url(#dsS)"/><circle cx="-39" cy="0" r="5.5" fill="#f59e0b"/><text x="6" y="6" text-anchor="middle" font-size="17" fill="#1f2937">mountain</text></g>
+        <g transform="translate(470,560)"><rect x="-42" y="-16" width="84" height="32" rx="16" fill="#fff" filter="url(#dsS)"/><circle cx="-29" cy="0" r="5.5" fill="#f59e0b"/><text x="6" y="6" text-anchor="middle" font-size="17" fill="#1f2937">island</text></g>
+        <g transform="translate(205,640)"><rect x="-40" y="-16" width="80" height="32" rx="16" fill="#fff" filter="url(#dsS)"/><circle cx="-27" cy="0" r="5.5" fill="#f59e0b"/><text x="6" y="6" text-anchor="middle" font-size="17" fill="#1f2937">river</text></g>
+      </g>
+
+      <!-- PLAYERS -->
+      <g transform="translate(300,560)" filter="url(#dsS)"><circle r="23" fill="#fff" stroke="#e879f9" stroke-width="5"/><text y="9" text-anchor="middle" font-size="26">🦊</text></g>
+      <g transform="translate(360,470)" filter="url(#dsS)"><circle r="17" fill="#fff" opacity=".95"/><text y="6" text-anchor="middle" font-size="19">🐼</text></g>
+      <g transform="translate(250,720)" filter="url(#dsS)"><circle r="17" fill="#fff" opacity=".95"/><text y="6" text-anchor="middle" font-size="19">🐯</text></g>
+
+      <!-- lighting vignette -->
+      <rect width="600" height="1200" fill="url(#vig)"/>
+    </svg>
+    <div class="hud"><span class="chip">🗺️ Word Hunt</span><span class="chip" style="color:#334155">👑 #1 · 120</span></div>
+    <div class="stick"><div class="knob"></div></div>
+  </div>
+  <div class="tag">Depth shadows, sandy beaches + shallow-water rings, layered forests, snow-capped mountains, a river, a dirt path, waves, a boat, soft lighting — and proportionate word labels.</div>
+</div>
+</body></html>
