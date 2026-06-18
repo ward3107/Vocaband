@@ -46,6 +46,59 @@ const CAMERA_ZOOM = 1.85;
  *  arrow parks — kept clear of the HUD/joystick. */
 const ARROW_EDGE_MARGIN = 26;
 
+/** Fog of war (student only): available words are crystal-clear within
+ *  FOG_CLEAR world units of you and fade + blur out to FOG_FAR, so the map
+ *  reads as a hunt — you discover words as you roam (the edge arrows still
+ *  point the way). Distances are in world units, checked in the RAF loop. */
+const FOG_CLEAR = 300;
+const FOG_FAR = 560;
+const FOG_MIN_OPACITY = 0.28;
+
+/** Terrain zones make navigation part of the challenge. Movement is
+ *  client-authoritative (the question still gates the points), so this is
+ *  pure client physics in the RAF loop — no protected backend changes.
+ *    mountain — impassable; you slide around its edge.
+ *    mud      — slows you to MUD_FACTOR while inside.
+ *    boost    — speeds you to BOOST_FACTOR ("ocean current") while inside.
+ *  Circles in world units; placed to dodge the seeded word spots so every
+ *  word stays reachable. (When the world goes server-driven, these get
+ *  seeded alongside the words instead of hard-coded.) */
+type TerrainKind = "mountain" | "mud" | "boost";
+interface TerrainZone { kind: TerrainKind; x: number; y: number; r: number; }
+const TERRAIN: TerrainZone[] = [
+  { kind: "mountain", x: 180, y: 185, r: 58 },
+  { kind: "mountain", x: 740, y: 120, r: 64 },
+  { kind: "mud", x: 380, y: 470, r: 70 },
+  { kind: "mud", x: 560, y: 505, r: 66 },
+  { kind: "boost", x: 430, y: 280, r: 52 },
+  { kind: "boost", x: 780, y: 400, r: 52 },
+];
+const MUD_FACTOR = 0.45;
+const BOOST_FACTOR = 1.7;
+
+/** Speed multiplier at a world point — first mud/boost zone wins. */
+function terrainSpeedFactor(x: number, y: number): number {
+  for (const z of TERRAIN) {
+    if (z.kind === "mountain") continue;
+    if (Math.hypot(x - z.x, y - z.y) <= z.r) return z.kind === "mud" ? MUD_FACTOR : BOOST_FACTOR;
+  }
+  return 1;
+}
+
+/** Push a point out to the nearest mountain edge so avatars can't enter
+ *  (they slide along the rim instead of sticking). */
+function pushOutOfMountains(x: number, y: number): { x: number; y: number } {
+  for (const z of TERRAIN) {
+    if (z.kind !== "mountain") continue;
+    const d = Math.hypot(x - z.x, y - z.y);
+    if (d < z.r) {
+      if (d < 1e-3) { x = z.x + z.r; }
+      else { x = z.x + ((x - z.x) / d) * z.r; y = z.y + ((y - z.y) / d) * z.r; }
+    }
+  }
+  return { x, y };
+}
+
 interface ArenaCanvasProps {
   arena: QpArenaStatePayload;
   /** Live snapshot targets from useQuickPlaySocket — read per frame. */
@@ -100,6 +153,8 @@ export default function ArenaCanvas({
   // its chevron (rotated toward the word), updated each frame via refs.
   const arrowElsRef = useRef(new Map<string, HTMLDivElement>());
   const arrowIconElsRef = useRef(new Map<string, HTMLDivElement>());
+  // Word token wrappers — the RAF loop dims/blurs them by distance (fog).
+  const wordElsRef = useRef(new Map<string, HTMLDivElement>());
   // Smoothed display position per avatar — eased toward the snapshot target.
   const displayRef = useRef(new Map<string, { x: number; y: number }>());
   const selfRef = useRef<{ x: number; y: number } | null>(null);
@@ -190,11 +245,14 @@ export default function ArenaCanvas({
             : { x: QP_ARENA_WIDTH / 2, y: QP_ARENA_HEIGHT / 2 };
         }
         const self = selfRef.current;
+        // Resolve a desired unit direction from joystick OR tap-to-run,
+        // then move once through the terrain physics (so both input paths
+        // get mud/boost/mountain handling identically).
+        let dirX = 0, dirY = 0;
         const input = inputRef?.current;
         if (input && (input.dx !== 0 || input.dy !== 0)) {
           setNavTarget(null); // the joystick always overrides a tapped target
-          self.x = Math.max(0, Math.min(QP_ARENA_WIDTH, self.x + input.dx * SELF_SPEED * dt));
-          self.y = Math.max(0, Math.min(QP_ARENA_HEIGHT, self.y + input.dy * SELF_SPEED * dt));
+          dirX = input.dx; dirY = input.dy;
         } else if (navTargetRef.current) {
           // Tap-to-run: head straight for the tapped word; the auto-grab
           // below fires the moment its radius is entered.
@@ -205,13 +263,17 @@ export default function ArenaCanvas({
             const ddx = target.pos.x - self.x;
             const ddy = target.pos.y - self.y;
             const dist = Math.hypot(ddx, ddy);
-            if (dist > 1) {
-              const step = Math.min(dist, SELF_SPEED * dt);
-              self.x += (ddx / dist) * step;
-              self.y += (ddy / dist) * step;
-            }
+            if (dist > 1) { dirX = ddx / dist; dirY = ddy / dist; }
             if (dist <= grabRadiusRef.current) setNavTarget(null);
           }
+        }
+        if (dirX !== 0 || dirY !== 0) {
+          // Mud slows, boost ("ocean current") speeds, mountains block.
+          const mult = terrainSpeedFactor(self.x, self.y);
+          const nx = Math.max(0, Math.min(QP_ARENA_WIDTH, self.x + dirX * SELF_SPEED * mult * dt));
+          const ny = Math.max(0, Math.min(QP_ARENA_HEIGHT, self.y + dirY * SELF_SPEED * mult * dt));
+          const resolved = pushOutOfMountains(nx, ny);
+          self.x = resolved.x; self.y = resolved.y;
         }
         if (selfPosRef?.current) {
           selfPosRef.current.x = self.x;
@@ -220,7 +282,9 @@ export default function ArenaCanvas({
         const el = avatarElsRef.current.get(selfClientId);
         if (el) el.style.transform = `translate3d(${self.x * scale.x}px, ${self.y * scale.y}px, 0) translate(-50%, -50%)`;
 
-        // Auto-grab on contact — once per word per approach.
+        // Auto-grab on contact — once per word per approach. The same
+        // distance also drives the fog: nearby words are clear, far ones
+        // fade + blur so the map plays as a hunt.
         const radius = grabRadiusRef.current;
         for (const w of wordsRef.current) {
           const dist = Math.hypot(self.x - w.pos.x, self.y - w.pos.y);
@@ -229,6 +293,19 @@ export default function ArenaCanvas({
             onGrabRef.current?.(w.wordId, self.x, self.y);
           } else if (dist > radius * REARM_FACTOR) {
             attemptedRef.current.delete(w.wordId);
+          }
+
+          const wEl = wordElsRef.current.get(w.wordId);
+          if (wEl) {
+            if (w.state === "available") {
+              const t = Math.max(0, Math.min(1, (dist - FOG_CLEAR) / (FOG_FAR - FOG_CLEAR)));
+              wEl.style.opacity = String(1 - (1 - FOG_MIN_OPACITY) * t);
+              wEl.style.filter = t > 0 ? `blur(${(t * 2.5).toFixed(2)}px)` : "";
+            } else {
+              // locked/answered keep their own styling — clear any fog.
+              wEl.style.opacity = "";
+              wEl.style.filter = "";
+            }
           }
         }
       }
@@ -329,6 +406,30 @@ export default function ArenaCanvas({
       >
         <WorldMapBackground />
 
+        {/* Terrain zones — mountains block, mud slows, currents boost. Static
+            decorative shapes; the RAF physics above reads the same data. */}
+        {TERRAIN.map((z, i) => {
+          const style = {
+            left: `${(z.x / QP_ARENA_WIDTH) * 100}%`,
+            top: `${(z.y / QP_ARENA_HEIGHT) * 100}%`,
+            width: `${((z.r * 2) / QP_ARENA_WIDTH) * 100}%`,
+            height: `${((z.r * 2) / QP_ARENA_HEIGHT) * 100}%`,
+            transform: "translate(-50%, -50%)",
+          } as const;
+          const look =
+            z.kind === "mountain" ? "bg-stone-500/30 border-2 border-stone-500/50"
+            : z.kind === "mud" ? "bg-amber-800/25 border-2 border-dashed border-amber-700/40"
+            : "bg-cyan-300/30 border-2 border-dashed border-cyan-400/60";
+          const glyph = z.kind === "mountain" ? "⛰️" : z.kind === "mud" ? "🐌" : "⚡";
+          return (
+            <div key={`terrain-${i}`} className="absolute z-[5]" style={style}>
+              <div className={`flex h-full w-full items-center justify-center rounded-full ${look}`}>
+                <span className="text-2xl sm:text-3xl opacity-80 select-none">{glyph}</span>
+              </div>
+            </div>
+          );
+        })}
+
         {/* Word tokens — React-rendered (lifecycle changes are rare). On the
             student side, available tokens are real buttons: kids' first
             instinct is to tap the word, not to know about the invisible
@@ -357,6 +458,10 @@ export default function ArenaCanvas({
           return (
             <div
               key={w.wordId}
+              ref={(el) => {
+                if (el) wordElsRef.current.set(w.wordId, el);
+                else wordElsRef.current.delete(w.wordId);
+              }}
               className="absolute z-10"
               style={{
                 left: `${(w.pos.x / QP_ARENA_WIDTH) * 100}%`,
