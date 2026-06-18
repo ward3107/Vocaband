@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,"Segoe UI",system-ui,sans-serif}
+  body{background:#dfe5ef;padding:24px;display:flex;gap:26px;align-items:flex-start}
+  .col{display:flex;flex-direction:column;align-items:center;gap:9px;width:236px}
+  .label{font-weight:900;font-size:13px;color:#1e293b}
+  .tag{font-size:11px;font-weight:800;color:#64748b;text-align:center;line-height:1.4}
+  .phone{width:236px;height:472px;border-radius:26px;overflow:hidden;border:6px solid #1e293b;box-shadow:0 14px 36px rgba(0,0,0,.26);position:relative}
+  .hud{position:absolute;top:9px;left:9px;right:9px;display:flex;justify-content:space-between;z-index:6}
+  .chip{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.93);box-shadow:0 1px 3px rgba(0,0,0,.18);font-weight:900;font-size:10px;color:#4338ca}
+</style></head>
+<body>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+  <g id="tree"><ellipse cx="0" cy="14" rx="13" ry="4" fill="#1f7a3f" opacity=".25"/><rect x="-2.5" y="2" width="5" height="12" rx="2" fill="#7a4a22"/><circle cx="0" cy="-6" r="13" fill="#2f8f4e"/><circle cx="-7" cy="0" r="9" fill="#37a059"/><circle cx="7" cy="-1" r="9" fill="#37a059"/><circle cx="-3" cy="-9" r="7" fill="#54bd72"/></g>
+  <g id="mtn"><path d="M-46 36 L0 -44 L46 36 Z" fill="#8b94a0"/><path d="M0 -44 L18 0 L0 8 L-14 -6 Z" fill="#aeb6c2"/><path d="M0 -44 L13 -16 L0 -10 L-10 -22 Z" fill="#f4f8fc"/><path d="M-46 36 L0 -44 L-8 36 Z" fill="#717b88" opacity=".55"/></g>
+  <g id="bush"><circle cx="0" cy="0" r="9" fill="#3a9c55"/><circle cx="-6" cy="2" r="6" fill="#46ad62"/><circle cx="6" cy="2" r="6" fill="#46ad62"/></g>
+  <g id="hut"><rect x="-16" y="-2" width="32" height="22" rx="2" fill="#caa15e"/><path d="M-20 -2 L0 -20 L20 -2 Z" fill="#a3431b"/><rect x="-5" y="6" width="10" height="14" fill="#6b4423"/></g>
+  <g id="boat"><path d="M-16 6 L16 6 L10 16 L-10 16 Z" fill="#b5651d"/><rect x="-1" y="-22" width="2" height="28" fill="#6b4423"/><path d="M1 -20 L16 2 L1 2 Z" fill="#fff"/></g>
+  <filter id="ds" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="9" stdDeviation="12" flood-color="#0a3147" flood-opacity=".32"/></filter>
+  <filter id="dsS" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="2.5" stdDeviation="2.6" flood-opacity=".22"/></filter>
+</defs></svg>
+
+<div class="col"><div class="label">A · Bright (current)</div><div class="phone" id="pA"></div><div class="tag">Today's palette — light cyan sea, fresh green.</div></div>
+<div class="col"><div class="label">B · Lush &amp; detailed</div><div class="phone" id="pB"></div><div class="tag">Deeper teal + richer green · flowers, a cabin, a road, more foliage.</div></div>
+<div class="col"><div class="label">C · Golden hour</div><div class="phone" id="pC"></div><div class="tag">Warm sunset light over the same detailed map.</div></div>
+
+<script>
+function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+function scene(sfx, pal, opts){
+  const o = opts||{};
+  let s = `<svg width="236" height="472" viewBox="0 0 600 1200">
+  <defs>
+    <linearGradient id="sea${sfx}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${pal.seaT}"/><stop offset=".5" stop-color="${pal.seaM}"/><stop offset="1" stop-color="${pal.seaB}"/></linearGradient>
+    <linearGradient id="grass${sfx}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${pal.grsT}"/><stop offset="1" stop-color="${pal.grsB}"/></linearGradient>
+    <radialGradient id="glow${sfx}" cx="46%" cy="30%" r="80%"><stop offset="0" stop-color="${pal.glow}" stop-opacity="${pal.glowO}"/><stop offset="1" stop-color="${pal.glow}" stop-opacity="0"/></radialGradient>
+    <radialGradient id="vig${sfx}" cx="50%" cy="45%" r="78%"><stop offset="60%" stop-color="${pal.vig}" stop-opacity="0"/><stop offset="100%" stop-color="${pal.vig}" stop-opacity="${pal.vigO}"/></radialGradient>
+  </defs>
+  <rect width="600" height="1200" fill="url(#sea${sfx})"/>
+  <rect width="600" height="1200" fill="url(#glow${sfx})"/>`;
+  // waves
+  s+=`<g stroke="#fff" stroke-opacity=".3" stroke-width="3" fill="none" stroke-linecap="round"><path d="M70 150 q10 -8 20 0 q10 8 20 0"/><path d="M460 250 q10 -8 20 0 q10 8 20 0"/><path d="M120 1060 q10 -8 20 0 q10 8 20 0"/><path d="M470 980 q10 -8 20 0 q10 8 20 0"/></g>`;
+  s+=`<use href="#boat" x="500" y="150" transform="scale(1.1)"/>`;
+  // landmass
+  const sand="M40 280 C200 220,330 300,320 470 C360 640,300 830,210 900 C90 950,30 800,30 660 C-10 520,10 360,40 280 Z";
+  const grass="M62 300 C205 248,310 318,300 470 C338 632,288 808,206 872 C104 916,52 786,52 658 C16 528,34 372,62 300 Z";
+  s+=`<g filter="url(#ds)"><path d="${sand}" fill="${pal.sand}"/></g>`;
+  s+=`<path d="${sand}" fill="none" stroke="${pal.shallow}" stroke-width="10" opacity=".55"/>`;
+  s+=`<path d="${grass}" fill="url(#grass${sfx})"/>`;
+  // river
+  s+=`<path d="M150 320 C 180 430, 120 520, 200 610 C 250 690, 180 780, 220 860" fill="none" stroke="${pal.river}" stroke-width="20" stroke-linecap="round"/>`;
+  s+=`<path d="M150 320 C 180 430, 120 520, 200 610 C 250 690, 180 780, 220 860" fill="none" stroke="${pal.riverHi}" stroke-width="8" stroke-linecap="round" opacity=".8"/>`;
+  if(o.detail){ // winding road
+    s+=`<path d="M250 470 C 320 540, 230 660, 300 740 C 340 790, 300 840, 270 880" fill="none" stroke="${pal.road}" stroke-width="11" stroke-linecap="round" stroke-dasharray="1 16"/>`;
+  }
+  // mountains
+  s+=`<use href="#mtn" x="95" y="270" transform="scale(1.15)"/><use href="#mtn" x="55" y="300" transform="scale(.8)"/>`;
+  // forest
+  const r=rng(5);
+  const trees=[[110,430,1.1],[92,470,1],[132,468,1],[112,500,.9],[250,800,1],[285,820,1.15],[225,828,1],[262,852,.85]];
+  if(o.detail){trees.push([300,560,.95],[160,690,.9],[210,740,1.05],[120,820,.9]);}
+  trees.forEach(([x,y,sc])=>s+=`<use href="#tree" x="${x}" y="${y}" transform="scale(${sc})"/>`);
+  s+=`<use href="#bush" x="180" y="690"/><use href="#bush" x="300" y="560"/>`;
+  if(o.detail){
+    s+=`<use href="#hut" x="245" y="640"/>`;
+    // flowers
+    const fc=["#f87171","#fbbf24","#f472b6","#fff"];
+    const fr=rng(9);
+    for(let i=0;i<16;i++){const x=70+fr()*220,y=360+fr()*520;const c=fc[(i)%4];s+=`<g transform="translate(${x.toFixed(0)},${y.toFixed(0)})"><circle r="2.6" fill="${c}"/><circle cx="3" r="2.6" fill="${c}"/><circle cx="1.5" cy="-2.6" r="2.6" fill="${c}"/><circle cx="1.5" cy="1.6" r="1.8" fill="#fde047"/></g>`;}
+  }
+  // small island
+  s+=`<g filter="url(#ds)"><ellipse cx="210" cy="430" rx="48" ry="34" fill="${pal.sand}"/></g><ellipse cx="210" cy="430" rx="38" ry="26" fill="url(#grass${sfx})"/>`;
+  // word labels
+  const lab=(x,y,w,t)=>`<g transform="translate(${x},${y})"><rect x="${-w/2}" y="-15" width="${w}" height="30" rx="15" fill="#fff" filter="url(#dsS)"/><circle cx="${-w/2+13}" cy="0" r="5" fill="#f59e0b"/><text x="6" y="5" text-anchor="middle" font-size="16" font-weight="800" font-family="system-ui" fill="#1f2937">${t}</text></g>`;
+  s+=lab(120,440,86,"forest")+lab(225,420,108,"mountain")+lab(205,780,80,"river");
+  // players
+  s+=`<g transform="translate(150,260)" filter="url(#dsS)"><circle r="21" fill="#fff" stroke="#e879f9" stroke-width="4"/><text y="8" text-anchor="middle" font-size="24">🦊</text></g>`;
+  s+=`<g transform="translate(300,560)" filter="url(#dsS)"><circle r="15" fill="#fff" opacity=".95"/><text y="6" text-anchor="middle" font-size="17">🐼</text></g>`;
+  // warm sunlight overlay for C
+  if(o.warm){ s+=`<rect width="600" height="1200" fill="#ffb347" opacity=".16"/>`; }
+  s+=`<rect width="600" height="1200" fill="url(#vig${sfx})"/></svg>`;
+  return s;
+}
+
+const hud='<div class="hud"><span class="chip">🗺️ Word Hunt</span><span class="chip" style="color:#334155">👑 #1 · 120</span></div>';
+
+const palA={seaT:"#7ed0ee",seaM:"#4eb6e6",seaB:"#2f9fd8",grsT:"#9be88f",grsB:"#5fc269",sand:"#f6e4b0",shallow:"#bfeaf6",river:"#5bc7ef",riverHi:"#9fe2f6",road:"#e7c98f",glow:"#bdeaf8",glowO:".5",vig:"#0b3a52",vigO:".24"};
+const palB={seaT:"#46c8d4",seaM:"#22a3c2",seaB:"#127ba0",grsT:"#7fdc6a",grsB:"#329c52",sand:"#eed79a",shallow:"#aef0e6",river:"#36b8e0",riverHi:"#8fe6f0",road:"#cf9f63",glow:"#bff3ee",glowO:".45",vig:"#063a45",vigO:".3"};
+const palC={seaT:"#5fbfe0",seaM:"#3f9fcf",seaB:"#2b6ea0",grsT:"#bfe87a",grsB:"#6fb84a",sand:"#f7e2a0",shallow:"#cfeede",river:"#46b0d8",riverHi:"#9fe2ea",road:"#d9a55e",glow:"#ffe6a8",glowO:".6",vig:"#5a2e12",vigO:".28"};
+
+document.getElementById('pA').innerHTML=scene("A",palA,{})+hud;
+document.getElementById('pB').innerHTML=scene("B",palB,{detail:true})+hud;
+document.getElementById('pC').innerHTML=scene("C",palC,{detail:true,warm:true})+hud;
+</script>
+</body></html>
