@@ -366,6 +366,9 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
             onGrab={(wordId, x, y) => requestGrab(wordId, x, y)}
             isPaused={!!grant}
             fill
+            // Big-map feel: enlarge the world and follow the player's avatar
+            // (the map scrolls as they move). The host projector stays at 1×.
+            zoom={1.8}
           />
           <ArenaJoystick inputRef={inputRef} disabled={!!grant} />
 

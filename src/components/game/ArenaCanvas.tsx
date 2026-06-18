@@ -65,15 +65,25 @@ interface ArenaCanvasProps {
    *  transform path already supports, and the grab radius is checked in
    *  world units so gameplay is unaffected. */
   fill?: boolean;
+  /** Camera zoom. >1 enlarges the world and the view FOLLOWS the local
+   *  avatar (the map scrolls as the player moves — "big map" feel). 1 keeps
+   *  the whole map in view (the host projector, so the teacher sees everyone).
+   *  Only the local player's view follows; readOnly ignores this. */
+  zoom?: number;
   className?: string;
 }
 
 export default function ArenaCanvas({
   arena, positionsRef, leaderboard,
   selfClientId, inputRef, selfPosRef, onGrab,
-  readOnly = false, isPaused = false, fill = false, className = "",
+  readOnly = false, isPaused = false, fill = false, zoom = 1, className = "",
 }: ArenaCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // The scaled/panned "world" layer (background + tokens + avatars). The RAF
+  // loop writes its transform each frame to follow the local avatar.
+  const worldRef = useRef<HTMLDivElement | null>(null);
+  const zoomRef = useRef(zoom);
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
   // Pixels-per-logical-unit, refreshed by the ResizeObserver. A ref (not
   // state) because the RAF loop is the only consumer.
   const scaleRef = useRef({ x: 1, y: 1 });
@@ -187,6 +197,20 @@ export default function ArenaCanvas({
         const el = avatarElsRef.current.get(selfClientId);
         if (el) el.style.transform = `translate3d(${self.x * scale.x}px, ${self.y * scale.y}px, 0) translate(-50%, -50%)`;
 
+        // Camera: enlarge the world by `zoom` and pan so the local avatar
+        // stays centred — the map scrolls under the player. Clamped to the
+        // world edges so we never reveal blank space past the map.
+        const z = zoomRef.current;
+        const world = worldRef.current;
+        const cont = containerRef.current;
+        if (world && cont && z > 1) {
+          const cw = cont.clientWidth, ch = cont.clientHeight;
+          const sx = self.x * scale.x, sy = self.y * scale.y;
+          const tx = Math.min(0, Math.max(cw - z * cw, cw / 2 - z * sx));
+          const ty = Math.min(0, Math.max(ch - z * ch, ch / 2 - z * sy));
+          world.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${z})`;
+        }
+
         // Auto-grab on contact — once per word per approach.
         const radius = grabRadiusRef.current;
         for (const w of wordsRef.current) {
@@ -246,6 +270,9 @@ export default function ArenaCanvas({
       className={`relative w-full ${fill ? "h-full" : ""} overflow-hidden rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-100 via-violet-50 to-fuchsia-100 shadow-lg shadow-indigo-500/20 ${className}`}
       style={{ ...(fill ? {} : { aspectRatio: `${QP_ARENA_WIDTH} / ${QP_ARENA_HEIGHT}` }), touchAction: "none" }}
     >
+      {/* The camera "world" — scaled + panned as one layer by the RAF loop so
+          the whole scene (map, tokens, avatars) follows the local player. */}
+      <div ref={worldRef} className="absolute inset-0" style={{ transformOrigin: "0 0" }}>
       {themedMap && (
         <>
           <img
@@ -345,6 +372,7 @@ export default function ArenaCanvas({
           </div>
         );
       })}
+      </div>
     </div>
   );
 }
