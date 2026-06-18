@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,system-ui,sans-serif}
+  body{background:#eef2f8;padding:28px;display:flex;flex-direction:column;gap:20px}
+  .label{font-weight:900;color:#1e293b;font-size:14px;margin-bottom:4px}
+  .sub{font-size:11px;color:#64748b;font-weight:700;margin-bottom:12px}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+  .cell{display:flex;flex-direction:column;align-items:center;gap:6px;width:96px}
+  .av{width:90px;height:90px;border-radius:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(0,0,0,.12);border:3px solid #fff}
+  .emoji{background:#e8edf4;font-size:44px}
+  .nm{font-size:11px;font-weight:800;color:#475569}
+  .xp{font-size:9px;font-weight:700;color:#94a3b8}
+  .panel{background:#fff;border-radius:18px;padding:20px 22px;box-shadow:0 8px 22px rgba(0,0,0,.08)}
+</style></head>
+<body>
+
+<div class="panel">
+  <div class="label">לפני · חיית-המחמד המתפתחת (אימוג'י של היום)</div>
+  <div class="sub">ביצה → דרקון → חד-קרן... הכול אימוג'י גנרי</div>
+  <div class="row">
+    <div class="cell"><div class="av emoji">🥚</div><div class="nm">Egg</div></div>
+    <div class="cell"><div class="av emoji">🐣</div><div class="nm">Hatchling</div></div>
+    <div class="cell"><div class="av emoji">🦊</div><div class="nm">Fox Kit</div></div>
+    <div class="cell"><div class="av emoji">🦅</div><div class="nm">Eagle</div></div>
+    <div class="cell"><div class="av emoji">🐉</div><div class="nm">Dragon</div></div>
+    <div class="cell"><div class="av emoji">🦄</div><div class="nm">Unicorn</div></div>
+    <div class="cell"><div class="av emoji">🔮</div><div class="nm">Mythic</div></div>
+    <div class="cell"><div class="av emoji">✨</div><div class="nm">Ascended</div></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="label">אחרי · דמות אחת שמתפתחת — מצוירת, עם אופי (הצעה)</div>
+  <div class="sub">אותה "נשמה" שגדלה: בוקעת מהביצה ומתפתחת עד יצור אגדי זוהר</div>
+  <div class="row" id="pets"></div>
+</div>
+
+<script>
+function av(bg1,bg2,radius,inner){return `<div class="av" style="background:linear-gradient(135deg,${bg1},${bg2});border-radius:${radius}px"><svg width="70" height="70" viewBox="0 0 100 100">${inner}</svg></div>`;}
+const eyes=(a,b,cy,r=6)=>`<circle cx="${a}" cy="${cy}" r="${r}" fill="#2b2b3a"/><circle cx="${b}" cy="${cy}" r="${r}" fill="#2b2b3a"/><circle cx="${a-2}" cy="${cy-2}" r="2" fill="#fff"/><circle cx="${b-2}" cy="${cy-2}" r="2" fill="#fff"/>`;
+const ch=(a,b,cy)=>`<circle cx="${a}" cy="${cy}" r="5.5" fill="#ff9bb0" opacity=".6"/><circle cx="${b}" cy="${cy}" r="5.5" fill="#ff9bb0" opacity=".6"/>`;
+
+// Egg — spotted, sleeping
+const egg=`<ellipse cx="50" cy="56" rx="27" ry="33" fill="#fbf3e7"/><ellipse cx="44" cy="46" rx="9" ry="11" fill="#fff" opacity=".6"/><circle cx="40" cy="60" r="5" fill="#bfe3ff"/><circle cx="62" cy="50" r="4" fill="#ffd9a8"/><circle cx="58" cy="68" r="3.5" fill="#c8f0c0"/><path d="M40 56 q4 3 8 0" stroke="#caa" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M54 56 q4 3 8 0" stroke="#caa" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+// Hatchling — chick popping from cracked shell
+const hatch=`<path d="M28 70 L34 60 L40 70 L46 60 L52 70 L58 60 L64 70 L70 62 L70 84 L28 84 Z" fill="#fbf3e7"/><circle cx="50" cy="46" r="20" fill="#ffd84d"/><path d="M28 70 L34 60 L40 70 L46 60 L52 70 L58 60 L64 70" fill="none" stroke="#e9d9b6" stroke-width="1.5"/>${eyes(43,57,44,5)}<path d="M50 50 l-5 5 l5 3 l5 -3 Z" fill="#ff9a3b"/>${ch(36,64,52)}<path d="M50 26 l-3 -8 l6 2 Z" fill="#ffd84d"/>`;
+// Fox Kit
+const fox=`<path d="M24 36 L31 18 L44 32 Z" fill="#e8743b"/><path d="M76 36 L69 18 L56 32 Z" fill="#e8743b"/><circle cx="50" cy="54" r="28" fill="#f08a4b"/><ellipse cx="50" cy="64" rx="16" ry="13" fill="#fdf3ea"/>${eyes(41,59,52)}${ch(34,66,63)}<ellipse cx="50" cy="66" rx="4" ry="3" fill="#2b2b3a"/>`;
+// Eagle — white head, hooked beak, wing tufts
+const eagle=`<path d="M18 56 q-6 -16 6 -22 q6 10 8 18 Z" fill="#5a3d24"/><path d="M82 56 q6 -16 -6 -22 q-6 10 -8 18 Z" fill="#5a3d24"/><circle cx="50" cy="54" r="28" fill="#6b4a2e"/><path d="M50 28 a22 20 0 0 1 0 40 a22 20 0 0 1 0 -40 Z" fill="#f4f1ea"/>${eyes(42,58,50,6)}<path d="M50 56 q-9 6 0 14 q9 -8 0 -14 Z" fill="#ffb13b"/>`;
+// Dragon
+const dragon=`<path d="M34 24 L30 10 L42 18 Z" fill="#2f9e87"/><path d="M66 24 L70 10 L58 18 Z" fill="#2f9e87"/><circle cx="50" cy="54" r="28" fill="#46c9af"/><ellipse cx="50" cy="64" rx="15" ry="12" fill="#bff0e6"/>${eyes(41,59,50)}${ch(34,66,62)}<ellipse cx="45" cy="64" rx="2.2" ry="3" fill="#2b6b5e"/><ellipse cx="55" cy="64" rx="2.2" ry="3" fill="#2b6b5e"/><path d="M30 40 q-10 -6 -4 -16 q8 4 10 12Z" fill="#7ddccb" opacity=".8"/>`;
+// Unicorn — white horse head, horn, mane (the "horse")
+const unicorn=`<path d="M50 28 L44 6 L56 6 Z" fill="#ffd24d"/><path d="M50 26 L48 14 M52 18 L48 22 M52 12 L49 16" stroke="#e9a93b" stroke-width="1.6" fill="none"/><path d="M30 30 L26 16 L40 26 Z" fill="#fff"/><path d="M70 30 L74 16 L60 26 Z" fill="#fff"/><circle cx="50" cy="56" r="27" fill="#ffffff"/><ellipse cx="50" cy="66" rx="15" ry="13" fill="#f7ecf4"/>${eyes(41,59,52)}${ch(34,66,64)}<ellipse cx="45" cy="68" rx="2" ry="2.6" fill="#caa3c0"/><ellipse cx="55" cy="68" rx="2" ry="2.6" fill="#caa3c0"/><path d="M30 34 q-12 8 -6 24 q10 -4 12 -16Z" fill="#ff9bd0"/><path d="M36 28 q-10 4 -8 16 q8 -2 12 -10Z" fill="#a98cf0"/>`;
+// Mythic — floating magic orb with eyes + sparkles
+const mythic=`<circle cx="50" cy="54" r="30" fill="#7c5cf0" opacity=".25"/><circle cx="50" cy="54" r="24" fill="url(#orb)"/><defs><radialGradient id="orb" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#d6b8ff"/><stop offset="1" stop-color="#7c3aed"/></radialGradient></defs><circle cx="42" cy="48" r="6" fill="#fff" opacity=".5"/>${eyes(43,57,56,5).replace(/#2b2b3a/g,'#fff')}<path d="M22 30 l2 6 l6 2 l-6 2 l-2 6 l-2 -6 l-6 -2 l6 -2 Z" fill="#ffe27a"/><path d="M78 64 l1.5 4 l4 1.5 l-4 1.5 l-1.5 4 l-1.5 -4 l-4 -1.5 l4 -1.5 Z" fill="#ffe27a"/>`;
+// Ascended — radiant winged phoenix/star being
+const ascended=`<circle cx="50" cy="50" r="34" fill="#ffd24d" opacity=".22"/><path d="M30 54 q-22 -8 -26 -26 q20 4 30 18 Z" fill="#ffb13b"/><path d="M70 54 q22 -8 26 -26 q-20 4 -30 18 Z" fill="#ffb13b"/><circle cx="50" cy="20" r="13" fill="none" stroke="#ffe27a" stroke-width="3" opacity=".8"/><circle cx="50" cy="56" r="24" fill="url(#phx)"/><defs><radialGradient id="phx" cx="50%" cy="35%" r="70%"><stop offset="0" stop-color="#fff0b8"/><stop offset="1" stop-color="#ff7a3b"/></radialGradient></defs>${eyes(43,57,56,5)}${ch(35,65,64)}<path d="M50 34 l3 7 l7 1 l-7 1 l-3 7 l-3 -7 l-7 -1 l7 -1 Z" fill="#fff" opacity=".85"/>`;
+
+const stages=[
+ ['Egg','0 XP','#eaf4ff','#cfe4fb',26,egg],
+ ['Hatchling','100 XP','#fff4d6','#ffe39e',24,hatch],
+ ['Fox Kit','300 XP','#ffe3c4','#ffc187',22,fox],
+ ['Eagle','700 XP','#efe6d8','#d8c4a6',22,eagle],
+ ['Dragon','1.5k XP','#c9f3e8','#8fe0cd',22,dragon],
+ ['Unicorn','3k XP','#fbe7f4','#f3c9e6',22,unicorn],
+ ['Mythic','6k XP','#e7defb','#c9b0f5',22,mythic],
+ ['Ascended','12k XP','#fff0cf','#ffd98c',22,ascended],
+];
+document.getElementById('pets').innerHTML=stages.map(([n,xp,b1,b2,r,inner])=>
+ `<div class="cell">${av(b1,b2,r,inner)}<div class="nm">${n}</div><div class="xp">${xp}</div></div>`).join('');
+</script>
+</body></html>
