@@ -132,6 +132,7 @@ import {
   QP_ARENA_GRAB_COOLDOWN_MS,
   QP_ARENA_BASE_POINTS,
   QP_ARENA_BONUS_MAX,
+  QP_ARENA_MAP_IDS,
   type QpStudentJoinPayload,
   type QpScoreUpdatePayload,
   type QpReactionSendPayload,
@@ -1870,6 +1871,8 @@ async function startServer() {
         grabRadius: number;
         roundSeconds: number;
         visibleWords: number;
+        /** Teacher-chosen themed background id, or null for the plain board. */
+        mapId: string | null;
       };
       words: Map<string, {
         label: string;
@@ -2413,6 +2416,7 @@ async function startServer() {
       height: arena.config.height,
       grabRadius: arena.config.grabRadius,
       roundSeconds: arena.config.roundSeconds,
+      ...(arena.config.mapId ? { mapId: arena.config.mapId as QpArenaStatePayload["mapId"] } : {}),
       words,
       positions,
       serverId: QP_SERVER_ID,
@@ -3767,6 +3771,11 @@ async function startServer() {
       const visibleWords = typeof cfg.visibleWords === "number" && isFinite(cfg.visibleWords)
         ? Math.min(15, Math.max(3, Math.round(cfg.visibleWords)))
         : QP_ARENA_DEFAULT_VISIBLE;
+      // Themed background — only an id from the known set survives, so a
+      // bogus value can never reach students or point at a missing asset.
+      const mapId = (QP_ARENA_MAP_IDS as readonly string[]).includes(cfg.mapId as string)
+        ? (cfg.mapId as string)
+        : null;
 
       // Scatter the first visibleWords tokens; the rest wait as reserves
       // (pos: null) for the phase-2c refill.
@@ -3793,7 +3802,7 @@ async function startServer() {
       }
 
       const arena: NonNullable<QpSessionState["currentArena"]> = {
-        config: { width: QP_ARENA_WIDTH, height: QP_ARENA_HEIGHT, grabRadius, roundSeconds, visibleWords },
+        config: { width: QP_ARENA_WIDTH, height: QP_ARENA_HEIGHT, grabRadius, roundSeconds, visibleWords, mapId },
         words,
         positions,
         grabCooldownUntil: new Map(),

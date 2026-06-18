@@ -11,7 +11,7 @@ type ModeNames = Record<QpSpeedMode, string>;
 
 interface ArenaHostStrings {
   title: string; joinHeading: string; code: string;
-  wordsHeading: string; modeHeading: string; timerHeading: string;
+  wordsHeading: string; modeHeading: string; timerHeading: string; mapHeading: string; randomMap: string;
   // SpeedWordPicker strings — same contract as Speed Round's host.
   searchPlaceholder: string; wordsCount: (n: number) => string;
   needWords: (min: number) => string; clearWords: string; noResults: string;
@@ -34,6 +34,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
   en: {
     title: "Word Hunt Arena", joinHeading: "Students join here", code: "Class code",
     wordsHeading: "Your words", modeHeading: "Question modes", timerHeading: "Time per word",
+    mapHeading: "Arena map", randomMap: "Surprise me",
     searchPlaceholder: "Type a word to add it…",
     wordsCount: (n) => `${n} words ready`, needWords: (min) => `Add at least ${min} words to start`,
     clearWords: "Clear all", noResults: "No matching words in the library",
@@ -58,6 +59,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
   he: {
     title: "זירת ציד מילים", joinHeading: "התלמידים מצטרפים כאן", code: "קוד כיתה",
     wordsHeading: "המילים שלך", modeHeading: "סוגי שאלות", timerHeading: "זמן לכל מילה",
+    mapHeading: "מפת הזירה", randomMap: "הפתע אותי",
     searchPlaceholder: "הקלידו מילה כדי להוסיף…",
     wordsCount: (n) => `${n} מילים מוכנות`, needWords: (min) => `הוסיפו לפחות ${min} מילים כדי להתחיל`,
     clearWords: "נקה הכל", noResults: "אין מילים תואמות במאגר",
@@ -82,6 +84,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
   ar: {
     title: "ساحة صيد الكلمات", joinHeading: "ينضم الطلاب هنا", code: "رمز الصف",
     wordsHeading: "كلماتك", modeHeading: "أنواع الأسئلة", timerHeading: "الوقت لكل كلمة",
+    mapHeading: "خريطة الساحة", randomMap: "فاجئني",
     searchPlaceholder: "اكتبوا كلمة لإضافتها…",
     wordsCount: (n) => `${n} كلمات جاهزة`, needWords: (min) => `أضيفوا ${min} كلمات على الأقل للبدء`,
     clearWords: "مسح الكل", noResults: "لا توجد كلمات مطابقة في المكتبة",

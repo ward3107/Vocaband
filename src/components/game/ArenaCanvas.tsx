@@ -23,6 +23,7 @@ import {
   type QpArenaStatePayload,
   type QpStudentEntry,
 } from "../../core/quickPlayProtocol";
+import { arenaMapById } from "./arenaMaps";
 import type { ArenaInputVector } from "./ArenaJoystick";
 
 /** Local avatar speed in logical units/sec — tuned so crossing the arena
@@ -233,6 +234,11 @@ export default function ArenaCanvas({
     setNavTarget(wordId);
   }, [setNavTarget]);
 
+  // Teacher-chosen themed background, synced to every client via ARENA_STATE.
+  // Painted as an <img> (object-cover) under a soft scrim so the bright
+  // illustrations never drown out the word pills + avatars on top.
+  const themedMap = arenaMapById(arena.mapId);
+
   return (
     <div
       ref={containerRef}
@@ -240,6 +246,19 @@ export default function ArenaCanvas({
       className={`relative w-full ${fill ? "h-full" : ""} overflow-hidden rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-100 via-violet-50 to-fuchsia-100 shadow-lg shadow-indigo-500/20 ${className}`}
       style={{ ...(fill ? {} : { aspectRatio: `${QP_ARENA_WIDTH} / ${QP_ARENA_HEIGHT}` }), touchAction: "none" }}
     >
+      {themedMap && (
+        <>
+          <img
+            src={themedMap.bg}
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover"
+          />
+          {/* Scrim: keeps token/avatar contrast readable over any scene. */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 z-0 bg-white/25" />
+        </>
+      )}
+
       {/* Word tokens — React-rendered (lifecycle changes are rare). On the
           student side, available tokens are real buttons: kids' first
           instinct is to tap the word, not to know about the invisible
