@@ -44,6 +44,11 @@ const REARM_FACTOR = 1.2;
  *  label size — they stay a constant, readable size on a phone regardless
  *  of zoom. The host projector ignores this (whole-map view). */
 const CAMERA_ZOOM = 1.45;
+/** On-screen size of word/avatar chrome on the student camera, on top of
+ *  the 1/zoom counter-scale. <1 shrinks the bubbles (less screen clutter on
+ *  a phone); 1 = same size as the host projector. Single knob for "how big
+ *  are the bubbles on the phone". */
+const CHROME_SCALE = 0.78;
 /** Inset (px) from the viewport edge where an off-screen word's pointer
  *  arrow parks — kept clear of the HUD/joystick. */
 const ARROW_EDGE_MARGIN = 26;
@@ -177,8 +182,10 @@ export default function ArenaCanvas({
   const cameraOn = !readOnly && !!selfClientId;
   const zoom = cameraOn ? CAMERA_ZOOM : 1;
   // Counter-scale for chrome (word pills, avatars) so the camera zoom grows
-  // the visible *space* but not label size — keeps them phone-readable.
+  // the visible *space* but not label size — keeps them phone-readable. The
+  // extra CHROME_SCALE shrinks the bubbles a touch more on the student view.
   const invZoom = 1 / zoom;
+  const chromeScale = cameraOn ? invZoom * CHROME_SCALE : 1;
 
   // Mirror render-time data into refs so the RAF loop never closes over
   // stale props (and the effect doesn't restart on every word patch).
@@ -285,7 +292,7 @@ export default function ArenaCanvas({
           selfPosRef.current.y = self.y;
         }
         const el = avatarElsRef.current.get(selfClientId);
-        if (el) el.style.transform = `translate3d(${self.x * scale.x}px, ${self.y * scale.y}px, 0) translate(-50%, -50%) scale(${invZoom})`;
+        if (el) el.style.transform = `translate3d(${self.x * scale.x}px, ${self.y * scale.y}px, 0) translate(-50%, -50%) scale(${chromeScale})`;
 
         // Auto-grab on contact — once per word per approach. The same
         // distance also drives the fog: nearby words are clear, far ones
@@ -326,7 +333,7 @@ export default function ArenaCanvas({
           if (!cur) { cur = { ...target }; displayRef.current.set(clientId, cur); }
           cur.x += (target.x - cur.x) * EASE_K;
           cur.y += (target.y - cur.y) * EASE_K;
-          el.style.transform = `translate3d(${cur.x * scale.x}px, ${cur.y * scale.y}px, 0) translate(-50%, -50%) scale(${invZoom})`;
+          el.style.transform = `translate3d(${cur.x * scale.x}px, ${cur.y * scale.y}px, 0) translate(-50%, -50%) scale(${chromeScale})`;
         }
       }
 
@@ -379,7 +386,7 @@ export default function ArenaCanvas({
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [paused, readOnly, selfClientId, positionsRef, inputRef, selfPosRef, setNavTarget, cameraOn, zoom, invZoom]);
+  }, [paused, readOnly, selfClientId, positionsRef, inputRef, selfPosRef, setNavTarget, cameraOn, zoom, chromeScale]);
 
   // Tap = grab when in range, otherwise run there (auto-grab on arrival).
   const handleWordTap = useCallback((wordId: string) => {
@@ -471,7 +478,7 @@ export default function ArenaCanvas({
               style={{
                 left: `${(w.pos.x / QP_ARENA_WIDTH) * 100}%`,
                 top: `${(w.pos.y / QP_ARENA_HEIGHT) * 100}%`,
-                transform: `translate(-50%, -50%) scale(${invZoom})`,
+                transform: `translate(-50%, -50%) scale(${chromeScale})`,
               }}
             >
               {tappable ? (
