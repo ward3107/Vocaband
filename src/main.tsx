@@ -312,6 +312,11 @@ const TeacherThemePreview = lazyWithRetry(() => import('./dev/TeacherThemePrevie
 // real-time scoreboard layout can be inspected without a socket
 // connection or teacher login.  Add ?lang=he|ar to check the RTL layout.
 const LivePodiumPreview = lazyWithRetry(() => import('./dev/LivePodiumPreview'));
+// Dev-only short-circuit: `/dev/arena-map` mounts the REAL ArenaCanvas
+// (Word Hunt Arena map) with fabricated arena data so the world-map
+// background, follow-camera and edge arrows can be reviewed without a
+// teacher + student + socket backend.
+const ArenaMapPreview = lazyWithRetry(() => import('./dev/ArenaMapPreview'));
 // AccessibilityWidget is lazy too — it doesn't render anything on
 // public pages until the user interacts, so keeping it in the entry
 // chunk (with its motion/lucide deps) was pure dead weight on first
@@ -426,7 +431,8 @@ async function bootstrap() {
   const isTeacherAffordancesPreview = devPath === '/dev/teacher-affordances';
   const isTeacherThemePreview = devPath === '/dev/teacher-theme';
   const isLivePodiumPreview = devPath === '/dev/live-podium';
-  const isDevPreview = isStudentRtlPreview || isTeacherAffordancesPreview || isTeacherThemePreview || isLivePodiumPreview;
+  const isArenaMapPreview = devPath === '/dev/arena-map';
+  const isDevPreview = isStudentRtlPreview || isTeacherAffordancesPreview || isTeacherThemePreview || isLivePodiumPreview || isArenaMapPreview;
 
   createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
@@ -435,6 +441,7 @@ async function bootstrap() {
           isTeacherAffordancesPreview ? <TeacherAffordancesPreview /> :
           isTeacherThemePreview ? <TeacherThemePreview /> :
           isLivePodiumPreview ? <LivePodiumPreview /> :
+          isArenaMapPreview ? <ArenaMapPreview /> :
           <StudentRtlPreview />
         ) : (
           <>
