@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<style>*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,sans-serif}
+body{background:#dfe5ef;padding:24px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.label{font-weight:900;color:#1e293b;font-size:14px}.card{border-radius:22px;overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,.22)}</style></head>
+<body>
+<div class="label">Path A · premium vector — the ceiling of what we can render in-app</div>
+<div class="card">
+<svg width="900" height="576" viewBox="0 0 1000 640">
+<defs>
+  <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#83d4ef"/><stop offset=".5" stop-color="#46b2e4"/><stop offset="1" stop-color="#2486bd"/></linearGradient>
+  <radialGradient id="sun" cx="22%" cy="16%" r="80%"><stop offset="0" stop-color="#fff7d6" stop-opacity=".55"/><stop offset="40%" stop-color="#fff7d6" stop-opacity="0"/></radialGradient>
+  <radialGradient id="grs" cx="40%" cy="32%" r="72%"><stop offset="0" stop-color="#bdf2a6"/><stop offset=".55" stop-color="#79d172"/><stop offset="1" stop-color="#3f9a4e"/></radialGradient>
+  <linearGradient id="snow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dbe7f2"/></linearGradient>
+  <linearGradient id="rock" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b6bdc8"/><stop offset="1" stop-color="#79828f"/></linearGradient>
+  <linearGradient id="fall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eafaff"/><stop offset="1" stop-color="#bfeaf8"/></linearGradient>
+  <radialGradient id="vig" cx="50%" cy="46%" r="75%"><stop offset="60%" stop-color="#000" stop-opacity="0"/><stop offset="100%" stop-color="#072c40" stop-opacity=".3"/></radialGradient>
+  <filter id="ds" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="12" stdDeviation="15" flood-color="#063049" flood-opacity=".34"/></filter>
+  <filter id="dsS" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity=".25"/></filter>
+  <filter id="blur"><feGaussianBlur stdDeviation="8"/></filter>
+  <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .06 0"/></filter>
+  <filter id="seaNoise"><feTurbulence type="fractalNoise" baseFrequency="0.012 0.03" numOctaves="2" seed="4"/><feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .05 0"/></filter>
+  <clipPath id="isleClip"><path d="M250 150 C 430 100, 560 150, 600 250 C 700 270, 760 360, 700 440 C 720 540, 600 580, 470 560 C 360 590, 230 540, 220 440 C 130 420, 110 300, 190 250 C 195 200, 215 165, 250 150 Z"/></clipPath>
+</defs>
+
+<!-- OCEAN -->
+<rect width="1000" height="640" fill="url(#sea)"/>
+<rect width="1000" height="640" filter="url(#seaNoise)"/>
+<!-- caustic light streaks -->
+<g stroke="#ffffff" stroke-opacity=".16" stroke-width="6" fill="none" stroke-linecap="round">
+  <path d="M120 120 q40 -18 80 0 q40 18 80 0"/><path d="M780 200 q40 -18 80 0 q40 18 80 0"/>
+  <path d="M820 470 q40 -18 80 0 q40 18 80 0"/><path d="M120 520 q40 -18 80 0 q40 18 80 0"/>
+</g>
+<!-- distant birds -->
+<g stroke="#33617a" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".5"><path d="M840 90 q8 -7 16 0 q8 -7 16 0"/><path d="M880 110 q6 -5 12 0 q6 -5 12 0"/></g>
+<!-- sailboat -->
+<g transform="translate(870,520)"><ellipse cx="2" cy="20" rx="26" ry="5" fill="#000" opacity=".15"/><path d="M-22 8 L22 8 L14 22 L-14 22 Z" fill="#b5651d"/><rect x="-1" y="-26" width="2.5" height="34" fill="#6b4423"/><path d="M2 -24 L22 4 L2 4 Z" fill="#fff"/><path d="M-2 -16 L-20 2 L-2 2 Z" fill="#fde68a"/></g>
+
+<!-- ISLAND: shadow + wet/dry sand + foam -->
+<g filter="url(#ds)"><path d="M250 150 C 430 100, 560 150, 600 250 C 700 270, 760 360, 700 440 C 720 540, 600 580, 470 560 C 360 590, 230 540, 220 440 C 130 420, 110 300, 190 250 C 195 200, 215 165, 250 150 Z" fill="#d8bf86"/></g>
+<path d="M268 168 C 432 122, 552 168, 588 258 C 680 280, 732 360, 680 432 C 700 524, 590 560, 472 542 C 372 568, 250 524, 242 438 C 158 420, 142 306, 210 262 C 216 212, 236 182, 268 168 Z" fill="#f3e2ad"/>
+<path d="M250 150 C 430 100, 560 150, 600 250 C 700 270, 760 360, 700 440 C 720 540, 600 580, 470 560 C 360 590, 230 540, 220 440 C 130 420, 110 300, 190 250 C 195 200, 215 165, 250 150 Z" fill="none" stroke="#ffffff" stroke-opacity=".6" stroke-width="4" stroke-dasharray="3 6"/>
+
+<!-- GRASS + texture + tonal patches (clipped to island) -->
+<g clip-path="url(#isleClip)">
+  <path d="M268 168 C 432 122, 552 168, 588 258 C 680 280, 732 360, 680 432 C 700 524, 590 560, 472 542 C 372 568, 250 524, 242 438 C 158 420, 142 306, 210 262 C 216 212, 236 182, 268 168 Z" fill="url(#grs)"/>
+  <!-- coastal ambient shadow -->
+  <path d="M268 168 C 432 122, 552 168, 588 258 C 680 280, 732 360, 680 432 C 700 524, 590 560, 472 542 C 372 568, 250 524, 242 438 C 158 420, 142 306, 210 262 C 216 212, 236 182, 268 168 Z" fill="none" stroke="#256b38" stroke-width="22" opacity=".4" filter="url(#blur)"/>
+  <!-- tonal patches -->
+  <ellipse cx="360" cy="300" rx="70" ry="48" fill="#2f8f4e" opacity=".5" filter="url(#blur)"/>
+  <ellipse cx="540" cy="420" rx="80" ry="52" fill="#2f8f4e" opacity=".45" filter="url(#blur)"/>
+  <ellipse cx="470" cy="250" rx="60" ry="40" fill="#cdf3a8" opacity=".5" filter="url(#blur)"/>
+  <!-- grain -->
+  <rect x="100" y="100" width="700" height="500" filter="url(#grain)"/>
+</g>
+
+<!-- WATERFALL down a cliff into a river -->
+<g>
+  <path d="M300 210 L356 210 L350 300 L306 300 Z" fill="url(#rock)"/>
+  <rect x="312" y="216" width="34" height="120" fill="url(#fall)"/>
+  <rect x="318" y="216" width="6" height="120" fill="#fff" opacity=".7"/>
+  <ellipse cx="329" cy="338" rx="26" ry="8" fill="#cfeefb"/>
+  <path d="M329 338 C 360 380, 320 430, 380 470 C 420 500, 400 540, 430 556" fill="none" stroke="#5bc7ef" stroke-width="14" stroke-linecap="round"/>
+  <path d="M329 338 C 360 380, 320 430, 380 470 C 420 500, 400 540, 430 556" fill="none" stroke="#bdeefb" stroke-width="5" stroke-linecap="round" opacity=".8"/>
+</g>
+
+<!-- MOUNTAIN RANGE with snow + cast shadow -->
+<g>
+  <ellipse cx="330" cy="250" rx="120" ry="26" fill="#1f5a32" opacity=".25" filter="url(#blur)"/>
+  <path d="M250 252 L320 150 L372 252 Z" fill="url(#rock)"/>
+  <path d="M320 150 L300 200 L320 212 L348 196 Z" fill="url(#snow)"/>
+  <path d="M250 252 L320 150 L300 252 Z" fill="#5b6573" opacity=".5"/>
+  <path d="M340 252 L398 168 L452 252 Z" fill="url(#rock)"/>
+  <path d="M398 168 L383 205 L398 214 L420 202 Z" fill="url(#snow)"/>
+  <path d="M340 252 L398 168 L382 252 Z" fill="#5b6573" opacity=".5"/>
+</g>
+
+<!-- FOREST (varied trees + shadows) -->
+<g>
+  <!-- round trees -->
+  <g transform="translate(520,360)"><ellipse cx="4" cy="18" rx="15" ry="5" fill="#000" opacity=".18"/><rect x="-3" y="2" width="6" height="16" rx="2" fill="#6f4420"/><circle cx="0" cy="-8" r="17" fill="#2c8447"/><circle cx="-10" cy="0" r="12" fill="#37a058"/><circle cx="10" cy="-1" r="12" fill="#37a058"/><circle cx="-4" cy="-13" r="9" fill="#5cc578"/></g>
+  <g transform="translate(560,400) scale(.85)"><ellipse cx="4" cy="18" rx="15" ry="5" fill="#000" opacity=".18"/><rect x="-3" y="2" width="6" height="16" rx="2" fill="#6f4420"/><circle cx="0" cy="-8" r="17" fill="#2c8447"/><circle cx="-10" cy="0" r="12" fill="#37a058"/><circle cx="10" cy="-1" r="12" fill="#37a058"/></g>
+  <!-- conifers -->
+  <g transform="translate(470,420)"><ellipse cx="3" cy="20" rx="13" ry="4" fill="#000" opacity=".18"/><rect x="-2.5" y="10" width="5" height="12" fill="#6f4420"/><path d="M0 -24 L14 2 L-14 2 Z" fill="#2e8a4a"/><path d="M0 -12 L18 14 L-18 14 Z" fill="#27793f"/></g>
+  <g transform="translate(500,452) scale(.9)"><ellipse cx="3" cy="20" rx="13" ry="4" fill="#000" opacity=".18"/><rect x="-2.5" y="10" width="5" height="12" fill="#6f4420"/><path d="M0 -24 L14 2 L-14 2 Z" fill="#2e8a4a"/><path d="M0 -12 L18 14 L-18 14 Z" fill="#27793f"/></g>
+  <g transform="translate(430,360) scale(.8)"><ellipse cx="3" cy="20" rx="13" ry="4" fill="#000" opacity=".18"/><rect x="-2.5" y="10" width="5" height="12" fill="#6f4420"/><path d="M0 -24 L14 2 L-14 2 Z" fill="#2e8a4a"/><path d="M0 -12 L18 14 L-18 14 Z" fill="#27793f"/></g>
+</g>
+
+<!-- VILLAGE (houses + path + bridge) -->
+<g>
+  <!-- dirt path -->
+  <path d="M470 250 C 520 290, 560 320, 600 360" fill="none" stroke="#d8b878" stroke-width="9" stroke-linecap="round" stroke-dasharray="1 14" opacity=".9"/>
+  <!-- houses -->
+  <g transform="translate(590,300)"><ellipse cx="2" cy="16" rx="20" ry="5" fill="#000" opacity=".16"/><rect x="-15" y="-2" width="30" height="18" rx="2" fill="#e8c98a"/><path d="M-19 -2 L0 -18 L19 -2 Z" fill="#c0492a"/><rect x="-4" y="5" width="8" height="11" fill="#7a4a22"/></g>
+  <g transform="translate(625,330) scale(.85)"><ellipse cx="2" cy="16" rx="20" ry="5" fill="#000" opacity=".16"/><rect x="-15" y="-2" width="30" height="18" rx="2" fill="#dfe4ea"/><path d="M-19 -2 L0 -18 L19 -2 Z" fill="#3f7cab"/><rect x="-4" y="5" width="8" height="11" fill="#7a4a22"/></g>
+  <!-- wooden bridge over the river -->
+  <g transform="translate(372,455) rotate(28)"><rect x="-26" y="-7" width="52" height="14" fill="#b58245"/><g stroke="#8a5e2c" stroke-width="2"><line x1="-20" y1="-7" x2="-20" y2="7"/><line x1="-8" y1="-7" x2="-8" y2="7"/><line x1="6" y1="-7" x2="6" y2="7"/><line x1="18" y1="-7" x2="18" y2="7"/></g></g>
+</g>
+
+<!-- flowers + rocks -->
+<g>
+  <g fill="#f87171"><circle cx="430" cy="300" r="3"/><circle cx="436" cy="302" r="3"/><circle cx="433" cy="296" r="3"/><circle cx="433" cy="300" r="2" fill="#fde047"/></g>
+  <g fill="#f472b6"><circle cx="560" cy="320" r="3"/><circle cx="566" cy="322" r="3"/><circle cx="563" cy="316" r="3"/><circle cx="563" cy="320" r="2" fill="#fde047"/></g>
+  <g transform="translate(250,430)"><ellipse cx="3" cy="5" rx="14" ry="6" fill="#000" opacity=".14"/><path d="M-12 5 L-4 -8 L4 -2 L13 5 Z" fill="url(#rock)"/></g>
+</g>
+
+<!-- player avatar to show scale -->
+<g transform="translate(470,360)"><ellipse cx="2" cy="24" rx="16" ry="5" fill="#000" opacity=".2"/><circle r="22" fill="#fff" stroke="#e879f9" stroke-width="5" filter="url(#dsS)"/><text y="9" text-anchor="middle" font-size="26">🦊</text></g>
+
+<!-- global light + vignette -->
+<rect width="1000" height="640" fill="url(#sun)"/>
+<rect width="1000" height="640" fill="url(#vig)"/>
+</svg>
+</div>
+<div class="label" style="font-weight:700;color:#64748b;font-size:11px">מים עם רעש+אדוות+קצף · דשא עם טקסטורה וגוונים · הרים מושלגים · מפל · יער מגוון · כפר + גשר + שביל · פרחים · תאורה</div>
+</body></html>
