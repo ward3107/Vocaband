@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,system-ui,sans-serif}
+  body{background:#dfe5ef;padding:26px;display:flex;gap:30px;align-items:flex-start}
+  .col{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .label{font-weight:900;font-size:13px;color:#1e293b}
+  .tag{font-size:11px;font-weight:800;color:#64748b;max-width:380px;text-align:center;line-height:1.45}
+  .card{border-radius:20px;overflow:hidden;box-shadow:0 12px 30px rgba(0,0,0,.18)}
+</style></head>
+<body>
+<div class="col"><div class="label">לפני · קו חוף חלק, דשא שטוח</div><div class="card" id="a"></div></div>
+<div class="col"><div class="label">אחרי · קו חוף טבעי + הצללה וגוונים</div><div class="card" id="b"></div><div class="tag">קו חוף משונן עם מפרצים, חוף רטוב+יבש + קצף לבן, דשא עם גוונים (יער כהה, אחו בהיר), גבעות מוצללות, סלעים בחוף.</div></div>
+
+<script>
+function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function smooth(p){let d=`M ${(p[p.length-1][0]+p[0][0])/2} ${(p[p.length-1][1]+p[0][1])/2}`;for(let i=0;i<p.length;i++){const c=p[i],n=p[(i+1)%p.length];d+=` Q ${c[0].toFixed(1)} ${c[1].toFixed(1)} ${((c[0]+n[0])/2).toFixed(1)} ${((c[1]+n[1])/2).toFixed(1)}`;}return d+'Z';}
+function scaleP(p,cx,cy,k){return p.map(([x,y])=>[cx+(x-cx)*k, cy+(y-cy)*k]);}
+function scatter(cx,cy,R,n,rand){const o=[];for(let i=0;i<n;i++){const a=rand()*6.283;const r=R*Math.sqrt(rand());o.push([cx+Math.cos(a)*r, cy+Math.sin(a)*r*0.9]);}return o;}
+
+function jagged(cx,cy,R,irr,n,rand){const p=[];for(let i=0;i<n;i++){const a=i/n*6.283;const base=R*(1-irr+rand()*2*irr);
+  // add a second harmonic for bays/peninsulas
+  const wob=1+0.12*Math.sin(a*3+rand()*2);
+  const r=base*wob; p.push([cx+Math.cos(a)*r, cy+Math.sin(a)*r*0.86]);}return p;}
+
+const TREE=`<g><rect x="-2.6" y="2" width="5.2" height="11" rx="2" fill="#6f4420"/><circle cx="0" cy="-6" r="12" fill="#2c8447"/><circle cx="-7" cy="0" r="9" fill="#359a55"/><circle cx="7" cy="-1" r="9" fill="#359a55"/><circle cx="-3" cy="-9" r="7" fill="#54bd72"/></g>`;
+
+function island(W,H,seed,realistic){
+  const rand=rng(seed); const cx=W/2, cy=H/2, R=W*0.40;
+  let s=`<svg width="${W/2}" height="${H/2}" viewBox="0 0 ${W} ${H}">
+  <defs>
+    <linearGradient id="sea${seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7ed0ee"/><stop offset="1" stop-color="#2f9fd8"/></linearGradient>
+    <radialGradient id="grs${seed}" cx="42%" cy="34%" r="70%"><stop offset="0" stop-color="#b6f0a4"/><stop offset="0.6" stop-color="#74cf72"/><stop offset="1" stop-color="#479e52"/></radialGradient>
+    <filter id="ds${seed}" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#0a3147" flood-opacity=".34"/></filter>
+    <filter id="blur${seed}"><feGaussianBlur stdDeviation="7"/></filter>
+    <filter id="blurS${seed}"><feGaussianBlur stdDeviation="3"/></filter>
+  </defs>
+  <rect width="${W}" height="${H}" fill="url(#sea${seed})"/>`;
+  // waves
+  for(let i=0;i<5;i++){const x=rand()*W,y=rand()*H;s+=`<path d="M${x.toFixed(0)} ${y.toFixed(0)} q9 -7 18 0 q9 7 18 0" stroke="#fff" stroke-opacity=".28" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;}
+
+  if(!realistic){
+    // OLD: smooth ellipse, flat grass, single beach
+    s+=`<g filter="url(#ds${seed})"><ellipse cx="${cx}" cy="${cy}" rx="${R}" ry="${R*0.78}" fill="#f6e4b0"/></g>`;
+    s+=`<ellipse cx="${cx}" cy="${cy}" rx="${R}" ry="${R*0.78}" fill="none" stroke="#bfeaf6" stroke-width="10" opacity=".5"/>`;
+    s+=`<ellipse cx="${cx}" cy="${cy}" rx="${R*0.8}" ry="${R*0.6}" fill="#69c46e"/>`;
+    scatter(cx,cy,R*0.55,7,rand).forEach(([x,y])=>s+=`<g transform="translate(${x.toFixed(0)},${y.toFixed(0)})">${TREE}</g>`);
+    return s+'</svg>';
+  }
+
+  // NEW realistic
+  const pts=jagged(cx,cy,R,0.14,26,rand);
+  const sand=smooth(pts);
+  const grassPts=scaleP(pts,cx,cy,0.84).map(([x,y])=>[x+(rand()-0.5)*10,y+(rand()-0.5)*10]);
+  const grass=smooth(grassPts);
+  // shadow + wet sand + dry sand + foam
+  s+=`<g filter="url(#ds${seed})"><path d="${sand}" fill="#d8bf86"/></g>`;            // wet sand (darker)
+  s+=`<path d="${smooth(scaleP(pts,cx,cy,0.95))}" fill="#f3e2ad"/>`;                    // dry sand (lighter)
+  s+=`<path d="${sand}" fill="none" stroke="#ffffff" stroke-width="4" opacity=".55" stroke-dasharray="2 5"/>`; // foam
+  // grass base + dark coastal rim (inner shadow) + forest/meadow shading
+  s+=`<path d="${grass}" fill="url(#grs${seed})"/>`;
+  s+=`<path d="${grass}" fill="none" stroke="#2f7a45" stroke-width="14" opacity=".4" filter="url(#blur${seed})"/>`; // coastal AO
+  // forest patches (darker)
+  scatter(cx,cy,R*0.4,3,rand).forEach(([x,y])=>{const r=30+rand()*26;s+=`<ellipse cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" rx="${r}" ry="${r*0.8}" fill="#2f8f4e" opacity=".55" filter="url(#blurS${seed})"/>`;});
+  // meadow highlights (lighter)
+  scatter(cx,cy,R*0.45,3,rand).forEach(([x,y])=>{const r=22+rand()*20;s+=`<ellipse cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" rx="${r}" ry="${r*0.7}" fill="#c8f0a6" opacity=".4" filter="url(#blurS${seed})"/>`;});
+  // a small lake
+  const lk=scatter(cx,cy,R*0.3,1,rand)[0];
+  s+=`<ellipse cx="${lk[0].toFixed(0)}" cy="${lk[1].toFixed(0)}" rx="26" ry="17" fill="#5bc7ef"/><ellipse cx="${lk[0].toFixed(0)}" cy="${lk[1].toFixed(0)}" rx="26" ry="17" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2"/>`;
+  // rocks at a couple of coast points
+  [pts[3],pts[14]].forEach(([x,y])=>{s+=`<g transform="translate(${x.toFixed(0)},${y.toFixed(0)})"><ellipse cx="3" cy="4" rx="11" ry="6" fill="#000" opacity=".15"/><path d="M-10 4 L-3 -8 L4 -2 L11 4 Z" fill="#9aa3ad"/><path d="M-3 -8 L0 0 L4 -2 Z" fill="#c2c9d2"/></g>`;});
+  // hills (soft shaded bumps)
+  scatter(cx,cy,R*0.4,2,rand).forEach(([x,y])=>{s+=`<ellipse cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" rx="34" ry="20" fill="#5fbf63"/><ellipse cx="${(x-6).toFixed(0)}" cy="${(y-4).toFixed(0)}" rx="22" ry="12" fill="#85d877" opacity=".7"/>`;});
+  // trees with shadow
+  scatter(cx,cy,R*0.62,12,rand).forEach(([x,y])=>{const sc=(0.7+rand()*0.5).toFixed(2);s+=`<g transform="translate(${x.toFixed(0)},${y.toFixed(0)}) scale(${sc})"><ellipse cx="2" cy="14" rx="11" ry="3.5" fill="#000" opacity=".18"/>${TREE}</g>`;});
+  return s+'</svg>';
+}
+
+document.getElementById('a').innerHTML=island(760,640,11,false);
+document.getElementById('b').innerHTML=island(760,640,11,true);
+</script>
+</body></html>
