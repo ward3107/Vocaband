@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,"Segoe UI",system-ui,sans-serif}
+  body{background:#e7ecf5;padding:26px;display:flex;gap:34px;align-items:flex-start}
+  .col{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .label{font-weight:900;color:#3730a3;font-size:12px;text-transform:uppercase;letter-spacing:.09em}
+  .sub{font-size:11px;color:#64748b;font-weight:700;max-width:320px;text-align:center;line-height:1.45}
+  .phone{width:300px;height:600px;border-radius:30px;overflow:hidden;border:6px solid #1e293b;box-shadow:0 16px 40px rgba(0,0,0,.25);position:relative}
+  .mini{width:360px;height:252px;border-radius:16px;overflow:hidden;border:2px solid #94a3b8;box-shadow:0 8px 20px rgba(0,0,0,.12);position:relative}
+  .hud{position:absolute;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;z-index:5}
+  .chip{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;background:rgba(255,255,255,.92);box-shadow:0 1px 3px rgba(0,0,0,.15);font-weight:900;font-size:11px;color:#4f46e5}
+  .stick{position:absolute;bottom:16px;right:16px;width:92px;height:92px;border-radius:999px;background:rgba(255,255,255,.35);border:2px solid rgba(255,255,255,.6);box-shadow:0 8px 18px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;z-index:5}
+  .stick .knob{width:40px;height:40px;border-radius:999px;background:linear-gradient(135deg,#6366f1,#7c3aed);border:2px solid rgba(255,255,255,.7)}
+  .frame{position:absolute;border:2.5px solid #f43f5e;border-radius:6px;box-shadow:0 0 0 9999px rgba(15,23,42,.28);z-index:4}
+  .ftag{position:absolute;background:#f43f5e;color:#fff;font-size:9px;font-weight:900;padding:2px 6px;border-radius:5px;z-index:4;white-space:nowrap}
+</style></head>
+<body>
+
+<!-- ============ Reusable world art (defined once, reused via <use>) ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="ocean" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#9fdcf6"/><stop offset="60%" stop-color="#6cc6ef"/><stop offset="100%" stop-color="#46b3e6"/>
+    </linearGradient>
+    <linearGradient id="land" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#a7e8a0"/><stop offset="100%" stop-color="#6bce72"/>
+    </linearGradient>
+    <radialGradient id="forest" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#3f9e57"/><stop offset="100%" stop-color="#2f8048"/>
+    </radialGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.18"/></filter>
+
+    <!-- The whole large world. Coordinates 0..2400 x 0..1680. -->
+    <g id="world">
+      <rect x="0" y="0" width="2400" height="1680" fill="url(#ocean)"/>
+      <!-- subtle latitude/longitude grid -->
+      <g stroke="#ffffff" stroke-opacity="0.12" stroke-width="2">
+        <line x1="400" y1="0" x2="400" y2="1680"/><line x1="800" y1="0" x2="800" y2="1680"/><line x1="1200" y1="0" x2="1200" y2="1680"/><line x1="1600" y1="0" x2="1600" y2="1680"/><line x1="2000" y1="0" x2="2000" y2="1680"/>
+        <line x1="0" y1="336" x2="2400" y2="336"/><line x1="0" y1="672" x2="2400" y2="672"/><line x1="0" y1="1008" x2="2400" y2="1008"/><line x1="0" y1="1344" x2="2400" y2="1344"/>
+      </g>
+
+      <!-- Continent 1 (big, left) with sandy coastline -->
+      <g>
+        <path d="M260 220 C 520 160, 720 300, 700 520 C 760 700, 640 900, 700 1080 C 640 1280, 360 1340, 220 1180 C 120 1040, 200 860, 160 700 C 100 520, 120 320, 260 220 Z" fill="#f3e0b0"/>
+        <path d="M285 250 C 520 200, 690 330, 668 525 C 722 695, 612 885, 668 1060 C 612 1245, 372 1300, 250 1158 C 162 1030, 232 862, 196 706 C 142 540, 160 350, 285 250 Z" fill="url(#land)"/>
+        <ellipse cx="360" cy="470" rx="95" ry="80" fill="url(#forest)" opacity=".9"/>
+        <ellipse cx="500" cy="900" rx="120" ry="95" fill="url(#forest)" opacity=".85"/>
+        <!-- mountain range -->
+        <g transform="translate(430,690)"><path d="M-70 60 L -20 -40 L 20 30 L 70 -60 L 120 60 Z" fill="#9aa3ad"/><path d="M-20 -40 L 0 0 L 20 30 Z" fill="#eef2f6"/><path d="M70 -60 L 92 -8 L 120 60 Z" fill="#eef2f6"/></g>
+      </g>
+
+      <!-- Continent 2 (big, right) -->
+      <g>
+        <path d="M1500 180 C 1900 120, 2240 240, 2220 520 C 2280 760, 2120 980, 2180 1200 C 2080 1420, 1760 1460, 1560 1320 C 1420 1200, 1500 1000, 1440 820 C 1380 600, 1360 320, 1500 180 Z" fill="#f3e0b0"/>
+        <path d="M1525 210 C 1900 160, 2208 260, 2188 520 C 2244 752, 2092 968, 2148 1180 C 2052 1382, 1768 1416, 1584 1290 C 1456 1182, 1532 996, 1474 824 C 1416 612, 1400 348, 1525 210 Z" fill="url(#land)"/>
+        <ellipse cx="1760" cy="430" rx="130" ry="100" fill="url(#forest)" opacity=".88"/>
+        <ellipse cx="1980" cy="980" rx="110" ry="92" fill="url(#forest)" opacity=".82"/>
+        <g transform="translate(1820,780)"><path d="M-80 64 L -26 -46 L 18 34 L 72 -66 L 128 64 Z" fill="#9aa3ad"/><path d="M-26 -46 L 0 6 L 18 34 Z" fill="#eef2f6"/><path d="M72 -66 L 98 -6 L 128 64 Z" fill="#eef2f6"/></g>
+      </g>
+
+      <!-- small islands to fill the ocean -->
+      <g fill="url(#land)" stroke="#f3e0b0" stroke-width="14">
+        <ellipse cx="1080" cy="360" rx="120" ry="90"/>
+        <ellipse cx="980" cy="1180" rx="140" ry="100"/>
+        <ellipse cx="1240" cy="820" rx="105" ry="85"/>
+      </g>
+    </g>
+
+    <!-- Word map-label: a clean pin proportionate to the land (NOT a giant pill). -->
+    <g id="wlabel"></g>
+  </defs>
+</svg>
+
+<!-- ============ Phone (student) — a window into the big world ============ -->
+<div class="col">
+  <div class="label">Student — phone view (window into a big world)</div>
+  <div class="phone">
+    <svg width="300" height="600" viewBox="560 70 760 1520" preserveAspectRatio="xMidYMid slice">
+      <use href="#world"/>
+      <!-- proportionate word labels placed on land -->
+      <g font-family="system-ui" font-weight="800">
+        <g transform="translate(500,470)">
+          <rect x="-58" y="-23" width="116" height="46" rx="23" fill="#fff" filter="url(#soft)"/>
+          <circle cx="-40" cy="0" r="7" fill="#f59e0b"/>
+          <text x="6" y="8" text-anchor="middle" font-size="26" fill="#1f2937">mountain</text>
+        </g>
+        <g transform="translate(1080,360)">
+          <rect x="-44" y="-22" width="92" height="44" rx="22" fill="#fff" filter="url(#soft)"/>
+          <circle cx="-30" cy="0" r="7" fill="#f59e0b"/>
+          <text x="8" y="8" text-anchor="middle" font-size="26" fill="#1f2937">river</text>
+        </g>
+        <g transform="translate(980,1180)">
+          <rect x="-52" y="-22" width="104" height="44" rx="22" fill="#fff" filter="url(#soft)"/>
+          <circle cx="-36" cy="0" r="7" fill="#f59e0b"/>
+          <text x="6" y="8" text-anchor="middle" font-size="26" fill="#1f2937">island</text>
+        </g>
+      </g>
+      <!-- player avatar (centered) -->
+      <g transform="translate(940,830)">
+        <circle r="30" fill="#fff" stroke="#e879f9" stroke-width="5" filter="url(#soft)"/>
+        <text y="11" text-anchor="middle" font-size="34">🦊</text>
+      </g>
+      <!-- other players -->
+      <g transform="translate(1180,700)"><circle r="24" fill="#fff" opacity=".92" filter="url(#soft)"/><text y="9" text-anchor="middle" font-size="26">🐼</text></g>
+      <g transform="translate(760,1010)"><circle r="24" fill="#fff" opacity=".92" filter="url(#soft)"/><text y="9" text-anchor="middle" font-size="26">🐯</text></g>
+    </svg>
+    <div class="hud"><span class="chip">🗺️ Word Hunt</span><span class="chip" style="color:#334155">👑 #1 · 120</span></div>
+    <div class="stick"><div class="knob"></div></div>
+  </div>
+  <div class="sub">Words sit on the land like small map labels — clearly smaller than the continents. The phone shows only a window; lots more world beyond the edges.</div>
+</div>
+
+<!-- ============ Mini-map — the whole big world, with the phone window marked ============ -->
+<div class="col">
+  <div class="label">The whole world (overview)</div>
+  <div class="mini">
+    <svg width="360" height="252" viewBox="0 0 2400 1680" preserveAspectRatio="none">
+      <use href="#world"/>
+      <!-- tiny dots = words -->
+      <g fill="#f59e0b" stroke="#fff" stroke-width="6">
+        <circle cx="500" cy="470" r="20"/><circle cx="1080" cy="360" r="20"/><circle cx="980" cy="1180" r="20"/><circle cx="1760" cy="430" r="20"/><circle cx="1980" cy="980" r="20"/>
+      </g>
+      <!-- player dots -->
+      <g fill="#7c3aed" stroke="#fff" stroke-width="6"><circle cx="940" cy="830" r="22"/><circle cx="1180" cy="700" r="18"/><circle cx="760" cy="1010" r="18"/></g>
+    </svg>
+    <!-- the red rectangle = what the phone above is showing -->
+    <div class="frame" style="left:84px;top:10.5px;width:114px;height:228px"></div>
+    <div class="ftag" style="left:84px;top:-6px">phone sees this</div>
+  </div>
+  <div class="sub">The red box is the slice the phone shows. The world is ~2.4× wider and taller than today — players spread out and there's always more to explore.</div>
+</div>
+
+</body></html>
