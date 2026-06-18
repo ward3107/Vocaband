@@ -3,19 +3,25 @@
  * (no PixiJS/Phaser): ~38 nodes max, GPU-composited translate3d, cheapest
  * path on low-end school Android (design §2).
  *
- * Two render paths coexist:
- *   - React renders the NODES (word tokens, avatar medallions) — these
- *     change rarely (word lifecycle, roster churn).
+ * Three render paths coexist:
+ *   - React renders the NODES (continents background, word tokens, avatar
+ *     medallions, off-screen arrows) — these change rarely (word lifecycle,
+ *     roster churn).
  *   - One requestAnimationFrame loop moves avatars by writing transforms
  *     through refs, bypassing React entirely on the 60fps path. Remote
  *     avatars ease toward the 10/sec snapshot targets
  *     (current += (target − current) · 0.2); the LOCAL avatar integrates
  *     joystick input immediately (client prediction) so steering feels
  *     instant despite the 10/sec uplink.
+ *   - The SAME loop drives the camera: for a student it pans/zooms a single
+ *     "world layer" div so the player stays centered and the stylized world
+ *     map scrolls beneath them (the bounded world reads as endless because
+ *     you only ever see a window of it). The host projector keeps Z=1 and an
+ *     identity camera, so it still shows the whole map at once.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { motion } from "motion/react";
-import { Lock, Check } from "lucide-react";
+import { Lock, Check, Navigation } from "lucide-react";
 import QPAvatar from "../QPAvatar";
 import {
   QP_ARENA_WIDTH,
@@ -32,6 +38,13 @@ const SELF_SPEED = 250;
 const EASE_K = 0.2;
 /** Leave a word's radius by this factor before auto-grab may re-fire. */
 const REARM_FACTOR = 1.2;
+/** Student camera zoom. >1 shows a window of the world (it scrolls as you
+ *  move) so the bounded map feels far bigger and words render larger /
+ *  clearer. The host projector ignores this (whole-map view). */
+const CAMERA_ZOOM = 1.85;
+/** Inset (px) from the viewport edge where an off-screen word's pointer
+ *  arrow parks — kept clear of the HUD/joystick. */
+const ARROW_EDGE_MARGIN = 26;
 
 interface ArenaCanvasProps {
   arena: QpArenaStatePayload;
@@ -53,7 +66,7 @@ interface ArenaCanvasProps {
    *  (kids tap the word, not the joystick — the server's range referee
    *  used to deny those taps outright, which read as "clicking is broken"). */
   onGrab?: (wordId: string, x: number, y: number) => void;
-  /** Host projector: no joystick, no prediction, no grabbing. */
+  /** Host projector: no joystick, no prediction, no grabbing, no camera. */
   readOnly?: boolean;
   /** Buzzer open — freeze movement + sends (battery + focus). */
   isPaused?: boolean;
@@ -73,10 +86,20 @@ export default function ArenaCanvas({
   readOnly = false, isPaused = false, fill = false, className = "",
 }: ArenaCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // The single child that holds the map, words and avatars; the RAF loop
+  // pans+zooms it as one unit for the student camera (identity for the host).
+  const worldRef = useRef<HTMLDivElement | null>(null);
   // Pixels-per-logical-unit, refreshed by the ResizeObserver. A ref (not
   // state) because the RAF loop is the only consumer.
   const scaleRef = useRef({ x: 1, y: 1 });
+  // Viewport pixel size — the camera needs it every frame to center the
+  // player and to clamp the pan to the world edges.
+  const sizeRef = useRef({ w: 1, h: 1 });
   const avatarElsRef = useRef(new Map<string, HTMLDivElement>());
+  // Off-screen pointer arrows: the wrapper (parked at the viewport edge) and
+  // its chevron (rotated toward the word), updated each frame via refs.
+  const arrowElsRef = useRef(new Map<string, HTMLDivElement>());
+  const arrowIconElsRef = useRef(new Map<string, HTMLDivElement>());
   // Smoothed display position per avatar — eased toward the snapshot target.
   const displayRef = useRef(new Map<string, { x: number; y: number }>());
   const selfRef = useRef<{ x: number; y: number } | null>(null);
@@ -92,6 +115,10 @@ export default function ArenaCanvas({
     navTargetRef.current = id;
     setNavTargetId(id);
   }, []);
+
+  // The student gets a follow-camera; the host projector sees the whole map.
+  const cameraOn = !readOnly && !!selfClientId;
+  const zoom = cameraOn ? CAMERA_ZOOM : 1;
 
   // Mirror render-time data into refs so the RAF loop never closes over
   // stale props (and the effect doesn't restart on every word patch).
@@ -110,6 +137,12 @@ export default function ArenaCanvas({
     for (const e of leaderboard) byId.set(e.clientId, { clientId: e.clientId, nickname: e.nickname, avatar: e.avatar });
     return [...byId.values()];
   }, [arena.positions, leaderboard]);
+
+  // Available words drive the off-screen arrows (locked/answered need none).
+  const availableWords = useMemo(
+    () => arena.words.filter(w => w.state === "available"),
+    [arena.words],
+  );
 
   // Hidden tab pauses everything alongside the explicit isPaused prop.
   const [tabHidden, setTabHidden] = useState(false);
@@ -131,6 +164,7 @@ export default function ArenaCanvas({
     const ro = new ResizeObserver(() => {
       const r = el.getBoundingClientRect();
       scaleRef.current = { x: r.width / QP_ARENA_WIDTH, y: r.height / QP_ARENA_HEIGHT };
+      sizeRef.current = { w: r.width, h: r.height };
     });
     ro.observe(el);
     return () => ro.disconnect();
@@ -214,11 +248,56 @@ export default function ArenaCanvas({
         }
       }
 
+      // ─── Camera: pan+zoom the world layer so self stays centered ──────
+      // World-layer coords match the container box (words use %, avatars use
+      // px·scale inside it), so the camera is one transform on the wrapper:
+      // a translate that re-centers on the player, clamped to the world edges
+      // so we never pan past the map into blank space.
+      const W = sizeRef.current.w, H = sizeRef.current.h;
+      const world = worldRef.current;
+      if (world) {
+        if (cameraOn && selfRef.current) {
+          const sx = selfRef.current.x * scale.x;
+          const sy = selfRef.current.y * scale.y;
+          // tx so (tx + zoom·sx) === W/2, clamped to [W−zoom·W, 0].
+          const tx = Math.max(W - zoom * W, Math.min(0, W / 2 - zoom * sx));
+          const ty = Math.max(H - zoom * H, Math.min(0, H / 2 - zoom * sy));
+          world.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${zoom})`;
+
+          // Off-screen arrows: where does each available word land on screen?
+          const cx = W / 2, cy = H / 2;
+          const hx = W / 2 - ARROW_EDGE_MARGIN, hy = H / 2 - ARROW_EDGE_MARGIN;
+          for (const w of wordsRef.current) {
+            const wrap = arrowElsRef.current.get(w.wordId);
+            if (!wrap) continue;
+            if (w.state !== "available") { wrap.style.opacity = "0"; continue; }
+            const screenX = tx + zoom * (w.pos.x * scale.x);
+            const screenY = ty + zoom * (w.pos.y * scale.y);
+            const onScreen =
+              screenX >= ARROW_EDGE_MARGIN && screenX <= W - ARROW_EDGE_MARGIN &&
+              screenY >= ARROW_EDGE_MARGIN && screenY <= H - ARROW_EDGE_MARGIN;
+            if (onScreen) { wrap.style.opacity = "0"; continue; }
+            const dx = screenX - cx, dy = screenY - cy;
+            const ang = Math.atan2(dy, dx);
+            // Park on the viewport-edge rectangle along the ray to the word.
+            const s = Math.min(hx / (Math.abs(dx) || 1e-3), hy / (Math.abs(dy) || 1e-3));
+            const ex = cx + dx * s, ey = cy + dy * s;
+            wrap.style.opacity = "1";
+            wrap.style.transform = `translate3d(${ex}px, ${ey}px, 0) translate(-50%, -50%)`;
+            const icon = arrowIconElsRef.current.get(w.wordId);
+            // Navigation glyph points up by default → +90° to align with 0rad (east).
+            if (icon) icon.style.transform = `rotate(${ang + Math.PI / 2}rad)`;
+          }
+        } else {
+          world.style.transform = "none";
+        }
+      }
+
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [paused, readOnly, selfClientId, positionsRef, inputRef, selfPosRef, setNavTarget]);
+  }, [paused, readOnly, selfClientId, positionsRef, inputRef, selfPosRef, setNavTarget, cameraOn, zoom]);
 
   // Tap = grab when in range, otherwise run there (auto-grab on arrival).
   const handleWordTap = useCallback((wordId: string) => {
@@ -237,92 +316,184 @@ export default function ArenaCanvas({
     <div
       ref={containerRef}
       dir="ltr" // coordinates are absolute — never mirrored for RTL
-      className={`relative w-full ${fill ? "h-full" : ""} overflow-hidden rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-100 via-violet-50 to-fuchsia-100 shadow-lg shadow-indigo-500/20 ${className}`}
+      className={`relative w-full ${fill ? "h-full" : ""} overflow-hidden rounded-3xl border border-sky-200/60 shadow-lg shadow-sky-500/20 ${className}`}
       style={{ ...(fill ? {} : { aspectRatio: `${QP_ARENA_WIDTH} / ${QP_ARENA_HEIGHT}` }), touchAction: "none" }}
     >
-      {/* Word tokens — React-rendered (lifecycle changes are rare). On the
-          student side, available tokens are real buttons: kids' first
-          instinct is to tap the word, not to know about the invisible
-          grab radius — so a tap runs the avatar there. */}
-      {arena.words.map((w) => {
-        const tappable = !readOnly && !!onGrab && w.state === "available";
-        const targeted = w.wordId === navTargetId && w.state === "available";
-        const pill = (
-          <motion.div
-            animate={w.state === "available" ? { y: [0, -5, 0] } : { y: 0 }}
-            transition={w.state === "available" ? { repeat: Infinity, duration: 2.2, ease: "easeInOut" } : undefined}
-            className={`flex items-center gap-1 px-4 py-2.5 rounded-full font-black text-base sm:text-lg whitespace-nowrap shadow-md transition-opacity ${
-              w.state === "available"
-                ? "bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-amber-500/30"
-                : w.state === "locked"
-                  ? "bg-stone-400/80 text-white opacity-70"
-                  : "bg-emerald-100 text-emerald-600 opacity-40"
-            } ${targeted ? "ring-4 ring-fuchsia-400/80" : ""}`}
-            dir="auto"
-          >
-            {w.state === "locked" && <Lock size={12} strokeWidth={3} />}
-            {w.state === "answered" && <Check size={12} strokeWidth={3} />}
-            {w.label}
-          </motion.div>
-        );
-        return (
-          <div
-            key={w.wordId}
-            className="absolute z-10"
-            style={{
-              left: `${(w.pos.x / QP_ARENA_WIDTH) * 100}%`,
-              top: `${(w.pos.y / QP_ARENA_HEIGHT) * 100}%`,
-              transform: "translate(-50%, -50%)",
-            }}
-          >
-            {tappable ? (
-              <button
-                type="button"
-                onClick={() => handleWordTap(w.wordId)}
-                aria-label={w.label}
-                // p-4 + -m-4 grows the hit box well past the visual pill
-                // without shifting layout — a fat fingertip target on the map
-                // (kids kept missing the small pill on phones).
-                className="block p-4 -m-4"
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              >
-                {pill}
-              </button>
-            ) : (
-              pill
-            )}
-          </div>
-        );
-      })}
+      {/* World layer — map + words + avatars move together under the camera.
+          transform-origin top-left so the camera math (translate + scale from
+          0,0) is exact. */}
+      <div
+        ref={worldRef}
+        className="absolute inset-0"
+        style={{ transformOrigin: "0 0", willChange: cameraOn ? "transform" : undefined }}
+      >
+        <WorldMapBackground />
 
-      {/* Avatars — positioned exclusively by the RAF loop via refs. */}
-      {players.map((p) => {
-        const isSelf = p.clientId === selfClientId;
-        return (
-          <div
-            key={p.clientId}
-            ref={(el) => {
-              if (el) avatarElsRef.current.set(p.clientId, el);
-              else avatarElsRef.current.delete(p.clientId);
-            }}
-            className="absolute left-0 top-0 z-20 flex flex-col items-center"
-            style={{ willChange: "transform", transform: "translate3d(-200px, -200px, 0)" }}
-          >
-            <div
-              className={`flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-full backdrop-blur-sm shadow-md text-xl sm:text-2xl ${
-                isSelf
-                  ? "bg-white/80 border-2 border-fuchsia-400 shadow-fuchsia-500/30"
-                  : "bg-white/60 border border-white/80"
-              }`}
+        {/* Word tokens — React-rendered (lifecycle changes are rare). On the
+            student side, available tokens are real buttons: kids' first
+            instinct is to tap the word, not to know about the invisible
+            grab radius — so a tap runs the avatar there. */}
+        {arena.words.map((w) => {
+          const tappable = !readOnly && !!onGrab && w.state === "available";
+          const targeted = w.wordId === navTargetId && w.state === "available";
+          const pill = (
+            <motion.div
+              animate={w.state === "available" ? { y: [0, -5, 0] } : { y: 0 }}
+              transition={w.state === "available" ? { repeat: Infinity, duration: 2.2, ease: "easeInOut" } : undefined}
+              className={`flex items-center gap-1 px-4 py-2.5 rounded-full font-black text-base sm:text-lg whitespace-nowrap shadow-md transition-opacity ${
+                w.state === "available"
+                  ? "bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-amber-500/30 ring-2 ring-white/70"
+                  : w.state === "locked"
+                    ? "bg-stone-400/80 text-white opacity-70"
+                    : "bg-emerald-100 text-emerald-600 opacity-40"
+              } ${targeted ? "ring-4 ring-fuchsia-400/80" : ""}`}
+              dir="auto"
             >
-              <QPAvatar value={p.avatar} iconSize={20} className="text-indigo-600" />
+              {w.state === "locked" && <Lock size={12} strokeWidth={3} />}
+              {w.state === "answered" && <Check size={12} strokeWidth={3} />}
+              {w.label}
+            </motion.div>
+          );
+          return (
+            <div
+              key={w.wordId}
+              className="absolute z-10"
+              style={{
+                left: `${(w.pos.x / QP_ARENA_WIDTH) * 100}%`,
+                top: `${(w.pos.y / QP_ARENA_HEIGHT) * 100}%`,
+                transform: "translate(-50%, -50%)",
+              }}
+            >
+              {tappable ? (
+                <button
+                  type="button"
+                  onClick={() => handleWordTap(w.wordId)}
+                  aria-label={w.label}
+                  // p-4 + -m-4 grows the hit box well past the visual pill
+                  // without shifting layout — a fat fingertip target on the map
+                  // (kids kept missing the small pill on phones).
+                  className="block p-4 -m-4"
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                >
+                  {pill}
+                </button>
+              ) : (
+                pill
+              )}
             </div>
-            <span className="mt-0.5 px-1.5 rounded-full bg-white/70 text-[9px] sm:text-[10px] font-black text-stone-600 whitespace-nowrap max-w-20 truncate">
-              {p.nickname}
-            </span>
+          );
+        })}
+
+        {/* Avatars — positioned exclusively by the RAF loop via refs. */}
+        {players.map((p) => {
+          const isSelf = p.clientId === selfClientId;
+          return (
+            <div
+              key={p.clientId}
+              ref={(el) => {
+                if (el) avatarElsRef.current.set(p.clientId, el);
+                else avatarElsRef.current.delete(p.clientId);
+              }}
+              className="absolute left-0 top-0 z-20 flex flex-col items-center"
+              style={{ willChange: "transform", transform: "translate3d(-200px, -200px, 0)" }}
+            >
+              <div
+                className={`flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-full backdrop-blur-sm shadow-md text-xl sm:text-2xl ${
+                  isSelf
+                    ? "bg-white/80 border-2 border-fuchsia-400 shadow-fuchsia-500/30"
+                    : "bg-white/60 border border-white/80"
+                }`}
+              >
+                <QPAvatar value={p.avatar} iconSize={20} className="text-indigo-600" />
+              </div>
+              <span className="mt-0.5 px-1.5 rounded-full bg-white/70 text-[9px] sm:text-[10px] font-black text-stone-600 whitespace-nowrap max-w-20 truncate">
+                {p.nickname}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Off-screen word arrows — viewport-space overlay (NOT in the camera
+          layer, so they sit at the screen edge). One per available word; the
+          RAF loop parks each on the edge nearest its word and rotates the
+          chevron toward it. Student camera only. */}
+      {cameraOn && availableWords.map((w) => (
+        <div
+          key={w.wordId}
+          ref={(el) => {
+            if (el) arrowElsRef.current.set(w.wordId, el);
+            else arrowElsRef.current.delete(w.wordId);
+          }}
+          className="absolute left-0 top-0 z-30 flex flex-col items-center pointer-events-none"
+          style={{ opacity: 0, transform: "translate3d(-200px, -200px, 0)", willChange: "transform, opacity" }}
+        >
+          <div
+            ref={(el) => {
+              if (el) arrowIconElsRef.current.set(w.wordId, el);
+              else arrowIconElsRef.current.delete(w.wordId);
+            }}
+            className="flex items-center justify-center w-7 h-7 rounded-full bg-amber-400 text-white shadow-md shadow-amber-500/40 ring-2 ring-white/80"
+          >
+            <Navigation size={14} strokeWidth={3} className="fill-white" />
           </div>
-        );
-      })}
+          <span className="mt-0.5 max-w-16 truncate px-1.5 rounded-full bg-white/85 text-[8px] font-black text-amber-700 whitespace-nowrap">
+            {w.label}
+          </span>
+        </div>
+      ))}
     </div>
+  );
+}
+
+/**
+ * WorldMapBackground — a stylized "world map" rendered as one inline SVG
+ * (ocean gradient, blobby continents, faint lat/long grid). preserveAspectRatio
+ * "none" stretches it to the world box so it lines up 1:1 with word/avatar
+ * logical coords. Decorative + static: zero per-frame cost, no external assets
+ * (keeps the design's low-end-Android budget).
+ */
+function WorldMapBackground() {
+  return (
+    <svg
+      className="absolute inset-0 h-full w-full"
+      viewBox={`0 0 ${QP_ARENA_WIDTH} ${QP_ARENA_HEIGHT}`}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="arena-ocean" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#bae6fd" />
+          <stop offset="55%" stopColor="#7dd3fc" />
+          <stop offset="100%" stopColor="#38bdf8" />
+        </linearGradient>
+        <linearGradient id="arena-land" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#86efac" />
+          <stop offset="100%" stopColor="#4ade80" />
+        </linearGradient>
+      </defs>
+
+      {/* Ocean */}
+      <rect x="0" y="0" width={QP_ARENA_WIDTH} height={QP_ARENA_HEIGHT} fill="url(#arena-ocean)" />
+
+      {/* Faint lat/long grid for a chart-like feel */}
+      <g stroke="#ffffff" strokeOpacity="0.18" strokeWidth="1.5">
+        {[140, 280, 420, 560, 700, 840].map(x => <line key={`v${x}`} x1={x} y1="0" x2={x} y2={QP_ARENA_HEIGHT} />)}
+        {[117, 234, 351, 468, 585].map(y => <line key={`h${y}`} x1="0" y1={y} x2={QP_ARENA_WIDTH} y2={y} />)}
+      </g>
+
+      {/* Continents — loose blobs, not geography. Soft coastline via a wider
+          translucent stroke underneath the fill. */}
+      <g stroke="#fde68a" strokeOpacity="0.6" strokeWidth="6" fill="url(#arena-land)">
+        {/* "Americas" — left tall landmass */}
+        <path d="M150 70 C 230 60, 250 150, 210 210 C 260 250, 230 360, 170 400 C 120 440, 90 520, 130 600 C 70 590, 60 470, 95 400 C 60 330, 80 220, 130 180 C 110 130, 110 90, 150 70 Z" />
+        {/* "Eurasia" — wide top-right */}
+        <path d="M520 80 C 640 50, 800 70, 900 120 C 940 160, 900 210, 820 220 C 740 250, 640 230, 560 250 C 500 250, 470 190, 500 140 C 490 110, 500 90, 520 80 Z" />
+        {/* "Africa" — center-lower */}
+        <path d="M560 300 C 640 290, 700 330, 690 410 C 680 490, 620 560, 560 560 C 520 520, 510 440, 530 380 C 530 340, 540 310, 560 300 Z" />
+        {/* "Australia" — small bottom-right */}
+        <path d="M810 470 C 880 460, 930 500, 915 555 C 880 590, 800 585, 770 545 C 760 505, 780 480, 810 470 Z" />
+      </g>
+    </svg>
   );
 }
