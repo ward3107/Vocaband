@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,system-ui,sans-serif}
+  body{background:#eef2f8;padding:28px;display:flex;flex-direction:column;gap:22px}
+  .label{font-weight:900;color:#1e293b;font-size:14px;margin-bottom:6px}
+  .sub{font-size:11px;color:#64748b;font-weight:700;margin-bottom:12px}
+  .row{display:flex;gap:18px;flex-wrap:wrap}
+  .av{width:84px;height:84px;border-radius:999px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(0,0,0,.12);border:3px solid #fff}
+  .emoji{background:#e2e8f0;font-size:42px}
+  .panel{background:#fff;border-radius:18px;padding:20px 22px;box-shadow:0 8px 22px rgba(0,0,0,.08)}
+</style></head>
+<body>
+
+<div class="panel">
+  <div class="label">לפני · אימוג'י (מה שיש היום)</div>
+  <div class="sub">גנרי, נראה שונה בכל מכשיר, בלי אופי</div>
+  <div class="row">
+    <div class="av emoji">🦊</div><div class="av emoji">🐻</div><div class="av emoji">🦁</div>
+    <div class="av emoji">🐼</div><div class="av emoji">🦉</div><div class="av emoji">🐸</div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="label">אחרי · דמויות מאוירות מקוריות (הצעה)</div>
+  <div class="sub">סגנון אחיד, חמוד, עם אופי — נראה אותו דבר בכל מכשיר</div>
+  <div class="row" id="chars"></div>
+</div>
+
+<script>
+function av(bg1,bg2,inner){return `<div class="av" style="background:linear-gradient(135deg,${bg1},${bg2})"><svg width="64" height="64" viewBox="0 0 100 100">${inner}</svg></div>`;}
+const eyes=(cx1,cx2,cy,r=7)=>`<circle cx="${cx1}" cy="${cy}" r="${r}" fill="#2b2b3a"/><circle cx="${cx2}" cy="${cy}" r="${r}" fill="#2b2b3a"/><circle cx="${cx1-2}" cy="${cy-2}" r="2.4" fill="#fff"/><circle cx="${cx2-2}" cy="${cy-2}" r="2.4" fill="#fff"/>`;
+const cheeks=(cx1,cx2,cy)=>`<circle cx="${cx1}" cy="${cy}" r="6" fill="#ff9bb0" opacity=".7"/><circle cx="${cx2}" cy="${cy}" r="6" fill="#ff9bb0" opacity=".7"/>`;
+
+// Fox
+const fox=`<path d="M22 34 L30 16 L44 30 Z" fill="#e8743b"/><path d="M78 34 L70 16 L56 30 Z" fill="#e8743b"/><path d="M26 28 L31 20 L39 28 Z" fill="#fff" opacity=".7"/><path d="M74 28 L69 20 L61 28 Z" fill="#fff" opacity=".7"/><circle cx="50" cy="52" r="30" fill="#f08a4b"/><path d="M50 60 m-20 0 a20 18 0 0 0 40 0 Z" fill="#fff"/><ellipse cx="50" cy="64" rx="17" ry="14" fill="#fdf3ea"/>${eyes(40,60,50)}${cheeks(33,67,62)}<ellipse cx="50" cy="66" rx="4" ry="3" fill="#2b2b3a"/>`;
+// Cat
+const cat=`<path d="M24 30 L30 14 L44 28 Z" fill="#8b93a3"/><path d="M76 30 L70 14 L56 28 Z" fill="#8b93a3"/><circle cx="50" cy="54" r="30" fill="#9aa2b1"/>${eyes(40,60,50)}${cheeks(33,67,62)}<path d="M50 60 l-4 5 l4 3 l4 -3 Z" fill="#2b2b3a"/><g stroke="#fff" stroke-width="1.6" opacity=".8"><line x1="30" y1="62" x2="18" y2="60"/><line x1="30" y1="66" x2="18" y2="68"/><line x1="70" y1="62" x2="82" y2="60"/><line x1="70" y1="66" x2="82" y2="68"/></g>`;
+// Frog
+const frog=`<circle cx="34" cy="34" r="13" fill="#6fc96b"/><circle cx="66" cy="34" r="13" fill="#6fc96b"/><circle cx="34" cy="34" r="7" fill="#fff"/><circle cx="66" cy="34" r="7" fill="#fff"/><circle cx="34" cy="35" r="3.4" fill="#2b2b3a"/><circle cx="66" cy="35" r="3.4" fill="#2b2b3a"/><circle cx="50" cy="58" r="28" fill="#7ad675"/><path d="M34 60 q16 18 32 0" stroke="#2b6b33" stroke-width="4" fill="none" stroke-linecap="round"/>${cheeks(32,68,60)}`;
+// Robot
+const robot=`<rect x="46" y="6" width="8" height="14" rx="3" fill="#9fb3c8"/><circle cx="50" cy="6" r="5" fill="#ffd24d"/><rect x="22" y="24" width="56" height="52" rx="16" fill="#cfe0f2"/><rect x="30" y="34" width="40" height="26" rx="10" fill="#243b53"/>${eyes(40,60,47,6).replace(/#2b2b3a/g,'#5be0ff')}<rect x="40" y="64" width="20" height="5" rx="2.5" fill="#9fb3c8"/>`;
+// Alien
+const alien=`<path d="M50 16 C 74 16, 82 44, 74 64 C 68 82, 32 82, 26 64 C 18 44, 26 16, 50 16 Z" fill="#b07cf0"/><line x1="38" y1="20" x2="32" y2="8" stroke="#b07cf0" stroke-width="4" stroke-linecap="round"/><line x1="62" y1="20" x2="68" y2="8" stroke="#b07cf0" stroke-width="4" stroke-linecap="round"/><circle cx="32" cy="8" r="4" fill="#ffd24d"/><circle cx="68" cy="8" r="4" fill="#ffd24d"/><ellipse cx="40" cy="50" rx="8" ry="11" fill="#1b1b2e"/><ellipse cx="60" cy="50" rx="8" ry="11" fill="#1b1b2e"/><circle cx="38" cy="46" r="2.6" fill="#fff"/><circle cx="58" cy="46" r="2.6" fill="#fff"/>`;
+// Dragon
+const dragon=`<path d="M34 22 L30 10 L42 18 Z" fill="#39b39b"/><path d="M66 22 L70 10 L58 18 Z" fill="#39b39b"/><circle cx="50" cy="52" r="30" fill="#46c9af"/><ellipse cx="50" cy="64" rx="16" ry="12" fill="#bff0e6"/>${eyes(40,60,48)}<ellipse cx="44" cy="64" rx="2.4" ry="3" fill="#2b6b5e"/><ellipse cx="56" cy="64" rx="2.4" ry="3" fill="#2b6b5e"/>${cheeks(32,68,60)}`;
+
+document.getElementById('chars').innerHTML=
+  av('#ffd9a8','#ffb36b',fox)+
+  av('#dfe6f0','#b9c3d4',cat)+
+  av('#c7f0c0','#9be090',frog)+
+  av('#d6e6fa','#aecbf0',robot)+
+  av('#e8d2fb','#cba6f5',alien)+
+  av('#bff0e6','#86ddc9',dragon);
+</script>
+</body></html>
