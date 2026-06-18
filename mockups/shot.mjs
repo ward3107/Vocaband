@@ -1,0 +1,12 @@
+import { chromium } from "playwright";
+const path = "file://" + process.cwd() + "/mockups/arena-map-preview.html";
+const browser = await chromium.launch();
+const page = await browser.newPage({ deviceScaleFactor: 2 });
+await page.goto(path);
+await page.waitForTimeout(400);
+await page.locator("#student").screenshot({ path: "mockups/arena-student.png" });
+await page.locator("#host").screenshot({ path: "mockups/arena-host.png" });
+await page.setViewportSize({ width: 1140, height: 700 });
+await page.screenshot({ path: "mockups/arena-both.png" });
+await browser.close();
+console.log("done");
