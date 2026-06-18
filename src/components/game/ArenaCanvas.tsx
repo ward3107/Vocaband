@@ -270,7 +270,9 @@ export default function ArenaCanvas({
           <motion.div
             animate={w.state === "available" ? { y: [0, -5, 0] } : { y: 0 }}
             transition={w.state === "available" ? { repeat: Infinity, duration: 2.2, ease: "easeInOut" } : undefined}
-            className={`flex items-center gap-1 px-4 py-2.5 rounded-full font-black text-base sm:text-lg whitespace-nowrap shadow-md transition-opacity ${
+            // Compact pills so the themed map reads big and roomy ("zoom out"
+            // look). The tap target stays fat via the p-4/-m-4 wrapper below.
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-full font-black text-xs sm:text-sm whitespace-nowrap shadow-md transition-opacity ${
               w.state === "available"
                 ? "bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-amber-500/30"
                 : w.state === "locked"
@@ -279,8 +281,8 @@ export default function ArenaCanvas({
             } ${targeted ? "ring-4 ring-fuchsia-400/80" : ""}`}
             dir="auto"
           >
-            {w.state === "locked" && <Lock size={12} strokeWidth={3} />}
-            {w.state === "answered" && <Check size={12} strokeWidth={3} />}
+            {w.state === "locked" && <Lock size={10} strokeWidth={3} />}
+            {w.state === "answered" && <Check size={10} strokeWidth={3} />}
             {w.label}
           </motion.div>
         );
@@ -327,16 +329,17 @@ export default function ArenaCanvas({
             className="absolute left-0 top-0 z-20 flex flex-col items-center"
             style={{ willChange: "transform", transform: "translate3d(-200px, -200px, 0)" }}
           >
+            {/* Smaller avatars so the map feels large and zoomed-out. */}
             <div
-              className={`flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-full backdrop-blur-sm shadow-md text-xl sm:text-2xl ${
+              className={`flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full backdrop-blur-sm shadow-md text-sm sm:text-lg ${
                 isSelf
                   ? "bg-white/80 border-2 border-fuchsia-400 shadow-fuchsia-500/30"
                   : "bg-white/60 border border-white/80"
               }`}
             >
-              <QPAvatar value={p.avatar} iconSize={20} className="text-indigo-600" />
+              <QPAvatar value={p.avatar} iconSize={13} className="text-indigo-600" />
             </div>
-            <span className="mt-0.5 px-1.5 rounded-full bg-white/70 text-[9px] sm:text-[10px] font-black text-stone-600 whitespace-nowrap max-w-20 truncate">
+            <span className="mt-0.5 px-1.5 rounded-full bg-white/70 text-[8px] sm:text-[9px] font-black text-stone-600 whitespace-nowrap max-w-16 truncate">
               {p.nickname}
             </span>
           </div>
