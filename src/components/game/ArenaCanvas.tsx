@@ -27,8 +27,10 @@ import { arenaMapById } from "./arenaMaps";
 import type { ArenaInputVector } from "./ArenaJoystick";
 
 /** Local avatar speed in logical units/sec — tuned so crossing the arena
- *  takes ~4s: fast enough to feel like a chase, slow enough to steer. */
-const SELF_SPEED = 250;
+ *  takes ~4s: fast enough to feel like a chase, slow enough to steer.
+ *  Scales with QP_ARENA_WIDTH (was 250 at 1000 wide) so the bigger world
+ *  still crosses in ~4s. */
+const SELF_SPEED = (QP_ARENA_WIDTH / 1000) * 250;
 /** Easing factor for remote avatars (per frame at 60fps). */
 const EASE_K = 0.2;
 /** Leave a word's radius by this factor before auto-grab may re-fire. */
@@ -365,17 +367,27 @@ export default function ArenaCanvas({
             className="absolute left-0 top-0 z-20 flex flex-col items-center"
             style={{ willChange: "transform", transform: "translate3d(-200px, -200px, 0)" }}
           >
-            {/* Smaller avatars so the map feels large and zoomed-out. */}
+            {/* Student devices: small avatars so the followed map feels big.
+                Teacher projector (readOnly, whole-map view): larger medallions
+                so the class can see everyone moving from across the room. */}
             <div
-              className={`flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full backdrop-blur-sm shadow-md text-sm sm:text-lg ${
+              className={`flex items-center justify-center rounded-full backdrop-blur-sm shadow-md ${
+                readOnly
+                  ? "w-9 h-9 sm:w-12 sm:h-12 text-lg sm:text-2xl"
+                  : "w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg"
+              } ${
                 isSelf
                   ? "bg-white/80 border-2 border-fuchsia-400 shadow-fuchsia-500/30"
                   : "bg-white/60 border border-white/80"
               }`}
             >
-              <QPAvatar value={p.avatar} iconSize={13} className="text-indigo-600" />
+              <QPAvatar value={p.avatar} iconSize={readOnly ? 22 : 13} className="text-indigo-600" />
             </div>
-            <span className="mt-0.5 px-1.5 rounded-full bg-white/70 text-[8px] sm:text-[9px] font-black text-stone-600 whitespace-nowrap max-w-16 truncate">
+            <span
+              className={`mt-0.5 px-1.5 rounded-full bg-white/70 font-black text-stone-600 whitespace-nowrap truncate ${
+                readOnly ? "text-[11px] sm:text-sm max-w-24" : "text-[8px] sm:text-[9px] max-w-16"
+              }`}
+            >
               {p.nickname}
             </span>
           </div>

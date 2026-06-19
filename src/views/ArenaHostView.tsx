@@ -250,8 +250,79 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   const onKick = (clientId: string, nickname: string) => setConfirmKick({ clientId, nickname });
 
   return (
-    <div className="min-h-[100dvh] transition-colors" dir={dir} style={presenting ? theme.page : { backgroundColor: 'var(--vb-surface-alt)' }}>
-      <div className="max-w-7xl mx-auto px-4 py-6">
+    <div
+      className={`transition-colors ${arenaActive ? "h-[100dvh] overflow-hidden flex flex-col" : "min-h-[100dvh]"}`}
+      dir={dir}
+      style={presenting || arenaActive ? theme.page : { backgroundColor: 'var(--vb-surface-alt)' }}
+    >
+      {/* Background music — kept mounted across the setup⇄live switch so it
+          never cuts when a hunt starts. Slate accents keep it calmer than the
+          brand-fuchsia bar on the other live games; floats to a compact corner
+          pill while presenting or during a live hunt. */}
+      <GameMusicPlayer language={language} theme="slate" floating={presenting || arenaActive} />
+
+      {arenaActive && currentArena ? (
+        /* ── Live hunt: ONE screen, no scrolling. The map fills the space and
+             the leaderboard sits beside it (desktop/tablet) or in a short
+             capped scroller below (phone) — so the teacher sees the whole
+             class moving at once, on any device, without scrolling. ── */
+        <div className="flex-1 min-h-0 flex flex-col gap-2 px-3 sm:px-4 pt-3 pb-2">
+          <header className="flex items-center justify-between gap-2 flex-shrink-0">
+            <h1 className={`min-w-0 text-base sm:text-2xl font-black flex items-center gap-2 ${theme.name}`}>
+              <span className="text-lg sm:text-2xl flex-shrink-0">🏟️</span>
+              <span className="truncate">{t.title}</span>
+            </h1>
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+              <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl font-black text-xs sm:text-base tracking-[0.12em] bg-indigo-50 text-indigo-700">
+                {sessionCode}
+              </span>
+              <button
+                type="button"
+                onClick={handleEndArena}
+                style={{ touchAction: "manipulation" }}
+                className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-black text-xs sm:text-sm bg-rose-100 text-rose-700 hover:bg-rose-200 active:scale-95 transition"
+              >
+                <Square size={16} /> <span className="hidden sm:inline">{t.endArena}</span>
+              </button>
+            </div>
+          </header>
+
+          <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-2 sm:gap-3">
+            {/* The live map — fills every available pixel so movement reads big */}
+            <section className="flex-1 min-h-0 flex flex-col">
+              <div className="relative flex-1 min-h-0">
+                <ArenaCanvas
+                  arena={currentArena}
+                  positionsRef={arenaPositionsRef}
+                  leaderboard={leaderboard}
+                  readOnly
+                  fill
+                  className="h-full"
+                />
+              </div>
+              <p className="mt-1 text-center text-[11px] sm:text-xs font-black uppercase tracking-widest text-indigo-500 flex-shrink-0">
+                {t.wordsLeft(wordsLeft)}
+              </p>
+            </section>
+
+            {/* Leaderboard — own scroll; a full column beside the map on
+                desktop/tablet, a short capped strip under it on phones. */}
+            <aside className={`flex-shrink-0 lg:w-80 xl:w-96 max-h-[32dvh] lg:max-h-none overflow-y-auto rounded-2xl sm:rounded-3xl shadow-lg border p-3 sm:p-4 ${theme.card}`}>
+              {teamMode && (
+                <div className="mb-3">
+                  <TeamScoreBar entries={sorted} />
+                </div>
+              )}
+              <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500 mb-3 flex items-center gap-2">
+                <Users size={18} /> {t.leaderboard}
+                <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
+              </h2>
+              <CategoryRacePodium entries={sorted} emptyText={t.noStudents} onKick={onKick} theme={theme} />
+            </aside>
+          </div>
+        </div>
+      ) : (
+        <div className="max-w-7xl mx-auto px-4 py-6">
         <header className="flex items-center justify-between gap-2 mb-5">
           <h1 className={`min-w-0 text-xl sm:text-3xl font-black flex items-center gap-2 ${presenting ? theme.name : headingCls}`}>
             <span className="text-2xl sm:text-3xl flex-shrink-0">🏟️</span>
@@ -293,30 +364,10 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
           )}
         </header>
 
-        {/* Background music — teacher can play/pause, skip, and adjust volume
-            for the room while the hunt runs. Slate accents keep it calmer than
-            the brand-fuchsia bar on the other live games. In presentation mode
-            it docks to a compact corner pill (kept mounted, so the music never
-            cuts out when the hunt starts). */}
-        <GameMusicPlayer language={language} theme="slate" floating={presenting} />
-
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Main: the live map (when running) + the big leaderboard */}
+          {/* Main: the big leaderboard / lobby (the live map has its own
+              one-screen layout above while a hunt runs) */}
           <div className={`${presenting ? "lg:col-span-12" : "lg:col-span-8"} space-y-4 order-2 lg:order-1`}>
-            {arenaActive && currentArena && (
-              <section>
-                <ArenaCanvas
-                  arena={currentArena}
-                  positionsRef={arenaPositionsRef}
-                  leaderboard={leaderboard}
-                  readOnly
-                />
-                <p className="mt-2 text-center text-xs font-black uppercase tracking-widest text-indigo-500">
-                  {t.wordsLeft(wordsLeft)}
-                </p>
-              </section>
-            )}
-
             {/* Live Red vs Blue total — only in team mode. */}
             {teamMode && <TeamScoreBar entries={sorted} />}
 
@@ -520,9 +571,10 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             </section>
           </aside>
         </div>
-      </div>
+        </div>
+      )}
 
-      {/* Presentation mode floating start / end-arena */}
+      {/* Presentation mode floating start (presented lobby before a hunt) */}
       <AnimatePresence>
         {presenting && !arenaActive && (
           <motion.button
@@ -536,19 +588,6 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             {autoCountdown !== null
               ? <><Zap size={20} /> {t.autoNextIn(autoCountdown)}</>
               : <><Play size={20} /> {hasStarted ? t.restart : t.start}</>}
-          </motion.button>
-        )}
-      </AnimatePresence>
-      <AnimatePresence>
-        {presenting && arenaActive && (
-          <motion.button
-            type="button"
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 16 }}
-            onClick={handleEndArena}
-            style={{ touchAction: "manipulation" }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-lg text-white shadow-xl shadow-rose-500/40 bg-gradient-to-r from-rose-500 to-red-600 active:scale-[0.98] transition"
-          >
-            <Square size={20} /> {t.endArena}
           </motion.button>
         )}
       </AnimatePresence>
