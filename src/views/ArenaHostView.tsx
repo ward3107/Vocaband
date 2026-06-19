@@ -32,6 +32,7 @@ import { useGameTheme } from "../hooks/useGameTheme";
 import GameResults from "../components/game/GameResults";
 import TeamScoreBar from "../components/game/TeamScoreBar";
 import TeamModeToggle from "../components/game/TeamModeToggle";
+import RoughModeToggle from "../components/game/RoughModeToggle";
 import ArenaCanvas from "../components/game/ArenaCanvas";
 import { ARENA_MAPS, randomArenaMapId } from "../components/game/arenaMaps";
 import SpeedWordPicker from "../components/game/SpeedWordPicker";
@@ -72,7 +73,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   const {
     status, currentArena, arenaPositionsRef, leaderboard,
     observeAsTeacher, startArena, endArena, endSession,
-    teamMode, setTeamMode,
+    teamMode, setTeamMode, roughMode, setRoughMode,
   } = qp;
 
   // The teacher's own word list (typed / picked from the library) — the
@@ -437,6 +438,17 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
               headingClass="text-indigo-500"
               idleClass={pillIdle}
               cardClass={cardCls}
+            />
+
+            {/* Dash-tackle PvP. The server only honours the toggle on a LIVE
+                arena, so it's disabled until a hunt is running. */}
+            <RoughModeToggle
+              roughMode={roughMode}
+              onToggle={(en) => tokenRef.current && setRoughMode(en, tokenRef.current)}
+              headingClass="text-indigo-500"
+              idleClass={pillIdle}
+              cardClass={cardCls}
+              disabled={!arenaActive}
             />
 
             <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>

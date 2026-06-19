@@ -23,6 +23,7 @@ import QuickPlayErrorScreen from "../components/QuickPlayErrorScreen";
 import SpeedBuzzer, { CountUp, type SpeedBuzzerPhase } from "../components/game/SpeedBuzzer";
 import ArenaCanvas from "../components/game/ArenaCanvas";
 import ArenaJoystick, { type ArenaInputVector } from "../components/game/ArenaJoystick";
+import ArenaDashButton from "../components/game/ArenaDashButton";
 import TeamSwitcher from "../components/game/TeamSwitcher";
 import { celebrate } from "../utils/celebrate";
 import { primeAudio } from "../utils/primeAudio";
@@ -30,6 +31,7 @@ import { playGood, playGentle, playFanfare } from "../utils/raceSfx";
 import { containsProfanity } from "../utils/nicknameProfanity";
 import {
   QP_ARENA_WIDTH, QP_ARENA_HEIGHT, QP_ARENA_CLIENT_TICK_MS, QP_ARENA_SPEED_BOOST_MS,
+  QP_ARENA_HURRICANE_STUN_MS, QP_ARENA_DASH_MS, QP_ARENA_TACKLE_STUN_MS,
   type QpArenaGrabGrantedPayload, type QpSpeedResultPayload,
 } from "../core/quickPlayProtocol";
 import type { View } from "../core/views";
@@ -55,6 +57,7 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
     joinAsStudent, sendArenaMove, requestGrab, sendArenaPickup, submitSpeedAnswer, sendReaction,
     onArenaGrabGranted, onArenaGrabDenied, onArenaPickup, onArenaEnded, onSpeedResult, onSessionEnded, onKicked,
     teamMode, myTeam, switchTeam,
+    roughMode, sendTackle, onTackled,
   } = qp;
 
   const forgetGame = useCallback(() => {
@@ -86,6 +89,15 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
   // Speed Boost: epoch-ms timestamp until which the local avatar moves faster.
   // A ref so the canvas RAF loop reads it per frame without a re-render.
   const speedBoostUntilRef = useRef(0);
+  // Stun: epoch-ms timestamp until which the LOCAL avatar is frozen + spinning
+  // (hurricane self-stun OR a dash-tackle hit). Same per-frame-ref pattern as
+  // the speed boost.
+  const hurricaneStunUntilRef = useRef(0);
+  // Dash burst: epoch-ms until which the local avatar lunges (rough mode).
+  const dashUntilRef = useRef(0);
+  // Remote stuns: clientId → epoch-ms, so EVERYONE sees a tackled student spin
+  // (the canvas reads this per frame). Also stamped for self for consistency.
+  const stunnedUntilRef = useRef<Map<string, number>>(new Map());
 
   // ─── Phone back-button trap (verbatim from Speed Round) ─────────────
   useEffect(() => {
@@ -214,7 +226,8 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
   // Game element collected — only the collector applies the effect (the server
   // tags the gone event with byClientId). Speed → start the boost timer; double
   // → "×2 next answer" toast; star → celebrate (the +points land via the
-  // leaderboard, server-authoritative).
+  // leaderboard, server-authoritative); hurricane (mud) → SELF-STUN: freeze +
+  // spin for the stun window, with a "caught in a hurricane" toast.
   useEffect(() => onArenaPickup((p) => {
     if (p.byClientId !== clientId) return;
     if (p.kind === "speed") {
@@ -228,6 +241,10 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
       setPickupToast(t.pickupStar);
       celebrate("small");
       playGood();
+    } else if (p.kind === "mud") {
+      hurricaneStunUntilRef.current = Date.now() + QP_ARENA_HURRICANE_STUN_MS;
+      setPickupToast(t.pickupHurricane);
+      playGentle();
     }
   }), [onArenaPickup, clientId, t]);
 
@@ -236,6 +253,38 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
     const id = window.setTimeout(() => setPickupToast(null), 1800);
     return () => window.clearTimeout(id);
   }, [pickupToast]);
+
+  // A tackle landed (server-authoritative). EVERYONE marks the victim spinning
+  // so all canvases show it. The victim themselves (targetClientId === me) also
+  // freezes (reusing the hurricane stun ref) and takes a small knockback —
+  // shoved away from the dasher's last-known spot — plus a toast.
+  useEffect(() => onTackled((p) => {
+    const until = Date.now() + QP_ARENA_TACKLE_STUN_MS;
+    stunnedUntilRef.current.set(p.targetClientId, until);
+    if (p.targetClientId !== clientId) return;
+    hurricaneStunUntilRef.current = until;
+    const dasher = arenaPositionsRef.current.get(p.byClientId);
+    if (dasher) {
+      // Push self ~110 logical units along the dasher→me direction (clamped to
+      // the world). A short shove sells the hit without flinging anyone away.
+      const me = selfPosRef.current;
+      const dx = me.x - dasher.x;
+      const dy = me.y - dasher.y;
+      const len = Math.hypot(dx, dy) || 1;
+      me.x = Math.max(0, Math.min(QP_ARENA_WIDTH, me.x + (dx / len) * 110));
+      me.y = Math.max(0, Math.min(QP_ARENA_HEIGHT, me.y + (dy / len) * 110));
+    }
+    setPickupToast(t.tackled);
+    playGentle();
+  }), [onTackled, clientId, arenaPositionsRef, t]);
+
+  // Dash — gated on rough mode (the button only mounts when on, but guard the
+  // handler too). Sets the burst window; the canvas reads it per frame and the
+  // tackle-contact detection fires while it's live.
+  const handleDash = useCallback(() => {
+    if (!roughMode) return;
+    dashUntilRef.current = Date.now() + QP_ARENA_DASH_MS;
+  }, [roughMode]);
 
   useEffect(() => onSpeedResult((p) => {
     setBuzzerResult(p);
@@ -399,6 +448,10 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
             pickups={currentArena.pickups}
             onPickupCollect={(pickupId, x, y) => sendArenaPickup(pickupId, x, y)}
             speedBoostUntilRef={speedBoostUntilRef}
+            hurricaneStunUntilRef={hurricaneStunUntilRef}
+            stunnedUntilRef={stunnedUntilRef}
+            dashUntilRef={dashUntilRef}
+            onTackle={roughMode ? (targetId, x, y) => sendTackle(targetId, x, y) : undefined}
             isPaused={!!grant}
             fill
             // Big-map feel: enlarge the world and follow the player's avatar
@@ -406,6 +459,9 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
             zoom={1.8}
           />
           <ArenaJoystick inputRef={inputRef} disabled={!!grant} />
+          {/* Dash — rough mode only. Parked on the LEFT (opposite the joystick's
+              right default) so it's reachable by the off thumb. */}
+          {roughMode && <ArenaDashButton onDash={handleDash} disabled={!!grant} side="left" label={t.dash} />}
 
           <AnimatePresence>
             {deniedToast && (

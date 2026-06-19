@@ -21,7 +21,8 @@ import {
   QP_ARENA_WIDTH,
   QP_ARENA_HEIGHT,
   QP_ARENA_SPEED_BOOST_MULT,
-  QP_ARENA_MUD_SLOW_MULT,
+  QP_ARENA_DASH_SPEED_MULT,
+  QP_ARENA_TACKLE_RANGE,
   type QpArenaStatePayload,
   type QpArenaPickup,
   type QpStudentEntry,
@@ -39,7 +40,8 @@ const EASE_K = 0.2;
 /** Leave a word's radius by this factor before auto-grab may re-fire. */
 const REARM_FACTOR = 1.2;
 
-/** The consumable medallions' face emoji (mud renders as a patch, not a pill). */
+/** Each pickup medallion's face emoji. All four are floating medallions now —
+ *  the hurricane 🌀 stuns whoever collects it instead of being a passive patch. */
 const PICKUP_EMOJI: Record<QpArenaPickup["kind"], string> = {
   speed: "⚡",
   star: "✨",
@@ -79,6 +81,25 @@ interface ArenaCanvasProps {
    *  faster. The parent flips this when the collecting student grabs a ⚡; the
    *  canvas reads it per frame so the boost decays without a re-render. */
   speedBoostUntilRef?: RefObject<number>;
+  /** Stun: an epoch-ms timestamp until which the local avatar is FROZEN +
+   *  spinning (hurricane self-stun or a dash-tackle hit). The parent flips
+   *  this; the canvas reads it per frame so input is ignored and a spin
+   *  rotation applies without a re-render — same pattern as speedBoostUntilRef. */
+  hurricaneStunUntilRef?: RefObject<number>;
+  /** Remote stuns: clientId → epoch-ms until which that avatar spins. Lets
+   *  EVERYONE see a tackled student spinning (the dash-tackle is public). The
+   *  parent writes here on ARENA_TACKLED; the RAF loop reads it per frame. */
+  stunnedUntilRef?: RefObject<Map<string, number>>;
+  /** Dash (rough mode): epoch-ms timestamp until which the local avatar moves
+   *  faster (a lunge). The parent flips it on a Dash press; the canvas reads it
+   *  per frame so the burst decays without a re-render — same pattern as
+   *  speedBoostUntilRef. While it's active, contact with another student fires
+   *  onTackle. */
+  dashUntilRef?: RefObject<number>;
+  /** Fired during a dash when the local avatar comes within tackle range of
+   *  another student — at most once per dash per target. The parent sends the
+   *  tackle to the server (which is the authority on whether it lands). */
+  onTackle?: (targetClientId: string, x: number, y: number) => void;
   /** Host projector: no joystick, no prediction, no grabbing. */
   readOnly?: boolean;
   /** Buzzer open — freeze movement + sends (battery + focus). */
@@ -101,7 +122,8 @@ interface ArenaCanvasProps {
 export default function ArenaCanvas({
   arena, positionsRef, leaderboard,
   selfClientId, inputRef, selfPosRef, onGrab,
-  pickups = [], onPickupCollect, speedBoostUntilRef,
+  pickups = [], onPickupCollect, speedBoostUntilRef, hurricaneStunUntilRef, stunnedUntilRef,
+  dashUntilRef, onTackle,
   readOnly = false, isPaused = false, fill = false, zoom = 1, className = "",
 }: ArenaCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -147,6 +169,14 @@ export default function ArenaCanvas({
   // Consumables the local player already collected this approach — re-armed
   // after leaving radius × REARM_FACTOR, exactly like attemptedRef for words.
   const pickupAttemptedRef = useRef(new Set<string>());
+  // Dash-tackle plumbing. onTackleRef avoids restarting the RAF effect on each
+  // render; tackledThisDashRef holds the clientIds already reported during the
+  // CURRENT dash (cleared when the dash window ends) so one lunge fires at most
+  // one tackle per target — the server still has the final say.
+  const onTackleRef = useRef(onTackle);
+  useEffect(() => { onTackleRef.current = onTackle; }, [onTackle]);
+  const tackledThisDashRef = useRef(new Set<string>());
+  const dashWasActiveRef = useRef(false);
 
   // Roster: leaderboard (live, covers late joiners) unioned with the
   // ARENA_STATE positions (covers the instant before the first broadcast).
@@ -192,6 +222,9 @@ export default function ArenaCanvas({
       const dt = Math.min(0.1, (ts - lastTs) / 1000); // clamp tab-jank jumps
       lastTs = ts;
       const scale = scaleRef.current;
+      // Snapshot targets for other players — used both by dash-tackle contact
+      // detection (local block) and the remote-avatar easing (below).
+      const targetsForFrame = positionsRef.current;
 
       // Local avatar — client prediction from the joystick vector.
       if (!readOnly && selfClientId) {
@@ -203,19 +236,27 @@ export default function ArenaCanvas({
         }
         const self = selfRef.current;
         const input = inputRef?.current;
-        // Effective speed = base × (Speed Boost active?) × (over a Mud patch?).
-        // Both are pure client effects on the server-synced position; the
-        // boost decays via its epoch-ms ref, mud applies while standing on it.
+        // Stunned (hurricane self-stun or a dash-tackle hit) → input is frozen
+        // and the avatar visibly spins until the epoch-ms ref elapses. Checked
+        // first so a stun overrides any joystick / tap-run during the window.
+        const stunned = !!hurricaneStunUntilRef?.current && hurricaneStunUntilRef.current > Date.now();
+        // Effective speed = base × (Speed Boost active?) × (Dash active?). Both
+        // decay via their epoch-ms refs — pure client effects on the server-
+        // synced position.
+        const nowMs = Date.now();
         let speed = SELF_SPEED;
-        if (speedBoostUntilRef?.current && speedBoostUntilRef.current > Date.now()) {
+        if (speedBoostUntilRef?.current && speedBoostUntilRef.current > nowMs) {
           speed *= QP_ARENA_SPEED_BOOST_MULT;
         }
-        const mudRadius = grabRadiusRef.current;
-        for (const pk of pickupsRef.current) {
-          if (pk.kind !== "mud") continue;
-          if (Math.hypot(self.x - pk.pos.x, self.y - pk.pos.y) <= mudRadius) { speed *= QP_ARENA_MUD_SLOW_MULT; break; }
-        }
-        if (input && (input.dx !== 0 || input.dy !== 0)) {
+        const dashing = !!dashUntilRef?.current && dashUntilRef.current > nowMs;
+        if (dashing) speed *= QP_ARENA_DASH_SPEED_MULT;
+        // When a dash ends, clear the per-dash tackle set so the next lunge can
+        // tackle the same target again.
+        if (!dashing && dashWasActiveRef.current) tackledThisDashRef.current.clear();
+        dashWasActiveRef.current = dashing;
+        if (stunned) {
+          setNavTarget(null); // a stun cancels any in-flight tap-run
+        } else if (input && (input.dx !== 0 || input.dy !== 0)) {
           setNavTarget(null); // the joystick always overrides a tapped target
           self.x = Math.max(0, Math.min(QP_ARENA_WIDTH, self.x + input.dx * speed * dt));
           self.y = Math.max(0, Math.min(QP_ARENA_HEIGHT, self.y + input.dy * speed * dt));
@@ -243,9 +284,12 @@ export default function ArenaCanvas({
         }
         const el = avatarElsRef.current.get(selfClientId);
         // Counter-scale by 1/zoom so the avatar keeps a constant on-screen
-        // size while the camera enlarges the map underneath it.
+        // size while the camera enlarges the map underneath it. A stun adds a
+        // fast spin (rotate off the frame clock) so being hurricane'd / tackled
+        // reads instantly without a re-render.
         const ls = zoomRef.current > 1 ? 1 / zoomRef.current : 1;
-        if (el) el.style.transform = `translate3d(${self.x * scale.x}px, ${self.y * scale.y}px, 0) translate(-50%, -50%) scale(${ls})`;
+        const spin = stunned ? ` rotate(${(ts / 2) % 360}deg)` : "";
+        if (el) el.style.transform = `translate3d(${self.x * scale.x}px, ${self.y * scale.y}px, 0) translate(-50%, -50%) scale(${ls})${spin}`;
 
         // Camera: enlarge the world by `zoom` and pan so the local avatar
         // stays centred — the map scrolls under the player. Clamped to the
@@ -273,11 +317,10 @@ export default function ArenaCanvas({
           }
         }
 
-        // Auto-collect consumables on contact — once per pickup per approach,
-        // exactly like auto-grab. Mud is a hazard (handled by the speed factor
-        // above), never collected.
+        // Auto-collect pickups on contact — once per pickup per approach,
+        // exactly like auto-grab. All four kinds are collectible (the hurricane
+        // collect triggers the self-stun via ARENA_PICKUP_GONE).
         for (const pk of pickupsRef.current) {
-          if (pk.kind === "mud") continue;
           const dist = Math.hypot(self.x - pk.pos.x, self.y - pk.pos.y);
           if (dist <= radius && !pickupAttemptedRef.current.has(pk.pickupId)) {
             pickupAttemptedRef.current.add(pk.pickupId);
@@ -286,10 +329,25 @@ export default function ArenaCanvas({
             pickupAttemptedRef.current.delete(pk.pickupId);
           }
         }
+
+        // Dash-tackle: while dashing, report contact with another student
+        // (within tackle range) at most once per dash per target. The SERVER
+        // decides whether it lands (rough-mode/team/range/cooldown) — this is
+        // only the "who did I run into" signal. We read the latest snapshot
+        // targets for other players' positions (same source the canvas eases).
+        if (dashing && onTackleRef.current && targetsForFrame) {
+          for (const [otherId, otherPos] of targetsForFrame) {
+            if (otherId === selfClientId || tackledThisDashRef.current.has(otherId)) continue;
+            if (Math.hypot(self.x - otherPos.x, self.y - otherPos.y) <= QP_ARENA_TACKLE_RANGE) {
+              tackledThisDashRef.current.add(otherId);
+              onTackleRef.current(otherId, self.x, self.y);
+            }
+          }
+        }
       }
 
       // Remote avatars — ease toward the latest snapshot target.
-      const targets = positionsRef.current;
+      const targets = targetsForFrame;
       if (targets) {
         for (const [clientId, target] of targets) {
           if (clientId === selfClientId) continue; // prediction owns self
@@ -300,7 +358,11 @@ export default function ArenaCanvas({
           cur.x += (target.x - cur.x) * EASE_K;
           cur.y += (target.y - cur.y) * EASE_K;
           const ls = zoomRef.current > 1 ? 1 / zoomRef.current : 1;
-          el.style.transform = `translate3d(${cur.x * scale.x}px, ${cur.y * scale.y}px, 0) translate(-50%, -50%) scale(${ls})`;
+          // A remote avatar spins while its stun window is live (tackle/hurricane
+          // are public — everyone sees the victim spin).
+          const until = stunnedUntilRef?.current?.get(clientId) ?? 0;
+          const spin = until > Date.now() ? ` rotate(${(ts / 2) % 360}deg)` : "";
+          el.style.transform = `translate3d(${cur.x * scale.x}px, ${cur.y * scale.y}px, 0) translate(-50%, -50%) scale(${ls})${spin}`;
         }
       }
 
@@ -308,7 +370,7 @@ export default function ArenaCanvas({
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [paused, readOnly, selfClientId, positionsRef, inputRef, selfPosRef, speedBoostUntilRef, setNavTarget]);
+  }, [paused, readOnly, selfClientId, positionsRef, inputRef, selfPosRef, speedBoostUntilRef, hurricaneStunUntilRef, stunnedUntilRef, dashUntilRef, setNavTarget]);
 
   // Tap = grab when in range, otherwise run there (auto-grab on arrival).
   const handleWordTap = useCallback((wordId: string) => {
@@ -414,33 +476,11 @@ export default function ArenaCanvas({
       })}
 
       {/* Scattered game elements — same scaled world layer + counter-scale as
-          the word pills. Mud is a translucent brown patch (a hazard, no tap);
-          consumables are floating emoji medallions auto-collected on contact. */}
+          the word pills. All four are floating emoji medallions auto-collected
+          on contact; the hurricane 🌀 spins (and stuns its collector). */}
       {pickups.map((pk) => {
         const counterScale = zoom > 1 ? 1 / zoom : 1;
-        if (pk.kind === "mud") {
-          // A soft brown blob sized to the grab radius (the slow zone), under
-          // the tokens so a word on/near it stays readable. Non-interactive.
-          const sizePct = (arena.grabRadius * 2 / QP_ARENA_WIDTH) * 100;
-          return (
-            <div
-              key={pk.pickupId}
-              aria-hidden
-              className="pointer-events-none absolute z-[5] flex items-center justify-center rounded-full"
-              style={{
-                left: `${(pk.pos.x / QP_ARENA_WIDTH) * 100}%`,
-                top: `${(pk.pos.y / QP_ARENA_HEIGHT) * 100}%`,
-                width: `${sizePct}%`,
-                aspectRatio: "1 / 1",
-                transform: `translate(-50%, -50%) scale(${counterScale})`,
-                background: "radial-gradient(circle, rgba(120,72,40,0.55) 0%, rgba(120,72,40,0.28) 60%, rgba(120,72,40,0) 100%)",
-                filter: "blur(1px)",
-              }}
-            >
-              <span className="text-xl sm:text-2xl opacity-80">{PICKUP_EMOJI.mud}</span>
-            </div>
-          );
-        }
+        const isHurricane = pk.kind === "mud";
         return (
           <div
             key={pk.pickupId}
@@ -453,14 +493,19 @@ export default function ArenaCanvas({
             }}
           >
             <motion.div
-              animate={{ y: [0, -5, 0] }}
-              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+              // The hurricane spins on the spot; the rewards bob gently.
+              animate={isHurricane ? { rotate: 360 } : { y: [0, -5, 0] }}
+              transition={isHurricane
+                ? { repeat: Infinity, duration: 1.4, ease: "linear" }
+                : { repeat: Infinity, duration: 2, ease: "easeInOut" }}
               className={`flex items-center justify-center rounded-full w-8 h-8 sm:w-10 sm:h-10 text-base sm:text-xl shadow-md backdrop-blur-sm ${
                 pk.kind === "speed"
                   ? "bg-gradient-to-br from-amber-300 to-yellow-500 shadow-amber-500/40"
                   : pk.kind === "star"
                     ? "bg-gradient-to-br from-fuchsia-300 to-pink-500 shadow-pink-500/40"
-                    : "bg-gradient-to-br from-emerald-300 to-teal-500 shadow-teal-500/40"
+                    : pk.kind === "double"
+                      ? "bg-gradient-to-br from-emerald-300 to-teal-500 shadow-teal-500/40"
+                      : "bg-gradient-to-br from-slate-400 to-stone-600 shadow-stone-500/40"
               }`}
             >
               {PICKUP_EMOJI[pk.kind]}
@@ -482,25 +527,34 @@ export default function ArenaCanvas({
             className="absolute left-0 top-0 z-20 flex flex-col items-center"
             style={{ willChange: "transform", transform: "translate3d(-200px, -200px, 0)" }}
           >
-            {/* Student devices: small avatars so the followed map feels big.
+            {/* Student devices: small avatars so the followed map feels big,
+                but the LOCAL player (isSelf) gets a noticeably larger medallion
+                + name so a kid can instantly find themselves in the crowd.
                 Teacher projector (readOnly, whole-map view): larger medallions
-                so the class can see everyone moving from across the room. */}
+                so the class can see everyone moving from across the room (the
+                projector has no "self", so no isSelf bump there). */}
             <div
               className={`flex items-center justify-center rounded-full backdrop-blur-sm shadow-md ${
                 readOnly
                   ? "w-11 h-11 sm:w-14 sm:h-14 text-xl sm:text-3xl"
-                  : "w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg"
+                  : isSelf
+                    ? "w-9 h-9 sm:w-12 sm:h-12 text-lg sm:text-2xl"
+                    : "w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg"
               } ${
                 isSelf
-                  ? "bg-white/80 border-2 border-fuchsia-400 shadow-fuchsia-500/30"
+                  ? "bg-white/90 border-[3px] border-fuchsia-500 shadow-fuchsia-500/40"
                   : "bg-white/60 border border-white/80"
               }`}
             >
-              <QPAvatar value={p.avatar} iconSize={readOnly ? 28 : 13} className="text-indigo-600" />
+              <QPAvatar value={p.avatar} iconSize={readOnly ? 28 : isSelf ? 20 : 13} className="text-indigo-600" />
             </div>
             <span
               className={`mt-0.5 px-1.5 rounded-full bg-white/70 font-black text-stone-600 whitespace-nowrap truncate ${
-                readOnly ? "text-[11px] sm:text-sm max-w-24" : "text-[8px] sm:text-[9px] max-w-16"
+                readOnly
+                  ? "text-[11px] sm:text-sm max-w-24"
+                  : isSelf
+                    ? "text-[10px] sm:text-xs max-w-20 ring-1 ring-fuchsia-300"
+                    : "text-[8px] sm:text-[9px] max-w-16"
               }`}
             >
               {p.nickname}
