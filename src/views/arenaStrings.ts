@@ -115,6 +115,7 @@ interface ArenaStudentStrings {
   lobbyTitle: string; lobbySub: string;
   hudScore: string;
   deniedLocked: string; deniedRange: string; deniedCooldown: string; deniedGone: string;
+  pickupSpeed: string; pickupDouble: string; pickupStar: string;
   arenaOverTitle: string; arenaOverSub: string;
   endedTitle: string; endedSub: string; backHome: string;
   yourScore: string;
@@ -131,6 +132,7 @@ export const ARENA_STUDENT_STRINGS: Record<"en" | "he" | "ar", ArenaStudentStrin
     hudScore: "Score",
     deniedLocked: "Too late — someone grabbed it!", deniedRange: "Get closer!",
     deniedCooldown: "Catch your breath…", deniedGone: "That word is gone.",
+    pickupSpeed: "⚡ Speed boost!", pickupDouble: "✌️ ×2 next answer!", pickupStar: "✨ Bonus points!",
     arenaOverTitle: "Arena over!", arenaOverSub: "Waiting for the teacher…",
     endedTitle: "Game over!", endedSub: "Thanks for playing.", backHome: "Back to home",
     yourScore: "Your score",
@@ -145,6 +147,7 @@ export const ARENA_STUDENT_STRINGS: Record<"en" | "he" | "ar", ArenaStudentStrin
     hudScore: "ניקוד",
     deniedLocked: "מאוחר מדי — מישהו תפס אותה!", deniedRange: "תתקרבו!",
     deniedCooldown: "קחו נשימה…", deniedGone: "המילה הזו כבר נתפסה.",
+    pickupSpeed: "⚡ מהירות על!", pickupDouble: "✌️ ×2 בתשובה הבאה!", pickupStar: "✨ נקודות בונוס!",
     arenaOverTitle: "הזירה הסתיימה!", arenaOverSub: "ממתינים למורה…",
     endedTitle: "המשחק הסתיים!", endedSub: "תודה ששיחקתם.", backHome: "חזרה לבית",
     yourScore: "הניקוד שלך",
@@ -159,6 +162,7 @@ export const ARENA_STUDENT_STRINGS: Record<"en" | "he" | "ar", ArenaStudentStrin
     hudScore: "النقاط",
     deniedLocked: "فات الأوان — أحدهم أمسك بها!", deniedRange: "اقترب أكثر!",
     deniedCooldown: "التقط أنفاسك…", deniedGone: "هذه الكلمة اختفت.",
+    pickupSpeed: "⚡ دفعة سرعة!", pickupDouble: "✌️ ×2 للإجابة التالية!", pickupStar: "✨ نقاط إضافية!",
     arenaOverTitle: "انتهت الساحة!", arenaOverSub: "في انتظار المعلم…",
     endedTitle: "انتهت اللعبة!", endedSub: "شكرًا للعب.", backHome: "العودة للرئيسية",
     yourScore: "نتيجتك",

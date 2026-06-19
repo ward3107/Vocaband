@@ -20,7 +20,10 @@ import QPAvatar from "../QPAvatar";
 import {
   QP_ARENA_WIDTH,
   QP_ARENA_HEIGHT,
+  QP_ARENA_SPEED_BOOST_MULT,
+  QP_ARENA_MUD_SLOW_MULT,
   type QpArenaStatePayload,
+  type QpArenaPickup,
   type QpStudentEntry,
 } from "../../core/quickPlayProtocol";
 import { arenaMapById } from "./arenaMaps";
@@ -35,6 +38,14 @@ const SELF_SPEED = (QP_ARENA_WIDTH / 1000) * 250;
 const EASE_K = 0.2;
 /** Leave a word's radius by this factor before auto-grab may re-fire. */
 const REARM_FACTOR = 1.2;
+
+/** The consumable medallions' face emoji (mud renders as a patch, not a pill). */
+const PICKUP_EMOJI: Record<QpArenaPickup["kind"], string> = {
+  speed: "⚡",
+  star: "✨",
+  double: "✌️",
+  mud: "🌀",
+};
 
 interface ArenaCanvasProps {
   arena: QpArenaStatePayload;
@@ -56,6 +67,18 @@ interface ArenaCanvasProps {
    *  (kids tap the word, not the joystick — the server's range referee
    *  used to deny those taps outright, which read as "clicking is broken"). */
   onGrab?: (wordId: string, x: number, y: number) => void;
+  /** Scattered game elements (Speed Boost / Bonus Star / Double Points / Mud).
+   *  Rendered in the same scaled world layer as words, so camera zoom +
+   *  counter-scale apply identically. */
+  pickups?: QpArenaPickup[];
+  /** Auto-collect: fired once per consumable when the local avatar enters its
+   *  radius (same discipline as onGrab). Mud is never collected. readOnly
+   *  (teacher) never fires this. */
+  onPickupCollect?: (pickupId: string, x: number, y: number) => void;
+  /** Speed Boost: an epoch-ms timestamp until which the local avatar moves
+   *  faster. The parent flips this when the collecting student grabs a ⚡; the
+   *  canvas reads it per frame so the boost decays without a re-render. */
+  speedBoostUntilRef?: RefObject<number>;
   /** Host projector: no joystick, no prediction, no grabbing. */
   readOnly?: boolean;
   /** Buzzer open — freeze movement + sends (battery + focus). */
@@ -78,6 +101,7 @@ interface ArenaCanvasProps {
 export default function ArenaCanvas({
   arena, positionsRef, leaderboard,
   selfClientId, inputRef, selfPosRef, onGrab,
+  pickups = [], onPickupCollect, speedBoostUntilRef,
   readOnly = false, isPaused = false, fill = false, zoom = 1, className = "",
 }: ArenaCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -114,6 +138,15 @@ export default function ArenaCanvas({
   useEffect(() => { grabRadiusRef.current = arena.grabRadius; }, [arena.grabRadius]);
   const onGrabRef = useRef(onGrab);
   useEffect(() => { onGrabRef.current = onGrab; }, [onGrab]);
+  // Pickups + their collect callback mirrored into refs so the RAF loop reads
+  // the latest without restarting on every pickup churn (same as wordsRef).
+  const pickupsRef = useRef(pickups);
+  useEffect(() => { pickupsRef.current = pickups; }, [pickups]);
+  const onPickupCollectRef = useRef(onPickupCollect);
+  useEffect(() => { onPickupCollectRef.current = onPickupCollect; }, [onPickupCollect]);
+  // Consumables the local player already collected this approach — re-armed
+  // after leaving radius × REARM_FACTOR, exactly like attemptedRef for words.
+  const pickupAttemptedRef = useRef(new Set<string>());
 
   // Roster: leaderboard (live, covers late joiners) unioned with the
   // ARENA_STATE positions (covers the instant before the first broadcast).
@@ -170,10 +203,22 @@ export default function ArenaCanvas({
         }
         const self = selfRef.current;
         const input = inputRef?.current;
+        // Effective speed = base × (Speed Boost active?) × (over a Mud patch?).
+        // Both are pure client effects on the server-synced position; the
+        // boost decays via its epoch-ms ref, mud applies while standing on it.
+        let speed = SELF_SPEED;
+        if (speedBoostUntilRef?.current && speedBoostUntilRef.current > Date.now()) {
+          speed *= QP_ARENA_SPEED_BOOST_MULT;
+        }
+        const mudRadius = grabRadiusRef.current;
+        for (const pk of pickupsRef.current) {
+          if (pk.kind !== "mud") continue;
+          if (Math.hypot(self.x - pk.pos.x, self.y - pk.pos.y) <= mudRadius) { speed *= QP_ARENA_MUD_SLOW_MULT; break; }
+        }
         if (input && (input.dx !== 0 || input.dy !== 0)) {
           setNavTarget(null); // the joystick always overrides a tapped target
-          self.x = Math.max(0, Math.min(QP_ARENA_WIDTH, self.x + input.dx * SELF_SPEED * dt));
-          self.y = Math.max(0, Math.min(QP_ARENA_HEIGHT, self.y + input.dy * SELF_SPEED * dt));
+          self.x = Math.max(0, Math.min(QP_ARENA_WIDTH, self.x + input.dx * speed * dt));
+          self.y = Math.max(0, Math.min(QP_ARENA_HEIGHT, self.y + input.dy * speed * dt));
         } else if (navTargetRef.current) {
           // Tap-to-run: head straight for the tapped word; the auto-grab
           // below fires the moment its radius is entered.
@@ -185,7 +230,7 @@ export default function ArenaCanvas({
             const ddy = target.pos.y - self.y;
             const dist = Math.hypot(ddx, ddy);
             if (dist > 1) {
-              const step = Math.min(dist, SELF_SPEED * dt);
+              const step = Math.min(dist, speed * dt);
               self.x += (ddx / dist) * step;
               self.y += (ddy / dist) * step;
             }
@@ -227,6 +272,20 @@ export default function ArenaCanvas({
             attemptedRef.current.delete(w.wordId);
           }
         }
+
+        // Auto-collect consumables on contact — once per pickup per approach,
+        // exactly like auto-grab. Mud is a hazard (handled by the speed factor
+        // above), never collected.
+        for (const pk of pickupsRef.current) {
+          if (pk.kind === "mud") continue;
+          const dist = Math.hypot(self.x - pk.pos.x, self.y - pk.pos.y);
+          if (dist <= radius && !pickupAttemptedRef.current.has(pk.pickupId)) {
+            pickupAttemptedRef.current.add(pk.pickupId);
+            onPickupCollectRef.current?.(pk.pickupId, self.x, self.y);
+          } else if (dist > radius * REARM_FACTOR) {
+            pickupAttemptedRef.current.delete(pk.pickupId);
+          }
+        }
       }
 
       // Remote avatars — ease toward the latest snapshot target.
@@ -249,7 +308,7 @@ export default function ArenaCanvas({
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [paused, readOnly, selfClientId, positionsRef, inputRef, selfPosRef, setNavTarget]);
+  }, [paused, readOnly, selfClientId, positionsRef, inputRef, selfPosRef, speedBoostUntilRef, setNavTarget]);
 
   // Tap = grab when in range, otherwise run there (auto-grab on arrival).
   const handleWordTap = useCallback((wordId: string) => {
@@ -354,6 +413,62 @@ export default function ArenaCanvas({
         );
       })}
 
+      {/* Scattered game elements — same scaled world layer + counter-scale as
+          the word pills. Mud is a translucent brown patch (a hazard, no tap);
+          consumables are floating emoji medallions auto-collected on contact. */}
+      {pickups.map((pk) => {
+        const counterScale = zoom > 1 ? 1 / zoom : 1;
+        if (pk.kind === "mud") {
+          // A soft brown blob sized to the grab radius (the slow zone), under
+          // the tokens so a word on/near it stays readable. Non-interactive.
+          const sizePct = (arena.grabRadius * 2 / QP_ARENA_WIDTH) * 100;
+          return (
+            <div
+              key={pk.pickupId}
+              aria-hidden
+              className="pointer-events-none absolute z-[5] flex items-center justify-center rounded-full"
+              style={{
+                left: `${(pk.pos.x / QP_ARENA_WIDTH) * 100}%`,
+                top: `${(pk.pos.y / QP_ARENA_HEIGHT) * 100}%`,
+                width: `${sizePct}%`,
+                aspectRatio: "1 / 1",
+                transform: `translate(-50%, -50%) scale(${counterScale})`,
+                background: "radial-gradient(circle, rgba(120,72,40,0.55) 0%, rgba(120,72,40,0.28) 60%, rgba(120,72,40,0) 100%)",
+                filter: "blur(1px)",
+              }}
+            >
+              <span className="text-xl sm:text-2xl opacity-80">{PICKUP_EMOJI.mud}</span>
+            </div>
+          );
+        }
+        return (
+          <div
+            key={pk.pickupId}
+            aria-hidden
+            className="pointer-events-none absolute z-[15]"
+            style={{
+              left: `${(pk.pos.x / QP_ARENA_WIDTH) * 100}%`,
+              top: `${(pk.pos.y / QP_ARENA_HEIGHT) * 100}%`,
+              transform: `translate(-50%, -50%) scale(${counterScale})`,
+            }}
+          >
+            <motion.div
+              animate={{ y: [0, -5, 0] }}
+              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+              className={`flex items-center justify-center rounded-full w-8 h-8 sm:w-10 sm:h-10 text-base sm:text-xl shadow-md backdrop-blur-sm ${
+                pk.kind === "speed"
+                  ? "bg-gradient-to-br from-amber-300 to-yellow-500 shadow-amber-500/40"
+                  : pk.kind === "star"
+                    ? "bg-gradient-to-br from-fuchsia-300 to-pink-500 shadow-pink-500/40"
+                    : "bg-gradient-to-br from-emerald-300 to-teal-500 shadow-teal-500/40"
+              }`}
+            >
+              {PICKUP_EMOJI[pk.kind]}
+            </motion.div>
+          </div>
+        );
+      })}
+
       {/* Avatars — positioned exclusively by the RAF loop via refs. */}
       {players.map((p) => {
         const isSelf = p.clientId === selfClientId;
@@ -373,7 +488,7 @@ export default function ArenaCanvas({
             <div
               className={`flex items-center justify-center rounded-full backdrop-blur-sm shadow-md ${
                 readOnly
-                  ? "w-9 h-9 sm:w-12 sm:h-12 text-lg sm:text-2xl"
+                  ? "w-11 h-11 sm:w-14 sm:h-14 text-xl sm:text-3xl"
                   : "w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg"
               } ${
                 isSelf
@@ -381,7 +496,7 @@ export default function ArenaCanvas({
                   : "bg-white/60 border border-white/80"
               }`}
             >
-              <QPAvatar value={p.avatar} iconSize={readOnly ? 22 : 13} className="text-indigo-600" />
+              <QPAvatar value={p.avatar} iconSize={readOnly ? 28 : 13} className="text-indigo-600" />
             </div>
             <span
               className={`mt-0.5 px-1.5 rounded-full bg-white/70 font-black text-stone-600 whitespace-nowrap truncate ${

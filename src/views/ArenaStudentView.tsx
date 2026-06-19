@@ -29,7 +29,7 @@ import { primeAudio } from "../utils/primeAudio";
 import { playGood, playGentle, playFanfare } from "../utils/raceSfx";
 import { containsProfanity } from "../utils/nicknameProfanity";
 import {
-  QP_ARENA_WIDTH, QP_ARENA_HEIGHT, QP_ARENA_CLIENT_TICK_MS,
+  QP_ARENA_WIDTH, QP_ARENA_HEIGHT, QP_ARENA_CLIENT_TICK_MS, QP_ARENA_SPEED_BOOST_MS,
   type QpArenaGrabGrantedPayload, type QpSpeedResultPayload,
 } from "../core/quickPlayProtocol";
 import type { View } from "../core/views";
@@ -52,8 +52,8 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
   const qp = useQuickPlaySocket({ sessionCode, enabled: true });
   const {
     currentArena, arenaPositionsRef, leaderboard, clientId, joinedSessionCode, lastError,
-    joinAsStudent, sendArenaMove, requestGrab, submitSpeedAnswer, sendReaction,
-    onArenaGrabGranted, onArenaGrabDenied, onArenaEnded, onSpeedResult, onSessionEnded, onKicked,
+    joinAsStudent, sendArenaMove, requestGrab, sendArenaPickup, submitSpeedAnswer, sendReaction,
+    onArenaGrabGranted, onArenaGrabDenied, onArenaPickup, onArenaEnded, onSpeedResult, onSessionEnded, onKicked,
     teamMode, myTeam, switchTeam,
   } = qp;
 
@@ -76,10 +76,16 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
   const [buzzerPhase, setBuzzerPhase] = useState<SpeedBuzzerPhase>("answering");
   const [buzzerResult, setBuzzerResult] = useState<QpSpeedResultPayload | null>(null);
   const [deniedToast, setDeniedToast] = useState<string | null>(null);
+  // Pickup feedback toast (Speed Boost / Double Points / Bonus Star). Separate
+  // from deniedToast so a denial and a pickup can't stomp each other.
+  const [pickupToast, setPickupToast] = useState<string | null>(null);
 
   // Movement plumbing — refs, never state (read at 60fps / sent at 10/sec).
   const inputRef = useRef<ArenaInputVector>({ dx: 0, dy: 0 });
   const selfPosRef = useRef({ x: QP_ARENA_WIDTH / 2, y: QP_ARENA_HEIGHT / 2 });
+  // Speed Boost: epoch-ms timestamp until which the local avatar moves faster.
+  // A ref so the canvas RAF loop reads it per frame without a re-render.
+  const speedBoostUntilRef = useRef(0);
 
   // ─── Phone back-button trap (verbatim from Speed Round) ─────────────
   useEffect(() => {
@@ -204,6 +210,32 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
     const id = window.setTimeout(() => setDeniedToast(null), 1600);
     return () => window.clearTimeout(id);
   }, [deniedToast]);
+
+  // Game element collected — only the collector applies the effect (the server
+  // tags the gone event with byClientId). Speed → start the boost timer; double
+  // → "×2 next answer" toast; star → celebrate (the +points land via the
+  // leaderboard, server-authoritative).
+  useEffect(() => onArenaPickup((p) => {
+    if (p.byClientId !== clientId) return;
+    if (p.kind === "speed") {
+      speedBoostUntilRef.current = Date.now() + QP_ARENA_SPEED_BOOST_MS;
+      setPickupToast(t.pickupSpeed);
+      playGood();
+    } else if (p.kind === "double") {
+      setPickupToast(t.pickupDouble);
+      playGood();
+    } else if (p.kind === "star") {
+      setPickupToast(t.pickupStar);
+      celebrate("small");
+      playGood();
+    }
+  }), [onArenaPickup, clientId, t]);
+
+  useEffect(() => {
+    if (!pickupToast) return;
+    const id = window.setTimeout(() => setPickupToast(null), 1800);
+    return () => window.clearTimeout(id);
+  }, [pickupToast]);
 
   useEffect(() => onSpeedResult((p) => {
     setBuzzerResult(p);
@@ -364,6 +396,9 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
             inputRef={inputRef}
             selfPosRef={selfPosRef}
             onGrab={(wordId, x, y) => requestGrab(wordId, x, y)}
+            pickups={currentArena.pickups}
+            onPickupCollect={(pickupId, x, y) => sendArenaPickup(pickupId, x, y)}
+            speedBoostUntilRef={speedBoostUntilRef}
             isPaused={!!grant}
             fill
             // Big-map feel: enlarge the world and follow the player's avatar
@@ -379,6 +414,17 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
                 className="absolute top-3 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-full bg-stone-900/80 text-white font-black text-sm shadow-lg whitespace-nowrap"
               >
                 <Zap size={14} className="inline -mt-0.5 me-1 text-amber-400" />{deniedToast}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {pickupToast && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                className="absolute top-3 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-full bg-gradient-to-r from-fuchsia-500 to-violet-600 text-white font-black text-sm shadow-lg whitespace-nowrap"
+              >
+                {pickupToast}
               </motion.div>
             )}
           </AnimatePresence>

@@ -19,6 +19,16 @@
 # Idempotent — flyctl skips re-deploy when nothing changed, so running
 # this on a docs-only main push is a harmless no-op (and the path filter
 # already prevents that case anyway).
+#
+# The path filter also watches the SOURCE the server bundles in (not just
+# server.ts). PR #1236 changed only src/core/quickPlayProtocol.ts (the
+# shared Quick Play contract — the server imports it for the arena world
+# size) WITHOUT touching server.ts, so this workflow never fired: the
+# client deployed the bigger map while the backend kept refereeing on the
+# old dimensions, and every live arena clustered into one corner. Watching
+# the server's import roots below closes that gap. A change to a file the
+# server doesn't actually import just rebuilds an identical image, which
+# flyctl no-ops — so over-matching here is harmless, under-matching is not.
 
 name: Deploy to Fly.io
 
@@ -31,6 +41,13 @@ on:
       - "fly.toml"
       - "Dockerfile"
       - ".github/workflows/fly-deploy.yml"
+      # Source the server bundles in — kept as directory roots so a
+      # transitive change (a file imported BY one of these) is caught too.
+      - "src/core/**"
+      - "src/server-utils.ts"
+      - "src/utils/**"
+      - "src/features/vocabagrut/**"
+      - "src/data/category-race-bank.ts"
   # Manual trigger for re-runs (e.g. after rotating a Fly secret without
   # a code change, or to catch up after a missed run).
   workflow_dispatch:
