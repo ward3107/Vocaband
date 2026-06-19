@@ -33,6 +33,17 @@ export const SOCKET_EVENTS = {
    */
   LEADERBOARD_UPDATE_V2: "leaderboard-update-v2",
   CHALLENGE_ENDED: "challenge-ended",
+  /**
+   * Tier C — a student tapping an emoji reaction during a live challenge.
+   * Mirrors the Quick Play reaction event so the two live flows share the
+   * same student affordance. Fire-and-forget: the server validates against
+   * the shared allow-list, rate-limits per socket, and broadcasts REACTION
+   * to the class room (teacher podium + other students). No persistence,
+   * no leaderboard side-effect — purely ephemeral atmosphere.
+   */
+  REACTION_SEND: "reaction-send",
+  /** Server → room: an ephemeral reaction to float up on the podium. */
+  REACTION: "reaction",
 } as const;
 
 /**
@@ -55,4 +66,24 @@ export interface UpdateScorePayload {
   classCode: string;
   uid: string;
   score: number;
+}
+
+/** Client → server: a student tapping an emoji during a live challenge. */
+export interface ReactionSendPayload {
+  classCode: string;
+  emoji: string;
+}
+
+/**
+ * Server → room: an ephemeral reaction broadcast. Shaped to match the
+ * Quick Play reaction payload (`clientId`/`serverTs`) so the same podium
+ * particle layer can render reactions from either live flow unchanged —
+ * here `clientId` carries the student's Supabase uid.
+ */
+export interface LiveReactionPayload {
+  classCode: string;
+  clientId: string;
+  name?: string;
+  emoji: string;
+  serverTs: number;
 }

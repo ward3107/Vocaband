@@ -1427,6 +1427,17 @@ async function startServer() {
     60 * 1000  // cleanup every minute
   );
 
+  // Per-socket rate limiter for live-challenge reactions. Backs the
+  // protocol-floor throttle below (QP_REACTION_MIN_INTERVAL_MS) so a
+  // tampered client can't flood the room with the broadcast; spam is
+  // silently dropped, never errored back to the kid. Mirrors the Quick
+  // Play reaction throttle.
+  const reactionLimiter = createSocketRateLimiter(
+    QP_REACTION_MIN_INTERVAL_MS, // one window == the per-tap floor
+    1,                            // at most one reaction per floor window
+    30 * 1000                     // cleanup every 30s
+  );
+
   // Live Challenge State
   // { classCode: { studentUid: { name, baseScore, currentGameScore } } }
   // baseScore: total from all past assignments (fetched from Supabase)
@@ -1759,6 +1770,35 @@ async function startServer() {
         // Throttle: batch rapid score updates to avoid flooding sockets
         scheduleBroadcast(classCode);
       }
+    });
+
+    // Tier C — student emoji reaction during a live challenge. Mirrors the
+    // Quick Play REACTION_SEND handler so both live flows give students the
+    // same affordance. Fire-and-forget broadcast to the class room (teacher
+    // podium + other students); no persistence, no leaderboard side-effect.
+    // Identity comes from the socket's verified session (set at JOIN_CHALLENGE),
+    // never the payload — a client can't spoof another student's reaction.
+    socket.on(SOCKET_EVENTS.REACTION_SEND, (payload: { classCode?: unknown; emoji?: unknown }) => {
+      if (!payload || typeof payload !== "object") return;
+      const { classCode, emoji } = payload;
+      if (typeof classCode !== "string" || !isValidClassCode(classCode)) return;
+      if (typeof emoji !== "string" || !isValidReactionEmoji(emoji)) return;
+
+      // Only a socket that joined this class (as student or teacher) may react.
+      const session = socketSessions[socket.id];
+      if (!session || session.classCode !== classCode) return;
+
+      // Per-socket throttle at the shared protocol floor — spam silently dropped.
+      if (!reactionLimiter.checkLimit(socket.id)) return;
+
+      const entry = liveSessions[classCode]?.[session.uid];
+      io.to(classCode).emit(SOCKET_EVENTS.REACTION, {
+        classCode,
+        clientId: session.uid,
+        name: entry?.name,
+        emoji,
+        serverTs: Date.now(),
+      });
     });
 
     socket.on("disconnect", () => {

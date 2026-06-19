@@ -11,7 +11,7 @@ import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
 import type { AppUser, ClassData } from '../core/supabase';
-import type { LeaderboardEntry } from '../core/types';
+import type { LeaderboardEntry, LiveReactionPayload } from '../core/types';
 import type { Word } from '../data/vocabulary';
 import type { View } from '../core/views';
 
@@ -52,6 +52,8 @@ export interface RenderTeacherLiveScreensDeps {
   setIsLiveChallenge: React.Dispatch<React.SetStateAction<boolean>>;
   leaderboard: Record<string, LeaderboardEntry>;
   socketConnected: boolean;
+  /** Latest student reaction to float up on the Live Challenge podium. */
+  liveLastReaction: LiveReactionPayload | null;
 
   // Quick Play monitor deps
   quickPlayActiveSession: { id: string; sessionCode: string; wordIds: number[]; words: Word[] } | null;
@@ -77,7 +79,7 @@ export interface RenderTeacherLiveScreensDeps {
 export function renderTeacherLiveScreens(deps: RenderTeacherLiveScreensDeps): ReactNode {
   const {
     view, user, selectedClass, setView, setIsLiveChallenge,
-    leaderboard, socketConnected,
+    leaderboard, socketConnected, liveLastReaction,
     quickPlayActiveSession,
     setQuickPlayActiveSession, setQuickPlaySelectedWords, setQuickPlaySessionCode,
     setQuickPlayCustomWords, setQuickPlayAddingCustom, setQuickPlayTranslating,
@@ -111,6 +113,7 @@ export function renderTeacherLiveScreens(deps: RenderTeacherLiveScreensDeps): Re
           selectedClass={selectedClass}
           leaderboard={leaderboard}
           socketConnected={socketConnected}
+          lastReaction={liveLastReaction}
           setView={setView}
           setIsLiveChallenge={setIsLiveChallenge}
         />
