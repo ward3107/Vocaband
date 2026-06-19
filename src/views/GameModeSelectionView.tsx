@@ -63,19 +63,19 @@ export default function GameModeSelectionView({
   const qs = QUEST_STRINGS[language] ?? QUEST_STRINGS.en;
 
   const modesMeta: Array<{ id: GameMode; color: string; icon: React.ReactNode; isLearnMode?: boolean }> = [
-    { id: "flashcards", color: "cyan", icon: <Layers size={22} />, isLearnMode: true },
-    { id: "classic", color: "emerald", icon: <BookOpen size={20} /> },
-    { id: "fill-blank", color: "lime", icon: <Edit3 size={20} /> },
-    { id: "listening", color: "blue", icon: <Volume2 size={20} /> },
-    { id: "spelling", color: "purple", icon: <PenTool size={20} /> },
-    { id: "matching", color: "amber", icon: <Zap size={20} /> },
-    { id: "memory-flip", color: "pink", icon: <Brain size={20} /> },
-    { id: "true-false", color: "rose", icon: <Check size={20} /> },
-    { id: "scramble", color: "indigo", icon: <Shuffle size={20} /> },
-    { id: "reverse", color: "fuchsia", icon: <Repeat size={20} /> },
-    { id: "letter-sounds", color: "violet", icon: <span className="text-lg">🔡</span> },
-    { id: "sentence-builder", color: "teal", icon: <span className="text-lg">🧩</span> },
-    { id: "speed-round", color: "red", icon: <span className="text-lg">⚡</span> },
+    { id: "flashcards", color: "cyan", icon: <Layers size={44} />, isLearnMode: true },
+    { id: "classic", color: "emerald", icon: <BookOpen size={44} /> },
+    { id: "fill-blank", color: "lime", icon: <Edit3 size={44} /> },
+    { id: "listening", color: "blue", icon: <Volume2 size={44} /> },
+    { id: "spelling", color: "purple", icon: <PenTool size={44} /> },
+    { id: "matching", color: "amber", icon: <Zap size={44} /> },
+    { id: "memory-flip", color: "pink", icon: <Brain size={44} /> },
+    { id: "true-false", color: "rose", icon: <Check size={44} /> },
+    { id: "scramble", color: "indigo", icon: <Shuffle size={44} /> },
+    { id: "reverse", color: "fuchsia", icon: <Repeat size={44} /> },
+    { id: "letter-sounds", color: "violet", icon: <span className="text-4xl">🔡</span> },
+    { id: "sentence-builder", color: "teal", icon: <span className="text-4xl">🧩</span> },
+    { id: "speed-round", color: "red", icon: <span className="text-4xl">⚡</span> },
   ];
 
   const modes = modesMeta.map((m) => ({

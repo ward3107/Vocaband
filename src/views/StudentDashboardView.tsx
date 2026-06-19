@@ -21,6 +21,8 @@ import type { RetentionState } from "../hooks/useRetention";
 import { pickNextAssignment } from "../utils/pickNextAssignment";
 import { resolveAssignmentWords } from "../utils/resolveAssignmentWords";
 import React from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { X } from "lucide-react";
 
 interface StudentDashboardViewProps {
   user: AppUser;
@@ -160,6 +162,10 @@ export default function StudentDashboardView({
   // misses an unlock. Keyed on the stage string (not the object) so the
   // effect fires once per new claimable, not on every render.
   const [petCardOpen, setPetCardOpen] = React.useState(false);
+  // Assignments now live behind the "Tasks" orbit circle as a full-screen
+  // sheet, so the home page stays a clean hub (no long list scrolling
+  // below the ring).
+  const [tasksOpen, setTasksOpen] = React.useState(false);
   const claimableStage = retention.claimablePetMilestone?.stage;
   React.useEffect(() => {
     if (claimableStage) setPetCardOpen(true);
@@ -172,16 +178,10 @@ export default function StudentDashboardView({
     claimPetMilestoneReward(milestone, onGrantXp, onGrantReward, retention.claimPetMilestone);
   };
 
-  // Orbit circles either launch Play, navigate to a dedicated view, or
-  // smooth-scroll to a card still rendered on the home screen. Tasks is
-  // the only remaining scroll target — Assignments stays on the home page
-  // as the core loop. Practice / Missions / Boosts / Badges each open
-  // their own full-screen page (StudentHubSubView).
-  const scrollToId = (id: string) => {
-    if (typeof document === "undefined") return;
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
+  // Orbit circles either launch Play or open a destination. Tasks opens
+  // the assignments sheet (setTasksOpen); the rest navigate to their own
+  // full-screen page (StudentHubSubView) or a top-level view.
+  //
   // Six circles, one clear hero. Everything secondary is grouped so kids
   // see a handful of obvious destinations, not a wall of choices:
   //   Play · Tasks · Practice · Daily · Shop · Ranks
@@ -189,7 +189,7 @@ export default function StudentDashboardView({
   // Order = clockwise from the top so Play sits dead-centre at 12 o'clock.
   const orbitItems: OrbitItem[] = [
     { key: "play", onClick: () => { void launchNextAssignment?.(); }, disabled: !launchNextAssignment },
-    { key: "tasks", onClick: () => scrollToId("dash-assignments"), badge: studentAssignments.length || undefined },
+    { key: "tasks", onClick: () => setTasksOpen(true), badge: studentAssignments.length || undefined },
     { key: "shop", onClick: () => setView("shop") },
     { key: "leaderboard", onClick: () => setView("global-leaderboard") },
     { key: "daily", onClick: () => setView("student-daily") },
@@ -262,21 +262,51 @@ export default function StudentDashboardView({
         {/* Home is intentionally just the orbital hub + Assignments. Pet
             status opens by tapping the centre pet; XP / streak live in the
             top pill; daily rewards + goal moved to the Rewards page; ranks
-            to the Ranks circle. */}
-        <div id="dash-assignments">
-          <StudentAssignmentsList
-            studentAssignments={studentAssignments}
-            studentProgress={studentProgress}
-            studentDataLoading={studentDataLoading}
-            userUid={user.uid}
-            competitionsByAssignment={competitionsByAssignment}
-            setActiveAssignment={setActiveAssignment}
-            setAssignmentWords={setAssignmentWords}
-            setView={setView}
-            setShowModeSelection={setShowModeSelection}
-          />
-        </div>
+            to the Ranks circle. Assignments moved off the home page into
+            the Tasks sheet (below) — the orbit's "Tasks" circle opens it. */}
       </ArcadeHubLayout>
+
+      {/* Tasks sheet — full-screen assignments list, opened from the
+          "Tasks" orbit circle. Slides up over the hub; scrollable; centred
+          with a max width so it reads well on phone, tablet, and desktop. */}
+      <AnimatePresence>
+        {tasksOpen && (
+          <motion.div
+            className="fixed inset-0 z-50 overflow-y-auto bg-gradient-to-b from-indigo-950 via-violet-950 to-fuchsia-950"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="mx-auto w-full max-w-3xl px-4 pb-16 pt-5 sm:px-6">
+              <div className="mb-4 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => setTasksOpen(false)}
+                  aria-label="Close"
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20 backdrop-blur transition-transform active:scale-95 hover:bg-white/15"
+                >
+                  <X size={22} />
+                </button>
+              </div>
+              <StudentAssignmentsList
+                studentAssignments={studentAssignments}
+                studentProgress={studentProgress}
+                studentDataLoading={studentDataLoading}
+                userUid={user.uid}
+                competitionsByAssignment={competitionsByAssignment}
+                setActiveAssignment={setActiveAssignment}
+                setAssignmentWords={setAssignmentWords}
+                setView={setView}
+                setShowModeSelection={setShowModeSelection}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <PetCompanion
         open={petCardOpen}
         onClose={() => setPetCardOpen(false)}
