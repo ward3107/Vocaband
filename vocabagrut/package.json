@@ -27,7 +27,7 @@
   },
   "overrides": {
     "minimatch": "^10.2.5",
-    "undici": "^6.26.0",
+    "undici": "^6.27.0",
     "path-to-regexp": "^6.3.0",
     "smol-toml": "^1.6.1",
     "ajv": "^8.20.0",
