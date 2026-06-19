@@ -126,7 +126,6 @@ import {
   QP_ARENA_HEIGHT,
   QP_ARENA_TICK_MS,
   QP_ARENA_MAX_PLAYERS,
-  QP_ARENA_DEFAULT_VISIBLE,
   QP_ARENA_DEFAULT_GRAB_RADIUS,
   QP_ARENA_MAX_WORDS,
   QP_ARENA_GRAB_COOLDOWN_MS,
@@ -1916,9 +1915,10 @@ async function startServer() {
       grabCooldownUntil: Map<string, number>;
       tickTimer: ReturnType<typeof setInterval> | null;
       // Scattered game elements (Speed Boost / Bonus Star / Double Points /
-      // Mud). Consumables flip to "collected" on pickup then respawn; mud is
-      // a hazard that's never collected. Refereed here (the owning VM) exactly
-      // like word grabs so points + the double flag stay server-authoritative.
+      // Hurricane). All four flip to "collected" on pickup then respawn;
+      // the hurricane stuns its collector (client effect) instead of paying
+      // out. Refereed here (the owning VM) exactly like word grabs so points +
+      // the double flag stay server-authoritative.
       pickups: Map<string, { kind: QpArenaPickupKind; pos: QpArenaPos; state: "available" | "collected" }>;
       // clientIds whose NEXT correct arena answer scores ×2 (set by a Double
       // Points pickup, cleared the moment it's applied). Server-side so a
@@ -2337,21 +2337,18 @@ async function startServer() {
     };
   }
 
-  /** Beat between answering a word and it reappearing elsewhere (recycle).
-   *  Long enough to read the "✓ got it", short enough that the map never
-   *  feels empty. */
-  const QP_ARENA_RESPAWN_MS = 1500;
-
   /** Scatter `count` token positions with simple rejection sampling —
-   *  min ~80 logical units apart, ~60 away from the edges — so two words
+   *  min ~180 logical units apart, ~90 away from the edges — so two words
    *  never overlap enough for one touch to be ambiguous about which token
-   *  was grabbed. `avoid` seeds the spacing check with positions already on
-   *  the map (used by respawn so a recycled word doesn't land on a live one)
-   *  without returning them. Falls back to a plain random spot after 40
-   *  rejected candidates (a crowded map beats an infinite loop). */
+   *  was grabbed. Spacing + margin scale with the bigger 2800×1960 world so
+   *  words feel far apart (the whole batch is on the map at once now). `avoid`
+   *  seeds the spacing check with positions already on the map (used by respawn
+   *  so a recycled pickup doesn't land on a live token) without returning them.
+   *  Falls back to a plain random spot after 40 rejected candidates (a crowded
+   *  map beats an infinite loop). */
   function qpArenaScatterPositions(count: number, avoid: QpArenaPos[] = []): QpArenaPos[] {
-    const MARGIN = 60;
-    const MIN_DIST = 80;
+    const MARGIN = 90;
+    const MIN_DIST = 180;
     const roll = (): QpArenaPos => ({
       x: MARGIN + Math.floor(Math.random() * (QP_ARENA_WIDTH - 2 * MARGIN)),
       y: MARGIN + Math.floor(Math.random() * (QP_ARENA_HEIGHT - 2 * MARGIN)),
@@ -2366,38 +2363,6 @@ async function startServer() {
       out.push(placed ?? roll());
     }
     return out.slice(avoid.length); // drop the seeded avoid positions
-  }
-
-  /** Recycle an answered word back onto the map after a short beat: a new
-   *  position (clear of live tokens) + reshuffled options (correctIndex kept
-   *  pointed at the right answer, so muscle-memory can't game it). Reuses the
-   *  word's pre-authored question — the server has no vocabulary to build a
-   *  new one. Keeps the arena populated until the teacher ends it. No-ops if
-   *  the arena/word is gone or already back in play. */
-  function qpArenaScheduleRespawn(sessionCode: string, wordId: string): void {
-    setTimeout(() => {
-      const s = qpSessions.get(sessionCode);
-      const a = s?.currentArena;
-      const w = a?.words.get(wordId);
-      if (!s || !a || !w || w.state !== "answered") return;
-
-      // Reshuffle options in place, tracking where the correct answer lands.
-      const correctText = w.options[w.correctIndex];
-      for (let i = w.options.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [w.options[i], w.options[j]] = [w.options[j], w.options[i]];
-      }
-      w.correctIndex = Math.max(0, w.options.indexOf(correctText));
-
-      const live = [...a.words.values()].filter((o) => o !== w && o.pos).map((o) => o.pos as QpArenaPos);
-      w.pos = qpArenaScatterPositions(1, live)[0] ?? w.pos;
-      w.state = "available";
-      w.lockedBy = null;
-      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ARENA_WORD, {
-        sessionCode,
-        word: qpArenaPublicWord(wordId, w),
-      });
-    }, QP_ARENA_RESPAWN_MS);
   }
 
   /** Project a word into the shape the ROOM is allowed to see — label +
@@ -2444,12 +2409,12 @@ async function startServer() {
         y: Math.round(p.y),
       });
     }
-    // Include every AVAILABLE consumable + ALL mud (mud is permanent, never
-    // "collected"). A collected consumable awaiting respawn is omitted so a
-    // re-joining student doesn't briefly see a ghost medallion.
+    // Include every AVAILABLE pickup (all four kinds are collectible now). A
+    // collected pickup awaiting respawn is omitted so a re-joining student
+    // doesn't briefly see a ghost medallion.
     const pickups: QpArenaPickup[] = [];
     for (const [pickupId, p] of arena.pickups) {
-      if (p.kind === "mud" || p.state === "available") {
+      if (p.state === "available") {
         pickups.push(qpArenaPublicPickup(pickupId, p));
       }
     }
@@ -2618,17 +2583,17 @@ async function startServer() {
 
       if (round.timer) clearTimeout(round.timer);
       word.activeRound = null;
-      // Show the "✓ got it" beat, then recycle the word back onto the map
-      // (new spot + reshuffled options) so the hunt never empties — the
-      // teacher's End arena button decides when it's over. Right OR wrong both
-      // retire-then-respawn; lockedBy stays for the brief "who took it".
+      // An answered word stays answered — it's REMOVED from play (no reserve /
+      // respawn cycling). The whole batch is on the map from the start, so the
+      // round naturally winds down as words are answered; the teacher's End
+      // arena button (or all-answered) decides when it's over. lockedBy stays
+      // for the brief "who took it" highlight.
       word.state = "answered";
       arena.grabCooldownUntil.set(args.clientId, Date.now() + QP_ARENA_GRAB_COOLDOWN_MS);
       qpIo.to(state.sessionCode).emit(QP_SERVER_EVENTS.ARENA_WORD, {
         sessionCode: state.sessionCode,
         word: qpArenaPublicWord(wordId, word),
       });
-      qpArenaScheduleRespawn(state.sessionCode, wordId);
       return { sessionCode: state.sessionCode, roundId, ...scoredOut };
     }
     return null;
@@ -2638,9 +2603,9 @@ async function startServer() {
    *  Matches the word respawn cadence so the map keeps a steady density. */
   const QP_ARENA_PICKUP_RESPAWN_MS = 6000;
 
-  /** Recycle a collected consumable back onto the map after a short beat: a
-   *  fresh position clear of words + other pickups, same kind. No-ops if the
-   *  arena/pickup is gone or already back in play. Mud never calls this. */
+  /** Recycle a collected pickup back onto the map after a short beat: a fresh
+   *  position clear of words + other pickups, same kind. All four kinds recycle
+   *  now. No-ops if the arena/pickup is gone or already back in play. */
   function qpArenaSchedulePickupRespawn(sessionCode: string, pickupId: string): void {
     const owner = qpSessions.get(sessionCode);
     const ownerArena = owner?.currentArena;
@@ -2653,7 +2618,7 @@ async function startServer() {
       if (!s || !a || !p || p.state !== "collected") return;
       const occupied: QpArenaPos[] = [];
       for (const w of a.words.values()) if (w.pos) occupied.push(w.pos);
-      for (const [id, o] of a.pickups) if (id !== pickupId && (o.kind === "mud" || o.state === "available")) occupied.push(o.pos);
+      for (const [id, o] of a.pickups) if (id !== pickupId && o.state === "available") occupied.push(o.pos);
       p.pos = qpArenaScatterPositions(1, occupied)[0] ?? p.pos;
       p.state = "available";
       qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ARENA_PICKUP_SPAWN, {
@@ -2667,11 +2632,12 @@ async function startServer() {
   /** Referee one pickup-collect against the arena THIS VM owns. Synchronous
    *  like qpApplyArenaGrab: nothing else runs on the event loop between the
    *  availability check and the state write, so two simultaneous collects of
-   *  the same consumable can't both win. Mud is a no-op (a hazard, never
-   *  consumed). On a successful consumable collect it applies the effect
-   *  (star → points + leaderboard rebroadcast; double → set the flag; speed →
-   *  nothing server-side), broadcasts ARENA_PICKUP_GONE, and schedules the
-   *  respawn. Returns the gone payload to broadcast, or null when ignored. */
+   *  the same pickup can't both win. All four kinds are collectible now. On a
+   *  successful collect it applies the effect (star → points + leaderboard
+   *  rebroadcast; double → set the flag; speed → nothing server-side; mud
+   *  hurricane → nothing server-side, the collector's client self-stuns),
+   *  broadcasts ARENA_PICKUP_GONE, and schedules the respawn. Returns the gone
+   *  payload to broadcast, or null when ignored. */
   function qpApplyArenaPickup(
     state: QpSessionState,
     args: { clientId: string; pickupId: string; x?: unknown; y?: unknown },
@@ -2680,8 +2646,6 @@ async function startServer() {
     if (!arena) return null;
     const pickup = arena.pickups.get(args.pickupId);
     if (!pickup) return null;
-    // Mud is never collected — standing on it is purely a client speed effect.
-    if (pickup.kind === "mud") return null;
     if (pickup.state !== "available") return null; // already taken / respawning
 
     // Range check — same discipline as a word grab. Prefer the server's
@@ -2711,9 +2675,9 @@ async function startServer() {
       // qpApplyArenaAnswer). Server-side so a client can't fake it.
       arena.doubleNext.add(args.clientId);
     }
-    // "speed" needs nothing server-side — the boost is a pure client effect;
-    // the collecting client reads byClientId off ARENA_PICKUP_GONE and starts
-    // its own timer.
+    // "speed" and "mud" (hurricane) need nothing server-side — both are pure
+    // client effects (speed boost / self-stun spin); the collecting client
+    // reads byClientId off ARENA_PICKUP_GONE and starts its own timer.
 
     qpArenaSchedulePickupRespawn(state.sessionCode, args.pickupId);
     return {
@@ -3956,24 +3920,26 @@ async function startServer() {
         ? Math.min(150, Math.max(30, Math.round(cfg.grabRadius)))
         : QP_ARENA_DEFAULT_GRAB_RADIUS;
       const roundSeconds = isValidSpeedRoundSeconds(cfg.roundSeconds) ? cfg.roundSeconds : 10;
-      const visibleWords = typeof cfg.visibleWords === "number" && isFinite(cfg.visibleWords)
-        ? Math.min(20, Math.max(3, Math.round(cfg.visibleWords)))
-        : QP_ARENA_DEFAULT_VISIBLE;
+      // Every picked word is placed on the map at once now — there's no
+      // visible/reserve split and no respawn-on-answer cycling. The whole
+      // batch (already capped at QP_ARENA_MAX_WORDS) goes on the board; an
+      // answered word simply stays answered. visibleWords is retained on the
+      // config shape (set to the real on-map count) for diagnostics/parity.
+      const visibleWords = cleanSeeds.length;
       // Themed background — only an id from the known set survives, so a
       // bogus value can never reach students or point at a missing asset.
       const mapId = (QP_ARENA_MAP_IDS as readonly string[]).includes(cfg.mapId as string)
         ? (cfg.mapId as string)
         : null;
 
-      // Scatter the first visibleWords tokens; the rest wait as reserves
-      // (pos: null) for the phase-2c refill.
-      const scatter = qpArenaScatterPositions(Math.min(visibleWords, cleanSeeds.length));
+      // Scatter EVERY word onto the map — no reserves.
+      const scatter = qpArenaScatterPositions(cleanSeeds.length);
       const words = new Map<string, QpArenaWordState>();
       cleanSeeds.forEach((seed, i) => {
         words.set(randomUUID(), {
           ...seed,
           optionCount: seed.options.length,
-          pos: i < scatter.length ? scatter[i] : null,
+          pos: scatter[i] ?? null,
           state: "available",
           lockedBy: null,
           activeRound: null,
@@ -4041,7 +4007,7 @@ async function startServer() {
 
       const statePayload = qpArenaStateFor(state);
       if (statePayload) qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ARENA_STATE, statePayload);
-      console.log(`[QP ARENA start] session=${sessionCode} words=${words.size} visible=${Math.min(visibleWords, cleanSeeds.length)} radius=${grabRadius} secs=${roundSeconds}`);
+      console.log(`[QP ARENA start] session=${sessionCode} words=${words.size} radius=${grabRadius} secs=${roundSeconds}`);
     });
 
     // ─── Word Hunt Arena: student avatar movement ──────────────────────
@@ -4135,8 +4101,8 @@ async function startServer() {
     // Same referee discipline as ARENA_GRAB — range-checked, single-threaded
     // (no double-collect race), routed to the owning VM (or fanned out). The
     // gone event broadcasts to the WHOLE room so every client drops the
-    // medallion and the collector applies the effect; mud is a client-only
-    // hazard and never produces a gone event.
+    // medallion and the collector applies the effect (including the hurricane
+    // self-stun — all four kinds produce a gone event now).
     socket.on(QP_EVENTS.ARENA_PICKUP, (payload: QpArenaPickupPayload) => {
       if (!payload || typeof payload !== "object") return;
       const { sessionCode, clientId, pickupId } = payload;

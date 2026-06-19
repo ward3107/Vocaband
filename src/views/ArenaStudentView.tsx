@@ -30,6 +30,7 @@ import { playGood, playGentle, playFanfare } from "../utils/raceSfx";
 import { containsProfanity } from "../utils/nicknameProfanity";
 import {
   QP_ARENA_WIDTH, QP_ARENA_HEIGHT, QP_ARENA_CLIENT_TICK_MS, QP_ARENA_SPEED_BOOST_MS,
+  QP_ARENA_HURRICANE_STUN_MS,
   type QpArenaGrabGrantedPayload, type QpSpeedResultPayload,
 } from "../core/quickPlayProtocol";
 import type { View } from "../core/views";
@@ -86,6 +87,9 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
   // Speed Boost: epoch-ms timestamp until which the local avatar moves faster.
   // A ref so the canvas RAF loop reads it per frame without a re-render.
   const speedBoostUntilRef = useRef(0);
+  // Stun: epoch-ms timestamp until which the LOCAL avatar is frozen + spinning
+  // (hurricane self-stun). Same per-frame-ref pattern as the speed boost.
+  const hurricaneStunUntilRef = useRef(0);
 
   // ─── Phone back-button trap (verbatim from Speed Round) ─────────────
   useEffect(() => {
@@ -214,7 +218,8 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
   // Game element collected — only the collector applies the effect (the server
   // tags the gone event with byClientId). Speed → start the boost timer; double
   // → "×2 next answer" toast; star → celebrate (the +points land via the
-  // leaderboard, server-authoritative).
+  // leaderboard, server-authoritative); hurricane (mud) → SELF-STUN: freeze +
+  // spin for the stun window, with a "caught in a hurricane" toast.
   useEffect(() => onArenaPickup((p) => {
     if (p.byClientId !== clientId) return;
     if (p.kind === "speed") {
@@ -228,6 +233,10 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
       setPickupToast(t.pickupStar);
       celebrate("small");
       playGood();
+    } else if (p.kind === "mud") {
+      hurricaneStunUntilRef.current = Date.now() + QP_ARENA_HURRICANE_STUN_MS;
+      setPickupToast(t.pickupHurricane);
+      playGentle();
     }
   }), [onArenaPickup, clientId, t]);
 
@@ -399,6 +408,7 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
             pickups={currentArena.pickups}
             onPickupCollect={(pickupId, x, y) => sendArenaPickup(pickupId, x, y)}
             speedBoostUntilRef={speedBoostUntilRef}
+            hurricaneStunUntilRef={hurricaneStunUntilRef}
             isPaused={!!grant}
             fill
             // Big-map feel: enlarge the world and follow the player's avatar

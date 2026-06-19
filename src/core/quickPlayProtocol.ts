@@ -109,11 +109,20 @@ export const QP_EVENTS = {
   // A teacher ending the arena round (back to the lobby).
   ARENA_END:       "qp:teacher:arena:end",
   // A student touching a scattered game element (Speed Boost, Bonus Star,
-  // Double Points, or Mud). Same referee discipline as ARENA_GRAB: the
+  // Double Points, or Hurricane). Same referee discipline as ARENA_GRAB: the
   // owning VM range-checks against its last-known position (payload x/y
   // fallback for cross-VM) and is the sole authority for the points/flag
   // effects, so a tampered client can't mint a star or stack double points.
   ARENA_PICKUP:    "qp:student:arena:pickup",
+  // A dashing student colliding with another student (dash-tackle PvP). Only
+  // honoured when rough mode is ON; the server range-checks the dasher against
+  // the target and (in team mode) requires opposite teams. NEVER changes any
+  // score — it only stuns the target. Same referee discipline as ARENA_PICKUP.
+  ARENA_TACKLE:    "qp:student:arena:tackle",
+  // A teacher toggling "rough mode" (dash-tackle PvP) on/off for the arena.
+  // In-memory only, validated by the teacher token like TEACHER_TEAM_MODE.
+  // Default OFF; students only see/use the Dash button while it's on.
+  TEACHER_ROUGH_MODE: "qp:teacher:roughmode",
 
   // ─── VocabWheel (live, phone-answer mode) ─────────────────────────
   // A teacher pushing the current wheel question to the ONE student the
@@ -192,15 +201,21 @@ export const QP_SERVER_EVENTS = {
   ARENA_GRAB_DENIED:  "qp:arena:grab:denied",
   // The teacher closed the arena — clients drop to the podium.
   ARENA_ENDED:        "qp:arena:ended",
-  // A consumable pickup was collected — broadcast to the room so every
-  // client removes the medallion. Carries the COLLECTING clientId + kind so
-  // the collector's own client can apply the effect (speed boost, ×2 toast,
-  // star celebrate); everyone else just drops the node. Mud is a hazard and
-  // never sends this (it's never consumed).
+  // A pickup was collected — broadcast to the room so every client removes
+  // the medallion. Carries the COLLECTING clientId + kind so the collector's
+  // own client can apply the effect (speed boost, ×2 toast, star celebrate,
+  // or hurricane self-stun); everyone else just drops the node.
   ARENA_PICKUP_GONE:  "qp:arena:pickup:gone",
-  // A consumable pickup respawned elsewhere on the map (recycle) — clients
-  // add the medallion back, same pattern as ARENA_WORD appending a token.
+  // A pickup respawned elsewhere on the map (recycle) — clients add the
+  // medallion back, same pattern as ARENA_WORD appending a token.
   ARENA_PICKUP_SPAWN: "qp:arena:pickup:spawn",
+  // A dash-tackle landed — broadcast to the room so EVERY client spins the
+  // stunned target (byClientId = dasher, targetClientId = victim). The victim's
+  // own client also applies the local stun + knockback. No score change.
+  ARENA_TACKLED:      "qp:arena:tackled",
+  // Rough mode (dash-tackle PvP) flipped on/off for the arena. Just the on/off
+  // signal — students gate the Dash button on it.
+  ROUGH_MODE:         "qp:arena:roughmode",
 
   // ─── VocabWheel (live, phone-answer mode) ─────────────────────────
   // Sent to ONE student: "the wheel landed on you — here's the question".
@@ -672,16 +687,18 @@ export interface QpArenaPos {
   y: number;
 }
 
-/** The four scattered game elements. Three are CONSUMABLE (collected once,
- *  then gone + respawn); "mud" is a HAZARD patch that's never consumed —
- *  it just slows any avatar standing on it. Kept as a closed union so the
- *  server validator and the client renderer can't drift. */
+/** The four scattered game elements. All FOUR are now COLLECTIBLE (collected
+ *  once, then gone + respawn): speed/star/double grant a reward, while the
+ *  hurricane "mud" 🌀 STUNS the collector (spins them in place for a few
+ *  seconds) instead of paying out. Kept as a closed union so the server
+ *  validator and the client renderer can't drift. */
 export const QP_ARENA_PICKUP_KINDS = ["speed", "star", "double", "mud"] as const;
 export type QpArenaPickupKind = (typeof QP_ARENA_PICKUP_KINDS)[number];
 
 /** A game element as the ROOM sees it — server-minted id + kind + position.
- *  Mud rides ARENA_STATE permanently (never collected); consumables drop out
- *  on collect (ARENA_PICKUP_GONE) and reappear on respawn (ARENA_PICKUP_SPAWN). */
+ *  All kinds drop out on collect (ARENA_PICKUP_GONE) and reappear on respawn
+ *  (ARENA_PICKUP_SPAWN) — including the hurricane, which now stuns rather than
+ *  sitting as a passive patch. */
 export interface QpArenaPickup {
   /** Server-minted UUID — the collect handle (mirrors QpArenaWordPublic.wordId). */
   pickupId: string;
@@ -862,11 +879,12 @@ export interface QpArenaGrabDeniedPayload {
   reason: "already_locked" | "out_of_range" | "answered" | "cooldown" | "not_active";
 }
 
-/** Server → room: a consumable pickup was collected. Every client removes
- *  the medallion; the COLLECTOR's client (byClientId === own clientId) also
- *  applies the effect — speed boost, "×2 next answer" toast, or star
- *  celebrate. The star's actual points arrive separately on the leaderboard
- *  (server-authoritative), so this payload carries no score. */
+/** Server → room: a pickup was collected. Every client removes the medallion;
+ *  the COLLECTOR's client (byClientId === own clientId) also applies the
+ *  effect — speed boost, "×2 next answer" toast, star celebrate, or the
+ *  hurricane self-stun (spin in place, can't move). The star's actual points
+ *  arrive separately on the leaderboard (server-authoritative), so this
+ *  payload carries no score. */
 export interface QpArenaPickupGonePayload {
   sessionCode: string;
   pickupId: string;
@@ -885,6 +903,43 @@ export interface QpArenaPickupSpawnPayload {
 /** Server → room: the teacher closed the arena. */
 export interface QpArenaEndedPayload {
   sessionCode: string;
+}
+
+/** Client → server: a dashing student collides with another student. The
+ *  server refereed everything else (rough-mode on, range, team, cooldown) —
+ *  the client only reports who it hit. NEVER carries any score. */
+export interface QpArenaTacklePayload {
+  sessionCode: string;
+  clientId: string;
+  targetClientId: string;
+  /** Client-reported dasher position — the cross-VM range-check fallback
+   *  (the owner VM may never have seen this student's move stream). */
+  x?: number;
+  y?: number;
+}
+
+/** Server → room: a tackle landed. Every client spins the stunned target;
+ *  the target's own client also shoves itself away from the dasher. */
+export interface QpArenaTackledPayload {
+  sessionCode: string;
+  /** The dasher who landed the tackle (for the knockback direction). */
+  byClientId: string;
+  /** The stunned student. */
+  targetClientId: string;
+}
+
+/** Client → server: teacher toggles rough mode (dash-tackle PvP) on/off. */
+export interface QpTeacherRoughModePayload {
+  sessionCode: string;
+  token: string;
+  enabled: boolean;
+}
+
+/** Server → room: rough mode flipped on/off. The on/off signal only —
+ *  students gate the Dash button on it. */
+export interface QpRoughModePayload {
+  sessionCode: string;
+  enabled: boolean;
 }
 
 /** Error codes the server emits. Client maps to friendly copy. */
@@ -1144,11 +1199,12 @@ export type QpArenaMapId = (typeof QP_ARENA_MAP_IDS)[number];
  *  projector and a portrait phone with letterboxing. Enlarged from
  *  1000×700 so a full class has real room to spread out and roam (the
  *  student follow-camera shows a slice, so a bigger world reads as a
- *  bigger map). The aspect stays 10:7; SELF_SPEED (client) and the grab
- *  radius / visible-word defaults below scale with it so pace and
- *  reachability are unchanged. */
-export const QP_ARENA_WIDTH = 1600;
-export const QP_ARENA_HEIGHT = 1120;
+ *  bigger map). The aspect stays 10:7; SELF_SPEED (client) scales off
+ *  QP_ARENA_WIDTH so the bigger world still crosses in roughly the same
+ *  feel-time. Enlarged again (was 1600×1120) so a full class spreads out
+ *  and every word can be on the board at once without crowding. */
+export const QP_ARENA_WIDTH = 2800;
+export const QP_ARENA_HEIGHT = 1960;
 
 /** Server snapshot tick (ms) — one room broadcast per tick, never
  *  per-move. ⚠️ Don't lower this (raise the rate) without re-running the
@@ -1163,17 +1219,19 @@ export const QP_ARENA_CLIENT_TICK_MS = 100;
  *  session cap because every extra mover multiplies snapshot bytes. */
 export const QP_ARENA_MAX_PLAYERS = 30;
 
-/** Default number of word tokens floating on the map at once. Bumped
- *  with the larger world so the bigger map doesn't read as empty and more
- *  of the teacher's chosen list is on the board at once (server clamps to
- *  3..20; the rest stay as reserves that respawn). */
-export const QP_ARENA_DEFAULT_VISIBLE = 14;
+/** Default number of word tokens floating on the map at once. No longer a
+ *  "visible vs reserve" split — EVERY picked word (up to QP_ARENA_MAX_WORDS)
+ *  is placed on the bigger map at once and an answered word simply stays
+ *  answered (no respawn cycling). This value is only the fallback the server
+ *  clamps the optional config to; the real on-map count = the whole batch. */
+export const QP_ARENA_DEFAULT_VISIBLE = 60;
 
-/** Default grab distance (logical units). Generous on purpose — the
- *  server's view of a phone's position lags up to one tick + network,
- *  so a tight radius punishes bad school Wi-Fi (design §8.2). Scaled with
- *  the larger world (was 60 at 1000×700) so grabbing stays just as easy. */
-export const QP_ARENA_DEFAULT_GRAB_RADIUS = 95;
+/** Default grab distance (logical units). Tightened so a student must visually
+ *  STAND ON the word token (overlap) before it auto-opens, not merely be near
+ *  it — "walk onto the word → it opens". A word pill renders ~60–90 logical
+ *  units wide on the big map, so ~55 means the avatar medallion must be over
+ *  the pill. Server clamps the optional config to 30..150. */
+export const QP_ARENA_DEFAULT_GRAB_RADIUS = 55;
 
 /** Cap on the pre-authored question batch a host can ship. */
 export const QP_ARENA_MAX_WORDS = 60;
@@ -1205,19 +1263,43 @@ export const QP_ARENA_SPEED_BOOST_MS = 5000;
 /** Speed Boost multiplier on the local avatar's movement speed. */
 export const QP_ARENA_SPEED_BOOST_MULT = 1.7;
 
-/** Mud slow multiplier — applied to the local avatar's speed for as long as
- *  it stands on a mud patch. A hazard, never consumed. */
-export const QP_ARENA_MUD_SLOW_MULT = 0.45;
+/** Hurricane 🌀 stun duration (ms) — how long the collector is frozen +
+ *  visibly spinning after grabbing one. A pure client effect (the server only
+ *  arbitrates the collect, like a consumable); short enough to be a setback,
+ *  not a rage-quit. */
+export const QP_ARENA_HURRICANE_STUN_MS = 3000;
 
-/** Default count of each element scattered on the map at arena start. Mud is
- *  a hazard (stays put); the three consumables respawn after collect. Tuned
- *  so the map feels alive without crowding the word tokens. */
+/** Default count of each element scattered on the map at arena start. All four
+ *  are now collectible (the hurricane stuns instead of paying out) and respawn
+ *  after collect. Tuned so the map feels alive without crowding the words. */
 export const QP_ARENA_PICKUP_DEFAULTS: Record<QpArenaPickupKind, number> = {
   speed: 2,
   star: 3,
   double: 1,
   mud: 3,
 };
+
+// ─── Word Hunt Arena dash-tackle PvP (rough mode) ───────────────────────
+
+/** Dash burst duration (ms) — how long the local avatar moves faster after a
+ *  Dash press. Short — a lunge, not sustained flight. */
+export const QP_ARENA_DASH_MS = 500;
+
+/** Dash speed multiplier on the local avatar's movement. */
+export const QP_ARENA_DASH_SPEED_MULT = 2.2;
+
+/** Dash cooldown (ms) — minimum gap between dashes (client shows the timer;
+ *  the server sanity-checks it too so a tampered client can't chain-tackle). */
+export const QP_ARENA_DASH_COOLDOWN_MS = 5000;
+
+/** Tackle contact range (logical units) — the dasher must be within this of
+ *  the target for a tackle to land. Checked client-side to decide WHO to
+ *  report, and re-checked server-side as the authority. */
+export const QP_ARENA_TACKLE_RANGE = 90;
+
+/** Tackle stun duration (ms) — how long the tackled student is frozen +
+ *  spinning. Reuses the same stun mechanism as the hurricane. */
+export const QP_ARENA_TACKLE_STUN_MS = 2000;
 
 export function isValidArenaPickupKind(v: unknown): v is QpArenaPickupKind {
   return typeof v === "string" && (QP_ARENA_PICKUP_KINDS as readonly string[]).includes(v);
