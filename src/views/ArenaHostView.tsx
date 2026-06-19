@@ -295,6 +295,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                   arena={currentArena}
                   positionsRef={arenaPositionsRef}
                   leaderboard={leaderboard}
+                  pickups={currentArena.pickups}
                   readOnly
                   fill
                   className="h-full"

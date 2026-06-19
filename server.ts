@@ -133,6 +133,9 @@ import {
   QP_ARENA_BASE_POINTS,
   QP_ARENA_BONUS_MAX,
   QP_ARENA_MAP_IDS,
+  QP_ARENA_PICKUP_BONUS_POINTS,
+  QP_ARENA_PICKUP_DEFAULTS,
+  QP_ARENA_PICKUP_KINDS,
   type QpStudentJoinPayload,
   type QpScoreUpdatePayload,
   type QpReactionSendPayload,
@@ -162,13 +165,17 @@ import {
   type QpArenaStartPayload,
   type QpArenaMovePayload,
   type QpArenaGrabPayload,
+  type QpArenaPickupPayload,
   type QpArenaEndPayload,
   type QpArenaPos,
   type QpArenaPlayer,
+  type QpArenaPickup,
+  type QpArenaPickupKind,
   type QpArenaWordPublic,
   type QpArenaStatePayload,
   type QpArenaGrabGrantedPayload,
   type QpArenaGrabDeniedPayload,
+  type QpArenaPickupGonePayload,
 } from "./src/core/quickPlayProtocol";
 import { containsProfanity } from "./src/utils/nicknameProfanity";
 import {
@@ -1908,6 +1915,18 @@ async function startServer() {
       positions: Map<string, { x: number; y: number; dirty: boolean; lastMoveTs: number }>;
       grabCooldownUntil: Map<string, number>;
       tickTimer: ReturnType<typeof setInterval> | null;
+      // Scattered game elements (Speed Boost / Bonus Star / Double Points /
+      // Mud). Consumables flip to "collected" on pickup then respawn; mud is
+      // a hazard that's never collected. Refereed here (the owning VM) exactly
+      // like word grabs so points + the double flag stay server-authoritative.
+      pickups: Map<string, { kind: QpArenaPickupKind; pos: QpArenaPos; state: "available" | "collected" }>;
+      // clientIds whose NEXT correct arena answer scores ×2 (set by a Double
+      // Points pickup, cleared the moment it's applied). Server-side so a
+      // tampered client can't grant itself the multiplier.
+      doubleNext: Set<string>;
+      // Pickup respawn timers — cleared on teardown so a recycled consumable
+      // can't fire into a dead/replaced arena (same leak class as word timers).
+      pickupRespawnTimers: Set<ReturnType<typeof setTimeout>>;
     } | null;
   }
 
@@ -1951,6 +1970,13 @@ async function startServer() {
   // client-reported x/y because the owner VM may never have seen their
   // ARENA_MOVE stream — that's the range-check fallback.
   const QP_ARENA_GRAB_FANOUT = "qp:internal:arena-grab";
+
+  // Cross-VM (server-to-server) event for a Word Hunt Arena PICKUP that landed
+  // on a VM which doesn't own the arena. Same rationale as QP_ARENA_GRAB_FANOUT:
+  // the pickup map + the star points + the double flag live only on the owner
+  // VM and must be refereed there. Carries the student's client-reported x/y
+  // as the range-check fallback.
+  const QP_ARENA_PICKUP_FANOUT = "qp:internal:arena-pickup";
 
   // Rate limiters — sized for a real classroom on a school's NAT'd
   // Wi-Fi where ALL students hit the server from one external IP.
@@ -2388,6 +2414,14 @@ async function startServer() {
     };
   }
 
+  /** Project a pickup into the room-facing shape (id + kind + position). */
+  function qpArenaPublicPickup(
+    pickupId: string,
+    p: { kind: QpArenaPickupKind; pos: QpArenaPos },
+  ): QpArenaPickup {
+    return { pickupId, kind: p.kind, pos: p.pos };
+  }
+
   /** Build the full ARENA_STATE payload — on-map words (public shape) +
    *  every known avatar position. Sent to the room at start and to a
    *  single socket on (re)join (design §8.4). */
@@ -2410,6 +2444,15 @@ async function startServer() {
         y: Math.round(p.y),
       });
     }
+    // Include every AVAILABLE consumable + ALL mud (mud is permanent, never
+    // "collected"). A collected consumable awaiting respawn is omitted so a
+    // re-joining student doesn't briefly see a ghost medallion.
+    const pickups: QpArenaPickup[] = [];
+    for (const [pickupId, p] of arena.pickups) {
+      if (p.kind === "mud" || p.state === "available") {
+        pickups.push(qpArenaPublicPickup(pickupId, p));
+      }
+    }
     return {
       sessionCode: state.sessionCode,
       width: arena.config.width,
@@ -2419,6 +2462,7 @@ async function startServer() {
       ...(arena.config.mapId ? { mapId: arena.config.mapId as QpArenaStatePayload["mapId"] } : {}),
       words,
       positions,
+      pickups,
       serverId: QP_SERVER_ID,
     };
   }
@@ -2434,6 +2478,8 @@ async function startServer() {
     for (const w of arena.words.values()) {
       if (w.activeRound?.timer) clearTimeout(w.activeRound.timer);
     }
+    for (const t of arena.pickupRespawnTimers) clearTimeout(t);
+    arena.pickupRespawnTimers.clear();
     state.currentArena = null;
   }
 
@@ -2544,6 +2590,32 @@ async function startServer() {
       if (word.lockedBy !== args.clientId) return null; // someone else's lock — never score it
       const scored = qpScoreChoice(state, round, args, QP_ARENA_BASE_POINTS, QP_ARENA_BONUS_MAX);
       if (!scored) return null; // duplicate / too late — the fumble timer releases the word
+
+      // Double Points: a previously-collected ✌️ pickup doubles the NEXT
+      // correct answer. qpScoreChoice already added roundPoints+speedBonus to
+      // the leaderboard; add the SAME amount again so the total is ×2, and
+      // reflect the doubled figures in the SPEED_RESULT so the buzzer
+      // celebrates the right number. Consumed whether or not it lands a flag
+      // (the student "spent" it on this answer) — and only on a correct hit,
+      // so a wrong answer doesn't waste the boost. Server-side flag ⇒ a
+      // tampered client can't fake the multiplier.
+      let scoredOut = scored;
+      if (scored.correct && arena.doubleNext.has(args.clientId)) {
+        arena.doubleNext.delete(args.clientId);
+        const extra = scored.roundPoints + scored.speedBonus;
+        const entry = state.students.get(args.clientId);
+        if (entry && extra > 0) {
+          entry.score = Math.min(QP_MAX_SESSION_SCORE, entry.score + extra);
+          entry.lastSeen = Date.now();
+          scoredOut = {
+            ...scored,
+            roundPoints: scored.roundPoints * 2,
+            speedBonus: scored.speedBonus * 2,
+            totalScore: entry.score,
+          };
+        }
+      }
+
       if (round.timer) clearTimeout(round.timer);
       word.activeRound = null;
       // Show the "✓ got it" beat, then recycle the word back onto the map
@@ -2557,9 +2629,99 @@ async function startServer() {
         word: qpArenaPublicWord(wordId, word),
       });
       qpArenaScheduleRespawn(state.sessionCode, wordId);
-      return { sessionCode: state.sessionCode, roundId, ...scored };
+      return { sessionCode: state.sessionCode, roundId, ...scoredOut };
     }
     return null;
+  }
+
+  /** Beat before a collected consumable reappears elsewhere on the map.
+   *  Matches the word respawn cadence so the map keeps a steady density. */
+  const QP_ARENA_PICKUP_RESPAWN_MS = 6000;
+
+  /** Recycle a collected consumable back onto the map after a short beat: a
+   *  fresh position clear of words + other pickups, same kind. No-ops if the
+   *  arena/pickup is gone or already back in play. Mud never calls this. */
+  function qpArenaSchedulePickupRespawn(sessionCode: string, pickupId: string): void {
+    const owner = qpSessions.get(sessionCode);
+    const ownerArena = owner?.currentArena;
+    if (!ownerArena) return;
+    const timer = setTimeout(() => {
+      const s = qpSessions.get(sessionCode);
+      const a = s?.currentArena;
+      const p = a?.pickups.get(pickupId);
+      if (a) a.pickupRespawnTimers.delete(timer);
+      if (!s || !a || !p || p.state !== "collected") return;
+      const occupied: QpArenaPos[] = [];
+      for (const w of a.words.values()) if (w.pos) occupied.push(w.pos);
+      for (const [id, o] of a.pickups) if (id !== pickupId && (o.kind === "mud" || o.state === "available")) occupied.push(o.pos);
+      p.pos = qpArenaScatterPositions(1, occupied)[0] ?? p.pos;
+      p.state = "available";
+      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ARENA_PICKUP_SPAWN, {
+        sessionCode,
+        pickup: qpArenaPublicPickup(pickupId, p),
+      });
+    }, QP_ARENA_PICKUP_RESPAWN_MS);
+    ownerArena.pickupRespawnTimers.add(timer);
+  }
+
+  /** Referee one pickup-collect against the arena THIS VM owns. Synchronous
+   *  like qpApplyArenaGrab: nothing else runs on the event loop between the
+   *  availability check and the state write, so two simultaneous collects of
+   *  the same consumable can't both win. Mud is a no-op (a hazard, never
+   *  consumed). On a successful consumable collect it applies the effect
+   *  (star → points + leaderboard rebroadcast; double → set the flag; speed →
+   *  nothing server-side), broadcasts ARENA_PICKUP_GONE, and schedules the
+   *  respawn. Returns the gone payload to broadcast, or null when ignored. */
+  function qpApplyArenaPickup(
+    state: QpSessionState,
+    args: { clientId: string; pickupId: string; x?: unknown; y?: unknown },
+  ): QpArenaPickupGonePayload | null {
+    const arena = state.currentArena;
+    if (!arena) return null;
+    const pickup = arena.pickups.get(args.pickupId);
+    if (!pickup) return null;
+    // Mud is never collected — standing on it is purely a client speed effect.
+    if (pickup.kind === "mud") return null;
+    if (pickup.state !== "available") return null; // already taken / respawning
+
+    // Range check — same discipline as a word grab. Prefer the server's
+    // last-known position; fall back to the client-reported x/y (cross-VM).
+    const serverPos = arena.positions.get(args.clientId);
+    const px = serverPos ? serverPos.x : (typeof args.x === "number" && isFinite(args.x) ? args.x : null);
+    const py = serverPos ? serverPos.y : (typeof args.y === "number" && isFinite(args.y) ? args.y : null);
+    if (px === null || py === null) return null;
+    if (Math.hypot(px - pickup.pos.x, py - pickup.pos.y) > arena.config.grabRadius) return null;
+
+    // Consume it.
+    pickup.state = "collected";
+
+    if (pickup.kind === "star") {
+      // Bonus Star — server-authoritative points (mirrors TEACHER_BONUS), then
+      // a fresh leaderboard tick so the podium reflects it.
+      let entry = state.students.get(args.clientId);
+      if (!entry) {
+        entry = { clientId: args.clientId, nickname: "Player", avatar: "🦊", score: 0, lastSeen: Date.now() };
+        state.students.set(args.clientId, entry);
+      }
+      entry.score = Math.min(QP_MAX_SESSION_SCORE, entry.score + QP_ARENA_PICKUP_BONUS_POINTS);
+      entry.lastSeen = Date.now();
+      qpScheduleBroadcast(state.sessionCode);
+    } else if (pickup.kind === "double") {
+      // Double Points — flag the NEXT correct answer for ×2 (applied in
+      // qpApplyArenaAnswer). Server-side so a client can't fake it.
+      arena.doubleNext.add(args.clientId);
+    }
+    // "speed" needs nothing server-side — the boost is a pure client effect;
+    // the collecting client reads byClientId off ARENA_PICKUP_GONE and starts
+    // its own timer.
+
+    qpArenaSchedulePickupRespawn(state.sessionCode, args.pickupId);
+    return {
+      sessionCode: state.sessionCode,
+      pickupId: args.pickupId,
+      byClientId: args.clientId,
+      kind: pickup.kind,
+    };
   }
 
   // Cross-VM Word Hunt Arena grab (see QP_ARENA_GRAB_FANOUT). Fires on every
@@ -2584,6 +2746,32 @@ async function startServer() {
       }
     } catch (err) {
       console.warn("[QP ARENA grab xvm] handler threw", err);
+    }
+  });
+
+  // Cross-VM Word Hunt Arena pickup (see QP_ARENA_PICKUP_FANOUT). Fires on
+  // every VM; only the one that owns the arena referees. On a successful
+  // collect the gone event is broadcast to the WHOLE room (so every client
+  // drops the medallion + the collector applies the effect). A failed collect
+  // (range/already-taken/mud) is silently dropped — the medallion just stays.
+  qpIo.on(QP_ARENA_PICKUP_FANOUT, (data: {
+    sessionCode: string; pickupId: string; clientId: string;
+    socketId: string; x?: number; y?: number;
+  }) => {
+    try {
+      if (!data || typeof data !== "object") return;
+      if (typeof data.pickupId !== "string" || !isValidClientId(data.clientId)) return;
+      const state = qpSessions.get(data.sessionCode);
+      if (!state?.currentArena) return; // not the owner
+      const gone = qpApplyArenaPickup(state, {
+        clientId: data.clientId, pickupId: data.pickupId, x: data.x, y: data.y,
+      });
+      if (gone) {
+        qpIo.to(data.sessionCode).emit(QP_SERVER_EVENTS.ARENA_PICKUP_GONE, gone);
+        console.log(`[QP ARENA pickup xvm] session=${data.sessionCode} client=${data.clientId.slice(0, 8)} kind=${gone.kind}`);
+      }
+    } catch (err) {
+      console.warn("[QP ARENA pickup xvm] handler threw", err);
     }
   });
 
@@ -3801,12 +3989,29 @@ async function startServer() {
         positions.set(clientId, { ...qpArenaSpawnPos(), dirty: true, lastMoveTs: now });
       }
 
+      // Scatter the game elements (Speed Boost / Bonus Star / Double Points /
+      // Mud). Seed the scatter with the word positions so a pickup never lands
+      // on a token; the default per-kind counts come from the protocol.
+      const pickups = new Map<string, { kind: QpArenaPickupKind; pos: QpArenaPos; state: "available" | "collected" }>();
+      const pickupOccupied: QpArenaPos[] = scatter.slice();
+      for (const kind of QP_ARENA_PICKUP_KINDS) {
+        const n = QP_ARENA_PICKUP_DEFAULTS[kind];
+        const spots = qpArenaScatterPositions(n, pickupOccupied);
+        for (const pos of spots) {
+          pickups.set(randomUUID(), { kind, pos, state: "available" });
+          pickupOccupied.push(pos);
+        }
+      }
+
       const arena: NonNullable<QpSessionState["currentArena"]> = {
         config: { width: QP_ARENA_WIDTH, height: QP_ARENA_HEIGHT, grabRadius, roundSeconds, visibleWords, mapId },
         words,
         positions,
         grabCooldownUntil: new Map(),
         tickTimer: null,
+        pickups,
+        doubleNext: new Set(),
+        pickupRespawnTimers: new Set(),
       };
       state.currentArena = arena;
 
@@ -3920,6 +4125,40 @@ async function startServer() {
       }
       qpIo.serverSideEmit(QP_ARENA_GRAB_FANOUT, {
         sessionCode, wordId, clientId,
+        socketId: socket.id,
+        x: typeof payload.x === "number" ? payload.x : undefined,
+        y: typeof payload.y === "number" ? payload.y : undefined,
+      });
+    });
+
+    // ─── Word Hunt Arena: student collects a game element ──────────────
+    // Same referee discipline as ARENA_GRAB — range-checked, single-threaded
+    // (no double-collect race), routed to the owning VM (or fanned out). The
+    // gone event broadcasts to the WHOLE room so every client drops the
+    // medallion and the collector applies the effect; mud is a client-only
+    // hazard and never produces a gone event.
+    socket.on(QP_EVENTS.ARENA_PICKUP, (payload: QpArenaPickupPayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, clientId, pickupId } = payload;
+      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) return;
+      if (typeof pickupId !== "string" || !pickupId) return;
+      if (!qpScoreLimiter.checkLimit(socket.id)) return;
+
+      const state = qpSessions.get(sessionCode);
+      if (state?.currentArena) {
+        const gone = qpApplyArenaPickup(state, { clientId, pickupId, x: payload.x, y: payload.y });
+        if (gone) {
+          qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ARENA_PICKUP_GONE, gone);
+          console.log(`[QP ARENA pickup] session=${sessionCode} client=${clientId.slice(0, 8)} kind=${gone.kind}`);
+        }
+        return;
+      }
+
+      // No local arena — it may live on another VM. Fan the collect out so the
+      // owner can referee it (same pattern as ARENA_GRAB's fanout).
+      if (redisAdapterStatus !== "attached") return;
+      qpIo.serverSideEmit(QP_ARENA_PICKUP_FANOUT, {
+        sessionCode, pickupId, clientId,
         socketId: socket.id,
         x: typeof payload.x === "number" ? payload.x : undefined,
         y: typeof payload.y === "number" ? payload.y : undefined,

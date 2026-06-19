@@ -108,6 +108,12 @@ export const QP_EVENTS = {
   ARENA_GRAB:      "qp:student:arena:grab",
   // A teacher ending the arena round (back to the lobby).
   ARENA_END:       "qp:teacher:arena:end",
+  // A student touching a scattered game element (Speed Boost, Bonus Star,
+  // Double Points, or Mud). Same referee discipline as ARENA_GRAB: the
+  // owning VM range-checks against its last-known position (payload x/y
+  // fallback for cross-VM) and is the sole authority for the points/flag
+  // effects, so a tampered client can't mint a star or stack double points.
+  ARENA_PICKUP:    "qp:student:arena:pickup",
 
   // ─── VocabWheel (live, phone-answer mode) ─────────────────────────
   // A teacher pushing the current wheel question to the ONE student the
@@ -186,6 +192,15 @@ export const QP_SERVER_EVENTS = {
   ARENA_GRAB_DENIED:  "qp:arena:grab:denied",
   // The teacher closed the arena — clients drop to the podium.
   ARENA_ENDED:        "qp:arena:ended",
+  // A consumable pickup was collected — broadcast to the room so every
+  // client removes the medallion. Carries the COLLECTING clientId + kind so
+  // the collector's own client can apply the effect (speed boost, ×2 toast,
+  // star celebrate); everyone else just drops the node. Mud is a hazard and
+  // never sends this (it's never consumed).
+  ARENA_PICKUP_GONE:  "qp:arena:pickup:gone",
+  // A consumable pickup respawned elsewhere on the map (recycle) — clients
+  // add the medallion back, same pattern as ARENA_WORD appending a token.
+  ARENA_PICKUP_SPAWN: "qp:arena:pickup:spawn",
 
   // ─── VocabWheel (live, phone-answer mode) ─────────────────────────
   // Sent to ONE student: "the wheel landed on you — here's the question".
@@ -657,6 +672,23 @@ export interface QpArenaPos {
   y: number;
 }
 
+/** The four scattered game elements. Three are CONSUMABLE (collected once,
+ *  then gone + respawn); "mud" is a HAZARD patch that's never consumed —
+ *  it just slows any avatar standing on it. Kept as a closed union so the
+ *  server validator and the client renderer can't drift. */
+export const QP_ARENA_PICKUP_KINDS = ["speed", "star", "double", "mud"] as const;
+export type QpArenaPickupKind = (typeof QP_ARENA_PICKUP_KINDS)[number];
+
+/** A game element as the ROOM sees it — server-minted id + kind + position.
+ *  Mud rides ARENA_STATE permanently (never collected); consumables drop out
+ *  on collect (ARENA_PICKUP_GONE) and reappear on respawn (ARENA_PICKUP_SPAWN). */
+export interface QpArenaPickup {
+  /** Server-minted UUID — the collect handle (mirrors QpArenaWordPublic.wordId). */
+  pickupId: string;
+  kind: QpArenaPickupKind;
+  pos: QpArenaPos;
+}
+
 /** One avatar on the map, as carried in the full ARENA_STATE send. The
  *  10/sec position stream uses the compact QpArenaSnapshotPayload instead. */
 export interface QpArenaPlayer {
@@ -740,6 +772,19 @@ export interface QpArenaGrabPayload {
   y?: number;
 }
 
+/** Client → server: a student touches a scattered game element and asks to
+ *  collect it. Same shape as QpArenaGrabPayload — x/y is the cross-VM
+ *  range-check fallback for when the owner VM never saw this student's moves. */
+export interface QpArenaPickupPayload {
+  sessionCode: string;
+  clientId: string;
+  pickupId: string;
+  /** Client-reported position — the range-check fallback for the cross-VM
+   *  path (the owner prefers its own last-known position). */
+  x?: number;
+  y?: number;
+}
+
 /** Client → server: teacher closes the arena. */
 export interface QpArenaEndPayload {
   sessionCode: string;
@@ -755,6 +800,10 @@ export interface QpArenaStatePayload {
   roundSeconds: number;
   words: QpArenaWordPublic[];
   positions: QpArenaPlayer[];
+  /** Scattered game elements currently on the map — available consumables
+   *  plus every mud patch (mud is permanent). Empty array on older servers
+   *  that don't scatter pickups, so the client just renders nothing. */
+  pickups: QpArenaPickup[];
   /** Teacher-chosen themed background (QP_ARENA_MAP_IDS). Absent ⇒ the
    *  canvas falls back to its plain gradient. */
   mapId?: QpArenaMapId;
@@ -811,6 +860,26 @@ export interface QpArenaGrabDeniedPayload {
   sessionCode: string;
   wordId: string;
   reason: "already_locked" | "out_of_range" | "answered" | "cooldown" | "not_active";
+}
+
+/** Server → room: a consumable pickup was collected. Every client removes
+ *  the medallion; the COLLECTOR's client (byClientId === own clientId) also
+ *  applies the effect — speed boost, "×2 next answer" toast, or star
+ *  celebrate. The star's actual points arrive separately on the leaderboard
+ *  (server-authoritative), so this payload carries no score. */
+export interface QpArenaPickupGonePayload {
+  sessionCode: string;
+  pickupId: string;
+  /** clientId of the student who collected it. */
+  byClientId: string;
+  kind: QpArenaPickupKind;
+}
+
+/** Server → room: a consumable pickup respawned at a fresh position. Clients
+ *  add the medallion back (mirrors ARENA_WORD appending a recycled token). */
+export interface QpArenaPickupSpawnPayload {
+  sessionCode: string;
+  pickup: QpArenaPickup;
 }
 
 /** Server → room: the teacher closed the arena. */
@@ -1119,3 +1188,36 @@ export const QP_ARENA_GRAB_COOLDOWN_MS = 1_500;
  *  runner out-earns a whole Speed Round (design §8.5). */
 export const QP_ARENA_BASE_POINTS = 10;
 export const QP_ARENA_BONUS_MAX = 30;
+
+// ─── Word Hunt Arena pickups (scattered game elements) ──────────────────
+
+/** Bonus Star payout — instant points the server adds to the collector's
+ *  leaderboard score (server-authoritative, like TEACHER_BONUS). Small so a
+ *  lucky runner can't out-earn answering words, which is the real game. */
+export const QP_ARENA_PICKUP_BONUS_POINTS = 5;
+
+/** Speed Boost duration (ms) — how long the collector's avatar moves faster
+ *  after grabbing a ⚡. Pure client effect (the server only arbitrates the
+ *  collect); short enough to feel like a burst, not a permanent advantage. */
+export const QP_ARENA_SPEED_BOOST_MS = 5000;
+
+/** Speed Boost multiplier on the local avatar's movement speed. */
+export const QP_ARENA_SPEED_BOOST_MULT = 1.7;
+
+/** Mud slow multiplier — applied to the local avatar's speed for as long as
+ *  it stands on a mud patch. A hazard, never consumed. */
+export const QP_ARENA_MUD_SLOW_MULT = 0.45;
+
+/** Default count of each element scattered on the map at arena start. Mud is
+ *  a hazard (stays put); the three consumables respawn after collect. Tuned
+ *  so the map feels alive without crowding the word tokens. */
+export const QP_ARENA_PICKUP_DEFAULTS: Record<QpArenaPickupKind, number> = {
+  speed: 2,
+  star: 3,
+  double: 1,
+  mud: 3,
+};
+
+export function isValidArenaPickupKind(v: unknown): v is QpArenaPickupKind {
+  return typeof v === "string" && (QP_ARENA_PICKUP_KINDS as readonly string[]).includes(v);
+}

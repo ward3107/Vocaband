@@ -55,6 +55,8 @@ import {
   type QpArenaGrabGrantedPayload,
   type QpArenaGrabDeniedPayload,
   type QpArenaEndedPayload,
+  type QpArenaPickupGonePayload,
+  type QpArenaPickupSpawnPayload,
 } from "../core/quickPlayProtocol";
 
 const CLIENT_ID_STORAGE_KEY = "vocaband_qp_client_id";
@@ -317,6 +319,10 @@ export interface QuickPlaySocketApi {
   /** Student: ask the referee for a word's lock. x/y is the client-side
    *  position fallback for the cross-VM range check. */
   requestGrab: (wordId: string, x: number, y: number) => void;
+  /** Student: collect a scattered game element (Speed Boost / Bonus Star /
+   *  Double Points). x/y is the cross-VM range-check fallback, same as
+   *  requestGrab. Mud is never collected — it's a pure client speed effect. */
+  sendArenaPickup: (pickupId: string, x: number, y: number) => void;
   /** Teacher: close the arena (back to the podium). */
   endArena: (token: string) => void;
   /** Student: fires when the server grants this client a word's lock —
@@ -324,6 +330,12 @@ export interface QuickPlaySocketApi {
   onArenaGrabGranted: (cb: (p: QpArenaGrabGrantedPayload) => void) => () => void;
   /** Student: fires when a grab is refused (beaten to it, cooldown…). */
   onArenaGrabDenied: (cb: (p: QpArenaGrabDeniedPayload) => void) => () => void;
+  /** Fires when a game element was collected (ARENA_PICKUP_GONE) — delivered
+   *  to BOTH teacher + student. The collecting student's view checks
+   *  byClientId === its own clientId to apply the effect (speed boost, ×2
+   *  toast, star celebrate). The medallion removal/spawn is handled inside
+   *  currentArena already; this is just the effect hook. */
+  onArenaPickup: (cb: (p: QpArenaPickupGonePayload) => void) => () => void;
   /** Fires when the teacher closes the arena. */
   onArenaEnded: (cb: (p: QpArenaEndedPayload) => void) => () => void;
 }
@@ -464,6 +476,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   const speedEndedRef = useRef<((p: QpSpeedEndedPayload) => void) | null>(null);
   const arenaGrabGrantedRef = useRef<((p: QpArenaGrabGrantedPayload) => void) | null>(null);
   const arenaGrabDeniedRef = useRef<((p: QpArenaGrabDeniedPayload) => void) | null>(null);
+  const arenaPickupRef = useRef<((p: QpArenaPickupGonePayload) => void) | null>(null);
   const arenaEndedRef = useRef<((p: QpArenaEndedPayload) => void) | null>(null);
   const wheelQuestionRef = useRef<((p: QpWheelQuestionPayload) => void) | null>(null);
   const wheelAnswerRef = useRef<((p: QpWheelAnswerPayload) => void) | null>(null);
@@ -661,6 +674,30 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
           return { ...prev, words };
         });
       };
+      const onArenaPickupGone = (p: QpArenaPickupGonePayload) => {
+        if (p?.sessionCode !== sessionCode || !p.pickupId) return;
+        // Drop the collected medallion from the live state so every client's
+        // canvas stops rendering it. The effect (boost / ×2 / star) is the
+        // collecting view's job — it self-filters on byClientId.
+        setCurrentArena(prev => {
+          if (!prev) return prev;
+          const pickups = (prev.pickups ?? []).filter(pk => pk.pickupId !== p.pickupId);
+          return { ...prev, pickups };
+        });
+        arenaPickupRef.current?.(p);
+      };
+      const onArenaPickupSpawn = (p: QpArenaPickupSpawnPayload) => {
+        if (p?.sessionCode !== sessionCode || !p.pickup) return;
+        // Add the recycled consumable back (mirrors ARENA_WORD appending a
+        // respawned token). Guard against a duplicate if the spawn races a
+        // stale state.
+        setCurrentArena(prev => {
+          if (!prev) return prev;
+          const existing = prev.pickups ?? [];
+          if (existing.some(pk => pk.pickupId === p.pickup.pickupId)) return prev;
+          return { ...prev, pickups: [...existing, p.pickup] };
+        });
+      };
       const onArenaGrabGranted = (p: QpArenaGrabGrantedPayload) => {
         if (p?.sessionCode === sessionCode) arenaGrabGrantedRef.current?.(p);
       };
@@ -696,6 +733,8 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       socket.on(QP_SERVER_EVENTS.ARENA_WORD,         onArenaWord);
       socket.on(QP_SERVER_EVENTS.ARENA_GRAB_GRANTED, onArenaGrabGranted);
       socket.on(QP_SERVER_EVENTS.ARENA_GRAB_DENIED,  onArenaGrabDenied);
+      socket.on(QP_SERVER_EVENTS.ARENA_PICKUP_GONE,  onArenaPickupGone);
+      socket.on(QP_SERVER_EVENTS.ARENA_PICKUP_SPAWN, onArenaPickupSpawn);
       socket.on(QP_SERVER_EVENTS.ARENA_ENDED,        onArenaEnded);
       socket.on(QP_SERVER_EVENTS.WHEEL_QUESTION,     onWheelQuestion);
       socket.on(QP_SERVER_EVENTS.WHEEL_ANSWER,       onWheelAnswer);
@@ -724,6 +763,8 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         socket.off(QP_SERVER_EVENTS.ARENA_WORD,         onArenaWord);
         socket.off(QP_SERVER_EVENTS.ARENA_GRAB_GRANTED, onArenaGrabGranted);
         socket.off(QP_SERVER_EVENTS.ARENA_GRAB_DENIED,  onArenaGrabDenied);
+        socket.off(QP_SERVER_EVENTS.ARENA_PICKUP_GONE,  onArenaPickupGone);
+        socket.off(QP_SERVER_EVENTS.ARENA_PICKUP_SPAWN, onArenaPickupSpawn);
         socket.off(QP_SERVER_EVENTS.ARENA_ENDED,        onArenaEnded);
         socket.off(QP_SERVER_EVENTS.WHEEL_QUESTION,     onWheelQuestion);
         socket.off(QP_SERVER_EVENTS.WHEEL_ANSWER,       onWheelAnswer);
@@ -1040,6 +1081,15 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     });
   }, [sessionCode]);
 
+  const sendArenaPickup = useCallback((pickupId: string, x: number, y: number) => {
+    if (!sessionCode || !socketRef.current) return;
+    const id = readStoredClientId() ?? clientIdRef.current;
+    // x/y is the owner VM's range-check fallback (same as requestGrab).
+    socketRef.current.emit(QP_EVENTS.ARENA_PICKUP, {
+      sessionCode, clientId: id, pickupId, x: Math.round(x), y: Math.round(y),
+    });
+  }, [sessionCode]);
+
   const endArena = useCallback((token: string) => {
     if (!sessionCode || !socketRef.current) return;
     socketRef.current.emit(QP_EVENTS.ARENA_END, { sessionCode, token });
@@ -1053,6 +1103,11 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   const onArenaGrabDenied = useCallback((cb: (p: QpArenaGrabDeniedPayload) => void) => {
     arenaGrabDeniedRef.current = cb;
     return () => { arenaGrabDeniedRef.current = null; };
+  }, []);
+
+  const onArenaPickup = useCallback((cb: (p: QpArenaPickupGonePayload) => void) => {
+    arenaPickupRef.current = cb;
+    return () => { arenaPickupRef.current = null; };
   }, []);
 
   const onArenaEnded = useCallback((cb: (p: QpArenaEndedPayload) => void) => {
@@ -1102,9 +1157,11 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     startArena,
     sendArenaMove,
     requestGrab,
+    sendArenaPickup,
     endArena,
     onArenaGrabGranted,
     onArenaGrabDenied,
+    onArenaPickup,
     onArenaEnded,
   };
 }
