@@ -195,7 +195,10 @@ export default function ArenaCanvas({
           selfPosRef.current.y = self.y;
         }
         const el = avatarElsRef.current.get(selfClientId);
-        if (el) el.style.transform = `translate3d(${self.x * scale.x}px, ${self.y * scale.y}px, 0) translate(-50%, -50%)`;
+        // Counter-scale by 1/zoom so the avatar keeps a constant on-screen
+        // size while the camera enlarges the map underneath it.
+        const ls = zoomRef.current > 1 ? 1 / zoomRef.current : 1;
+        if (el) el.style.transform = `translate3d(${self.x * scale.x}px, ${self.y * scale.y}px, 0) translate(-50%, -50%) scale(${ls})`;
 
         // Camera: enlarge the world by `zoom` and pan so the local avatar
         // stays centred — the map scrolls under the player. Clamped to the
@@ -235,7 +238,8 @@ export default function ArenaCanvas({
           if (!cur) { cur = { ...target }; displayRef.current.set(clientId, cur); }
           cur.x += (target.x - cur.x) * EASE_K;
           cur.y += (target.y - cur.y) * EASE_K;
-          el.style.transform = `translate3d(${cur.x * scale.x}px, ${cur.y * scale.y}px, 0) translate(-50%, -50%)`;
+          const ls = zoomRef.current > 1 ? 1 / zoomRef.current : 1;
+          el.style.transform = `translate3d(${cur.x * scale.x}px, ${cur.y * scale.y}px, 0) translate(-50%, -50%) scale(${ls})`;
         }
       }
 
@@ -320,7 +324,9 @@ export default function ArenaCanvas({
             style={{
               left: `${(w.pos.x / QP_ARENA_WIDTH) * 100}%`,
               top: `${(w.pos.y / QP_ARENA_HEIGHT) * 100}%`,
-              transform: "translate(-50%, -50%)",
+              // Counter-scale by 1/zoom: the pill keeps a constant on-screen
+              // size while the camera enlarges the map under it.
+              transform: `translate(-50%, -50%) scale(${zoom > 1 ? 1 / zoom : 1})`,
             }}
           >
             {tappable ? (
