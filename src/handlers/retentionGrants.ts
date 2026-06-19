@@ -43,6 +43,42 @@ export function grantRetentionXp(
   showToast(reason, 'success');
 }
 
+export interface GrantRetentionCoinsDeps {
+  user: AppUser | null;
+  setCoins: React.Dispatch<React.SetStateAction<number>>;
+  showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+}
+
+/**
+ * Coin sibling of grantRetentionXp — used by pet-milestone claims now
+ * that evolutions pay coins instead of free cosmetics.  Optimistically
+ * bumps the local balance so the toast lands instantly; award_coins
+ * reconciles authoritatively (and clamps a single grant at 200).  On RPC
+ * failure the optimistic bump is rolled back.
+ */
+export function grantRetentionCoins(
+  amount: number,
+  reason: string,
+  deps: GrantRetentionCoinsDeps,
+): void {
+  const { user, setCoins, showToast } = deps;
+  setCoins((prev) => prev + amount);
+  if (user && amount > 0) {
+    supabase
+      .rpc('award_coins', { p_coin_delta: amount })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('[grantRetentionCoins] award_coins failed:', error);
+          setCoins((prev) => Math.max(0, prev - amount));
+          return;
+        }
+        const serverCoins = (data as { new_coins?: number } | null)?.new_coins;
+        if (typeof serverCoins === 'number') setCoins(serverCoins);
+      });
+  }
+  showToast(reason, 'success');
+}
+
 export interface ClaimBadgeXpDeps {
   setXp: React.Dispatch<React.SetStateAction<number>>;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
@@ -151,11 +187,19 @@ export function claimPetMilestoneReward(
   grantXp: (value: number, reason: string) => void,
   grantReward: (kind: PetRewardKind, value: number | string) => void,
   recordClaim: (m: PetMilestone) => void,
+  grantCoins?: (value: number, reason: string) => void,
 ): void {
-  if (milestone.reward.kind === 'xp' && typeof milestone.reward.value === 'number') {
-    grantXp(milestone.reward.value, `${milestone.emoji} ${milestone.stage} evolved! ${milestone.reward.label}`);
+  const { kind, value, label } = milestone.reward;
+  const reason = `${milestone.emoji} ${milestone.stage} evolved! ${label}`;
+  if (kind === 'xp' && typeof value === 'number') {
+    grantXp(value, reason);
+  } else if (kind === 'coins' && typeof value === 'number') {
+    // Coins are the standard pet reward now. Fall back to grantReward only
+    // if a coin grant path wasn't wired (e.g. a test harness) — but that
+    // path can't actually pay coins, so prefer always passing grantCoins.
+    if (grantCoins) grantCoins(value, reason);
   } else {
-    grantReward(milestone.reward.kind, milestone.reward.value);
+    grantReward(kind, value);
   }
   recordClaim(milestone);
 }

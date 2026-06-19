@@ -29,7 +29,7 @@ import { useLanguage, ALL_LANGUAGES } from "../hooks/useLanguage";
 import { AvatarPicker } from "./AvatarPicker";
 import { getSentencesForWord } from "../data/sentence-bank";
 import { isAnswerCorrect, cleanWordForDisplay } from "../utils/answerMatch";
-import { MYSTERY_EGGS, THEMES, NAME_FRAMES, XP_TITLES, getXpTitle } from "../constants/game";
+import { LUCKY_SPIN_PRIZES, LUCKY_SPIN_COST, THEMES, NAME_FRAMES, XP_TITLES, getXpTitle } from "../constants/game";
 import { DIFFICULTY_META, getModeDifficulty } from "./setup/types";
 import { demoTranslations } from "../locales/demo-mode";
 
@@ -42,7 +42,7 @@ interface DemoModeProps {
 }
 
 type DemoView = "welcome" | "avatar" | "game-select" | "mode-intro" | "game" | "results" | "shop" | "teacher";
-type ShopTab = "eggs" | "avatars" | "themes" | "frames" | "titles" | "powerups" | "premium";
+type ShopTab = "spin" | "avatars" | "themes" | "frames" | "titles" | "powerups" | "premium";
 
 // Avatar categories pulled from the real app constants so the demo shop
 // shows the same 17-category ladder students actually see in production.
@@ -2464,10 +2464,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onGetStarted }) => {
                   shop breadth (eggs, themes, frames are the three new
                   ones that were missing before). */}
               <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-1 flex overflow-x-auto hide-scrollbar gap-0.5 mb-6" style={{ scrollSnapType: 'x mandatory' }}>
-                {(["eggs", "avatars", "themes", "frames", "titles", "powerups", "premium"] as const).map(tab => {
+                {(["spin", "avatars", "themes", "frames", "titles", "powerups", "premium"] as const).map(tab => {
                   const isActive = shopTab === tab;
                   const labels: Record<typeof tab, { emoji: string; text: string }> = {
-                    eggs:     { emoji: '🥚', text: 'Eggs' },
+                    spin:     { emoji: '🎰', text: 'Lucky Spin' },
                     avatars:  { emoji: '🎭', text: t.avatars },
                     themes:   { emoji: '🎨', text: t.themes },
                     frames:   { emoji: '🖼️', text: 'Frames' },
@@ -2490,54 +2490,37 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onGetStarted }) => {
                 })}
               </div>
 
-              {/* Eggs Tab — mirrors the real ShopView eggs category.
-                  Shows the 6 mystery eggs with rarity-coded gradients,
-                  ambient glow, drop-range chip, and an "In full app"
-                  hint (opening is locked in demo). */}
-              {shopTab === "eggs" && (
+              {/* Lucky Spin Tab — mirrors the real shop's honest gamble.
+                  One flat-cost spin whose full prize table is printed up
+                  front: every outcome is coins or a usable power-up, with
+                  the exact odds shown.  No hidden cosmetic promises. */}
+              {shopTab === "spin" && (
                 <div>
                   <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 p-5 mb-4 shadow-lg shadow-violet-500/20">
                     <div aria-hidden className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 bg-amber-300/40 rounded-full blur-3xl" />
                     <div className="relative">
-                      <h2 className="text-lg sm:text-xl font-black text-white">Mystery Eggs & Chests</h2>
-                      <p className="text-xs sm:text-sm text-white/90 mt-0.5">Spend XP to open — every egg drops a random XP reward.</p>
+                      <h2 className="text-lg sm:text-xl font-black text-white">Lucky Spin 🎰</h2>
+                      <p className="text-xs sm:text-sm text-white/90 mt-0.5">{LUCKY_SPIN_COST} 🪙 a spin — win coins or a power-up. Every prize &amp; its odds are shown below.</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    {MYSTERY_EGGS.map(egg => {
-                      const rarityBg: Record<string, string> = {
-                        common:    'from-stone-100 to-stone-200',
-                        rare:      'from-sky-100 to-blue-200',
-                        epic:      'from-violet-100 to-purple-200',
-                        legendary: 'from-amber-100 via-yellow-100 to-orange-200',
-                        mythic:    'from-pink-200 via-fuchsia-200 to-violet-200',
-                      };
-                      const rarityRing: Record<string, string> = {
-                        common: 'ring-stone-300', rare: 'ring-blue-300', epic: 'ring-violet-300',
-                        legendary: 'ring-amber-300', mythic: 'ring-fuchsia-400',
-                      };
-                      return (
-                        <div key={egg.id} className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${rarityBg[egg.rarity]} p-4 sm:p-5 ring-2 ${rarityRing[egg.rarity]} shadow-lg`}>
-                          <div className="flex justify-end">
-                            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-white/70 text-stone-700">{egg.rarity}</span>
+                  <div className="rounded-2xl bg-white p-4 ring-1 ring-stone-200 shadow-lg">
+                    <p className="text-xs font-black uppercase tracking-widest text-stone-400 mb-3">Prize table</p>
+                    <div className="space-y-2">
+                      {(() => {
+                        const total = LUCKY_SPIN_PRIZES.reduce((s, p) => s + p.weight, 0);
+                        return LUCKY_SPIN_PRIZES.map(prize => (
+                          <div key={prize.id} className="flex items-center gap-3 rounded-xl bg-stone-50 px-3 py-2 ring-1 ring-stone-100">
+                            <span className="text-2xl">{prize.emoji}</span>
+                            <span className="flex-1 text-sm font-bold text-stone-800">{prize.label}</span>
+                            <span className="text-xs font-black text-violet-600 tabular-nums">{Math.round((prize.weight / total) * 100)}%</span>
                           </div>
-                          <div className="flex justify-center my-2 sm:my-3">
-                            <span className="text-6xl sm:text-7xl drop-shadow-lg">{egg.emoji}</span>
-                          </div>
-                          <h3 className="text-sm sm:text-base font-black text-stone-900 text-center">{egg.name}</h3>
-                          <p className="text-[11px] sm:text-xs text-stone-700/80 text-center mt-1 min-h-[2.5rem]">{egg.desc}</p>
-                          <div className="flex justify-center mt-2">
-                            <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold text-stone-700 bg-white/70 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/80">
-                              {egg.minXp}–{egg.maxXp} XP drop
-                            </span>
-                          </div>
-                          <div className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-black bg-white/60 text-stone-500 border border-white/80">
-                            <ShoppingBag size={14} />
-                            Unlock in full app
-                          </div>
-                        </div>
-                      );
-                    })}
+                        ));
+                      })()}
+                    </div>
+                    <div className="mt-4 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-black bg-stone-100 text-stone-500 border border-stone-200">
+                      <ShoppingBag size={14} />
+                      Spin in full app
+                    </div>
                   </div>
                 </div>
               )}

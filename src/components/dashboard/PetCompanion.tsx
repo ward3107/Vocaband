@@ -22,6 +22,8 @@ interface PetCompanionProps {
   nextStage: PetMilestone | null;
   /** A reached-but-unclaimed milestone, or null. */
   claimableMilestone: PetMilestone | null;
+  /** Equipped Pet Shop accessory emoji, worn on the pet medallion. */
+  accessoryEmoji?: string | null;
   /** Callback when the student taps "Claim reward" on the pet. */
   onClaim: (milestone: PetMilestone) => void;
 }
@@ -37,7 +39,7 @@ interface PetCompanionProps {
  * via useRetention (localStorage, scoped per user).
  */
 export default function PetCompanion({
-  open, onClose, xp, displayName, currentStage, nextStage, claimableMilestone, onClaim,
+  open, onClose, xp, displayName, currentStage, nextStage, claimableMilestone, accessoryEmoji, onClaim,
 }: PetCompanionProps) {
   const { language, dir } = useLanguage();
   const t = studentDashboardT[language];
@@ -94,10 +96,15 @@ export default function PetCompanion({
             </button>
 
             <div className="mb-3 flex items-center gap-3">
-              <div className={`flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br ${glow} text-3xl shadow-sm`}>
+              <div className={`relative flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br ${glow} text-3xl shadow-sm`}>
                 {currentStage.stage === 'Egg'
                   ? <CrackingEgg progress={pct / 100} size={44} alt={currentStage.stage} />
                   : currentStage.emoji}
+                {accessoryEmoji && (
+                  <span className="pointer-events-none absolute -top-2 left-1/2 -translate-x-1/2 text-lg drop-shadow" aria-hidden>
+                    {accessoryEmoji}
+                  </span>
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">{t.yourCompanion}</p>
