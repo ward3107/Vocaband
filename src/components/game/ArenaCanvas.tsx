@@ -420,6 +420,13 @@ export default function ArenaCanvas({
       {arena.words.map((w) => {
         const tappable = !readOnly && !!onGrab && w.state === "available";
         const targeted = w.wordId === navTargetId && w.state === "available";
+        // Pseudo-3D depth: a word lower on the map reads as "closer" (bigger,
+        // fully opaque, drawn on top); one near the top reads as "farther"
+        // (smaller, slightly faded, behind). Turns the flat sticker look into a
+        // scene with depth. depth: 0 = far/top … 1 = near/bottom.
+        const depth = w.pos.y / QP_ARENA_HEIGHT;
+        const depthScale = 0.82 + depth * 0.36;
+        const baseScale = zoom > 1 ? 1 / zoom : 1;
         const pill = (
           <motion.div
             animate={w.state === "available" ? { y: [0, -5, 0] } : { y: 0 }}
@@ -429,7 +436,7 @@ export default function ArenaCanvas({
             // inline-flex + w-max: the orange background must hug the word —
             // a plain flex box shrinks below its text near the map edge, so
             // long words spilled out of the pill ("half-background" look).
-            className={`inline-flex w-max items-center gap-1 px-2.5 py-1 rounded-full font-black text-xs sm:text-sm whitespace-nowrap shadow-md transition-opacity ${
+            className={`inline-flex w-max items-center gap-1 px-2 py-0.5 rounded-full font-black text-[11px] sm:text-xs whitespace-nowrap shadow-md transition-opacity ${
               w.state === "available"
                 ? "bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-amber-500/30"
                 : w.state === "locked"
@@ -446,15 +453,29 @@ export default function ArenaCanvas({
         return (
           <div
             key={w.wordId}
-            className="absolute z-10"
+            className="absolute"
             style={{
               left: `${(w.pos.x / QP_ARENA_WIDTH) * 100}%`,
               top: `${(w.pos.y / QP_ARENA_HEIGHT) * 100}%`,
-              // Counter-scale by 1/zoom: the pill keeps a constant on-screen
-              // size while the camera enlarges the map under it.
-              transform: `translate(-50%, -50%) scale(${zoom > 1 ? 1 / zoom : 1})`,
+              // Counter-scale by 1/zoom (constant on-screen size as the camera
+              // enlarges the map) times the depth scale. Nearer words sit on
+              // top via z-index; farther ones fade slightly.
+              transform: `translate(-50%, -50%) scale(${baseScale * depthScale})`,
+              zIndex: 10 + Math.round(depth * 10),
+              opacity: w.state === "available" ? 0.8 + depth * 0.2 : undefined,
             }}
           >
+            {/* Ground shadow — a soft radial-gradient ellipse on the "floor"
+                under the word (a gradient, not a blur filter, so 60 of them stay
+                cheap on low-end Android). It stays put while the pill bobs above
+                it, so each word reads as sitting IN the scene, not pasted on. */}
+            {w.state === "available" && (
+              <div
+                aria-hidden
+                className="absolute left-1/2 top-1/2 h-2 w-9 -translate-x-1/2 translate-y-[13px]"
+                style={{ background: "radial-gradient(ellipse at center, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0) 70%)" }}
+              />
+            )}
             {tappable ? (
               <button
                 type="button"

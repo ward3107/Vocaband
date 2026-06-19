@@ -455,8 +455,9 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
             isPaused={!!grant}
             fill
             // Big-map feel: enlarge the world and follow the player's avatar
-            // (the map scrolls as they move). The host projector stays at 1×.
-            zoom={1.8}
+            // (the map scrolls as they move) so the class spreads out and has
+            // to roam to hunt words. The host projector stays at 1×.
+            zoom={2.3}
           />
           <ArenaJoystick inputRef={inputRef} disabled={!!grant} />
           {/* Dash — rough mode only. Parked on the LEFT (opposite the joystick's
