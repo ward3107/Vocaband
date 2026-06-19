@@ -303,7 +303,10 @@ export default function ArenaCanvas({
             transition={w.state === "available" ? { repeat: Infinity, duration: 2.2, ease: "easeInOut" } : undefined}
             // Compact pills so the themed map reads big and roomy ("zoom out"
             // look). The tap target stays fat via the p-4/-m-4 wrapper below.
-            className={`flex items-center gap-1 px-2.5 py-1 rounded-full font-black text-xs sm:text-sm whitespace-nowrap shadow-md transition-opacity ${
+            // inline-flex + w-max: the orange background must hug the word —
+            // a plain flex box shrinks below its text near the map edge, so
+            // long words spilled out of the pill ("half-background" look).
+            className={`inline-flex w-max items-center gap-1 px-2.5 py-1 rounded-full font-black text-xs sm:text-sm whitespace-nowrap shadow-md transition-opacity ${
               w.state === "available"
                 ? "bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-amber-500/30"
                 : w.state === "locked"
