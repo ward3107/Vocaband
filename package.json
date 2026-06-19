@@ -69,7 +69,7 @@
     "lucide-react": "^1.18.0",
     "mammoth": "^1.12.0",
     "motion": "^12.40.0",
-    "multer": "^2.1.1",
+    "multer": "^2.2.0",
     "node-fetch": "^3.3.2",
     "pptxgenjs": "^4.0.1",
     "qrcode-generator": "^2.0.4",
@@ -95,7 +95,8 @@
     "tmp": "^0.2.7",
     "uuid": "^11.1.1",
     "esbuild": "^0.28.1",
-    "dompurify": "^3.4.10",
+    "dompurify": "^3.4.11",
+    "undici": "^7.28.0",
     "@opentelemetry/core": "^2.8.0",
     "@babel/core": "^7.29.7"
   },
