@@ -27,10 +27,10 @@
  *  - The `auth` callback is async and refetches the session token on
  *    every reconnect so the handshake never carries a stale JWT.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Socket } from 'socket.io-client';
 import { supabase, type AppUser } from '../core/supabase';
-import { SOCKET_EVENTS, type LeaderboardEntry } from '../core/types';
+import { SOCKET_EVENTS, type LeaderboardEntry, type LiveReactionPayload } from '../core/types';
 import { loadSocketIO } from '../utils/lazyLoad';
 
 export interface UseLiveChallengeSocketParams {
@@ -42,6 +42,15 @@ export interface UseLiveChallengeSocketApi {
   socket: Socket | null;
   socketConnected: boolean;
   leaderboard: Record<string, LeaderboardEntry>;
+  /**
+   * Most recent reaction broadcast that landed on this socket. New object
+   * on every receive (even a repeat emoji) so consumers can key a useEffect
+   * on `serverTs` to fire the particle. Null until the first one lands.
+   * Mirrors the Quick Play hook's `lastReaction`.
+   */
+  lastReaction: LiveReactionPayload | null;
+  /** Fire-and-forget emoji reaction for live-challenge students. */
+  sendReaction: (emoji: string) => void;
 }
 
 /**
@@ -83,6 +92,12 @@ export function useLiveChallengeSocket(
   const [socket, setSocket] = useState<Socket | null>(null);
   const [socketConnected, setSocketConnected] = useState(false);
   const [leaderboard, setLeaderboard] = useState<Record<string, LeaderboardEntry>>({});
+  const [lastReaction, setLastReaction] = useState<LiveReactionPayload | null>(null);
+
+  // Stable handle to the live socket for `sendReaction`, which is called
+  // from outside the connect effect (the in-game reaction bar). The effect
+  // assigns this once the socket opens.
+  const socketRef = useRef<Socket | null>(null);
 
   // Latest leaderboard snapshot per source: the legacy single broadcast under
   // "legacy", and each VM's serverId-tagged V2 broadcast under "vm:<id>".
@@ -151,6 +166,7 @@ export function useLiveChallengeSocket(
         },
       }) as Socket;
       s = sock;
+      socketRef.current = sock;
 
       setSocket(sock);
 
@@ -238,15 +254,41 @@ export function useLiveChallengeSocket(
           payload.entries as Record<string, LeaderboardEntry>,
         );
       });
+
+      // Tier C — ephemeral reaction. New object every receive so the podium
+      // particle layer can key on `serverTs` and fire even for a repeat emoji.
+      sock.on(SOCKET_EVENTS.REACTION, (data: unknown) => {
+        const p = data as Partial<LiveReactionPayload> | null;
+        if (!p || typeof p !== 'object' || !p.emoji || !p.clientId) return;
+        setLastReaction({
+          classCode: typeof p.classCode === 'string' ? p.classCode : '',
+          clientId: p.clientId,
+          name: typeof p.name === 'string' ? p.name : undefined,
+          emoji: p.emoji,
+          serverTs: typeof p.serverTs === 'number' ? p.serverTs : Date.now(),
+        });
+      });
     };
 
     connectSocket();
 
     return () => {
       cancelled = true;
+      socketRef.current = null;
       if (s) s.disconnect();
     };
   }, []);
 
-  return { socket, socketConnected, leaderboard };
+  // Thin pass-through — the server enforces the emoji allow-list and the
+  // per-socket throttle, so a spammy caller is just silently dropped. The
+  // student's class code lives on their AppUser; without it (or a socket)
+  // we no-op rather than emit a payload the server would reject anyway.
+  const sendReaction = useCallback((emoji: string) => {
+    const sock = socketRef.current;
+    const classCode = userRef.current?.classCode;
+    if (!sock || !classCode) return;
+    sock.emit(SOCKET_EVENTS.REACTION_SEND, { classCode, emoji });
+  }, []);
+
+  return { socket, socketConnected, leaderboard, lastReaction, sendReaction };
 }

@@ -5,12 +5,15 @@ import type { ClassData } from "../core/supabase";
 import type { View } from "../core/views";
 import { useLanguage } from "../hooks/useLanguage";
 import { liveChallengeT } from "../locales/teacher/live-challenge";
+import ReactionParticleLayer, { type PodiumReaction } from "../components/ReactionParticleLayer";
 import confetti from "canvas-confetti";
 
 interface LiveChallengeViewProps {
   selectedClass: ClassData;
   leaderboard: Record<string, LeaderboardEntry>;
   socketConnected: boolean;
+  /** Latest student reaction to float up on the podium (parity with QP). */
+  lastReaction?: PodiumReaction | null;
   setView: Dispatch<SetStateAction<View>>;
   setIsLiveChallenge: (v: boolean) => void;
 }
@@ -81,7 +84,7 @@ function PodiumStep({
   pointsLabel,
 }: {
   place: 1 | 2 | 3;
-  entry: { name: string; totalScore: number; isGuest: boolean; avatar?: string };
+  entry: { uid: string; name: string; totalScore: number; isGuest: boolean; avatar?: string };
   rankLabel: string;
   pointsLabel: string;
 }) {
@@ -89,6 +92,7 @@ function PodiumStep({
   const initial = entry.name?.trim()?.charAt(0)?.toUpperCase() || "?";
   return (
     <motion.div
+      data-reaction-uid={entry.uid}
       initial={{ opacity: 0, y: 60 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: s.delay, type: "spring", stiffness: 120, damping: 16 }}
@@ -138,6 +142,7 @@ export default function LiveChallengeView({
   selectedClass,
   leaderboard,
   socketConnected,
+  lastReaction = null,
   setView,
   setIsLiveChallenge,
 }: LiveChallengeViewProps) {
@@ -241,6 +246,7 @@ export default function LiveChallengeView({
 
   return (
     <div dir={dir} className="min-h-screen bg-gradient-to-b from-indigo-900 via-violet-800 to-fuchsia-800 p-4 sm:p-6 text-white">
+      <ReactionParticleLayer lastReaction={lastReaction} />
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-8">
           <button onClick={exitChallenge} className="text-white/80 font-bold flex items-center gap-1 hover:text-white text-base sm:text-sm bg-white/20 backdrop-blur-sm px-3 py-2 rounded-full border border-white/30 hover:bg-white/30 transition-all">{t.backToClassSelection}</button>
@@ -363,6 +369,7 @@ export default function LiveChallengeView({
             {rest.map((entry, idx) => (
               <motion.div
                 key={`${entry.uid}-${idx}`}
+                data-reaction-uid={entry.uid}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: (idx + 3) * 0.05 }}

@@ -87,6 +87,9 @@ export type AppViewRouterProps =
     isFinished: boolean;
     showModeSelection: boolean;
     showModeIntro: boolean;
+    /** Live Challenge reaction parity — fed from useLiveChallengeSocket. */
+    isLiveChallenge: boolean;
+    liveSendReaction: (emoji: string) => void;
   };
 
 export function AppViewRouter(props: AppViewRouterProps) {
@@ -135,7 +138,8 @@ export function AppViewRouter(props: AppViewRouterProps) {
     classShowAssignment, setClassShowAssignment,
     worksheetAssignment, setWorksheetAssignment,
     onPickerOcrUpload,
-    setIsLiveChallenge, leaderboard, socketConnected,
+    setIsLiveChallenge, leaderboard, socketConnected, liveLastReaction,
+    isLiveChallenge, liveSendReaction,
     setQuickPlaySelectedWords,
     setQuickPlayCustomWords, setQuickPlayAddingCustom, setQuickPlayTranslating,
     xp, setXp, coins, setCoins, boosters,
@@ -299,7 +303,7 @@ export function AppViewRouter(props: AppViewRouterProps) {
 
   const teacherLiveScreen = renderTeacherLiveScreens({
     view, user, selectedClass, setView, setIsLiveChallenge,
-    leaderboard, socketConnected,
+    leaderboard, socketConnected, liveLastReaction,
     quickPlayActiveSession,
     setQuickPlayActiveSession, setQuickPlaySelectedWords, setQuickPlaySessionCode,
     setQuickPlayCustomWords, setQuickPlayAddingCustom, setQuickPlayTranslating,
@@ -357,7 +361,18 @@ export function AppViewRouter(props: AppViewRouterProps) {
   // Once the student is actually answering questions, the prompt
   // sits high on the screen with comfortable space underneath, so
   // the bar can dock at the bottom without colliding.
-  const showQpReactionBar = !!quickPlayActiveSession
+  // A live-challenge STUDENT mid-game gets the same affordances — a guest
+  // Quick Play session and an authenticated Live Challenge are mutually
+  // exclusive, so `isLiveChallenge && !quickPlayActiveSession` cleanly
+  // isolates the live student (the teacher never reaches view === "game").
+  const inLiveStudentGame = isLiveChallenge && !quickPlayActiveSession;
+  // Pick the matching emitter so a live student's taps go out on the
+  // authenticated `/` socket, not the (absent) Quick Play one.
+  const reactionSender = quickPlayActiveSession
+    ? quickPlaySocket.sendReaction
+    : liveSendReaction;
+
+  const showQpReactionBar = (!!quickPlayActiveSession || inLiveStudentGame)
     && view === "game"
     && !isFinished
     && !showModeSelection
@@ -368,7 +383,7 @@ export function AppViewRouter(props: AppViewRouterProps) {
   // have a one-tap escape hatch without being able to invoke it from
   // unrelated views. Same overlap concern — hide it on mode selection
   // / intro so it doesn't sit on top of the mode tiles.
-  const showQpHelpButton = !!quickPlayActiveSession
+  const showQpHelpButton = (!!quickPlayActiveSession || inLiveStudentGame)
     && view === "game"
     && !isFinished
     && !showModeSelection
@@ -401,17 +416,24 @@ export function AppViewRouter(props: AppViewRouterProps) {
       </GameRouteProvider>
       {showQpReactionBar && (
         <Suspense fallback={null}>
-          <QpReactionBar sendReaction={quickPlaySocket.sendReaction} />
+          <QpReactionBar sendReaction={reactionSender} />
         </Suspense>
       )}
       {showQpHelpButton && (
         <Suspense fallback={null}>
           <QuickPlayHelpButton
-            onAlertTeacher={() => quickPlaySocket.sendReaction('🙋')}
-            onLeave={() => {
-              gameRouteDeps.cleanupQuickPlayGuest();
-              setView('public-landing');
-            }}
+            onAlertTeacher={() => reactionSender('🙋')}
+            onLeave={inLiveStudentGame
+              ? () => {
+                  // Authenticated live student — drop the challenge and head
+                  // home, never the guest cleanup / public-landing path.
+                  setIsLiveChallenge(false);
+                  setView('student-dashboard');
+                }
+              : () => {
+                  gameRouteDeps.cleanupQuickPlayGuest();
+                  setView('public-landing');
+                }}
           />
         </Suspense>
       )}
