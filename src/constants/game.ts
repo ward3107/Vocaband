@@ -152,6 +152,12 @@ export const getXpTitle = (xpAmount: number) => XP_TITLES.filter(t => xpAmount >
 // `id` is the stable key for translations (shop-catalog.ts) and for any
 // future server-side lookups. Don't change ids after release — existing
 // purchases / unlocks reference them.
+//
+// 2026 curation (pre-launch): trimmed 30 → 19, cutting the weakest and
+// most redundant entries (e.g. Dragon Face duplicated Dragon, Cyborg
+// duplicated Robot, Witch duplicated Wizard) so the shop reads as a
+// tight, desirable set instead of an endless scroll. Safe to delete
+// outright while still pre-launch — no student has purchased these yet.
 export const PREMIUM_AVATARS = [
   { id: 'dragon',         emoji: '🐉',    name: 'Dragon',        cost: 150 },
   { id: 'eagle',          emoji: '🦅',    name: 'Eagle',         cost: 125 },
@@ -163,26 +169,15 @@ export const PREMIUM_AVATARS = [
   { id: 'prince',         emoji: '🤴',    name: 'Prince',        cost: 325 },
   { id: 'princess',       emoji: '👸',    name: 'Princess',      cost: 325 },
   { id: 'unicorn',        emoji: '🦄',    name: 'Unicorn',       cost: 500 },
-  { id: 'dragon_face',    emoji: '🐲',    name: 'Dragon Face',   cost: 200 },
   { id: 'vampire',        emoji: '🧛',    name: 'Vampire',       cost: 275 },
-  { id: 'merperson',      emoji: '🧜',    name: 'Merperson',     cost: 250 },
   { id: 'ninja',          emoji: '🥷',    name: 'Ninja',         cost: 300 },
   { id: 'robot',          emoji: '🤖',    name: 'Robot',         cost: 175 },
   // 2026 additions — popular with kids globally + in Israeli schools.
   { id: 'goat',           emoji: '🐐',    name: 'GOAT',          cost: 600 },
   { id: 'astronaut',      emoji: '👨‍🚀',  name: 'Astronaut',     cost: 325 },
   { id: 'coder',          emoji: '🧑‍💻',  name: 'Coder',         cost: 275 },
-  { id: 'witch',          emoji: '🧙‍♀️',  name: 'Witch',         cost: 225 },
-  { id: 'super_villain',  emoji: '🦹',    name: 'Super Villain', cost: 300 },
-  { id: 'dj',             emoji: '🎧',    name: 'DJ',            cost: 225 },
   { id: 'pro_gamer',      emoji: '🎮',    name: 'Pro Gamer',     cost: 250 },
   { id: 'champion',       emoji: '🏆',    name: 'Champion',      cost: 550 },
-  { id: 'cyborg',         emoji: '🦾',    name: 'Cyborg',        cost: 325 },
-  { id: 'elf',            emoji: '🧝',    name: 'Elf',           cost: 275 },
-  { id: 'genie',          emoji: '🧞',    name: 'Genie',         cost: 350 },
-  { id: 'kraken',         emoji: '🐙',    name: 'Kraken',        cost: 225 },
-  { id: 'owl_sage',       emoji: '🦉',    name: 'Owl Sage',      cost: 175 },
-  { id: 'planet_master',  emoji: '🪐',    name: 'Planet Master', cost: 450 },
   { id: 'lightning',      emoji: '⚡',    name: 'Lightning',     cost: 275 },
 ];
 
@@ -348,6 +343,11 @@ export const NAME_FRAMES = [
 
 // 2026 rebalance: Champion + Genius bumped a little so they aren't
 // instant-grabs in the first week.
+//
+// 2026 curation (pre-launch): trimmed 16 → 12, cutting the redundant or
+// weakest entries — Big Brain (overlapped Genius), Speedrunner
+// (overlapped Speed Demon), plus Aura Farmer / Cracked — so the title
+// list stays punchy. Safe to delete while pre-launch — none owned yet.
 export const NAME_TITLES = [
   { id: 'champion', name: 'Champion', display: 'Champion', cost: 200 },
   { id: 'genius', name: 'Genius', display: 'Genius', cost: 275 },
@@ -356,16 +356,12 @@ export const NAME_TITLES = [
   { id: 'vocab_queen', name: 'Vocab Queen', display: 'Vocab Queen', cost: 250 },
   { id: 'speed_demon', name: 'Speed Demon', display: 'Speed Demon', cost: 350 },
   { id: 'legend', name: 'Living Legend', display: 'Living Legend', cost: 400 },
-  { id: 'brain', name: 'Big Brain', display: 'Big Brain', cost: 300 },
   // 2026 slang titles — what kids actually call each other in chats.
   { id: 'main_character', name: 'Main Character', display: 'Main Character', cost: 350 },
   { id: 'goated', name: 'GOATed', display: '🐐 GOATed', cost: 400 },
-  { id: 'aura_farmer', name: 'Aura Farmer', display: 'Aura Farmer', cost: 300 },
   { id: 'final_boss', name: 'Final Boss', display: 'Final Boss', cost: 500 },
   { id: 'rizzler', name: 'Rizzler', display: 'The Rizzler', cost: 350 },
   { id: 'chosen_one', name: 'Chosen One', display: 'The Chosen One', cost: 450 },
-  { id: 'speedrunner', name: 'Speedrunner', display: 'Speedrunner', cost: 300 },
-  { id: 'cracked', name: 'Cracked', display: 'Cracked', cost: 275 },
 ];
 
 // --- RETENTION: PET EVOLUTION REWARDS ---
