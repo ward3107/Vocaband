@@ -1,4 +1,4 @@
-import { useState, Suspense } from "react";
+import { useState, useMemo, Suspense } from "react";
 import { lazyWithRetry } from "../utils/lazyWithRetry";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, AlertTriangle, CheckCircle2, Info, Home, Grid3X3, RefreshCw, Printer } from "lucide-react";
@@ -6,6 +6,7 @@ import { supabase } from "../core/supabase";
 import { THEMES } from "../constants/game";
 import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
 import QuickPlayEndgameCard from "../components/QuickPlayEndgameCard";
+import { EndgameStanding, EndgamePracticeWords, MAX_PRACTICE_WORDS } from "../components/endgame/EndgameParts";
 import RatingPrompt from "../components/RatingPrompt";
 import { useLanguage } from "../hooks/useLanguage";
 import { gameFinishedT } from "../locales/student/game-finished";
@@ -47,9 +48,38 @@ export default function GameFinishedView({
     setIsFinished, setScore, setCurrentIndex, setMistakes, setFeedback,
     setWordAttempts, setHiddenOptions, setSpellingInput,
     setAssignmentWords, setShowModeSelection, setView,
-    qpLeaderboard, targetLanguage, speakWord,
+    qpLeaderboard, leaderboard, targetLanguage, speakWord,
   } = useGameRoute();
   const isGuest = !!user?.isGuest;
+
+  // ─── Live Challenge endgame parity ─────────────────────────────────
+  // An authenticated student on a non-empty live leaderboard just finished
+  // a challenge round — show the same score+rank banner + practice list as
+  // Quick Play guests get (the XP save already happened upstream, so this
+  // is purely presentational). `hasLiveLeaderboard` mirrors GameActiveView's
+  // sidebar guard exactly: guests and solo/assignment play (empty board)
+  // keep the plain finish screen.
+  const hasLiveLeaderboard = !isGuest && Object.keys(leaderboard).length > 0;
+  const liveStanding = useMemo(() => {
+    if (!hasLiveLeaderboard) return null;
+    const totals = (Object.entries(leaderboard) as [string, typeof leaderboard[string]][])
+      .map(([uid, e]) => ({ uid, name: e.name, total: e.baseScore + e.currentGameScore }));
+    // The board is keyed by the Supabase session uid, which can differ from
+    // user.uid on the click-name login path — fall back to a name match so
+    // the banner still resolves. (Same dual-id reality as JOIN_CHALLENGE.)
+    const me = totals.find(e => e.uid === user?.uid)
+      ?? totals.find(e => e.name === user?.displayName);
+    if (!me) return null;
+    // Competition ranking (ties share a place) so two kids with the same
+    // score never argue about who's "really" 3rd. Headline uses this game's
+    // `score`, not the all-time base, so "you scored X" stays honest.
+    const rank = 1 + totals.filter(e => e.total > me.total).length;
+    return { xp: score, rank, total: totals.length };
+  }, [hasLiveLeaderboard, leaderboard, user?.uid, user?.displayName, score]);
+  const livePracticeWords = useMemo(
+    () => hasLiveLeaderboard ? gameWords.filter(w => mistakes.includes(w.id)).slice(0, MAX_PRACTICE_WORDS) : [],
+    [hasLiveLeaderboard, gameWords, mistakes],
+  );
 
   // ─── Rating prompt for students ────────────────────────────────────
   //
@@ -273,6 +303,22 @@ export default function GameFinishedView({
             />
           ) : (
             <>
+              {/* Live Challenge parity — score+rank banner + words to
+                  practice, matching the Quick Play endgame. Only when the
+                  student is on a live leaderboard; solo/assignment finishes
+                  skip it and keep the plain Back-to-Modes screen. */}
+              {hasLiveLeaderboard && (
+                <>
+                  <EndgameStanding standing={liveStanding} />
+                  <EndgamePracticeWords
+                    words={livePracticeWords}
+                    targetLanguage={targetLanguage}
+                    isDark={isDark}
+                    speakWord={speakWord}
+                  />
+                </>
+              )}
+
               {/* PRIMARY — Back to Modes.  Filling 100% width, py-5,
                   emoji, large font.  This is the only tap target a kid
                   needs to find. */}
