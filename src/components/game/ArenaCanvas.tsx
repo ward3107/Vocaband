@@ -23,6 +23,7 @@ import {
   type QpArenaStatePayload,
   type QpStudentEntry,
 } from "../../core/quickPlayProtocol";
+import { arenaMapById } from "./arenaMaps";
 import type { ArenaInputVector } from "./ArenaJoystick";
 
 /** Local avatar speed in logical units/sec — tuned so crossing the arena
@@ -64,15 +65,25 @@ interface ArenaCanvasProps {
    *  transform path already supports, and the grab radius is checked in
    *  world units so gameplay is unaffected. */
   fill?: boolean;
+  /** Camera zoom. >1 enlarges the world and the view FOLLOWS the local
+   *  avatar (the map scrolls as the player moves — "big map" feel). 1 keeps
+   *  the whole map in view (the host projector, so the teacher sees everyone).
+   *  Only the local player's view follows; readOnly ignores this. */
+  zoom?: number;
   className?: string;
 }
 
 export default function ArenaCanvas({
   arena, positionsRef, leaderboard,
   selfClientId, inputRef, selfPosRef, onGrab,
-  readOnly = false, isPaused = false, fill = false, className = "",
+  readOnly = false, isPaused = false, fill = false, zoom = 1, className = "",
 }: ArenaCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // The scaled/panned "world" layer (background + tokens + avatars). The RAF
+  // loop writes its transform each frame to follow the local avatar.
+  const worldRef = useRef<HTMLDivElement | null>(null);
+  const zoomRef = useRef(zoom);
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
   // Pixels-per-logical-unit, refreshed by the ResizeObserver. A ref (not
   // state) because the RAF loop is the only consumer.
   const scaleRef = useRef({ x: 1, y: 1 });
@@ -184,7 +195,24 @@ export default function ArenaCanvas({
           selfPosRef.current.y = self.y;
         }
         const el = avatarElsRef.current.get(selfClientId);
-        if (el) el.style.transform = `translate3d(${self.x * scale.x}px, ${self.y * scale.y}px, 0) translate(-50%, -50%)`;
+        // Counter-scale by 1/zoom so the avatar keeps a constant on-screen
+        // size while the camera enlarges the map underneath it.
+        const ls = zoomRef.current > 1 ? 1 / zoomRef.current : 1;
+        if (el) el.style.transform = `translate3d(${self.x * scale.x}px, ${self.y * scale.y}px, 0) translate(-50%, -50%) scale(${ls})`;
+
+        // Camera: enlarge the world by `zoom` and pan so the local avatar
+        // stays centred — the map scrolls under the player. Clamped to the
+        // world edges so we never reveal blank space past the map.
+        const z = zoomRef.current;
+        const world = worldRef.current;
+        const cont = containerRef.current;
+        if (world && cont && z > 1) {
+          const cw = cont.clientWidth, ch = cont.clientHeight;
+          const sx = self.x * scale.x, sy = self.y * scale.y;
+          const tx = Math.min(0, Math.max(cw - z * cw, cw / 2 - z * sx));
+          const ty = Math.min(0, Math.max(ch - z * ch, ch / 2 - z * sy));
+          world.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${z})`;
+        }
 
         // Auto-grab on contact — once per word per approach.
         const radius = grabRadiusRef.current;
@@ -210,7 +238,8 @@ export default function ArenaCanvas({
           if (!cur) { cur = { ...target }; displayRef.current.set(clientId, cur); }
           cur.x += (target.x - cur.x) * EASE_K;
           cur.y += (target.y - cur.y) * EASE_K;
-          el.style.transform = `translate3d(${cur.x * scale.x}px, ${cur.y * scale.y}px, 0) translate(-50%, -50%)`;
+          const ls = zoomRef.current > 1 ? 1 / zoomRef.current : 1;
+          el.style.transform = `translate3d(${cur.x * scale.x}px, ${cur.y * scale.y}px, 0) translate(-50%, -50%) scale(${ls})`;
         }
       }
 
@@ -233,6 +262,11 @@ export default function ArenaCanvas({
     setNavTarget(wordId);
   }, [setNavTarget]);
 
+  // Teacher-chosen themed background, synced to every client via ARENA_STATE.
+  // Painted as an <img> (object-cover) under a soft scrim so the bright
+  // illustrations never drown out the word pills + avatars on top.
+  const themedMap = arenaMapById(arena.mapId);
+
   return (
     <div
       ref={containerRef}
@@ -240,6 +274,22 @@ export default function ArenaCanvas({
       className={`relative w-full ${fill ? "h-full" : ""} overflow-hidden rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-100 via-violet-50 to-fuchsia-100 shadow-lg shadow-indigo-500/20 ${className}`}
       style={{ ...(fill ? {} : { aspectRatio: `${QP_ARENA_WIDTH} / ${QP_ARENA_HEIGHT}` }), touchAction: "none" }}
     >
+      {/* The camera "world" — scaled + panned as one layer by the RAF loop so
+          the whole scene (map, tokens, avatars) follows the local player. */}
+      <div ref={worldRef} className="absolute inset-0" style={{ transformOrigin: "0 0" }}>
+      {themedMap && (
+        <>
+          <img
+            src={themedMap.bg}
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover"
+          />
+          {/* Scrim: keeps token/avatar contrast readable over any scene. */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 z-0 bg-white/25" />
+        </>
+      )}
+
       {/* Word tokens — React-rendered (lifecycle changes are rare). On the
           student side, available tokens are real buttons: kids' first
           instinct is to tap the word, not to know about the invisible
@@ -251,7 +301,12 @@ export default function ArenaCanvas({
           <motion.div
             animate={w.state === "available" ? { y: [0, -5, 0] } : { y: 0 }}
             transition={w.state === "available" ? { repeat: Infinity, duration: 2.2, ease: "easeInOut" } : undefined}
-            className={`flex items-center gap-1 px-4 py-2.5 rounded-full font-black text-base sm:text-lg whitespace-nowrap shadow-md transition-opacity ${
+            // Compact pills so the themed map reads big and roomy ("zoom out"
+            // look). The tap target stays fat via the p-4/-m-4 wrapper below.
+            // inline-flex + w-max: the orange background must hug the word —
+            // a plain flex box shrinks below its text near the map edge, so
+            // long words spilled out of the pill ("half-background" look).
+            className={`inline-flex w-max items-center gap-1 px-2.5 py-1 rounded-full font-black text-xs sm:text-sm whitespace-nowrap shadow-md transition-opacity ${
               w.state === "available"
                 ? "bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-amber-500/30"
                 : w.state === "locked"
@@ -260,8 +315,8 @@ export default function ArenaCanvas({
             } ${targeted ? "ring-4 ring-fuchsia-400/80" : ""}`}
             dir="auto"
           >
-            {w.state === "locked" && <Lock size={12} strokeWidth={3} />}
-            {w.state === "answered" && <Check size={12} strokeWidth={3} />}
+            {w.state === "locked" && <Lock size={10} strokeWidth={3} />}
+            {w.state === "answered" && <Check size={10} strokeWidth={3} />}
             {w.label}
           </motion.div>
         );
@@ -272,7 +327,9 @@ export default function ArenaCanvas({
             style={{
               left: `${(w.pos.x / QP_ARENA_WIDTH) * 100}%`,
               top: `${(w.pos.y / QP_ARENA_HEIGHT) * 100}%`,
-              transform: "translate(-50%, -50%)",
+              // Counter-scale by 1/zoom: the pill keeps a constant on-screen
+              // size while the camera enlarges the map under it.
+              transform: `translate(-50%, -50%) scale(${zoom > 1 ? 1 / zoom : 1})`,
             }}
           >
             {tappable ? (
@@ -308,21 +365,23 @@ export default function ArenaCanvas({
             className="absolute left-0 top-0 z-20 flex flex-col items-center"
             style={{ willChange: "transform", transform: "translate3d(-200px, -200px, 0)" }}
           >
+            {/* Smaller avatars so the map feels large and zoomed-out. */}
             <div
-              className={`flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-full backdrop-blur-sm shadow-md text-xl sm:text-2xl ${
+              className={`flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full backdrop-blur-sm shadow-md text-sm sm:text-lg ${
                 isSelf
                   ? "bg-white/80 border-2 border-fuchsia-400 shadow-fuchsia-500/30"
                   : "bg-white/60 border border-white/80"
               }`}
             >
-              <QPAvatar value={p.avatar} iconSize={20} className="text-indigo-600" />
+              <QPAvatar value={p.avatar} iconSize={13} className="text-indigo-600" />
             </div>
-            <span className="mt-0.5 px-1.5 rounded-full bg-white/70 text-[9px] sm:text-[10px] font-black text-stone-600 whitespace-nowrap max-w-20 truncate">
+            <span className="mt-0.5 px-1.5 rounded-full bg-white/70 text-[8px] sm:text-[9px] font-black text-stone-600 whitespace-nowrap max-w-16 truncate">
               {p.nickname}
             </span>
           </div>
         );
       })}
+      </div>
     </div>
   );
 }

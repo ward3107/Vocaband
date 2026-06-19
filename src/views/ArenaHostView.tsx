@@ -33,6 +33,7 @@ import GameResults from "../components/game/GameResults";
 import TeamScoreBar from "../components/game/TeamScoreBar";
 import TeamModeToggle from "../components/game/TeamModeToggle";
 import ArenaCanvas from "../components/game/ArenaCanvas";
+import { ARENA_MAPS, randomArenaMapId } from "../components/game/arenaMaps";
 import SpeedWordPicker from "../components/game/SpeedWordPicker";
 import { primeAudio } from "../utils/primeAudio";
 import { playRoundStart } from "../utils/raceSfx";
@@ -40,7 +41,7 @@ import { shuffle } from "../utils";
 import { buildSpeedQuestion, type L1 } from "../utils/speedRoundQuestion";
 import {
   QP_SPEED_ROUND_SECONDS, QP_SPEED_MODES, QP_ARENA_MAX_WORDS,
-  type QpSpeedMode, type QpArenaWordSeed,
+  type QpSpeedMode, type QpArenaWordSeed, type QpArenaMapId,
 } from "../core/quickPlayProtocol";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
@@ -83,6 +84,16 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   // walks, so the floating words mix question types. Default: all six.
   const [enabledModes, setEnabledModes] = useState<Set<QpSpeedMode>>(new Set(QP_SPEED_MODES));
   const [roundSeconds, setRoundSeconds] = useState<number>(10);
+  // Themed board background. "random" picks a fresh map each hunt; a concrete
+  // id locks the scene. Persisted so the teacher's pick sticks across games
+  // (mirrors the GameThemePicker persistence). Default: random for variety.
+  const [mapChoice, setMapChoice] = useState<string>(
+    () => (typeof localStorage !== "undefined" && localStorage.getItem("vb-arena-map")) || "random",
+  );
+  const selectMap = (choice: string) => {
+    setMapChoice(choice);
+    try { localStorage.setItem("vb-arena-map", choice); } catch { /* private mode — ignore */ }
+  };
   const [copied, setCopied] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
   // Celebratory results overlay when ending a played hunt.
@@ -178,7 +189,9 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
     // The Start tap is a user gesture — prime + play the jingle.
     primeAudio();
     playRoundStart();
-    startArena(seeds, { roundSeconds }, tokenRef.current);
+    // "random" resolves to a fresh map per hunt; otherwise honour the pick.
+    const mapId: QpArenaMapId = mapChoice === "random" ? randomArenaMapId() : (mapChoice as QpArenaMapId);
+    startArena(seeds, { roundSeconds, mapId }, tokenRef.current);
     setHasStarted(true);
     setPresenting(true);
   };
@@ -425,6 +438,41 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                       className={`px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white border-transparent shadow-md" : pillIdle}`}
                     >
                       {t.seconds(opt)}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Arena map — themed background the whole class sees. "Surprise
+                  me" rolls a fresh scene per hunt; tapping a tile locks it. */}
+              <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500 mt-5 mb-3">{t.mapHeading}</h2>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => selectMap("random")}
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  className={`relative aspect-[10/7] rounded-xl overflow-hidden border-2 flex flex-col items-center justify-center gap-0.5 bg-gradient-to-br from-indigo-500 to-violet-600 text-white transition ${mapChoice === "random" ? "border-amber-400 ring-2 ring-amber-300" : "border-transparent opacity-90 hover:opacity-100"}`}
+                >
+                  <span className="text-xl">🎲</span>
+                  <span className="text-[10px] font-black leading-tight px-1 text-center">{t.randomMap}</span>
+                </button>
+                {ARENA_MAPS.map((m) => {
+                  const picked = mapChoice === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => selectMap(m.id)}
+                      aria-label={m.name[language === "he" ? "he" : language === "ar" ? "ar" : "en"]}
+                      title={m.name[language === "he" ? "he" : language === "ar" ? "ar" : "en"]}
+                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                      className={`relative aspect-[10/7] rounded-xl overflow-hidden border-2 transition ${picked ? "border-amber-400 ring-2 ring-amber-300" : "border-transparent opacity-80 hover:opacity-100"}`}
+                    >
+                      <img src={m.thumb} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                      <span className="absolute bottom-0 inset-x-0 bg-black/45 text-white text-[9px] font-black leading-tight px-1 py-0.5 truncate flex items-center justify-center gap-0.5">
+                        <span>{m.emoji}</span>
+                        <span className="truncate">{m.name[language === "he" ? "he" : language === "ar" ? "ar" : "en"]}</span>
+                      </span>
                     </button>
                   );
                 })}

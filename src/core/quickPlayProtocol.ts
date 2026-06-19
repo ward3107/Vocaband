@@ -712,6 +712,9 @@ export interface QpArenaStartPayload {
     grabRadius?: number;
     /** Seconds a grabber gets to answer. Same choices as Speed Round. */
     roundSeconds?: number;
+    /** Themed board background (QP_ARENA_MAP_IDS). Validated server-side and
+     *  echoed in ARENA_STATE so every student sees the teacher's pick. */
+    mapId?: QpArenaMapId;
   };
 }
 
@@ -752,6 +755,9 @@ export interface QpArenaStatePayload {
   roundSeconds: number;
   words: QpArenaWordPublic[];
   positions: QpArenaPlayer[];
+  /** Teacher-chosen themed background (QP_ARENA_MAP_IDS). Absent ⇒ the
+   *  canvas falls back to its plain gradient. */
+  mapId?: QpArenaMapId;
   /** Opaque id of the Fly VM that owns this arena — same multi-VM union
    *  rationale as QpLeaderboardPayload.serverId. */
   serverId?: string;
@@ -1051,6 +1057,17 @@ export const QP_ARENA_MODE = "word-hunt-arena";
  *  branches on this to show the lightweight "you're in, watch the board"
  *  screen — same wordless pattern as QP_ARENA_MODE. */
 export const QP_WHEEL_MODE = "vocab-wheel";
+
+/** Themed board backgrounds a teacher can pick for the arena. The teacher
+ *  chooses one (or "random") at start; the id rides ARENA_START → ARENA_STATE
+ *  so every student's phone paints the SAME map as the projector. This is the
+ *  shared source of truth (server validates against it; the client registry
+ *  in components/game/arenaMaps.ts hangs art + names off these ids). */
+export const QP_ARENA_MAP_IDS = [
+  "islands", "forest", "frozen", "volcano", "space", "candy",
+  "underwater", "desert", "jungle", "kingdom", "city",
+] as const;
+export type QpArenaMapId = (typeof QP_ARENA_MAP_IDS)[number];
 
 /** Arena dimensions in LOGICAL units (not pixels) — every client maps
  *  logical → its own canvas size, so phones and the projector agree on
