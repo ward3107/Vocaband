@@ -18,7 +18,7 @@ import { Gift, Pin, Sparkles, Star } from 'lucide-react';
 import type { AppUser } from '../../core/supabase';
 import type { Language } from '../../hooks/useLanguage';
 import {
-  PREMIUM_AVATARS, THEMES, NAME_FRAMES, NAME_TITLES, MYSTERY_EGGS,
+  PREMIUM_AVATARS, THEMES, NAME_FRAMES, NAME_TITLES, PET_ACCESSORIES,
 } from '../../constants/game';
 import { catalogName } from '../../locales/student/shop-catalog';
 import type { PinnedItem, PinnedKind } from '../../hooks/usePinnedShopItem';
@@ -110,7 +110,7 @@ function isOwned(user: AppUser, kind: PinnedKind, id: string, emoji: string): bo
     case 'theme':  return !!user.unlockedThemes?.includes(id);
     case 'title':  return !!user.unlockedAvatars?.includes(`title_${id}`);
     case 'frame':  return !!user.unlockedAvatars?.includes(`frame_${id}`);
-    case 'egg':
+    case 'pet':    return !!user.unlockedAvatars?.includes(`pet_${id}`);
     case 'powerUp':
     case 'booster':
       return false;
@@ -134,19 +134,18 @@ function lookup(kind: PinnedKind, id: string): ItemRef | null {
     const t = NAME_TITLES.find(x => x.id === id);
     return t ? { kind, id, rawName: t.name, cost: t.cost, emoji: '🏷️' } : null;
   }
-  if (kind === 'egg') {
-    const e = MYSTERY_EGGS.find(x => x.id === id);
-    return e ? { kind, id, rawName: e.name, cost: e.cost, emoji: e.emoji } : null;
+  if (kind === 'pet') {
+    const p = PET_ACCESSORIES.find(x => x.id === id);
+    return p ? { kind, id, rawName: p.name, cost: p.cost, emoji: p.emoji } : null;
   }
   return null;
 }
 
-function catalogSectionFor(kind: PinnedKind): 'avatars' | 'themes' | 'frames' | 'titles' | 'eggs' | null {
+function catalogSectionFor(kind: PinnedKind): 'avatars' | 'themes' | 'frames' | 'titles' | null {
   if (kind === 'avatar') return 'avatars';
   if (kind === 'theme') return 'themes';
   if (kind === 'frame') return 'frames';
   if (kind === 'title') return 'titles';
-  if (kind === 'egg') return 'eggs';
   return null;
 }
 
@@ -183,6 +182,8 @@ function buildCard(
     consider({ kind: 'frame', id: f.id, rawName: f.name, cost: f.cost, emoji: f.preview }));
   NAME_TITLES.forEach(t =>
     consider({ kind: 'title', id: t.id, rawName: t.name, cost: t.cost, emoji: '🏷️' }));
+  PET_ACCESSORIES.forEach(p =>
+    consider({ kind: 'pet', id: p.id, rawName: p.name, cost: p.cost, emoji: p.emoji }));
 
   if (candidates.length > 0) {
     candidates.sort((a, b) => a.gap - b.gap);

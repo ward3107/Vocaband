@@ -9,7 +9,7 @@ import { useCallback, useState } from 'react';
 export type PinnedKind =
   | 'avatar'
   | 'theme'
-  | 'egg'
+  | 'pet'
   | 'frame'
   | 'title'
   | 'booster'

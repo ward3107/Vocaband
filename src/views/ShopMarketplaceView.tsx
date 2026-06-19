@@ -9,6 +9,7 @@ import { supabase, type AppUser } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { useRetention } from "../hooks/useRetention";
 import { usePinnedShopItem, type PinnedKind } from "../hooks/usePinnedShopItem";
+import { usePetAccessory } from "../hooks/usePetAccessory";
 import { shopT } from "../locales/student/shop";
 import { catalogName, catalogDesc, catalogDisplay } from "../locales/student/shop-catalog";
 import FloatingButtons from "../components/FloatingButtons";
@@ -17,7 +18,8 @@ import Spotlight from "../components/shop/Spotlight";
 import { ARCADE_BG } from "../components/arcade/theme";
 import {
   PREMIUM_AVATARS, THEMES, POWER_UP_DEFS, BOOSTERS_DEFS,
-  NAME_FRAMES, NAME_TITLES, MYSTERY_EGGS,
+  NAME_FRAMES, NAME_TITLES, PET_ACCESSORIES,
+  LUCKY_SPIN_COST, LUCKY_SPIN_PRIZES, rollSpinPrize, type SpinPrize, type PetAccessory,
 } from "../constants/game";
 import { TITLE_STYLES } from "../constants/titleStyles";
 import type { View } from "../core/views";
@@ -71,10 +73,11 @@ export default function ShopMarketplaceView({
   const t = shopT[language];
   const retention = useRetention(user.uid, xp);
   const { pinned, togglePin, unpin, isPinned } = usePinnedShopItem(user.uid);
+  const petAccessory = usePetAccessory(user.uid);
 
-  // Egg cinematic state — phases mirror the original ShopView.
-  const [openingEgg, setOpeningEgg] = useState<null | {
-    egg: typeof MYSTERY_EGGS[0]; phase: 'zoom' | 'shake' | 'crack'; rewardLabel?: string;
+  // Lucky Spin cinematic state — spin, then reveal the rolled prize.
+  const [spinning, setSpinning] = useState<null | {
+    phase: 'spin' | 'reveal'; prize?: SpinPrize;
   }>(null);
 
   // --- Purchase / equip RPCs (same shapes as the original ShopView) ---
@@ -169,29 +172,55 @@ export default function ShopMarketplaceView({
     showToast(t.frameEquipped, "success");
   };
 
-  const purchaseEgg = async (egg: typeof MYSTERY_EGGS[0]) => {
-    if (coins < egg.cost) { showToast(t.notEnoughCoins, "error"); return; }
-    setOpeningEgg({ egg, phase: 'zoom' });
-    setTimeout(() => setOpeningEgg(prev => prev ? { ...prev, phase: 'shake' } : prev), 300);
-    // `open_mystery_egg` is planned for a follow-up Supabase migration
-    // (server-side reward roll + cosmetic drops). Until that ships, roll
-    // the coin reward on the client and book the net cost via the generic
-    // `purchase_item` RPC. Avoids the 404 the missing RPC would otherwise
-    // spam in the console every egg open.
-    const rpcPromise = (async () => {
-      const rewardXp = Math.floor(egg.minXp + Math.random() * (egg.maxXp - egg.minXp + 1));
-      // Book the NET in one call: item_cost = egg.cost - rewardXp, so the RPC
-      // computes coins - (cost - reward) = coins - cost + reward. pData.new_coins
-      // is already the final balance — do NOT add rewardXp again (that double-
-      // grants, and award_coins would clamp big egg payouts at 200).
-      const { data: pData, error: pErr } = await supabase.rpc('purchase_item', { item_type: 'egg', item_id: egg.id, item_cost: egg.cost - rewardXp });
-      if (pErr || !pData?.success) { showToast(pData?.error || t.couldNotOpenEgg, "error"); return null; }
-      setCoins(pData.new_coins);
-      return `+${rewardXp} 🪙`;
-    })();
-    const rewardLabel = await rpcPromise;
-    if (rewardLabel === null) { setOpeningEgg(null); return; }
-    setTimeout(() => setOpeningEgg(prev => prev ? { ...prev, phase: 'crack', rewardLabel } : prev), 900);
+  // Lucky Spin — the honest replacement for Mystery Eggs. The full prize
+  // table (coins + power-ups, with odds) is printed on the card, and the
+  // prize is rolled here, then booked through the generic `purchase_item`
+  // RPC. The 'egg' item_type is just the RPC's coins-only debit path (no
+  // unlock array) — reused here so no migration is needed.
+  const purchaseSpin = async () => {
+    if (coins < LUCKY_SPIN_COST) { showToast(t.notEnoughCoins, "error"); return; }
+    setSpinning({ phase: 'spin' });
+    const prize = rollSpinPrize();
+    // For a coin prize, book the NET (cost - winnings) in one call so the
+    // balance lands correct. For a power-up prize, debit the full cost here
+    // and grant the item below.
+    const coinPrize = prize.kind === 'coins' ? Number(prize.value) : 0;
+    const { data: pData, error: pErr } = await supabase.rpc('purchase_item', { item_type: 'egg', item_id: 'lucky_spin', item_cost: LUCKY_SPIN_COST - coinPrize });
+    if (pErr || !pData?.success) { showToast(pData?.error || t.spinFailed, "error"); setSpinning(null); return; }
+    setCoins(pData.new_coins);
+    if (prize.kind === 'power_up') {
+      const puId = String(prize.value);
+      const { data: gData } = await supabase.rpc('purchase_item', { item_type: 'power_up', item_id: puId, item_cost: 0 });
+      if (gData?.success) {
+        setCoins(gData.new_coins);
+        setUser(prev => prev ? { ...prev, powerUps: { ...(prev.powerUps ?? {}), [puId]: ((prev.powerUps ?? {})[puId] ?? 0) + 1 } } : prev);
+      }
+    }
+    setTimeout(() => setSpinning(prev => prev ? { phase: 'reveal', prize } : prev), 900);
+  };
+
+  // --- Pet Shop: buy / wear accessories for the companion pet ---
+  const ownsPet = (id: string) => !!user.unlockedAvatars?.includes(`pet_${id}`);
+
+  const purchasePetAccessory = async (acc: PetAccessory) => {
+    if (coins < acc.cost) { showToast(t.notEnoughCoins, "error"); return; }
+    // Owned forever, server-side: reuse the avatar unlock array with a
+    // `pet_` prefix (same pattern frames/titles use).
+    const { data, error } = await supabase.rpc('purchase_item', { item_type: 'avatar', item_id: `pet_${acc.id}`, item_cost: acc.cost });
+    if (error || !data?.success) { showToast(data?.error || t.purchaseFailed, "error"); return; }
+    setCoins(data.new_coins);
+    setUser(prev => prev ? { ...prev, unlockedAvatars: [...(prev.unlockedAvatars ?? []), `pet_${acc.id}`] } : prev);
+    petAccessory.setEquipped(acc.id); // auto-wear what you just bought
+    showToast(`✨ ${acc.name}`, "success");
+  };
+
+  const equipPetAccessory = (id: string) => {
+    petAccessory.setEquipped(id);
+    showToast(t.petAccessoryEquipped, "success");
+  };
+  const removePetAccessory = () => {
+    petAccessory.setEquipped(null);
+    showToast(t.petAccessoryRemoved, "success");
   };
 
   // --- Spotlight glue: when user taps a Spotlight CTA we want to
@@ -201,7 +230,7 @@ export default function ShopMarketplaceView({
     const sectionId =
       kind === 'avatar'  ? 'section-avatars' :
       kind === 'theme'   ? 'section-themes' :
-      kind === 'egg'     ? 'section-eggs' :
+      kind === 'pet'     ? 'section-pets' :
       kind === 'frame'   ? 'section-frames' :
       kind === 'title'   ? 'section-titles' :
       kind === 'booster' ? 'section-boosters' :
@@ -289,8 +318,9 @@ export default function ShopMarketplaceView({
 
   // Sticky jump-chip nav targets — keyed to the section ids below.
   const categories: { id: string; emoji: string; label: string }[] = [
-    { id: 'section-eggs', emoji: '🥚', label: t.mysteryEggsAndChests },
+    { id: 'section-spin', emoji: '🎰', label: t.luckySpin },
     { id: 'section-avatars', emoji: '🎭', label: t.featuredAvatars },
+    { id: 'section-pets', emoji: '🐾', label: t.petShop },
     { id: 'section-themes', emoji: '🎨', label: t.themes },
     { id: 'section-powerups', emoji: '⚡', label: t.powerUps },
     { id: 'section-boosters', emoji: '🚀', label: t.boosters },
@@ -341,27 +371,81 @@ export default function ShopMarketplaceView({
 
   // ---------- Card renderers ----------
 
-  const renderEgg = (egg: typeof MYSTERY_EGGS[0]) => {
-    const rarity: Rarity = (egg.rarity as Rarity) in RARITY_DARK ? (egg.rarity as Rarity) : 'common';
-    const canAfford = coins >= egg.cost;
+  // Lucky Spin — a single wide card whose ENTIRE prize table (with odds)
+  // is printed up front, so there are no hidden promises. Spin button when
+  // affordable, locked progress footer otherwise.
+  const totalSpinWeight = LUCKY_SPIN_PRIZES.reduce((s, p) => s + p.weight, 0);
+  const renderSpin = () => {
+    const canAfford = coins >= LUCKY_SPIN_COST;
     return (
-      <ItemShell rarity={rarity} width="w-44 sm:w-48">
-        <div className="flex justify-end">
-          <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest ${RARITY_DARK[rarity].badge}`}>{RARITY_DARK[rarity].label}</span>
+      <ItemShell rarity="legendary" width="w-full">
+        <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+          <span className="text-5xl drop-shadow-lg">🎰</span>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base font-black text-white">{t.luckySpin}</h3>
+            <p className="text-[11px] text-white/70">{t.luckySpinDesc}</p>
+          </div>
         </div>
-        <div className="my-2 flex justify-center">
-          <span className="text-5xl drop-shadow-lg sm:text-6xl">{egg.emoji}</span>
+        {/* Transparent prize table — every outcome + its odds. */}
+        <div className="mt-3 grid grid-cols-2 gap-1.5">
+          {LUCKY_SPIN_PRIZES.map(prize => (
+            <div key={prize.id} className="flex items-center gap-1.5 rounded-lg bg-white/10 px-2 py-1 ring-1 ring-white/10">
+              <span className="text-base leading-none">{prize.emoji}</span>
+              <span className="flex-1 truncate text-[10px] font-bold text-white/85">{prize.label}</span>
+              <span className="text-[10px] font-black tabular-nums text-amber-300">{Math.round((prize.weight / totalSpinWeight) * 100)}%</span>
+            </div>
+          ))}
         </div>
-        <h3 className="text-center text-sm font-black text-white">{catalogName('eggs', egg.id, language, egg.name)}</h3>
-        <p className="mt-1 line-clamp-2 min-h-[2rem] text-center text-[11px] text-white/70">{catalogDesc('eggs', egg.id, language, egg.desc)}</p>
-        <div className="mt-2">
+        <div className="mt-3">
           {canAfford ? (
             <motion.button
               type="button" whileTap={{ scale: 0.97 }}
-              onClick={() => purchaseEgg(egg)}
+              onClick={purchaseSpin}
+              disabled={!!spinning}
+              className="inline-flex w-full items-center justify-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 py-2 text-sm font-black text-white disabled:opacity-60"
+            ><Zap size={12} className="fill-white" /> {t.spinFor(LUCKY_SPIN_COST)}</motion.button>
+          ) : <LockedFooter cost={LUCKY_SPIN_COST} />}
+        </div>
+      </ItemShell>
+    );
+  };
+
+  const renderPetAccessory = (acc: PetAccessory) => {
+    const owned = ownsPet(acc.id);
+    const worn = petAccessory.equipped === acc.id;
+    const canAfford = coins >= acc.cost;
+    const rarity = rarityForCost(acc.cost);
+    return (
+      <ItemShell rarity={rarity} active={worn} width="w-32 sm:w-36">
+        {!owned && <PinButton kind="pet" id={acc.id} />}
+        <div className="my-1 flex justify-center">
+          <span className={`text-5xl ${!owned && !canAfford ? 'opacity-50 grayscale' : ''}`}>{acc.emoji}</span>
+        </div>
+        <h3 className="truncate text-center text-xs font-black text-white">{acc.name}</h3>
+        <div className="mt-2">
+          {owned ? (
+            worn ? (
+              <motion.button
+                type="button" whileTap={{ scale: 0.97 }}
+                onClick={removePetAccessory}
+                className="block w-full text-center text-[10px] font-black uppercase tracking-widest text-cyan-300"
+              ><Check size={11} className="-mt-0.5 me-0.5 inline" /> {t.petWearing}</motion.button>
+            ) : (
+              <motion.button
+                type="button" whileTap={{ scale: 0.97 }}
+                onClick={() => equipPetAccessory(acc.id)}
+                className="w-full rounded-full bg-violet-600 py-1.5 text-[11px] font-black text-white"
+              >{t.petWear}</motion.button>
+            )
+          ) : canAfford ? (
+            <motion.button
+              type="button" whileTap={{ scale: 0.97 }}
+              onClick={() => purchasePetAccessory(acc)}
               className="inline-flex w-full items-center justify-center gap-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 py-1.5 text-[11px] font-black text-white"
-            ><Zap size={10} className="fill-white" /> {egg.cost}</motion.button>
-          ) : <LockedFooter cost={egg.cost} />}
+            ><Zap size={10} className="fill-white" /> {acc.cost}</motion.button>
+          ) : (
+            <LockedFooter cost={acc.cost} />
+          )}
         </div>
       </ItemShell>
     );
@@ -573,9 +657,9 @@ export default function ShopMarketplaceView({
   // the dopamine shelf at the top. Deterministic (priciest first) so it's
   // stable across renders.
   const byCostDesc = <T extends { cost: number }>(a: T, b: T) => b.cost - a.cost;
-  const featuredEgg = [...MYSTERY_EGGS].sort(byCostDesc)[0];
   const featuredAvatars = [...PREMIUM_AVATARS].sort(byCostDesc).slice(0, 2);
   const featuredTitle = [...NAME_TITLES].sort(byCostDesc)[0];
+  const featuredPet = [...PET_ACCESSORIES].sort(byCostDesc)[0];
   const featuredLabel = ({ en: 'Featured', he: 'מומלצים', ar: 'مميز', ru: 'Рекомендуемые' } as Record<string, string>)[language] ?? 'Featured';
 
   // ---------- Layout ----------
@@ -646,11 +730,11 @@ export default function ShopMarketplaceView({
             <h2 className="text-lg font-black tracking-tight text-white">{featuredLabel}</h2>
           </header>
           <div className={`flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <div className="shrink-0">{renderEgg(featuredEgg)}</div>
             {featuredAvatars.map((a) => (
               <div key={a.id} className="shrink-0">{renderAvatar(a)}</div>
             ))}
             <div className="shrink-0">{renderTitle(featuredTitle)}</div>
+            <div className="shrink-0">{renderPetAccessory(featuredPet)}</div>
           </div>
         </section>
 
@@ -702,15 +786,13 @@ export default function ShopMarketplaceView({
             </section>
           )}
 
-          <section id="section-eggs">
-            <CategoryCarousel
-              emoji="🥚"
-              title={t.mysteryEggsAndChests}
-              items={MYSTERY_EGGS}
-              keyFor={(e) => e.id}
-              renderCard={renderEgg}
-              isRTL={isRTL}
-            />
+          {/* Lucky Spin — full-width honest gamble, no carousel (single item). */}
+          <section id="section-spin">
+            <header className={`mb-2.5 flex items-center gap-2 px-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
+              <span className="text-2xl leading-none" aria-hidden>🎰</span>
+              <h2 className="text-lg font-black tracking-tight text-white">{t.luckySpin}</h2>
+            </header>
+            {renderSpin()}
           </section>
 
           <section id="section-avatars">
@@ -720,6 +802,20 @@ export default function ShopMarketplaceView({
               items={PREMIUM_AVATARS}
               keyFor={(a) => a.id}
               renderCard={renderAvatar}
+              isRTL={isRTL}
+            />
+          </section>
+
+          {/* Pet Shop — accessories for the dashboard companion pet. The
+              only shop category that overlaps nothing else; a clean coin
+              sink tied to the pet that's now central on the dashboard. */}
+          <section id="section-pets">
+            <CategoryCarousel
+              emoji="🐾"
+              title={t.petShop}
+              items={PET_ACCESSORIES}
+              keyFor={(p) => p.id}
+              renderCard={renderPetAccessory}
               isRTL={isRTL}
             />
           </section>
@@ -786,44 +882,40 @@ export default function ShopMarketplaceView({
         </div>
       </div>
 
-      {/* Egg-opening cinematic — modal overlay, same UX as old ShopView. */}
+      {/* Lucky Spin cinematic — the wheel spins, then reveals the prize
+          that was already rolled + booked. Tap to dismiss once revealed. */}
       <AnimatePresence>
-        {openingEgg && (
+        {spinning && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/80 backdrop-blur-sm"
-            onClick={() => openingEgg.phase === 'crack' && setOpeningEgg(null)}
+            onClick={() => spinning.phase === 'reveal' && setSpinning(null)}
           >
-            <motion.div
-              key={openingEgg.phase}
-              initial={openingEgg.phase === 'zoom' ? { scale: 0.5, opacity: 0 } : { scale: 1 }}
-              animate={
-                openingEgg.phase === 'zoom'
-                  ? { scale: 1, opacity: 1 }
-                  : openingEgg.phase === 'shake'
-                  ? { rotate: [0, -10, 10, -8, 8, 0] }
-                  : { scale: [1, 1.4, 1] }
-              }
-              transition={
-                openingEgg.phase === 'zoom'
-                  ? { duration: 0.25 }
-                  : openingEgg.phase === 'shake'
-                  ? { duration: 0.8, repeat: openingEgg.phase === 'shake' ? 1 : 0 }
-                  : { duration: 0.6 }
-              }
-              className="text-center"
-            >
-              <div className="text-9xl mb-4 drop-shadow-2xl">{openingEgg.egg.emoji}</div>
-              {openingEgg.phase === 'crack' && openingEgg.rewardLabel && (
+            <motion.div key={spinning.phase} className="text-center">
+              {spinning.phase === 'spin' ? (
                 <motion.div
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="text-2xl font-black text-white bg-gradient-to-br from-amber-400 to-orange-500 px-4 py-2 rounded-full inline-block shadow-lg"
-                >
-                  {openingEgg.rewardLabel}
-                </motion.div>
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 0.7, repeat: Infinity, ease: 'linear' }}
+                  className="text-9xl drop-shadow-2xl"
+                >🎰</motion.div>
+              ) : spinning.prize && (
+                <>
+                  <motion.div
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: [0.5, 1.3, 1], opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                    className="mb-4 text-9xl drop-shadow-2xl"
+                  >{spinning.prize.emoji}</motion.div>
+                  <motion.div
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="inline-block rounded-full bg-gradient-to-br from-amber-400 to-orange-500 px-4 py-2 text-2xl font-black text-white shadow-lg"
+                  >
+                    {t.youWon(spinning.prize.label)}
+                  </motion.div>
+                </>
               )}
             </motion.div>
           </motion.div>

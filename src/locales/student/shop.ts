@@ -79,10 +79,36 @@ export interface ShopStrings {
   yourCollection: string;
   equipAction: string;
   equippedLabel: string;
+
+  // Lucky Spin (replaces Mystery Eggs)
+  luckySpin: string;
+  luckySpinDesc: string;
+  /** Spin CTA — e.g. "Spin · 100 🪙" */
+  spinFor: (cost: number) => string;
+  spinFailed: string;
+  /** Reveal banner — e.g. "You won 80 coins!" */
+  youWon: (prize: string) => string;
+
+  // Pet Shop
+  petShop: string;
+  petWear: string;
+  petWearing: string;
+  petAccessoryEquipped: string;
+  petAccessoryRemoved: string;
 }
 
 export const shopT: Record<Language, ShopStrings> = {
   en: {
+    luckySpin: "Lucky Spin",
+    luckySpinDesc: "Win coins or a power-up",
+    spinFor: (cost) => `Spin · ${cost} 🪙`,
+    spinFailed: "Spin failed — try again.",
+    youWon: (prize) => `You won ${prize}!`,
+    petShop: "Pet Shop",
+    petWear: "Wear",
+    petWearing: "Wearing",
+    petAccessoryEquipped: "Your pet looks great!",
+    petAccessoryRemoved: "Accessory removed.",
     trendingNow: "Trending now",
     featuredDrops: "Featured drops",
     browseShop: "Browse shop",
@@ -132,6 +158,16 @@ export const shopT: Record<Language, ShopStrings> = {
     equippedLabel: "Equipped",
   },
   he: {
+    luckySpin: "סיבוב מזל",
+    luckySpinDesc: "זכה במטבעות או בכוח",
+    spinFor: (cost) => `סובב · ${cost} 🪙`,
+    spinFailed: "הסיבוב נכשל — נסה שוב.",
+    youWon: (prize) => `זכית ב-${prize}!`,
+    petShop: "חנות החיה",
+    petWear: "הלבש",
+    petWearing: "לובש",
+    petAccessoryEquipped: "החיה שלך נראית מעולה!",
+    petAccessoryRemoved: "האביזר הוסר.",
     trendingNow: "מובילים עכשיו",
     featuredDrops: "פריטים נבחרים",
     browseShop: "עיון בחנות",
@@ -181,6 +217,16 @@ export const shopT: Record<Language, ShopStrings> = {
     equippedLabel: "מצויד",
   },
   ar: {
+    luckySpin: "عجلة الحظ",
+    luckySpinDesc: "اربح عملات أو قوة",
+    spinFor: (cost) => `أدِر · ${cost} 🪙`,
+    spinFailed: "فشل الدوران — حاول مجدداً.",
+    youWon: (prize) => `ربحت ${prize}!`,
+    petShop: "متجر الحيوان",
+    petWear: "ارتداء",
+    petWearing: "مُرتدى",
+    petAccessoryEquipped: "حيوانك يبدو رائعاً!",
+    petAccessoryRemoved: "تمت إزالة الإكسسوار.",
     trendingNow: "الرائج الآن",
     featuredDrops: "العناصر المميزة",
     browseShop: "تصفح المتجر",
@@ -230,6 +276,16 @@ export const shopT: Record<Language, ShopStrings> = {
     equippedLabel: "مجهّز",
   },
   ru: {
+    luckySpin: "Lucky Spin",
+    luckySpinDesc: "Win coins or a power-up",
+    spinFor: (cost) => `Spin · ${cost} 🪙`,
+    spinFailed: "Spin failed — try again.",
+    youWon: (prize) => `You won ${prize}!`,
+    petShop: "Pet Shop",
+    petWear: "Wear",
+    petWearing: "Wearing",
+    petAccessoryEquipped: "Your pet looks great!",
+    petAccessoryRemoved: "Accessory removed.",
     trendingNow: "Trending now",
     featuredDrops: "Featured drops",
     browseShop: "Browse shop",

@@ -238,74 +238,76 @@ export const THEMES = [
   { id: 'esports', name: 'Esports RGB', preview: '⚡', colors: { bg: 'bg-gradient-to-br from-black via-gray-900 to-black', card: 'bg-gray-900', text: 'text-green-400', accent: 'green' }, cost: 350, dark: true },
 ];
 
-// --- SHOP: MYSTERY EGGS & CHESTS ---
-// Eggs and chests give students a gamified XP-sink + reward loop. Each
-// defines a cost, a description, and a random-drop payload range. The
-// client opens them via a dedicated RPC (open_mystery_egg) which rolls
-// the reward server-side so it can't be spoofed. Fallback for a missing
-// RPC: open_mystery_egg can be added in a later migration — until then
-// the UI surfaces the shop entries and the open action will just show
-// a coming-soon toast. No behavioural breakage.
-export const MYSTERY_EGGS = [
-  // 2026-04 rebalance (v2): maximum payout now >= cost so profit is
-  // possible.  Previously every egg had max payout < cost — mathematically
-  // impossible to profit, so the "gamble" was actually a tax.  Now
-  // students can sometimes profit, sometimes lose a little, plus the
-  // cosmetic rolls at the bigger eggs make them worth it regardless.
-  {
-    id: 'starter_egg',
-    name: 'Starter Egg',
-    emoji: '🥚',
-    desc: 'A simple egg. Drops 25-80 XP — roughly break-even.',
-    cost: 50,
-    rarity: 'common' as const,
-    minXp: 25, maxXp: 80,
-  },
-  {
-    id: 'golden_egg',
-    name: 'Golden Egg',
-    emoji: '🐣',
-    desc: 'Sparkles gold. Drops 80-220 XP + a chance of a rare avatar.',
-    cost: 150,
-    rarity: 'rare' as const,
-    minXp: 80, maxXp: 220,
-  },
-  {
-    id: 'dragon_egg',
-    name: 'Dragon Egg',
-    emoji: '🐉',
-    desc: 'Something mighty inside. Drops 200-550 XP.',
-    cost: 350,
-    rarity: 'epic' as const,
-    minXp: 200, maxXp: 550,
-  },
-  {
-    id: 'treasure_chest',
-    name: 'Treasure Chest',
-    emoji: '🎁',
-    desc: 'Premium loot. Drops 350-800 XP + guaranteed cosmetic.',
-    cost: 600,
-    rarity: 'legendary' as const,
-    minXp: 350, maxXp: 800,
-  },
-  {
-    id: 'cosmic_egg',
-    name: 'Cosmic Egg',
-    emoji: '🌟',
-    desc: 'Made of stardust. Drops 600-1400 XP + a premium title.',
-    cost: 1000,
-    rarity: 'legendary' as const,
-    minXp: 600, maxXp: 1400,
-  },
-  {
-    id: 'rainbow_egg',
-    name: 'Rainbow Egg',
-    emoji: '🌈',
-    desc: 'The rarest egg. Drops 1200-2600 XP + a random premium avatar.',
-    cost: 2000,
-    rarity: 'mythic' as const,
-    minXp: 1200, maxXp: 2600,
-  },
+// --- SHOP: LUCKY SPIN ---
+// Replaces the old Mystery Eggs.  The eggs' card copy promised cosmetic
+// drops ("chance of a rare avatar", "guaranteed cosmetic") that the
+// client never actually granted — every open just returned a little
+// coins, so the descriptions were misleading.  The Lucky Spin is the
+// honest version: a flat-cost gamble whose ENTIRE prize table is printed
+// on the card.  Every outcome is coins or a power-up the student can
+// really use — no fake cosmetic promises.  Prizes are weighted; expected
+// value sits a touch under cost so it stays a gamble (not a guaranteed
+// profit), but the power-up + jackpot rolls make a spin worthwhile.
+export const LUCKY_SPIN_COST = 100;
+
+export type SpinPrizeKind = 'coins' | 'power_up';
+export interface SpinPrize {
+  /** Stable id (used as the React key + reveal animation key). */
+  id: string;
+  kind: SpinPrizeKind;
+  /** Coin amount when kind==='coins', else a POWER_UP_DEFS id. */
+  value: number | string;
+  /** Relative odds — the card shows each prize's % so it's transparent. */
+  weight: number;
+  label: string;
+  emoji: string;
+}
+
+// Weights sum to 100 so the printed odds read as clean percentages.
+export const LUCKY_SPIN_PRIZES: SpinPrize[] = [
+  { id: 'coins_40',  kind: 'coins',    value: 40,              weight: 30, label: '40 coins',      emoji: '🪙' },
+  { id: 'coins_80',  kind: 'coins',    value: 80,              weight: 28, label: '80 coins',      emoji: '🪙' },
+  { id: 'coins_120', kind: 'coins',    value: 120,             weight: 18, label: '120 coins',     emoji: '💰' },
+  { id: 'pu_skip',   kind: 'power_up', value: 'skip',          weight: 8,  label: 'Skip Word',     emoji: '⏭️' },
+  { id: 'pu_5050',   kind: 'power_up', value: 'fifty_fifty',   weight: 7,  label: '50/50 power-up', emoji: '✂️' },
+  { id: 'pu_reveal', kind: 'power_up', value: 'reveal_letter', weight: 6,  label: 'Reveal Letter', emoji: '💡' },
+  { id: 'jackpot',   kind: 'coins',    value: 250,             weight: 3,  label: '250 coins!',    emoji: '🤑' },
+];
+
+// Roll a prize against the weights. Pure so it's easy to test.
+export const rollSpinPrize = (rng: () => number = Math.random): SpinPrize => {
+  const total = LUCKY_SPIN_PRIZES.reduce((s, p) => s + p.weight, 0);
+  let r = rng() * total;
+  for (const p of LUCKY_SPIN_PRIZES) {
+    if (r < p.weight) return p;
+    r -= p.weight;
+  }
+  return LUCKY_SPIN_PRIZES[0];
+};
+
+// --- SHOP: PET ACCESSORIES (Pet Shop) ---
+// Cosmetics for the dashboard companion pet — the shop's dedicated coin
+// sink that overlaps nothing else.  Bought with coins and owned forever:
+// persistence reuses the avatar unlock array with a `pet_` prefix (the
+// same trick frames/titles use), so a `pet_` id in unlockedAvatars means
+// "owned".  Which one is WORN is a per-device choice kept client-side
+// (see usePetAccessory) — equipping doesn't consume anything.  The worn
+// emoji renders as a little badge on the pet's evolution ring + card.
+export interface PetAccessory {
+  id: string;
+  name: string;
+  emoji: string;  // worn over the pet
+  cost: number;
+}
+export const PET_ACCESSORIES: PetAccessory[] = [
+  { id: 'party_hat', name: 'Party Hat',   emoji: '🎉', cost: 120 },
+  { id: 'cap',       name: 'Cool Cap',    emoji: '🧢', cost: 150 },
+  { id: 'top_hat',   name: 'Top Hat',     emoji: '🎩', cost: 160 },
+  { id: 'bow',       name: 'Ribbon Bow',  emoji: '🎀', cost: 170 },
+  { id: 'shades',    name: 'Sunglasses',  emoji: '🕶️', cost: 190 },
+  { id: 'grad_cap',  name: 'Grad Cap',    emoji: '🎓', cost: 220 },
+  { id: 'crown',     name: 'Royal Crown', emoji: '👑', cost: 320 },
+  { id: 'aura',      name: 'Star Aura',   emoji: '✨', cost: 360 },
 ];
 
 // --- SHOP: POWER-UPS & BOOSTERS ---
@@ -368,11 +370,16 @@ export const NAME_TITLES = [
 
 // --- RETENTION: PET EVOLUTION REWARDS ---
 // The dashboard PetCompanion evolves through XP thresholds (egg → dragon).
-// Each evolution is also a one-shot reward: the student either gets a
-// chunk of bonus XP or unlocks a special shop item tied to that stage.
-// Rewards are claimed on the dashboard when the student crosses the
-// threshold and persist in localStorage to prevent re-claim spam.
-export type PetRewardKind = 'xp' | 'unlock_avatar' | 'unlock_title' | 'unlock_frame';
+// Each evolution is also a one-shot reward.  As of the 2026 shop remake
+// these pay COINS, not free cosmetics: the old rewards handed out the
+// exact Gold Frame / Holographic Frame / "Living Legend" title / Unicorn
+// avatar the shop sells, which made those shop items feel worthless and
+// blurred earned-vs-bought.  Paying coins instead lets the pet FUND the
+// shop — the student still chooses what to spend them on.  (The
+// unlock_* kinds remain in the union for back-compat with the grant
+// plumbing, but no milestone uses them now.)  Coin grants route through
+// award_coins, which clamps a single grant at 200 — keep values ≤ 200.
+export type PetRewardKind = 'xp' | 'coins' | 'unlock_avatar' | 'unlock_title' | 'unlock_frame';
 export interface PetMilestone {
   stage: string;       // name of the evolution stage
   emoji: string;       // the pet emoji at this stage
@@ -385,14 +392,14 @@ export interface PetMilestone {
 }
 
 export const PET_MILESTONES: PetMilestone[] = [
-  { stage: 'Egg',       emoji: '🥚',  xpRequired: 0,    reward: { kind: 'xp',            value: 0,              label: 'Starting out' } },
-  { stage: 'Hatchling', emoji: '🐣',  xpRequired: 100,  reward: { kind: 'xp',            value: 50,             label: '+50 XP bonus' } },
-  { stage: 'Fox Kit',   emoji: '🦊',  xpRequired: 300,  reward: { kind: 'unlock_avatar', value: '🦊',            label: 'Free Fox avatar' } },
-  { stage: 'Eagle',     emoji: '🦅',  xpRequired: 700,  reward: { kind: 'xp',            value: 150,            label: '+150 XP bonus' } },
-  { stage: 'Dragon',    emoji: '🐉',  xpRequired: 1500, reward: { kind: 'unlock_frame',  value: 'gold',         label: 'Free Gold Frame' } },
-  { stage: 'Unicorn',   emoji: '🦄',  xpRequired: 3000, reward: { kind: 'unlock_title',  value: 'legend',       label: 'Free "Living Legend" title' } },
-  { stage: 'Mythic',    emoji: '🔮',  xpRequired: 6000, reward: { kind: 'unlock_avatar', value: '🦄',            label: 'Free Unicorn avatar' } },
-  { stage: 'Ascended',  emoji: '✨',  xpRequired: 12000, reward: { kind: 'unlock_frame', value: 'holographic',  label: 'Free Holographic Frame' } },
+  { stage: 'Egg',       emoji: '🥚',  xpRequired: 0,    reward: { kind: 'xp',    value: 0,   label: 'Starting out' } },
+  { stage: 'Hatchling', emoji: '🐣',  xpRequired: 100,  reward: { kind: 'coins', value: 50,  label: '+50 🪙' } },
+  { stage: 'Fox Kit',   emoji: '🦊',  xpRequired: 300,  reward: { kind: 'coins', value: 75,  label: '+75 🪙' } },
+  { stage: 'Eagle',     emoji: '🦅',  xpRequired: 700,  reward: { kind: 'coins', value: 100, label: '+100 🪙' } },
+  { stage: 'Dragon',    emoji: '🐉',  xpRequired: 1500, reward: { kind: 'coins', value: 125, label: '+125 🪙' } },
+  { stage: 'Unicorn',   emoji: '🦄',  xpRequired: 3000, reward: { kind: 'coins', value: 175, label: '+175 🪙' } },
+  { stage: 'Mythic',    emoji: '🔮',  xpRequired: 6000, reward: { kind: 'coins', value: 200, label: '+200 🪙' } },
+  { stage: 'Ascended',  emoji: '✨',  xpRequired: 12000, reward: { kind: 'coins', value: 200, label: '+200 🪙' } },
 ];
 
 // --- RETENTION: DAILY / WEEKLY / COMEBACK / LIMITED ---

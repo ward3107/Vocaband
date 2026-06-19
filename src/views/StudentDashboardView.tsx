@@ -12,8 +12,9 @@ import { useDueReviews } from "../hooks/useDueReviews";
 import ArcadeHubLayout from "../components/arcade/ArcadeHubLayout";
 import EvolutionRing from "../components/arcade/EvolutionRing";
 import OrbitalHub, { type OrbitItem } from "../components/arcade/OrbitalHub";
-import { getXpTitle, type PetRewardKind, type PetMilestone } from "../constants/game";
+import { getXpTitle, PET_ACCESSORIES, type PetRewardKind, type PetMilestone } from "../constants/game";
 import { claimPetMilestoneReward } from "../handlers/retentionGrants";
+import { usePetAccessory } from "../hooks/usePetAccessory";
 import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
@@ -66,6 +67,8 @@ interface StudentDashboardViewProps {
   onStartIdioms?: () => void;
   retention: RetentionState;
   onGrantXp: (amount: number, reason: string) => void;
+  /** Coin grant for pet-milestone claims (evolutions now pay coins). */
+  onGrantCoins: (amount: number, reason: string) => void;
   /** Server-authoritative badge XP claim (BadgesStrip arcade tiles).
    *  Routes through claim_badge_xp so re-claims are deduped in the DB.
    *  Resolves to whether the badge was already claimed, or null on
@@ -112,7 +115,7 @@ export default function StudentDashboardView({
   consentModal, exitConfirmModal, classSwitchModal, classNotFoundBanner,
   setView,
   setActiveAssignment, setAssignmentWords, setShowModeSelection,
-  retention, onGrantXp, onGrantReward, onApplyServerRewards,
+  retention, onGrantXp, onGrantCoins, onGrantReward, onApplyServerRewards,
   evolutionPending,
   onStartReview,
   onStartClassMinute,
@@ -166,6 +169,11 @@ export default function StudentDashboardView({
   // sheet, so the home page stays a clean hub (no long list scrolling
   // below the ring).
   const [tasksOpen, setTasksOpen] = React.useState(false);
+  // Pet Shop accessory the student has equipped — worn on the pet here.
+  const petAccessory = usePetAccessory(user.uid);
+  const petAccessoryEmoji = petAccessory.equipped
+    ? PET_ACCESSORIES.find(a => a.id === petAccessory.equipped)?.emoji ?? null
+    : null;
   const claimableStage = retention.claimablePetMilestone?.stage;
   React.useEffect(() => {
     if (claimableStage) setPetCardOpen(true);
@@ -175,7 +183,7 @@ export default function StudentDashboardView({
   // Grants the reward, then records the claim so it won't re-surface.
   const handleClaimMilestone = (milestone: PetMilestone | null) => {
     if (!milestone) return;
-    claimPetMilestoneReward(milestone, onGrantXp, onGrantReward, retention.claimPetMilestone);
+    claimPetMilestoneReward(milestone, onGrantXp, onGrantReward, retention.claimPetMilestone, onGrantCoins);
   };
 
   // Orbit circles either launch Play or open a destination. Tasks opens
@@ -238,6 +246,7 @@ export default function StudentDashboardView({
                 xp={xp}
                 evolutionPending={evolutionPending}
                 hasClaimable={!!retention.claimablePetMilestone}
+                accessoryEmoji={petAccessoryEmoji}
                 onTap={() => setPetCardOpen((v) => !v)}
               />
             }
@@ -315,6 +324,7 @@ export default function StudentDashboardView({
         currentStage={retention.currentPetStage}
         nextStage={retention.nextPetStage}
         claimableMilestone={retention.claimablePetMilestone}
+        accessoryEmoji={petAccessoryEmoji}
         onClaim={handleClaimMilestone}
       />
       <FloatingButtons

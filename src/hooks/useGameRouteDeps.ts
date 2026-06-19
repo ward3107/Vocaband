@@ -37,6 +37,7 @@ import { buildEmitScoreUpdate } from '../handlers/emitScoreUpdate';
 import { buildCleanupQuickPlayGuest } from '../handlers/sessionCleanups';
 import {
   grantRetentionXp,
+  grantRetentionCoins,
   grantNonXpReward,
   claimPetMilestoneReward,
 } from '../handlers/retentionGrants';
@@ -271,6 +272,7 @@ export function useGameRouteDeps(args: UseGameRouteDepsArgs): GameRoutesDeps {
       (v, r) => grantRetentionXp(v, r, { user, setXp, showToast }),
       (k, v) => grantNonXpReward(k, v, { user, setUser }),
       retention.claimPetMilestone,
+      (v, r) => grantRetentionCoins(v, r, { user, setCoins, showToast }),
     ),
     showModeIntro, hasChosenLanguage, setHasChosenLanguage, setTargetLanguage,
     gameDebug, gameMode, currentIndex, isFinished, feedback, isProcessingRef, currentWord,

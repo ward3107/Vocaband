@@ -29,6 +29,9 @@ interface EvolutionRingProps {
   xp: number;
   evolutionPending: boolean;
   hasClaimable?: boolean;
+  /** Emoji of the Pet Shop accessory the student has equipped, if any —
+   *  rendered as a small badge worn above the pet. */
+  accessoryEmoji?: string | null;
   /** Tap handler for the centre pet — opens the pet info/claim card.
    *  When omitted the pet renders non-interactive (its delight taps
    *  still play, but nothing opens). */
@@ -41,6 +44,7 @@ export default function EvolutionRing({
   xp,
   evolutionPending,
   hasClaimable,
+  accessoryEmoji,
   onTap,
 }: EvolutionRingProps) {
   const reduced = useReducedMotion();
@@ -88,6 +92,13 @@ export default function EvolutionRing({
           onTap={onTap}
         />
       </div>
+
+      {/* Equipped Pet Shop accessory — worn just above the pet's head. */}
+      {accessoryEmoji && (
+        <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 text-2xl drop-shadow-lg" aria-hidden>
+          {accessoryEmoji}
+        </div>
+      )}
 
       {/* Next-evolution preview — dashed + locked, kept inside the footprint. */}
       {nextStage && (

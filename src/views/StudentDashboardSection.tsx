@@ -9,6 +9,7 @@ import { LazyWrapper } from '../components/SuspenseWrapper';
 import { primeAudio } from '../utils/primeAudio';
 import {
   grantRetentionXp,
+  grantRetentionCoins,
   applyServerRewards,
   claimBadgeXp,
   grantNonXpReward,
@@ -163,6 +164,7 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
           luckyCharms: boosters.luckyCharms,
         }}
         onGrantXp={(amount, reason) => grantRetentionXp(amount, reason, { user, setXp, showToast })}
+        onGrantCoins={(amount, reason) => grantRetentionCoins(amount, reason, { user, setCoins, showToast })}
         onClaimBadgeXp={(badgeId, xp, reason) => claimBadgeXp(badgeId, xp, reason, { setXp, showToast })}
         evolutionPending={evolutionPending}
         onApplyServerRewards={({ xpToAdd, badgesToAppend }) =>
