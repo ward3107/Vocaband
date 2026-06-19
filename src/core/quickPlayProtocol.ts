@@ -1072,9 +1072,14 @@ export type QpArenaMapId = (typeof QP_ARENA_MAP_IDS)[number];
 /** Arena dimensions in LOGICAL units (not pixels) — every client maps
  *  logical → its own canvas size, so phones and the projector agree on
  *  where everything is regardless of screen. 10:7 fits both a landscape
- *  projector and a portrait phone with letterboxing. */
-export const QP_ARENA_WIDTH = 1000;
-export const QP_ARENA_HEIGHT = 700;
+ *  projector and a portrait phone with letterboxing. Enlarged from
+ *  1000×700 so a full class has real room to spread out and roam (the
+ *  student follow-camera shows a slice, so a bigger world reads as a
+ *  bigger map). The aspect stays 10:7; SELF_SPEED (client) and the grab
+ *  radius / visible-word defaults below scale with it so pace and
+ *  reachability are unchanged. */
+export const QP_ARENA_WIDTH = 1600;
+export const QP_ARENA_HEIGHT = 1120;
 
 /** Server snapshot tick (ms) — one room broadcast per tick, never
  *  per-move. ⚠️ Don't lower this (raise the rate) without re-running the
@@ -1089,13 +1094,16 @@ export const QP_ARENA_CLIENT_TICK_MS = 100;
  *  session cap because every extra mover multiplies snapshot bytes. */
 export const QP_ARENA_MAX_PLAYERS = 30;
 
-/** Default number of word tokens floating on the map at once. */
-export const QP_ARENA_DEFAULT_VISIBLE = 8;
+/** Default number of word tokens floating on the map at once. Bumped
+ *  with the larger world so the bigger map doesn't read as empty (still
+ *  within the server-side 3..15 clamp and the node budget). */
+export const QP_ARENA_DEFAULT_VISIBLE = 10;
 
 /** Default grab distance (logical units). Generous on purpose — the
  *  server's view of a phone's position lags up to one tick + network,
- *  so a tight radius punishes bad school Wi-Fi (design §8.2). */
-export const QP_ARENA_DEFAULT_GRAB_RADIUS = 60;
+ *  so a tight radius punishes bad school Wi-Fi (design §8.2). Scaled with
+ *  the larger world (was 60 at 1000×700) so grabbing stays just as easy. */
+export const QP_ARENA_DEFAULT_GRAB_RADIUS = 95;
 
 /** Cap on the pre-authored question batch a host can ship. */
 export const QP_ARENA_MAX_WORDS = 60;
