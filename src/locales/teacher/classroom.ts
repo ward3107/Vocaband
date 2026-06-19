@@ -158,6 +158,34 @@ export interface TeacherClassroomT {
   reportPdfSuccess: string;
   reportPdfFailed: string;
 
+  // ─── ClassReportModal — student filter + new chart shapes ──────
+  /** "All students" — the default option in the per-student dropdown. */
+  reportAllStudents: string;
+  reportFilterStudentAria: string;
+  /** Subtitle shown when a single student is selected. */
+  reportStudentSubtitle: (name: string) => string;
+  reportSummaryBest: string;
+  // Status-mix donut
+  reportStatusMixTitle: string;
+  reportStatusMixSubtitle: string;
+  // Score-band distribution
+  reportScoreBandsTitle: string;
+  reportScoreBandsSubtitle: string;
+  reportBandHigh: string;
+  reportBandMid: string;
+  reportBandLow: string;
+  reportBandStudentsAxis: string;
+  // Progress over time
+  reportProgressTitle: string;
+  reportProgressSubtitleClass: string;
+  reportProgressSubtitleStudent: string;
+  reportProgressEmpty: string;
+  // Per-mode breakdown
+  reportModesTitle: string;
+  reportModesSubtitle: string;
+  reportModesAxis: string;
+  reportModesEmpty: string;
+
   // ─── AdaptiveDrawer ────────────────────────────────────────────
   closeDetailsAria: string;
 }
@@ -287,6 +315,27 @@ export const teacherClassroomT: Record<Language, TeacherClassroomT> = {
     reportPdfSuccess: "Report exported",
     reportPdfFailed: "Report export failed — try again.",
 
+    reportAllStudents: "All students",
+    reportFilterStudentAria: "Filter report by student",
+    reportStudentSubtitle: (name) => `Individual report — ${name}`,
+    reportSummaryBest: "Best score",
+    reportStatusMixTitle: "Class status mix",
+    reportStatusMixSubtitle: "How the class splits across the three status bands",
+    reportScoreBandsTitle: "Score distribution",
+    reportScoreBandsSubtitle: "How many students fall in each score band",
+    reportBandHigh: "On track (80–100%)",
+    reportBandMid: "Watch (60–79%)",
+    reportBandLow: "Needs support (under 60%)",
+    reportBandStudentsAxis: "Students",
+    reportProgressTitle: "Progress over time",
+    reportProgressSubtitleClass: "Class average score, week by week",
+    reportProgressSubtitleStudent: "Average score, week by week",
+    reportProgressEmpty: "Not enough history yet — play across a few weeks to see a trend.",
+    reportModesTitle: "Performance by game mode",
+    reportModesSubtitle: "Average score in each mode — spot where the class struggles",
+    reportModesAxis: "Avg %",
+    reportModesEmpty: "No game modes played yet.",
+
     closeDetailsAria: "Close details",
   },
 
@@ -413,6 +462,27 @@ export const teacherClassroomT: Record<Language, TeacherClassroomT> = {
     reportPrintBtn: "הדפס",
     reportPdfSuccess: "הדוח יוצא",
     reportPdfFailed: "ייצוא הדוח נכשל — נסה שוב.",
+
+    reportAllStudents: "כל התלמידים",
+    reportFilterStudentAria: "סינון הדוח לפי תלמיד",
+    reportStudentSubtitle: (name) => `דוח אישי — ${name}`,
+    reportSummaryBest: "הציון הטוב ביותר",
+    reportStatusMixTitle: "תמהיל סטטוס הכיתה",
+    reportStatusMixSubtitle: "כיצד הכיתה מתחלקת בין שלושת מצבי הסטטוס",
+    reportScoreBandsTitle: "התפלגות ציונים",
+    reportScoreBandsSubtitle: "כמה תלמידים נמצאים בכל טווח ציונים",
+    reportBandHigh: "במסלול (80–100%)",
+    reportBandMid: "במעקב (60–79%)",
+    reportBandLow: "זקוק לתמיכה (מתחת ל-60%)",
+    reportBandStudentsAxis: "תלמידים",
+    reportProgressTitle: "התקדמות לאורך זמן",
+    reportProgressSubtitleClass: "ציון ממוצע כיתתי, שבוע אחר שבוע",
+    reportProgressSubtitleStudent: "ציון ממוצע, שבוע אחר שבוע",
+    reportProgressEmpty: "אין מספיק היסטוריה עדיין — שחקו לאורך כמה שבועות כדי לראות מגמה.",
+    reportModesTitle: "ביצועים לפי מצב משחק",
+    reportModesSubtitle: "ציון ממוצע בכל מצב — אתרו היכן הכיתה מתקשה",
+    reportModesAxis: "ממוצע %",
+    reportModesEmpty: "לא שוחקו מצבי משחק עדיין.",
 
     closeDetailsAria: "סגור פרטים",
   },
@@ -541,6 +611,27 @@ export const teacherClassroomT: Record<Language, TeacherClassroomT> = {
     reportPdfSuccess: "تم تصدير التقرير",
     reportPdfFailed: "فشل تصدير التقرير — حاول مرة أخرى.",
 
+    reportAllStudents: "كل الطلاب",
+    reportFilterStudentAria: "تصفية التقرير حسب الطالب",
+    reportStudentSubtitle: (name) => `تقرير فردي — ${name}`,
+    reportSummaryBest: "أفضل درجة",
+    reportStatusMixTitle: "توزيع حالة الفصل",
+    reportStatusMixSubtitle: "كيف ينقسم الفصل بين حالات الحالة الثلاث",
+    reportScoreBandsTitle: "توزيع الدرجات",
+    reportScoreBandsSubtitle: "عدد الطلاب في كل نطاق درجات",
+    reportBandHigh: "على المسار (80–100%)",
+    reportBandMid: "للمتابعة (60–79%)",
+    reportBandLow: "بحاجة لدعم (أقل من 60%)",
+    reportBandStudentsAxis: "الطلاب",
+    reportProgressTitle: "التقدم عبر الزمن",
+    reportProgressSubtitleClass: "متوسط درجة الفصل، أسبوعًا بأسبوع",
+    reportProgressSubtitleStudent: "متوسط الدرجة، أسبوعًا بأسبوع",
+    reportProgressEmpty: "لا يوجد سجل كافٍ بعد — العبوا عبر بضعة أسابيع لرؤية الاتجاه.",
+    reportModesTitle: "الأداء حسب نمط اللعبة",
+    reportModesSubtitle: "متوسط الدرجة في كل نمط — اكتشف أين يتعثر الفصل",
+    reportModesAxis: "المتوسط %",
+    reportModesEmpty: "لم تُلعب أنماط بعد.",
+
     closeDetailsAria: "إغلاق التفاصيل",
   },
 
@@ -667,6 +758,27 @@ export const teacherClassroomT: Record<Language, TeacherClassroomT> = {
     reportPrintBtn: "Print",
     reportPdfSuccess: "Report exported",
     reportPdfFailed: "Report export failed — try again.",
+
+    reportAllStudents: "All students",
+    reportFilterStudentAria: "Filter report by student",
+    reportStudentSubtitle: (name) => `Individual report — ${name}`,
+    reportSummaryBest: "Best score",
+    reportStatusMixTitle: "Class status mix",
+    reportStatusMixSubtitle: "How the class splits across the three status bands",
+    reportScoreBandsTitle: "Score distribution",
+    reportScoreBandsSubtitle: "How many students fall in each score band",
+    reportBandHigh: "On track (80–100%)",
+    reportBandMid: "Watch (60–79%)",
+    reportBandLow: "Needs support (under 60%)",
+    reportBandStudentsAxis: "Students",
+    reportProgressTitle: "Progress over time",
+    reportProgressSubtitleClass: "Class average score, week by week",
+    reportProgressSubtitleStudent: "Average score, week by week",
+    reportProgressEmpty: "Not enough history yet — play across a few weeks to see a trend.",
+    reportModesTitle: "Performance by game mode",
+    reportModesSubtitle: "Average score in each mode — spot where the class struggles",
+    reportModesAxis: "Avg %",
+    reportModesEmpty: "No game modes played yet.",
 
     closeDetailsAria: "Close details",
   },
