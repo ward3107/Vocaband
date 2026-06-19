@@ -3957,7 +3957,7 @@ async function startServer() {
         : QP_ARENA_DEFAULT_GRAB_RADIUS;
       const roundSeconds = isValidSpeedRoundSeconds(cfg.roundSeconds) ? cfg.roundSeconds : 10;
       const visibleWords = typeof cfg.visibleWords === "number" && isFinite(cfg.visibleWords)
-        ? Math.min(15, Math.max(3, Math.round(cfg.visibleWords)))
+        ? Math.min(20, Math.max(3, Math.round(cfg.visibleWords)))
         : QP_ARENA_DEFAULT_VISIBLE;
       // Themed background — only an id from the known set survives, so a
       // bogus value can never reach students or point at a missing asset.

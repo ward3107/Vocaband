@@ -488,7 +488,7 @@ export default function ArenaCanvas({
             <div
               className={`flex items-center justify-center rounded-full backdrop-blur-sm shadow-md ${
                 readOnly
-                  ? "w-9 h-9 sm:w-12 sm:h-12 text-lg sm:text-2xl"
+                  ? "w-11 h-11 sm:w-14 sm:h-14 text-xl sm:text-3xl"
                   : "w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg"
               } ${
                 isSelf
@@ -496,7 +496,7 @@ export default function ArenaCanvas({
                   : "bg-white/60 border border-white/80"
               }`}
             >
-              <QPAvatar value={p.avatar} iconSize={readOnly ? 22 : 13} className="text-indigo-600" />
+              <QPAvatar value={p.avatar} iconSize={readOnly ? 28 : 13} className="text-indigo-600" />
             </div>
             <span
               className={`mt-0.5 px-1.5 rounded-full bg-white/70 font-black text-stone-600 whitespace-nowrap truncate ${

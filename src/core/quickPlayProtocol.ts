@@ -1164,9 +1164,10 @@ export const QP_ARENA_CLIENT_TICK_MS = 100;
 export const QP_ARENA_MAX_PLAYERS = 30;
 
 /** Default number of word tokens floating on the map at once. Bumped
- *  with the larger world so the bigger map doesn't read as empty (still
- *  within the server-side 3..15 clamp and the node budget). */
-export const QP_ARENA_DEFAULT_VISIBLE = 10;
+ *  with the larger world so the bigger map doesn't read as empty and more
+ *  of the teacher's chosen list is on the board at once (server clamps to
+ *  3..20; the rest stay as reserves that respawn). */
+export const QP_ARENA_DEFAULT_VISIBLE = 14;
 
 /** Default grab distance (logical units). Generous on purpose — the
  *  server's view of a phone's position lags up to one tick + network,
