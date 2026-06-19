@@ -57,6 +57,8 @@ import {
   type QpArenaEndedPayload,
   type QpArenaPickupGonePayload,
   type QpArenaPickupSpawnPayload,
+  type QpArenaTackledPayload,
+  type QpRoughModePayload,
 } from "../core/quickPlayProtocol";
 
 const CLIENT_ID_STORAGE_KEY = "vocaband_qp_client_id";
@@ -320,11 +322,22 @@ export interface QuickPlaySocketApi {
    *  position fallback for the cross-VM range check. */
   requestGrab: (wordId: string, x: number, y: number) => void;
   /** Student: collect a scattered game element (Speed Boost / Bonus Star /
-   *  Double Points). x/y is the cross-VM range-check fallback, same as
-   *  requestGrab. Mud is never collected — it's a pure client speed effect. */
+   *  Double Points / Hurricane). x/y is the cross-VM range-check fallback,
+   *  same as requestGrab. All four kinds are collectible now. */
   sendArenaPickup: (pickupId: string, x: number, y: number) => void;
   /** Teacher: close the arena (back to the podium). */
   endArena: (token: string) => void;
+  /** Rough mode (dash-tackle PvP) — true while the teacher has it on. */
+  roughMode: boolean;
+  /** Teacher: toggle rough mode for the arena. */
+  setRoughMode: (enabled: boolean, token: string) => void;
+  /** Student: report a dash-tackle collision with another student. The server
+   *  validates rough-mode/range/team/cooldown; x/y is the cross-VM fallback. */
+  sendTackle: (targetClientId: string, x: number, y: number) => void;
+  /** Fires when a tackle landed (ARENA_TACKLED) — delivered to the whole room.
+   *  The victim's view (targetClientId === own clientId) applies the stun +
+   *  knockback; everyone spins the victim via the shared canvas ref. */
+  onTackled: (cb: (p: QpArenaTackledPayload) => void) => () => void;
   /** Student: fires when the server grants this client a word's lock —
    *  payload is buzzer-shaped; answer via submitSpeedAnswer. */
   onArenaGrabGranted: (cb: (p: QpArenaGrabGrantedPayload) => void) => () => void;
@@ -428,6 +441,8 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   const [currentRace, setCurrentRace] = useState<QpRaceRoundPayload | null>(null);
   const [currentSpeed, setCurrentSpeed] = useState<QpSpeedRoundPayload | null>(null);
   const [currentArena, setCurrentArena] = useState<QpArenaStatePayload | null>(null);
+  // Rough mode (dash-tackle PvP), driven by the ROUGH_MODE server signal.
+  const [roughMode, setRoughModeState] = useState(false);
 
   // Arena avatar positions — a ref on purpose (see QuickPlaySocketApi).
   // The 10/sec ARENA_SNAPSHOT stream writes here; the canvas RAF loop
@@ -449,6 +464,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     // eslint-disable-next-line react-hooks/set-state-in-effect -- clears stale board when the session changes; matches existing convention in this hook
     setLeaderboard([]);
     setTeamModeState(false);
+    setRoughModeState(false);
   }, [sessionCode]);
 
   const socketRef = useRef<Socket | null>(null);
@@ -477,6 +493,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   const arenaGrabGrantedRef = useRef<((p: QpArenaGrabGrantedPayload) => void) | null>(null);
   const arenaGrabDeniedRef = useRef<((p: QpArenaGrabDeniedPayload) => void) | null>(null);
   const arenaPickupRef = useRef<((p: QpArenaPickupGonePayload) => void) | null>(null);
+  const arenaTackledRef = useRef<((p: QpArenaTackledPayload) => void) | null>(null);
   const arenaEndedRef = useRef<((p: QpArenaEndedPayload) => void) | null>(null);
   const wheelQuestionRef = useRef<((p: QpWheelQuestionPayload) => void) | null>(null);
   const wheelAnswerRef = useRef<((p: QpWheelAnswerPayload) => void) | null>(null);
@@ -577,6 +594,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       const onSessionEnded = (p: QpSessionEndedPayload) => {
         setJoinedSessionCode(null);
         setTeamModeState(false);
+        setRoughModeState(false);
         myTeamRef.current = undefined;
         setCurrentRace(null);
         setCurrentSpeed(null);
@@ -686,6 +704,12 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         });
         arenaPickupRef.current?.(p);
       };
+      const onRoughMode = (p: QpRoughModePayload) => {
+        if (p?.sessionCode === sessionCode) setRoughModeState(!!p.enabled);
+      };
+      const onArenaTackled = (p: QpArenaTackledPayload) => {
+        if (p?.sessionCode === sessionCode) arenaTackledRef.current?.(p);
+      };
       const onArenaPickupSpawn = (p: QpArenaPickupSpawnPayload) => {
         if (p?.sessionCode !== sessionCode || !p.pickup) return;
         // Add the recycled consumable back (mirrors ARENA_WORD appending a
@@ -735,6 +759,8 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       socket.on(QP_SERVER_EVENTS.ARENA_GRAB_DENIED,  onArenaGrabDenied);
       socket.on(QP_SERVER_EVENTS.ARENA_PICKUP_GONE,  onArenaPickupGone);
       socket.on(QP_SERVER_EVENTS.ARENA_PICKUP_SPAWN, onArenaPickupSpawn);
+      socket.on(QP_SERVER_EVENTS.ARENA_TACKLED,      onArenaTackled);
+      socket.on(QP_SERVER_EVENTS.ROUGH_MODE,         onRoughMode);
       socket.on(QP_SERVER_EVENTS.ARENA_ENDED,        onArenaEnded);
       socket.on(QP_SERVER_EVENTS.WHEEL_QUESTION,     onWheelQuestion);
       socket.on(QP_SERVER_EVENTS.WHEEL_ANSWER,       onWheelAnswer);
@@ -765,6 +791,8 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         socket.off(QP_SERVER_EVENTS.ARENA_GRAB_DENIED,  onArenaGrabDenied);
         socket.off(QP_SERVER_EVENTS.ARENA_PICKUP_GONE,  onArenaPickupGone);
         socket.off(QP_SERVER_EVENTS.ARENA_PICKUP_SPAWN, onArenaPickupSpawn);
+        socket.off(QP_SERVER_EVENTS.ARENA_TACKLED,      onArenaTackled);
+        socket.off(QP_SERVER_EVENTS.ROUGH_MODE,         onRoughMode);
         socket.off(QP_SERVER_EVENTS.ARENA_ENDED,        onArenaEnded);
         socket.off(QP_SERVER_EVENTS.WHEEL_QUESTION,     onWheelQuestion);
         socket.off(QP_SERVER_EVENTS.WHEEL_ANSWER,       onWheelAnswer);
@@ -1095,6 +1123,23 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     socketRef.current.emit(QP_EVENTS.ARENA_END, { sessionCode, token });
   }, [sessionCode]);
 
+  // Teacher: toggle rough mode (dash-tackle PvP) for the arena.
+  const setRoughMode = useCallback((enabled: boolean, token: string) => {
+    if (!sessionCode || !socketRef.current) return;
+    socketRef.current.emit(QP_EVENTS.TEACHER_ROUGH_MODE, { sessionCode, token, enabled });
+  }, [sessionCode]);
+
+  // Student: report a dash-tackle collision. The server is the authority on
+  // whether it lands (rough-mode/range/team/cooldown); x/y is the cross-VM
+  // range-check fallback, same as requestGrab / sendArenaPickup.
+  const sendTackle = useCallback((targetClientId: string, x: number, y: number) => {
+    if (!sessionCode || !socketRef.current) return;
+    const id = readStoredClientId() ?? clientIdRef.current;
+    socketRef.current.emit(QP_EVENTS.ARENA_TACKLE, {
+      sessionCode, clientId: id, targetClientId, x: Math.round(x), y: Math.round(y),
+    });
+  }, [sessionCode]);
+
   const onArenaGrabGranted = useCallback((cb: (p: QpArenaGrabGrantedPayload) => void) => {
     arenaGrabGrantedRef.current = cb;
     return () => { arenaGrabGrantedRef.current = null; };
@@ -1108,6 +1153,11 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   const onArenaPickup = useCallback((cb: (p: QpArenaPickupGonePayload) => void) => {
     arenaPickupRef.current = cb;
     return () => { arenaPickupRef.current = null; };
+  }, []);
+
+  const onTackled = useCallback((cb: (p: QpArenaTackledPayload) => void) => {
+    arenaTackledRef.current = cb;
+    return () => { arenaTackledRef.current = null; };
   }, []);
 
   const onArenaEnded = useCallback((cb: (p: QpArenaEndedPayload) => void) => {
@@ -1159,6 +1209,10 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     requestGrab,
     sendArenaPickup,
     endArena,
+    roughMode,
+    setRoughMode,
+    sendTackle,
+    onTackled,
     onArenaGrabGranted,
     onArenaGrabDenied,
     onArenaPickup,

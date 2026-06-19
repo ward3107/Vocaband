@@ -116,6 +116,7 @@ interface ArenaStudentStrings {
   hudScore: string;
   deniedLocked: string; deniedRange: string; deniedCooldown: string; deniedGone: string;
   pickupSpeed: string; pickupDouble: string; pickupStar: string; pickupHurricane: string;
+  dash: string; tackled: string;
   arenaOverTitle: string; arenaOverSub: string;
   endedTitle: string; endedSub: string; backHome: string;
   yourScore: string;
@@ -134,6 +135,7 @@ export const ARENA_STUDENT_STRINGS: Record<"en" | "he" | "ar", ArenaStudentStrin
     deniedCooldown: "Catch your breath…", deniedGone: "That word is gone.",
     pickupSpeed: "⚡ Speed boost!", pickupDouble: "✌️ ×2 next answer!", pickupStar: "✨ Bonus points!",
     pickupHurricane: "🌀 Caught in a hurricane!",
+    dash: "Dash", tackled: "💥 Tackled!",
     arenaOverTitle: "Arena over!", arenaOverSub: "Waiting for the teacher…",
     endedTitle: "Game over!", endedSub: "Thanks for playing.", backHome: "Back to home",
     yourScore: "Your score",
@@ -150,6 +152,7 @@ export const ARENA_STUDENT_STRINGS: Record<"en" | "he" | "ar", ArenaStudentStrin
     deniedCooldown: "קחו נשימה…", deniedGone: "המילה הזו כבר נתפסה.",
     pickupSpeed: "⚡ מהירות על!", pickupDouble: "✌️ ×2 בתשובה הבאה!", pickupStar: "✨ נקודות בונוס!",
     pickupHurricane: "🌀 נתפסתם בהוריקן!",
+    dash: "זינוק", tackled: "💥 נחבטתם!",
     arenaOverTitle: "הזירה הסתיימה!", arenaOverSub: "ממתינים למורה…",
     endedTitle: "המשחק הסתיים!", endedSub: "תודה ששיחקתם.", backHome: "חזרה לבית",
     yourScore: "הניקוד שלך",
@@ -166,6 +169,7 @@ export const ARENA_STUDENT_STRINGS: Record<"en" | "he" | "ar", ArenaStudentStrin
     deniedCooldown: "التقط أنفاسك…", deniedGone: "هذه الكلمة اختفت.",
     pickupSpeed: "⚡ دفعة سرعة!", pickupDouble: "✌️ ×2 للإجابة التالية!", pickupStar: "✨ نقاط إضافية!",
     pickupHurricane: "🌀 وقعت في إعصار!",
+    dash: "اندفاع", tackled: "💥 تمت عرقلتك!",
     arenaOverTitle: "انتهت الساحة!", arenaOverSub: "في انتظار المعلم…",
     endedTitle: "انتهت اللعبة!", endedSub: "شكرًا للعب.", backHome: "العودة للرئيسية",
     yourScore: "نتيجتك",

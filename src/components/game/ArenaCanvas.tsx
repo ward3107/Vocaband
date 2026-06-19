@@ -21,6 +21,8 @@ import {
   QP_ARENA_WIDTH,
   QP_ARENA_HEIGHT,
   QP_ARENA_SPEED_BOOST_MULT,
+  QP_ARENA_DASH_SPEED_MULT,
+  QP_ARENA_TACKLE_RANGE,
   type QpArenaStatePayload,
   type QpArenaPickup,
   type QpStudentEntry,
@@ -88,6 +90,16 @@ interface ArenaCanvasProps {
    *  EVERYONE see a tackled student spinning (the dash-tackle is public). The
    *  parent writes here on ARENA_TACKLED; the RAF loop reads it per frame. */
   stunnedUntilRef?: RefObject<Map<string, number>>;
+  /** Dash (rough mode): epoch-ms timestamp until which the local avatar moves
+   *  faster (a lunge). The parent flips it on a Dash press; the canvas reads it
+   *  per frame so the burst decays without a re-render — same pattern as
+   *  speedBoostUntilRef. While it's active, contact with another student fires
+   *  onTackle. */
+  dashUntilRef?: RefObject<number>;
+  /** Fired during a dash when the local avatar comes within tackle range of
+   *  another student — at most once per dash per target. The parent sends the
+   *  tackle to the server (which is the authority on whether it lands). */
+  onTackle?: (targetClientId: string, x: number, y: number) => void;
   /** Host projector: no joystick, no prediction, no grabbing. */
   readOnly?: boolean;
   /** Buzzer open — freeze movement + sends (battery + focus). */
@@ -111,6 +123,7 @@ export default function ArenaCanvas({
   arena, positionsRef, leaderboard,
   selfClientId, inputRef, selfPosRef, onGrab,
   pickups = [], onPickupCollect, speedBoostUntilRef, hurricaneStunUntilRef, stunnedUntilRef,
+  dashUntilRef, onTackle,
   readOnly = false, isPaused = false, fill = false, zoom = 1, className = "",
 }: ArenaCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -156,6 +169,14 @@ export default function ArenaCanvas({
   // Consumables the local player already collected this approach — re-armed
   // after leaving radius × REARM_FACTOR, exactly like attemptedRef for words.
   const pickupAttemptedRef = useRef(new Set<string>());
+  // Dash-tackle plumbing. onTackleRef avoids restarting the RAF effect on each
+  // render; tackledThisDashRef holds the clientIds already reported during the
+  // CURRENT dash (cleared when the dash window ends) so one lunge fires at most
+  // one tackle per target — the server still has the final say.
+  const onTackleRef = useRef(onTackle);
+  useEffect(() => { onTackleRef.current = onTackle; }, [onTackle]);
+  const tackledThisDashRef = useRef(new Set<string>());
+  const dashWasActiveRef = useRef(false);
 
   // Roster: leaderboard (live, covers late joiners) unioned with the
   // ARENA_STATE positions (covers the instant before the first broadcast).
@@ -201,6 +222,9 @@ export default function ArenaCanvas({
       const dt = Math.min(0.1, (ts - lastTs) / 1000); // clamp tab-jank jumps
       lastTs = ts;
       const scale = scaleRef.current;
+      // Snapshot targets for other players — used both by dash-tackle contact
+      // detection (local block) and the remote-avatar easing (below).
+      const targetsForFrame = positionsRef.current;
 
       // Local avatar — client prediction from the joystick vector.
       if (!readOnly && selfClientId) {
@@ -216,12 +240,20 @@ export default function ArenaCanvas({
         // and the avatar visibly spins until the epoch-ms ref elapses. Checked
         // first so a stun overrides any joystick / tap-run during the window.
         const stunned = !!hurricaneStunUntilRef?.current && hurricaneStunUntilRef.current > Date.now();
-        // Effective speed = base × (Speed Boost active?). The boost decays via
-        // its epoch-ms ref — a pure client effect on the server-synced position.
+        // Effective speed = base × (Speed Boost active?) × (Dash active?). Both
+        // decay via their epoch-ms refs — pure client effects on the server-
+        // synced position.
+        const nowMs = Date.now();
         let speed = SELF_SPEED;
-        if (speedBoostUntilRef?.current && speedBoostUntilRef.current > Date.now()) {
+        if (speedBoostUntilRef?.current && speedBoostUntilRef.current > nowMs) {
           speed *= QP_ARENA_SPEED_BOOST_MULT;
         }
+        const dashing = !!dashUntilRef?.current && dashUntilRef.current > nowMs;
+        if (dashing) speed *= QP_ARENA_DASH_SPEED_MULT;
+        // When a dash ends, clear the per-dash tackle set so the next lunge can
+        // tackle the same target again.
+        if (!dashing && dashWasActiveRef.current) tackledThisDashRef.current.clear();
+        dashWasActiveRef.current = dashing;
         if (stunned) {
           setNavTarget(null); // a stun cancels any in-flight tap-run
         } else if (input && (input.dx !== 0 || input.dy !== 0)) {
@@ -297,10 +329,25 @@ export default function ArenaCanvas({
             pickupAttemptedRef.current.delete(pk.pickupId);
           }
         }
+
+        // Dash-tackle: while dashing, report contact with another student
+        // (within tackle range) at most once per dash per target. The SERVER
+        // decides whether it lands (rough-mode/team/range/cooldown) — this is
+        // only the "who did I run into" signal. We read the latest snapshot
+        // targets for other players' positions (same source the canvas eases).
+        if (dashing && onTackleRef.current && targetsForFrame) {
+          for (const [otherId, otherPos] of targetsForFrame) {
+            if (otherId === selfClientId || tackledThisDashRef.current.has(otherId)) continue;
+            if (Math.hypot(self.x - otherPos.x, self.y - otherPos.y) <= QP_ARENA_TACKLE_RANGE) {
+              tackledThisDashRef.current.add(otherId);
+              onTackleRef.current(otherId, self.x, self.y);
+            }
+          }
+        }
       }
 
       // Remote avatars — ease toward the latest snapshot target.
-      const targets = positionsRef.current;
+      const targets = targetsForFrame;
       if (targets) {
         for (const [clientId, target] of targets) {
           if (clientId === selfClientId) continue; // prediction owns self
@@ -323,7 +370,7 @@ export default function ArenaCanvas({
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [paused, readOnly, selfClientId, positionsRef, inputRef, selfPosRef, speedBoostUntilRef, hurricaneStunUntilRef, stunnedUntilRef, setNavTarget]);
+  }, [paused, readOnly, selfClientId, positionsRef, inputRef, selfPosRef, speedBoostUntilRef, hurricaneStunUntilRef, stunnedUntilRef, dashUntilRef, setNavTarget]);
 
   // Tap = grab when in range, otherwise run there (auto-grab on arrival).
   const handleWordTap = useCallback((wordId: string) => {

@@ -129,6 +129,8 @@ import {
   QP_ARENA_DEFAULT_GRAB_RADIUS,
   QP_ARENA_MAX_WORDS,
   QP_ARENA_GRAB_COOLDOWN_MS,
+  QP_ARENA_TACKLE_RANGE,
+  QP_ARENA_DASH_COOLDOWN_MS,
   QP_ARENA_BASE_POINTS,
   QP_ARENA_BONUS_MAX,
   QP_ARENA_MAP_IDS,
@@ -175,6 +177,9 @@ import {
   type QpArenaGrabGrantedPayload,
   type QpArenaGrabDeniedPayload,
   type QpArenaPickupGonePayload,
+  type QpArenaTacklePayload,
+  type QpArenaTackledPayload,
+  type QpTeacherRoughModePayload,
 } from "./src/core/quickPlayProtocol";
 import { containsProfanity } from "./src/utils/nicknameProfanity";
 import {
@@ -1927,6 +1932,12 @@ async function startServer() {
       // Pickup respawn timers — cleared on teardown so a recycled consumable
       // can't fire into a dead/replaced arena (same leak class as word timers).
       pickupRespawnTimers: Set<ReturnType<typeof setTimeout>>;
+      // Rough mode (dash-tackle PvP) — teacher-toggled, in-memory only (like
+      // teamMode). Default off; a tackle is rejected outright unless this is on.
+      roughMode: boolean;
+      // Per-dasher tackle cooldown (epoch ms) — server-side sanity so a
+      // tampered client can't chain-tackle faster than the dash cooldown.
+      tackleCooldownUntil: Map<string, number>;
     } | null;
   }
 
@@ -1977,6 +1988,13 @@ async function startServer() {
   // VM and must be refereed there. Carries the student's client-reported x/y
   // as the range-check fallback.
   const QP_ARENA_PICKUP_FANOUT = "qp:internal:arena-pickup";
+
+  // Cross-VM (server-to-server) event for a Word Hunt Arena TACKLE that landed
+  // on a VM which doesn't own the arena. The rough-mode flag, the teams, the
+  // tackle cooldown, and both students' last-known positions all live only on
+  // the owner VM, so the tackle must be refereed there. Carries the dasher's
+  // client-reported x/y as the range-check fallback (mirrors the pickup fanout).
+  const QP_ARENA_TACKLE_FANOUT = "qp:internal:arena-tackle";
 
   // Rate limiters — sized for a real classroom on a school's NAT'd
   // Wi-Fi where ALL students hit the server from one external IP.
@@ -2688,6 +2706,62 @@ async function startServer() {
     };
   }
 
+  /** Referee one dash-tackle against the arena THIS VM owns. Synchronous like
+   *  qpApplyArenaPickup — no score is ever touched, so the only state write is
+   *  the dasher's tackle cooldown. Validity gate (ALL must hold):
+   *    1. rough mode is ON for this arena (the master switch),
+   *    2. dasher ≠ target and both are tracked students,
+   *    3. the dasher is off their tackle cooldown (server-side anti-chain),
+   *    4. in TEAM mode, the target is on the OTHER team (no friendly fire),
+   *    5. the dasher is within tackle range of the target (server range-check,
+   *       preferring the owner's last-known positions; the dasher's reported
+   *       x/y is the cross-VM fallback, exactly like a grab/pickup).
+   *  Returns the ARENA_TACKLED payload to broadcast, or null when rejected. */
+  function qpApplyArenaTackle(
+    state: QpSessionState,
+    args: { clientId: string; targetClientId: string; x?: unknown; y?: unknown },
+  ): QpArenaTackledPayload | null {
+    const arena = state.currentArena;
+    if (!arena) return null;
+    if (!arena.roughMode) return null; // master switch — tackles only when rough
+    if (args.clientId === args.targetClientId) return null; // can't tackle yourself
+
+    const dasher = state.students.get(args.clientId);
+    const target = state.students.get(args.targetClientId);
+    if (!dasher || !target) return null; // both must be real students
+
+    const now = Date.now();
+    if ((arena.tackleCooldownUntil.get(args.clientId) ?? 0) > now) return null; // anti-chain
+
+    // Team mode: friendly fire is off — only the opposite team can be tackled.
+    // Both teams must be known; an unstamped student (mid-assign) is skipped.
+    if (state.teamMode) {
+      if (!dasher.team || !target.team || dasher.team === target.team) return null;
+    }
+
+    // Range check — prefer the owner's last-known positions (the move stream);
+    // fall back to the dasher's client-reported x/y for the cross-VM path. The
+    // target has no fallback (we only ever range-check against the dasher's
+    // claim), so an untracked target on this VM can't be tackled cross-VM —
+    // acceptable: it just means "get the dasher's moves flowing first".
+    const targetPos = arena.positions.get(args.targetClientId);
+    if (!targetPos) return null;
+    const dasherPos = arena.positions.get(args.clientId);
+    const dx = dasherPos ? dasherPos.x : (typeof args.x === "number" && isFinite(args.x) ? args.x : null);
+    const dy = dasherPos ? dasherPos.y : (typeof args.y === "number" && isFinite(args.y) ? args.y : null);
+    if (dx === null || dy === null) return null;
+    if (Math.hypot(dx - targetPos.x, dy - targetPos.y) > QP_ARENA_TACKLE_RANGE) return null;
+
+    // Valid — stamp the dasher's cooldown (anti-chain) and broadcast. NO score
+    // change ever: a tackle only stuns the target client-side.
+    arena.tackleCooldownUntil.set(args.clientId, now + QP_ARENA_DASH_COOLDOWN_MS);
+    return {
+      sessionCode: state.sessionCode,
+      byClientId: args.clientId,
+      targetClientId: args.targetClientId,
+    };
+  }
+
   // Cross-VM Word Hunt Arena grab (see QP_ARENA_GRAB_FANOUT). Fires on every
   // VM; only the one that owns the arena referees. Mirrors the speed fanout.
   qpIo.on(QP_ARENA_GRAB_FANOUT, (data: {
@@ -2717,7 +2791,7 @@ async function startServer() {
   // every VM; only the one that owns the arena referees. On a successful
   // collect the gone event is broadcast to the WHOLE room (so every client
   // drops the medallion + the collector applies the effect). A failed collect
-  // (range/already-taken/mud) is silently dropped — the medallion just stays.
+  // (range/already-taken) is silently dropped — the medallion just stays.
   qpIo.on(QP_ARENA_PICKUP_FANOUT, (data: {
     sessionCode: string; pickupId: string; clientId: string;
     socketId: string; x?: number; y?: number;
@@ -2736,6 +2810,32 @@ async function startServer() {
       }
     } catch (err) {
       console.warn("[QP ARENA pickup xvm] handler threw", err);
+    }
+  });
+
+  // Cross-VM Word Hunt Arena tackle (see QP_ARENA_TACKLE_FANOUT). Fires on
+  // every VM; only the owner referees. A valid tackle broadcasts ARENA_TACKLED
+  // to the WHOLE room (every client spins the victim, the victim self-stuns +
+  // knocks back). A rejected tackle (rough off / range / friendly fire /
+  // cooldown) is silently dropped — same discipline as the pickup fanout.
+  qpIo.on(QP_ARENA_TACKLE_FANOUT, (data: {
+    sessionCode: string; clientId: string; targetClientId: string;
+    x?: number; y?: number;
+  }) => {
+    try {
+      if (!data || typeof data !== "object") return;
+      if (!isValidClientId(data.clientId) || !isValidClientId(data.targetClientId)) return;
+      const state = qpSessions.get(data.sessionCode);
+      if (!state?.currentArena) return; // not the owner
+      const tackled = qpApplyArenaTackle(state, {
+        clientId: data.clientId, targetClientId: data.targetClientId, x: data.x, y: data.y,
+      });
+      if (tackled) {
+        qpIo.to(data.sessionCode).emit(QP_SERVER_EVENTS.ARENA_TACKLED, tackled);
+        console.log(`[QP ARENA tackle xvm] session=${data.sessionCode} by=${data.clientId.slice(0, 8)} target=${data.targetClientId.slice(0, 8)}`);
+      }
+    } catch (err) {
+      console.warn("[QP ARENA tackle xvm] handler threw", err);
     }
   });
 
@@ -3911,8 +4011,10 @@ async function startServer() {
       if (!verify.ok) return qpEmitError(socket, QP_EVENTS.ARENA_START, verify.reason, "access denied");
 
       const state = qpGetOrCreateSession(sessionCode);
-      // Replacing a previous arena: stop its tick + word timers first so a
-      // stale fumble timer can't release a word into the new arena.
+      // Replacing a previous arena: remember its rough-mode flag (so auto-play
+      // restarts keep the teacher's choice), then stop its tick + word timers
+      // so a stale fumble timer can't release a word into the new arena.
+      const prevRoughMode = state.currentArena?.roughMode ?? false;
       qpClearArena(state);
 
       const cfg = payload.config && typeof payload.config === "object" ? payload.config : {};
@@ -3978,8 +4080,18 @@ async function startServer() {
         pickups,
         doubleNext: new Set(),
         pickupRespawnTimers: new Set(),
+        // Carry the teacher's rough-mode choice across auto-play restarts (the
+        // previous arena was just cleared above) so they don't have to re-toggle
+        // it every hunt — same intent as teamMode persisting on the session.
+        roughMode: prevRoughMode,
+        tackleCooldownUntil: new Map(),
       };
       state.currentArena = arena;
+      // Re-announce rough mode so a student who joined between hunts (or whose
+      // ROUGH_MODE broadcast was missed) sees the Dash button on the new arena.
+      if (prevRoughMode) {
+        qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ROUGH_MODE, { sessionCode, enabled: true });
+      }
 
       // Snapshot tick — ONE compact room broadcast per tick of everyone who
       // moved, never a per-move relay. Idle arena (nobody moving for >1s)
@@ -4129,6 +4241,65 @@ async function startServer() {
         x: typeof payload.x === "number" ? payload.x : undefined,
         y: typeof payload.y === "number" ? payload.y : undefined,
       });
+    });
+
+    // ─── Word Hunt Arena: dash-tackle PvP ──────────────────────────────
+    // A dashing student reports a collision with another student. The server
+    // is the sole authority (rough-mode on, range, team, cooldown — see
+    // qpApplyArenaTackle); NO score ever changes. On a valid tackle the
+    // ARENA_TACKLED broadcast goes to the WHOLE room so every client spins the
+    // victim and the victim self-stuns + knocks back.
+    socket.on(QP_EVENTS.ARENA_TACKLE, (payload: QpArenaTacklePayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, clientId, targetClientId } = payload;
+      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) return;
+      if (!isValidClientId(targetClientId)) return;
+      if (!qpScoreLimiter.checkLimit(socket.id)) return;
+
+      const state = qpSessions.get(sessionCode);
+      if (state?.currentArena) {
+        const tackled = qpApplyArenaTackle(state, { clientId, targetClientId, x: payload.x, y: payload.y });
+        if (tackled) {
+          qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ARENA_TACKLED, tackled);
+          console.log(`[QP ARENA tackle] session=${sessionCode} by=${clientId.slice(0, 8)} target=${targetClientId.slice(0, 8)}`);
+        }
+        return;
+      }
+
+      // No local arena — fan the tackle out so the owner VM can referee it
+      // (same pattern as ARENA_PICKUP's fanout).
+      if (redisAdapterStatus !== "attached") return;
+      qpIo.serverSideEmit(QP_ARENA_TACKLE_FANOUT, {
+        sessionCode, clientId, targetClientId,
+        x: typeof payload.x === "number" ? payload.x : undefined,
+        y: typeof payload.y === "number" ? payload.y : undefined,
+      });
+    });
+
+    // ─── Word Hunt Arena: teacher toggles rough mode (dash-tackle PvP) ──
+    // In-memory flag on the arena, validated by the teacher token exactly like
+    // TEACHER_TEAM_MODE. Default off; students gate the Dash button on the
+    // ROUGH_MODE broadcast.
+    socket.on(QP_EVENTS.TEACHER_ROUGH_MODE, async (payload: QpTeacherRoughModePayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, token, enabled } = payload;
+      if (!isValidSessionCode(sessionCode) || typeof enabled !== "boolean") {
+        return qpEmitError(socket, QP_EVENTS.TEACHER_ROUGH_MODE, "invalid_payload", "bad payload");
+      }
+      if (!qpTeacherLimiter.checkLimit(socket.id)) {
+        return qpEmitError(socket, QP_EVENTS.TEACHER_ROUGH_MODE, "rate_limited", "too many teacher actions");
+      }
+      const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
+      if (!verify.ok) return qpEmitError(socket, QP_EVENTS.TEACHER_ROUGH_MODE, verify.reason, "access denied");
+
+      const state = qpSessions.get(sessionCode);
+      if (!state?.currentArena) return; // rough mode only means something with a live arena
+      state.currentArena.roughMode = enabled;
+      // Clearing rough mode wipes pending tackle cooldowns so re-enabling later
+      // doesn't carry a stale block (and tidies the map for the GC).
+      if (!enabled) state.currentArena.tackleCooldownUntil.clear();
+      console.log(`[QP ROUGH_MODE] session=${sessionCode} enabled=${enabled}`);
+      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ROUGH_MODE, { sessionCode, enabled });
     });
 
     // ─── Word Hunt Arena: teacher ends the arena ───────────────────────
