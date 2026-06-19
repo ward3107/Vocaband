@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useMotionValue, useDragControls } from 'motion/react';
 import {
   X, Copy, Users, BookOpen, LogOut, Volume2, VolumeX,
   Palette, SkipForward, SkipBack, Play, Pause,
-  Share2, Check, ShieldAlert, Crown, Medal, Sparkles, Flame, Zap, ZapOff, Plus
+  Share2, Check, ShieldAlert, Crown, Medal, Sparkles, Flame, Zap, ZapOff, Plus, GripVertical
 } from 'lucide-react';
 import { getXpTitle } from '../constants/game';
+import { MUSIC_TRACKS, getMusicUrl } from './music/musicTracks';
 import { Howl } from 'howler';
 import { QRCodeSVG } from 'qrcode.react';
 import { Word } from '../data/vocabulary';
@@ -132,31 +133,8 @@ const THEMES = {
 
 type ThemeKey = keyof typeof THEMES;
 
-// ─── Music tracks (instrumental background loops in public/music/) ─────────────
-const MUSIC_TRACKS = [
-  { name: 'Steady Focus', icon: '🎯', file: 'bgm-steady-focus' },
-  { name: 'Upbeat Energy', icon: '⚡', file: 'bgm-upbeat-energy' },
-  { name: 'Chill Vibes', icon: '🌊', file: 'bgm-chill-vibes' },
-  { name: 'Adventure Quest', icon: '🗺️', file: 'bgm-adventure-quest' },
-  { name: 'Funky Groove', icon: '🎸', file: 'bgm-funky-groove' },
-  { name: 'Space Explorer', icon: '🚀', file: 'bgm-space-explorer' },
-  { name: 'Victory March', icon: '🏆', file: 'bgm-victory-march' },
-  { name: 'Steady Gains', icon: '📈', file: 'bgm-steady-gains' },
-  { name: 'Clear The Lane', icon: '🏀', file: 'bgm-clear-the-lane' },
-  { name: 'Watch It Ignite', icon: '🔥', file: 'bgm-watch-it-ignite' },
-  { name: 'Victory Lap', icon: '🏁', file: 'bgm-victory-lap' },
-  { name: 'Kinetic Lock', icon: '🔒', file: 'bgm-kinetic-lock' },
-];
-
-const getMusicUrl = (file: string): string => {
-  // Always serve from the same-origin /game-music/ path. The Cloudflare
-  // R2 alias at audio.vocaband.com only carries word-pronunciation
-  // buckets (sound/, sound-hebrew/, motivational/) — game-music files
-  // 404 there, so routing through the CDN env var silently broke the
-  // teacher monitor music toggle in production. Files live in
-  // public/game-music/ and the Worker serves them directly.
-  return `/game-music/${file}.mp3`;
-};
+// Music tracks + URL helper now live in the shared pool (src/components/music/
+// musicTracks.ts) so adding a track lights it up in every live game at once.
 
 // ─── Podium helpers ───────────────────────────────────────────────────────────
 
@@ -787,6 +765,11 @@ export default function QuickPlayMonitor({
   });
   const musicRef = useRef<Howl | null>(null);
 
+  // Draggable music player: teacher can grab it and move it anywhere so it
+  // never covers the leaderboard. Offset from its in-header anchor, persisted.
+  const musicX = useMotionValue<number>((() => { try { return parseFloat(localStorage.getItem('vocaband-music-x') || '0') || 0; } catch { return 0; } })());
+  const musicY = useMotionValue<number>((() => { try { return parseFloat(localStorage.getItem('vocaband-music-y') || '0') || 0; } catch { return 0; } })());
+  const musicDragControls = useDragControls();
 
   // Reset position when modal opens
   useEffect(() => {
@@ -1485,10 +1468,34 @@ export default function QuickPlayMonitor({
             </div>
           </div>
         </div>
-        {/* Bottom row: music player (own line on mobile) */}
-        <div className={`flex items-center mt-2 gap-2 w-full rounded-xl px-3 py-2 ${
+        {/* Bottom row: music player (own line on mobile). Draggable via the
+            grip handle so the teacher can park it anywhere; only the handle
+            starts a drag (dragListener=false) so the volume slider and
+            transport buttons keep working normally. */}
+        <motion.div
+          drag
+          dragControls={musicDragControls}
+          dragListener={false}
+          dragMomentum={false}
+          style={{ x: musicX, y: musicY }}
+          onDragEnd={() => {
+            try {
+              localStorage.setItem('vocaband-music-x', String(musicX.get()));
+              localStorage.setItem('vocaband-music-y', String(musicY.get()));
+            } catch { /* storage blocked */ }
+          }}
+          className={`flex items-center mt-2 gap-2 w-full rounded-xl px-3 py-2 ${
           theme === 'neon' || theme === 'forest' || theme === 'galaxy' ? 'bg-white/10' : 'bg-[var(--vb-surface-alt)]'
         }`}>
+          {/* Drag handle */}
+          <div
+            onPointerDown={e => musicDragControls.start(e)}
+            className={`cursor-grab active:cursor-grabbing shrink-0 ${t.headerText} opacity-40 hover:opacity-80 transition-opacity`}
+            title="Drag to move the music player"
+            style={{ touchAction: 'none' }}
+          >
+            <GripVertical size={16} />
+          </div>
           {/* Now playing info */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <span className="text-lg shrink-0">{MUSIC_TRACKS[currentTrack].icon}</span>
@@ -1547,7 +1554,7 @@ export default function QuickPlayMonitor({
               title={`Volume: ${Math.round(musicVolume * 100)}% — scroll to adjust`}
             />
           </div>
-        </div>
+        </motion.div>
       </header>
 
       {/* ─── Main content ──────────────────────────────────────────────────── */}

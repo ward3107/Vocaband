@@ -23,6 +23,7 @@ import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
 import SvgSpinner from '../components/svg/SvgSpinner';
+import DraggableMusicPlayer from '../components/music/DraggableMusicPlayer';
 import { hasTeacherAccess, type AppUser, type ClassData, type AssignmentData } from '../core/supabase';
 import type { VocaId } from '../core/subject';
 import type { View } from '../core/views';
@@ -170,6 +171,7 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
       : undefined;
     return (
       <LazyWrapper loadingMessage="Loading Hot Seat…">
+        <DraggableMusicPlayer storageKey="hot-seat" />
         <HotSeatView
           onExit={() => setView(wizardBackOrDashboard())}
           speak={speakWord}
@@ -208,6 +210,7 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
       : undefined;
     return (
       <LazyWrapper loadingMessage="Loading Vocab Wheel…">
+        <DraggableMusicPlayer storageKey="wheel" />
         <WheelView
           onExit={() => setView(wizardBackOrDashboard())}
           speak={speakWord}
