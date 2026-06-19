@@ -28,6 +28,8 @@ import { renderTeacherLiveScreens, type RenderTeacherLiveScreensDeps } from "./T
 import { isStudentHubView, type StudentDashboardSectionDeps } from "./StudentDashboardSection";
 import { renderMiscViews, type RenderMiscViewsDeps } from "./MiscViewSections";
 import { GameRoute } from "./GameRoutes";
+import GameMusicPlayer from "../components/game/GameMusicPlayer";
+import { useLanguage } from "../hooks/useLanguage";
 import { GameRouteProvider, type GameRoutesDeps } from "./GameRouteContext";
 import { renderStudentAuthRoute, type StudentAuthRoutesDeps } from "./StudentAuthRoutes";
 import { renderPrivacySettingsSection } from "./PrivacySettingsSection";
@@ -88,6 +90,14 @@ export type AppViewRouterProps =
   };
 
 export function AppViewRouter(props: AppViewRouterProps) {
+  // Background-music dock for the live games that host their own multi-phase
+  // screens (Hot Seat, Wheel, Class Show, Live Challenge). Mounted HERE — at
+  // the stable router level keyed on `view` — rather than inside each view, so
+  // it survives the view's internal phase changes (setup → play → podium)
+  // without the Howl remounting and cutting the music. Arena / Category Race /
+  // Speed Round render their own GameMusicPlayer internally, and the Quick
+  // Play monitor has its own inline player, so they are deliberately excluded.
+  const { language } = useLanguage();
   const {
     loading, quickPlaySessionParam,
     view, setView, user, setUser,
@@ -280,7 +290,12 @@ export function AppViewRouter(props: AppViewRouterProps) {
     translateWord, translateWordsBatch,
     onPickerOcrUpload, showToast,
   });
-  if (classShowOrWorksheet) return classShowOrWorksheet;
+  if (classShowOrWorksheet) return (
+    <>
+      {view === "class-show" && <GameMusicPlayer language={language} floating />}
+      {classShowOrWorksheet}
+    </>
+  );
 
   const teacherLiveScreen = renderTeacherLiveScreens({
     view, user, selectedClass, setView, setIsLiveChallenge,
@@ -290,7 +305,12 @@ export function AppViewRouter(props: AppViewRouterProps) {
     setQuickPlayCustomWords, setQuickPlayAddingCustom, setQuickPlayTranslating,
     cleanupSessionData, showToast,
   });
-  if (teacherLiveScreen) return teacherLiveScreen;
+  if (teacherLiveScreen) return (
+    <>
+      {view === "live-challenge" && <GameMusicPlayer language={language} floating />}
+      {teacherLiveScreen}
+    </>
+  );
 
   // Remaining smaller view branches (shop / voca-picker / hot-seat /
   // vocabagrut / global-leaderboard / teacher-approvals / worksheet-
@@ -308,7 +328,12 @@ export function AppViewRouter(props: AppViewRouterProps) {
     allScores, classStudents, selectedWords, setSelectedWords,
     expandedStudent, setExpandedStudent, socket,
   });
-  if (miscView) return miscView;
+  if (miscView) return (
+    <>
+      {(view === "hot-seat" || view === "wheel") && <GameMusicPlayer language={language} floating />}
+      {miscView}
+    </>
+  );
 
   // Single "Classroom" entry point now wraps Analytics + Gradebook under
   // a tabbed UI (Pulse / Mastery / Records). Legacy /analytics and

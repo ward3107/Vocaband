@@ -10,7 +10,6 @@ import { type ReactNode } from 'react';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
-import DraggableMusicPlayer from '../components/music/DraggableMusicPlayer';
 import type { AppUser, ClassData } from '../core/supabase';
 import type { LeaderboardEntry } from '../core/types';
 import type { Word } from '../data/vocabulary';
@@ -101,24 +100,21 @@ export function renderTeacherLiveScreens(deps: RenderTeacherLiveScreensDeps): Re
       );
     }
     return (
-      <>
-        <DraggableMusicPlayer storageKey="live-challenge" />
-        <LazyWrapper
-          loadingMessage="Loading live challenge..."
-          fallback={reconnectingFallback(
-            'The challenge hit a hiccup. Students stay connected — pick the class again to resume.',
-            () => { setIsLiveChallenge(false); setView('teacher-dashboard'); },
-          )}
-        >
-          <LiveChallengeView
-            selectedClass={selectedClass}
-            leaderboard={leaderboard}
-            socketConnected={socketConnected}
-            setView={setView}
-            setIsLiveChallenge={setIsLiveChallenge}
-          />
-        </LazyWrapper>
-      </>
+      <LazyWrapper
+        loadingMessage="Loading live challenge..."
+        fallback={reconnectingFallback(
+          'The challenge hit a hiccup. Students stay connected — pick the class again to resume.',
+          () => { setIsLiveChallenge(false); setView('teacher-dashboard'); },
+        )}
+      >
+        <LiveChallengeView
+          selectedClass={selectedClass}
+          leaderboard={leaderboard}
+          socketConnected={socketConnected}
+          setView={setView}
+          setIsLiveChallenge={setIsLiveChallenge}
+        />
+      </LazyWrapper>
     );
   }
 
@@ -149,21 +145,18 @@ export function renderTeacherLiveScreens(deps: RenderTeacherLiveScreensDeps): Re
       return null;
     }
     return (
-      <>
-        <DraggableMusicPlayer storageKey="speed-round" />
-        <LazyWrapper
-          loadingMessage="Loading Speed Round..."
-          fallback={reconnectingFallback(
-            'Speed Round hit a hiccup. Your session is safe — return to the dashboard and start it again.',
-            () => setView('teacher-dashboard'),
-          )}
-        >
-          <SpeedRoundHostView
-            sessionCode={quickPlayActiveSession.sessionCode}
-            setView={setView}
-          />
-        </LazyWrapper>
-      </>
+      <LazyWrapper
+        loadingMessage="Loading Speed Round..."
+        fallback={reconnectingFallback(
+          'Speed Round hit a hiccup. Your session is safe — return to the dashboard and start it again.',
+          () => setView('teacher-dashboard'),
+        )}
+      >
+        <SpeedRoundHostView
+          sessionCode={quickPlayActiveSession.sessionCode}
+          setView={setView}
+        />
+      </LazyWrapper>
     );
   }
 

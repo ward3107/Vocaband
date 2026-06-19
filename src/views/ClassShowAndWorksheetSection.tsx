@@ -11,7 +11,6 @@ import { type ReactNode } from 'react';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
-import DraggableMusicPlayer from '../components/music/DraggableMusicPlayer';
 import type { Word } from '../data/vocabulary';
 import type { AppUser, ClassData } from '../core/supabase';
 import type { VocaId } from '../core/subject';
@@ -111,7 +110,6 @@ export function renderClassShowOrWorksheet(deps: ClassShowAndWorksheetSectionDep
 
     return (
       <LazyWrapper loadingMessage="Loading class show…">
-        <DraggableMusicPlayer storageKey="class-show" />
         <ClassShowView
           user={user}
           initialSources={buildSourcesFromAssignment(classShowAssignment, allWords)}
