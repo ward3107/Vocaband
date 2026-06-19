@@ -47,12 +47,14 @@ async function dismissModals(page: PWPage) {
   }
 }
 
-async function shot(page: PWPage, name: string) {
+async function shot(page: PWPage, name: string, fullPage = true) {
   // Let lazy content + images settle, then clear any overlay before capturing.
   await page.waitForTimeout(1000);
   await dismissModals(page);
   await page.waitForTimeout(400);
-  await page.screenshot({ path: path.join(SHOT_DIR, `${name}.png`), fullPage: true });
+  // Fixed-position overlays (the Tasks page) don't tile under Playwright's
+  // full-page stitch, so capture those as a plain viewport shot instead.
+  await page.screenshot({ path: path.join(SHOT_DIR, `${name}.png`), fullPage });
 }
 
 test.describe('Student-side screenshot tour', () => {
@@ -63,7 +65,7 @@ test.describe('Student-side screenshot tour', () => {
     await shot(page, '01-student-dashboard');
 
     // Helper: from the dashboard, open an orbit destination and screenshot it.
-    const captureOrbit = async (label: string, name: string) => {
+    const captureOrbit = async (label: string, name: string, fullPage = true) => {
       await page.goto('/', { waitUntil: 'domcontentloaded' });
       await waitForAppLoad(page);
       const btn = page.getByLabel(label).first();
@@ -74,15 +76,16 @@ test.describe('Student-side screenshot tour', () => {
       if (await btn.count()) {
         await btn.click({ force: true });
         await page.waitForTimeout(900);
-        await shot(page, name);
+        await shot(page, name, fullPage);
       }
     };
 
-    // 2. Daily (chest / weekly / missions / boosts / badges)
-    await captureOrbit('Daily', '02-student-daily');
+    // 2. Tasks (assignment list — now its own page behind the Tasks circle).
+    //    Viewport shot: it's a fixed overlay, not part of the page flow.
+    await captureOrbit('Tasks', '02-student-tasks', false);
 
-    // 3. Practice (review / class-minute / idioms)
-    await captureOrbit('Practice', '03-student-practice');
+    // 3. Daily (chest / weekly / missions / boosts / badges)
+    await captureOrbit('Daily', '03-student-daily');
 
     // 4. Shop (arcade lobby)
     await page.goto('/shop', { waitUntil: 'domcontentloaded' });

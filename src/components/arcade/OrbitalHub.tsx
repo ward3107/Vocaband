@@ -29,7 +29,6 @@ export type OrbitKey =
   | "tasks"
   | "shop"
   | "leaderboard"
-  | "practice"
   | "daily";
 
 export interface OrbitItem {
@@ -53,15 +52,14 @@ const CATALOGUE: Record<OrbitKey, { emoji: string; gradient: string }> = {
   tasks: { emoji: "📋", gradient: "bg-gradient-to-br from-emerald-400 to-teal-500" },
   shop: { emoji: "🛍️", gradient: "bg-gradient-to-br from-fuchsia-400 via-pink-500 to-rose-500" },
   leaderboard: { emoji: "🏆", gradient: "bg-gradient-to-br from-amber-300 to-orange-500" },
-  practice: { emoji: "⚡", gradient: "bg-gradient-to-br from-sky-400 to-blue-500" },
   daily: { emoji: "🎁", gradient: "bg-gradient-to-br from-indigo-400 via-violet-500 to-fuchsia-500" },
 };
 
 const LABELS: Record<Language, Record<OrbitKey, string>> = {
-  en: { play: "Play", tasks: "Tasks", shop: "Shop", leaderboard: "Ranks", practice: "Practice", daily: "Daily" },
-  he: { play: "שחק", tasks: "משימות", shop: "חנות", leaderboard: "דירוג", practice: "תרגול", daily: "יומי" },
-  ar: { play: "العب", tasks: "المهام", shop: "المتجر", leaderboard: "الترتيب", practice: "تدريب", daily: "يومي" },
-  ru: { play: "Играть", tasks: "Задания", shop: "Магазин", leaderboard: "Рейтинг", practice: "Практика", daily: "Ежедневно" },
+  en: { play: "Play", tasks: "Tasks", shop: "Shop", leaderboard: "Ranks", daily: "Daily" },
+  he: { play: "שחק", tasks: "משימות", shop: "חנות", leaderboard: "דירוג", daily: "יומי" },
+  ar: { play: "العب", tasks: "المهام", shop: "المتجر", leaderboard: "الترتيب", daily: "يومي" },
+  ru: { play: "Играть", tasks: "Задания", shop: "Магазин", leaderboard: "Рейтинг", daily: "Ежедневно" },
 };
 
 export default function OrbitalHub({ center, items }: OrbitalHubProps) {
@@ -80,7 +78,7 @@ export default function OrbitalHub({ center, items }: OrbitalHubProps) {
   return (
     <div
       dir={dir}
-      className="relative mx-auto aspect-square w-[min(94vw,34rem)] select-none"
+      className="relative mx-auto aspect-square w-[min(94vw,34rem)] select-none lg:w-[40rem]"
     >
       {/* Decorative orbit path — a dashed ring that slowly rotates. Its
           edge sits at exactly R, so every circle CENTER lands on the
@@ -141,7 +139,7 @@ export default function OrbitalHub({ center, items }: OrbitalHubProps) {
                 aria-label={labels[item.key]}
                 whileHover={reduced || item.disabled ? undefined : { scale: 1.08 }}
                 whileTap={reduced || item.disabled ? undefined : { scale: 0.92 }}
-                className={`${gradient} ${ARCADE_BUTTON_TOUCH} relative flex h-16 w-16 items-center justify-center rounded-full text-3xl shadow-lg ring-2 sm:h-20 sm:w-20 sm:text-4xl ${
+                className={`${gradient} ${ARCADE_BUTTON_TOUCH} relative flex h-16 w-16 items-center justify-center rounded-full text-3xl shadow-lg ring-2 sm:h-20 sm:w-20 sm:text-4xl lg:h-28 lg:w-28 lg:text-5xl ${
                   isPlay ? "ring-amber-300/80 shadow-cyan-500/40" : "ring-white/30"
                 } ${item.disabled ? "opacity-40 grayscale" : ""}`}
               >
@@ -159,7 +157,7 @@ export default function OrbitalHub({ center, items }: OrbitalHubProps) {
               </motion.button>
               {/* Label floats below the circle without affecting its
                   centring (absolute → zero layout height). */}
-              <span className="pointer-events-none absolute left-1/2 top-full mt-1 w-16 -translate-x-1/2 text-center text-[10px] font-bold leading-tight text-white/90 sm:text-xs">
+              <span className="pointer-events-none absolute left-1/2 top-full mt-1 w-16 -translate-x-1/2 text-center text-[10px] font-bold leading-tight text-white/90 sm:w-20 sm:text-xs lg:w-28 lg:text-base">
                 {labels[item.key]}
               </span>
             </motion.div>

@@ -22,9 +22,8 @@ import type { View } from '../core/views';
 const StudentDashboardView = lazyWithRetry(() => import('./StudentDashboardView'));
 const StudentHubSubView = lazyWithRetry(() => import('./StudentHubSubView'));
 
-/** Maps the four student-hub views to the section the page renders. */
+/** Maps the student-hub views to the section the page renders. */
 const HUB_SECTION_BY_VIEW = {
-  'student-practice': 'practice',
   'student-daily': 'daily',
 } as const;
 
@@ -130,18 +129,6 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
         setActiveAssignment={setActiveAssignment}
         setAssignmentWords={setAssignmentWords}
         setShowModeSelection={setShowModeSelection}
-        onStartReview={() => {
-          // Spaced repetition entry — bypasses the mode picker, so this
-          // tap is the only user-gesture before ReviewGame auto-speaks.
-          // Prime iOS audio here (no intro screen / Let's Go to catch it).
-          primeAudio();
-          // ReviewGame self-fetches its queue + the ALL_WORDS distractor
-          // pool, so we don't need to seed gameWords or activeAssignment.
-          setGameMode('review');
-          setIsFinished(false);
-          setShowModeSelection(false);
-          setView('game');
-        }}
         onStartClassMinute={startClassMinute}
         onStartIdioms={() => {
           // Idiom entry — bypasses the mode picker, so prime iOS audio
@@ -187,10 +174,9 @@ export function StudentHubSection(
 ): ReactNode {
   const {
     view, user, badges, setXp, showToast,
-    studentAssignments, studentProgress, studentDataLoading,
+    studentAssignments, studentProgress,
     setView, setActiveAssignment, setAssignmentWords, setShowModeSelection,
-    setGameMode, setIsFinished,
-    startClassMinute, boosters, retention,
+    boosters, retention,
   } = deps;
 
   // Rewards page's Daily Goal "play now" — launches the single most-
@@ -213,27 +199,9 @@ export function StudentHubSection(
         user={user}
         onBack={() => setView('student-dashboard')}
         studentProgress={studentProgress}
-        studentDataLoading={studentDataLoading}
         retention={retention}
         onGrantXp={(amount, reason) => grantRetentionXp(amount, reason, { user, setXp, showToast })}
         onPlay={onPlay}
-        onStartReview={() => {
-          // Same spaced-repetition entry as the dashboard — bypasses the
-          // mode picker, so prime iOS audio on this tap.
-          primeAudio();
-          setGameMode('review');
-          setIsFinished(false);
-          setShowModeSelection(false);
-          setView('game');
-        }}
-        onStartClassMinute={startClassMinute}
-        onStartIdioms={() => {
-          primeAudio();
-          setGameMode('idiom');
-          setIsFinished(false);
-          setShowModeSelection(false);
-          setView('game');
-        }}
         boosters={{
           isXpBoosterActive: boosters.isXpBoosterActive,
           isFocusModeActive: boosters.isFocusModeActive,
