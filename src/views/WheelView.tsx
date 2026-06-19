@@ -31,8 +31,12 @@ import {
   Languages, MessageSquareQuote, CheckCircle2,
   Camera, Loader2, AlertTriangle, Image as ImageIcon,
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useLanguage, type Language } from '../hooks/useLanguage';
 import { useVocabularyLazy } from '../hooks/useVocabularyLazy';
+import { useQuickPlaySocket } from '../hooks/useQuickPlaySocket';
+import { supabase } from '../core/supabase';
+import { QP_WHEEL_MODE } from '../core/quickPlayProtocol';
 import type { Word } from '../data/vocabulary';
 import {
   buildClassicQuestion,
@@ -280,6 +284,16 @@ const STRINGS: Record<Language, {
   playersPlaceholder: string;
   playersHint: string;
   needTwo: string;
+  modeManual: string;
+  modeLive: string;
+  liveJoinTitle: string;
+  liveJoinHint: string;
+  liveStarting: string;
+  liveCount: (n: number) => string;
+  answerHeading: string;
+  answerBoard: string;
+  answerPhone: string;
+  waitingForAnswer: (name: string) => string;
 
   wordsLabel: string;
   sourcePaste: string;
@@ -355,6 +369,11 @@ const STRINGS: Record<Language, {
 }> = {
   en: {
     title: 'Vocab Wheel',
+    modeManual: 'Type names', modeLive: 'Live (QR)',
+    liveJoinTitle: 'Students scan to join', liveJoinHint: 'Names appear on the wheel as they join.',
+    liveStarting: 'Starting…', liveCount: (n) => `${n} joined`,
+    answerHeading: 'Answers', answerBoard: 'On the board', answerPhone: 'On phones',
+    waitingForAnswer: (name) => `Waiting for ${name}…`,
     subtitle: 'Spin the wheel — pick a student, pick a challenge.',
     exitBtn: 'Back',
     playersLabel: 'Players (one name per line)',
@@ -428,6 +447,11 @@ const STRINGS: Record<Language, {
   },
   he: {
     title: 'גלגל המילים',
+    modeManual: 'הקלדת שמות', modeLive: 'חי (QR)',
+    liveJoinTitle: 'התלמידים סורקים כדי להצטרף', liveJoinHint: 'השמות מופיעים על הגלגל עם ההצטרפות.',
+    liveStarting: 'מתחיל…', liveCount: (n) => `${n} הצטרפו`,
+    answerHeading: 'תשובות', answerBoard: 'על הלוח', answerPhone: 'בטלפון',
+    waitingForAnswer: (name) => `ממתינים ל${name}…`,
     subtitle: 'סובבו את הגלגל — בוחר תלמיד, בוחר אתגר.',
     exitBtn: 'חזור',
     playersLabel: 'שחקנים (שם אחד בכל שורה)',
@@ -501,6 +525,11 @@ const STRINGS: Record<Language, {
   },
   ar: {
     title: 'عجلة المفردات',
+    modeManual: 'كتابة الأسماء', modeLive: 'مباشر (QR)',
+    liveJoinTitle: 'يمسح الطلاب للانضمام', liveJoinHint: 'تظهر الأسماء على العجلة عند الانضمام.',
+    liveStarting: 'يبدأ…', liveCount: (n) => `${n} انضموا`,
+    answerHeading: 'الإجابات', answerBoard: 'على اللوحة', answerPhone: 'على الهواتف',
+    waitingForAnswer: (name) => `بانتظار ${name}…`,
     subtitle: 'أدر العجلة — اختر طالبًا، اختر تحديًا.',
     exitBtn: 'رجوع',
     playersLabel: 'اللاعبون (اسم واحد في كل سطر)',
@@ -574,6 +603,11 @@ const STRINGS: Record<Language, {
   },
   ru: {
     title: 'Vocab Wheel',
+    modeManual: 'Type names', modeLive: 'Live (QR)',
+    liveJoinTitle: 'Students scan to join', liveJoinHint: 'Names appear on the wheel as they join.',
+    liveStarting: 'Starting…', liveCount: (n) => `${n} joined`,
+    answerHeading: 'Answers', answerBoard: 'On the board', answerPhone: 'On phones',
+    waitingForAnswer: (name) => `Waiting for ${name}…`,
     subtitle: 'Spin the wheel — pick a student, pick a challenge.',
     exitBtn: 'Back',
     playersLabel: 'Players (one name per line)',
@@ -661,6 +695,71 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, clas
   const [playersText, setPlayersText] = useState(() =>
     initialPlayerNames && initialPlayerNames.length > 0 ? initialPlayerNames.join('\n') : '',
   );
+
+  // ── Live mode ───────────────────────────────────────────────────────
+  // 'manual' = teacher types the names (original behaviour). 'live' =
+  // students scan a QR + enter their name, and the roster auto-fills the
+  // wheel. The wheel itself still runs on the teacher's board.
+  const [wheelMode, setWheelMode] = useState<'manual' | 'live'>('manual');
+  // Where the picked student answers: on the board (teacher taps) or on their
+  // own phone. Only meaningful in live mode.
+  const [answerMode, setAnswerMode] = useState<'board' | 'phone'>('board');
+  const [liveCode, setLiveCode] = useState<string | null>(null);
+  const [creatingLive, setCreatingLive] = useState(false);
+  const liveTokenRef = useRef<string | null>(null);
+  // askId currently awaiting a phone reply (null = none / already answered).
+  const wheelAskRef = useRef<string | null>(null);
+  // Reassigned every render so the socket callback always scores against the
+  // freshest activeQ + finishAnswer.
+  const applyPhoneAnswerRef = useRef<(choiceIndex: number) => void>(() => {});
+  const qpLive = useQuickPlaySocket({ sessionCode: liveCode ?? '', enabled: !!liveCode });
+  const liveJoinUrl = liveCode ? `${window.location.origin}/?session=${liveCode}&mode=wheel` : '';
+
+  // Create a wordless wheel session (allowed_modes = [QP_WHEEL_MODE]) so
+  // students who scan the QR land on the lightweight WheelStudentView.
+  const startLive = useCallback(async () => {
+    if (creatingLive || liveCode) return;
+    setCreatingLive(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      liveTokenRef.current = session?.access_token ?? null;
+      const { data, error } = await supabase.rpc('create_quick_play_session', {
+        p_word_ids: null, p_custom_words: null, p_allowed_modes: [QP_WHEEL_MODE],
+      });
+      if (error || !data) throw error ?? new Error('no session');
+      setLiveCode((data as { session_code: string }).session_code);
+    } catch (e) {
+      console.error('[Wheel live] create session failed', e);
+    } finally {
+      setCreatingLive(false);
+    }
+  }, [creatingLive, liveCode]);
+
+  // Observe as teacher once the socket connects, so the roster (students
+  // who joined) streams into qpLive.leaderboard.
+  useEffect(() => {
+    if (!liveCode || qpLive.status !== 'connected') return;
+    let cancelled = false;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token || cancelled) return;
+      liveTokenRef.current = token;
+      qpLive.observeAsTeacher(token);
+    })();
+    return () => { cancelled = true; };
+  }, [liveCode, qpLive.status, qpLive.observeAsTeacher]);
+
+  // Joined student names → the wheel's player list (live mode only).
+  const liveNames = useMemo(
+    () => qpLive.leaderboard.map(e => e.nickname).filter((n): n is string => !!n),
+    [qpLive.leaderboard],
+  );
+  useEffect(() => {
+    if (wheelMode !== 'live') return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mirrors the live roster into the wheel's name list
+    setPlayersText(liveNames.join('\n'));
+  }, [wheelMode, liveNames]);
   const [targetLang, setTargetLang] = useState<TargetLang>('hebrew');
   const [sourceKind, setSourceKind] = useState<SourceKind>('paste');
   const [wordsText, setWordsText] = useState('');
@@ -1130,6 +1229,56 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, clas
     finishAnswer(value === activeQ.trueFalse.isTrue);
   };
 
+  // ── Phone-answer mode ───────────────────────────────────────────────
+  // Score a reply that came from the picked student's phone, driving the
+  // SAME reveal + scoring path as a board tap. Reassigned every render so
+  // it closes over the current activeQ / picked state.
+  applyPhoneAnswerRef.current = (choiceIndex: number) => {
+    if (submittedRef.current || !activeQ) return;
+    const mc = activeQ.multiChoice;
+    const tf = activeQ.trueFalse;
+    if (mc) {
+      submittedRef.current = true;
+      setPicked(mc.options[choiceIndex] ?? '');
+      finishAnswer(choiceIndex === mc.correctIndex);
+    } else if (tf) {
+      const studentTrue = choiceIndex === 0; // option 0 = True
+      submittedRef.current = true;
+      setTfPicked(studentTrue);
+      finishAnswer(studentTrue === tf.isTrue);
+    }
+  };
+
+  // Push the question to the picked student when phone mode is active.
+  useEffect(() => {
+    if (phase !== 'question') { wheelAskRef.current = null; return; }
+    if (wheelMode !== 'live' || answerMode !== 'phone') return;
+    if (!activeQ || pickedPlayerId === null || wheelAskRef.current) return;
+    const player = players.find(p => p.id === pickedPlayerId);
+    const entry = qpLive.leaderboard.find(e => e.nickname === player?.name);
+    const token = liveTokenRef.current;
+    if (!player || !entry || !token) return; // student not connected → teacher can still tap the board
+    const mc = activeQ.multiChoice;
+    const tf = activeQ.trueFalse;
+    const q = mc
+      ? { prompt: mc.prompt, options: mc.options }
+      : tf
+        ? { prompt: `${tf.word.english}  ↔  ${tf.shownTranslation}`, options: [t.trueLabel, t.falseLabel] }
+        : null;
+    if (!q) return;
+    const askId = `${pickedPlayerId}-${Date.now()}`;
+    wheelAskRef.current = askId;
+    qpLive.askWheelQuestion({ token, clientId: entry.clientId, askId, promptKind: 'text', ...q });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once per question; qpLive emitter is stable per session
+  }, [phase, wheelMode, answerMode, activeQ, pickedPlayerId]);
+
+  // Receive the picked student's reply.
+  useEffect(() => qpLive.onWheelAnswer((p) => {
+    if (!p || p.askId !== wheelAskRef.current) return; // stale / not the live ask
+    wheelAskRef.current = null;
+    applyPhoneAnswerRef.current(p.choiceIndex);
+  }), [qpLive]);
+
   const handleEndRound = () => {
     clearPendingTimers();
     setEliminationBanner(null);
@@ -1186,26 +1335,89 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, clas
       >
         <div className="rounded-2xl bg-white shadow-lg border border-violet-100 overflow-hidden">
             <div className="px-6 py-6 space-y-5">
-              <ClassRosterPicker
-                classes={classes ?? []}
-                initialClassId={initialClassId}
-                onNamesLoaded={(names) => setPlayersText(names.join('\n'))}
-                fallbackNamesByCode={fallbackNamesByCode}
-                accent="violet"
-              />
-              {/* Players */}
-              <div>
-                <label className="block text-sm font-bold text-stone-700 mb-2">{t.playersLabel}</label>
-                <textarea
-                  value={playersText}
-                  onChange={e => setPlayersText(e.target.value)}
-                  placeholder={t.playersPlaceholder}
-                  rows={6}
-                  dir={dir}
-                  className="w-full rounded-lg border-2 border-stone-200 focus:border-violet-400 focus:outline-none px-3 py-2.5 text-base font-semibold text-stone-800 placeholder:text-stone-400 placeholder:font-normal"
-                />
-                <p className="mt-1 text-xs text-stone-500">{t.playersHint}</p>
+              {/* Players source: type manually, or go live with a QR */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setWheelMode('manual')}
+                  style={{ touchAction: 'manipulation' }}
+                  className={`flex items-center justify-center gap-1.5 py-3 rounded-lg font-black text-sm border-2 transition-all ${wheelMode === 'manual' ? 'bg-violet-500 text-white border-violet-500 shadow-sm' : 'bg-white text-stone-700 border-stone-200 hover:border-violet-200'}`}
+                >
+                  ✍️ {t.modeManual}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setWheelMode('live'); if (!liveCode) void startLive(); }}
+                  style={{ touchAction: 'manipulation' }}
+                  className={`flex items-center justify-center gap-1.5 py-3 rounded-lg font-black text-sm border-2 transition-all ${wheelMode === 'live' ? 'bg-violet-500 text-white border-violet-500 shadow-sm' : 'bg-white text-stone-700 border-stone-200 hover:border-violet-200'}`}
+                >
+                  📱 {t.modeLive}
+                </button>
               </div>
+
+              {wheelMode === 'manual' ? (
+                <>
+                  <ClassRosterPicker
+                    classes={classes ?? []}
+                    initialClassId={initialClassId}
+                    onNamesLoaded={(names) => setPlayersText(names.join('\n'))}
+                    fallbackNamesByCode={fallbackNamesByCode}
+                    accent="violet"
+                  />
+                  {/* Players */}
+                  <div>
+                    <label className="block text-sm font-bold text-stone-700 mb-2">{t.playersLabel}</label>
+                    <textarea
+                      value={playersText}
+                      onChange={e => setPlayersText(e.target.value)}
+                      placeholder={t.playersPlaceholder}
+                      rows={6}
+                      dir={dir}
+                      className="w-full rounded-lg border-2 border-stone-200 focus:border-violet-400 focus:outline-none px-3 py-2.5 text-base font-semibold text-stone-800 placeholder:text-stone-400 placeholder:font-normal"
+                    />
+                    <p className="mt-1 text-xs text-stone-500">{t.playersHint}</p>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-xl border-2 border-violet-200 bg-violet-50 p-4 text-center">
+                  <p className="text-sm font-bold text-violet-700 mb-3">{t.liveJoinTitle}</p>
+                  {liveCode ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="bg-white p-3 rounded-2xl shadow-sm">
+                        <QRCodeSVG value={liveJoinUrl} size={160} />
+                      </div>
+                      <div className="text-3xl font-black tracking-[0.15em] text-stone-900">{liveCode}</div>
+                      <div className="text-sm font-black text-emerald-600">● {t.liveCount(liveNames.length)}</div>
+                      <p className="text-xs text-stone-500">{t.liveJoinHint}</p>
+
+                      {/* Where the picked student answers. */}
+                      <div className="w-full mt-2">
+                        <p className="text-xs font-black uppercase tracking-widest text-violet-500 mb-2">{t.answerHeading}</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setAnswerMode('board')}
+                            style={{ touchAction: 'manipulation' }}
+                            className={`py-2.5 rounded-lg font-black text-sm border-2 transition-all ${answerMode === 'board' ? 'bg-violet-500 text-white border-violet-500 shadow-sm' : 'bg-white text-stone-700 border-stone-200 hover:border-violet-200'}`}
+                          >
+                            🖥️ {t.answerBoard}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAnswerMode('phone')}
+                            style={{ touchAction: 'manipulation' }}
+                            className={`py-2.5 rounded-lg font-black text-sm border-2 transition-all ${answerMode === 'phone' ? 'bg-violet-500 text-white border-violet-500 shadow-sm' : 'bg-white text-stone-700 border-stone-200 hover:border-violet-200'}`}
+                          >
+                            📱 {t.answerPhone}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm font-bold text-stone-500 py-6">{t.liveStarting}</p>
+                  )}
+                </div>
+              )}
 
               {/* Words source */}
               <div>
@@ -1772,6 +1984,9 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, clas
     const optionDir = optionsAreEnglish ? 'ltr' : 'rtl';
 
     const correctMcOption = mc ? mc.options[mc.correctIndex] : null;
+    // Phone mode: the picked student answers on their device, so the board
+    // taps are locked until the reply lands (or the answer is revealed).
+    const phoneWaiting = wheelMode === 'live' && answerMode === 'phone' && picked === null && tfPicked === null;
 
     return (
       <div className="h-screen bg-gradient-to-b from-indigo-50 via-violet-50 to-fuchsia-50 px-4 py-4 sm:px-8 sm:py-6 flex flex-col" dir="ltr">
@@ -1881,9 +2096,9 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, clas
               return (
                 <motion.button
                   key={`${opt}-${i}`}
-                  whileTap={!showResult ? { scale: 0.98 } : undefined}
+                  whileTap={!showResult && !phoneWaiting ? { scale: 0.98 } : undefined}
                   onClick={() => handleAnswerMultiChoice(opt)}
-                  disabled={showResult}
+                  disabled={showResult || phoneWaiting}
                   type="button"
                   dir={optionDir}
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
@@ -1913,9 +2128,9 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, clas
               return (
                 <motion.button
                   key={String(value)}
-                  whileTap={!showResult ? { scale: 0.98 } : undefined}
+                  whileTap={!showResult && !phoneWaiting ? { scale: 0.98 } : undefined}
                   onClick={() => handleAnswerTrueFalse(value)}
-                  disabled={showResult}
+                  disabled={showResult || phoneWaiting}
                   type="button"
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                   className={`h-full px-4 py-4 rounded-2xl text-center font-black text-5xl sm:text-7xl md:text-8xl leading-tight transition-all shadow-md flex items-center justify-center ${cls}`}
@@ -1924,6 +2139,14 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, clas
                 </motion.button>
               );
             })}
+          </div>
+        )}
+
+        {/* Phone mode: waiting for the picked student to answer on their device. */}
+        {phoneWaiting && (
+          <div className="mt-3 flex items-center justify-center gap-2 text-violet-700 font-black text-base sm:text-lg" dir={dir}>
+            <Loader2 size={20} className="animate-spin" />
+            📱 {t.waitingForAnswer(pickedPlayer.name)}
           </div>
         )}
 

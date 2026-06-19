@@ -11,7 +11,7 @@ type ModeNames = Record<QpSpeedMode, string>;
 
 interface ArenaHostStrings {
   title: string; joinHeading: string; code: string;
-  wordsHeading: string; modeHeading: string; timerHeading: string;
+  wordsHeading: string; modeHeading: string; timerHeading: string; mapHeading: string; randomMap: string;
   // SpeedWordPicker strings — same contract as Speed Round's host.
   searchPlaceholder: string; wordsCount: (n: number) => string;
   needWords: (min: number) => string; clearWords: string; noResults: string;
@@ -23,10 +23,10 @@ interface ArenaHostStrings {
   inRoom: (n: number) => string;
   copy: string; copied: string; enlarge: string; hide: string;
   present: string; controls: string;
-  musicOn: string; musicOff: string;
   tfTrue: string; tfFalse: string;
   buildError: string; loadingWords: string; pickMode: string;
   wordsLeft: (n: number) => string;
+  autoPlayLabel: string; autoNextIn: (n: number) => string;
   modeNames: ModeNames;
 }
 
@@ -34,6 +34,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
   en: {
     title: "Word Hunt Arena", joinHeading: "Students join here", code: "Class code",
     wordsHeading: "Your words", modeHeading: "Question modes", timerHeading: "Time per word",
+    mapHeading: "Arena map", randomMap: "Surprise me",
     searchPlaceholder: "Type a word to add it…",
     wordsCount: (n) => `${n} words ready`, needWords: (min) => `Add at least ${min} words to start`,
     clearWords: "Clear all", noResults: "No matching words in the library",
@@ -45,11 +46,11 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     inRoom: (n) => `${n} in the room`,
     copy: "Copy link", copied: "Copied!", enlarge: "Enlarge", hide: "Hide",
     present: "Present", controls: "Controls",
-    musicOn: "Turn music on", musicOff: "Turn music off",
     tfTrue: "True", tfFalse: "False",
     buildError: "Couldn't build questions — try different words or modes.",
     loadingWords: "Loading words…", pickMode: "Pick at least one mode.",
     wordsLeft: (n) => `${n} words left`,
+    autoPlayLabel: "Auto-start next hunt", autoNextIn: (n) => `Next hunt in ${n}…`,
     modeNames: {
       "true-false": "True / False", "classic": "Classic", "reverse": "Reverse",
       "listening": "Listening", "idiom": "Idioms", "letter-sounds": "Letter Sounds",
@@ -58,6 +59,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
   he: {
     title: "זירת ציד מילים", joinHeading: "התלמידים מצטרפים כאן", code: "קוד כיתה",
     wordsHeading: "המילים שלך", modeHeading: "סוגי שאלות", timerHeading: "זמן לכל מילה",
+    mapHeading: "מפת הזירה", randomMap: "הפתע אותי",
     searchPlaceholder: "הקלידו מילה כדי להוסיף…",
     wordsCount: (n) => `${n} מילים מוכנות`, needWords: (min) => `הוסיפו לפחות ${min} מילים כדי להתחיל`,
     clearWords: "נקה הכל", noResults: "אין מילים תואמות במאגר",
@@ -69,11 +71,11 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     inRoom: (n) => `${n} בחדר`,
     copy: "העתק קישור", copied: "הועתק!", enlarge: "הגדל", hide: "הסתר",
     present: "מצגת", controls: "פקדים",
-    musicOn: "הפעל מוזיקה", musicOff: "כבה מוזיקה",
     tfTrue: "נכון", tfFalse: "לא נכון",
     buildError: "לא ניתן לבנות שאלות — נסו מילים או מצבים אחרים.",
     loadingWords: "טוען מילים…", pickMode: "בחרו לפחות מצב אחד.",
     wordsLeft: (n) => `נותרו ${n} מילים`,
+    autoPlayLabel: "התחל זירה הבאה אוטומטית", autoNextIn: (n) => `זירה הבאה בעוד ${n}…`,
     modeNames: {
       "true-false": "נכון / לא נכון", "classic": "קלאסי", "reverse": "הפוך",
       "listening": "האזנה", "idiom": "ביטויים", "letter-sounds": "צלילי אותיות",
@@ -82,6 +84,7 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
   ar: {
     title: "ساحة صيد الكلمات", joinHeading: "ينضم الطلاب هنا", code: "رمز الصف",
     wordsHeading: "كلماتك", modeHeading: "أنواع الأسئلة", timerHeading: "الوقت لكل كلمة",
+    mapHeading: "خريطة الساحة", randomMap: "فاجئني",
     searchPlaceholder: "اكتبوا كلمة لإضافتها…",
     wordsCount: (n) => `${n} كلمات جاهزة`, needWords: (min) => `أضيفوا ${min} كلمات على الأقل للبدء`,
     clearWords: "مسح الكل", noResults: "لا توجد كلمات مطابقة في المكتبة",
@@ -93,11 +96,11 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
     inRoom: (n) => `${n} في الغرفة`,
     copy: "نسخ الرابط", copied: "تم النسخ!", enlarge: "تكبير", hide: "إخفاء",
     present: "عرض", controls: "أدوات",
-    musicOn: "تشغيل الموسيقى", musicOff: "إيقاف الموسيقى",
     tfTrue: "صحيح", tfFalse: "خطأ",
     buildError: "تعذّر إنشاء الأسئلة — جرّبوا كلمات أو أوضاعًا أخرى.",
     loadingWords: "جارٍ تحميل الكلمات…", pickMode: "اختر وضعًا واحدًا على الأقل.",
     wordsLeft: (n) => `تبقّى ${n} كلمات`,
+    autoPlayLabel: "بدء الساحة التالية تلقائيًا", autoNextIn: (n) => `الساحة التالية خلال ${n}…`,
     modeNames: {
       "true-false": "صح / خطأ", "classic": "كلاسيكي", "reverse": "عكسي",
       "listening": "استماع", "idiom": "تعابير", "letter-sounds": "أصوات الحروف",

@@ -10,7 +10,9 @@
  * or backend coupling — purely a presentation of data already on screen.
  */
 import { motion, AnimatePresence } from "motion/react";
+import { X } from "lucide-react";
 import QPAvatar from "../QPAvatar";
+import type { GameTheme } from "../../constants/gameThemes";
 
 export interface LobbyPlayer {
   clientId: string;
@@ -36,6 +38,17 @@ interface LobbyRosterProps {
    *  e.g. "from-fuchsia-500 to-pink-600". */
   accent?: string;
   className?: string;
+  /** When set, each medallion shows a "remove" badge that calls this with
+   *  the student's clientId + nickname (guarded by a confirm modal in the
+   *  host). Available in both the Controls and the live/projected view. */
+  onKick?: (clientId: string, nickname: string) => void;
+  /** Projector mode — scales every medallion + name way up (with an extra
+   *  min-[1280px] tier) so a class reading the waiting room from the back of
+   *  the room can make out who's joined. Defaults off for compact use. */
+  large?: boolean;
+  /** Live-game skin. Re-colours the name + count text; defaults to the stone
+   *  palette when omitted. */
+  theme?: GameTheme;
 }
 
 export default function LobbyRoster({
@@ -44,8 +57,27 @@ export default function LobbyRoster({
   emptyLabel,
   accent = "from-fuchsia-500 to-pink-600",
   className = "",
+  large = false,
+  onKick,
+  theme,
 }: LobbyRosterProps) {
   const empty = players.length === 0;
+  const nameColor = theme ? theme.name : "text-stone-600";
+  const mutedColor = theme ? theme.muted : "text-stone-500";
+
+  // Projector vs compact sizing for each medallion. The min-[1280px] tier
+  // scales up on laptop/projector widths; phones + the compact preview keep
+  // the small sizes.
+  const cell = large ? "w-28 sm:w-32 min-[1280px]:w-44" : "w-[68px] sm:w-20";
+  const ring = large
+    ? "w-24 h-24 sm:w-28 sm:h-28 min-[1280px]:w-36 min-[1280px]:h-36"
+    : "w-12 h-12 sm:w-16 sm:h-16";
+  const inner = large
+    ? "w-[76px] h-[76px] sm:w-[88px] sm:h-[88px] min-[1280px]:w-[116px] min-[1280px]:h-[116px]"
+    : "w-[42px] h-[42px] sm:w-[54px] sm:h-[54px]";
+  const nameCls = large
+    ? "text-xl sm:text-2xl min-[1280px]:text-4xl"
+    : "text-[11px] sm:text-xs";
 
   return (
     <div className={`flex flex-col ${className}`}>
@@ -55,7 +87,7 @@ export default function LobbyRoster({
           <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-70 animate-ping" />
           <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
         </span>
-        <span className="text-sm sm:text-base font-black uppercase tracking-widest text-stone-500">
+        <span className={`text-sm sm:text-base font-black uppercase tracking-widest ${mutedColor}`}>
           {countLabel(players.length)}
         </span>
       </div>
@@ -77,7 +109,7 @@ export default function LobbyRoster({
           <p className="text-base font-bold text-stone-400">{emptyLabel}</p>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-3 sm:gap-4">
+        <div className={`flex flex-wrap ${large ? "gap-4 sm:gap-6" : "gap-3 sm:gap-4"}`}>
           <AnimatePresence mode="popLayout">
             {players.map((p) => (
               <motion.div
@@ -87,16 +119,28 @@ export default function LobbyRoster({
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0, opacity: 0 }}
                 transition={{ type: "spring", stiffness: 380, damping: 22 }}
-                className="flex flex-col items-center gap-1 w-[68px] sm:w-20"
+                className={`relative flex flex-col items-center gap-1 ${cell}`}
               >
                 <div
-                  className={`flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${p.team ? TEAM_ACCENT[p.team] : accent} text-white shadow-md`}
+                  className={`flex items-center justify-center ${ring} rounded-full bg-gradient-to-br ${p.team ? TEAM_ACCENT[p.team] : accent} text-white shadow-md`}
                 >
-                  <span className="flex items-center justify-center w-[42px] h-[42px] sm:w-[54px] sm:h-[54px] rounded-full bg-white/90">
-                    <QPAvatar value={p.avatar} iconSize={26} className="text-fuchsia-600" />
+                  <span className={`flex items-center justify-center ${inner} rounded-full bg-white/90`}>
+                    <QPAvatar value={p.avatar} iconSize={large ? 60 : 26} className="text-fuchsia-600" />
                   </span>
                 </div>
-                <span className="max-w-full truncate text-[11px] sm:text-xs font-black text-stone-600">
+                {onKick && (
+                  <button
+                    type="button"
+                    onClick={() => onKick(p.clientId, p.nickname)}
+                    style={{ touchAction: "manipulation" }}
+                    className={`absolute -top-1 end-0 inline-flex items-center justify-center rounded-full bg-rose-500 text-white shadow-md ring-2 ring-white opacity-80 hover:opacity-100 transition active:scale-90 ${large ? "w-7 h-7" : "w-5 h-5"}`}
+                    aria-label={`Remove ${p.nickname}`}
+                    title={`Remove ${p.nickname}`}
+                  >
+                    <X size={large ? 16 : 12} strokeWidth={3} />
+                  </button>
+                )}
+                <span className={`max-w-full truncate font-black ${nameColor} ${nameCls}`}>
                   {p.nickname}
                 </span>
               </motion.div>

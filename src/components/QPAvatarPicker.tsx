@@ -75,7 +75,7 @@ const GROUP_LABEL: Record<string, Record<string, string>> = {
  * a phone in a noisy classroom).
  */
 export default function AvatarPicker({ selected, onSelect }: AvatarPickerProps) {
-  const { language } = useLanguage();
+  const { language, dir } = useLanguage();
   const groups = Object.keys(QUICK_PLAY_AVATAR_GROUPS);
   const initialGroup =
     groups.find(g => (QUICK_PLAY_AVATAR_GROUPS[g] as readonly string[]).includes(selected)) || "Animals";
@@ -112,7 +112,7 @@ export default function AvatarPicker({ selected, onSelect }: AvatarPickerProps) 
   // ─── Collapsed view: big selected avatar + one "Change avatar" CTA ───
   if (!expanded) {
     return (
-      <div className="flex flex-col items-center gap-2.5">
+      <div dir={dir} className="flex flex-col items-center gap-2.5">
         <motion.button
           type="button"
           onClick={() => setExpanded(true)}
@@ -141,7 +141,7 @@ export default function AvatarPicker({ selected, onSelect }: AvatarPickerProps) 
 
   // ─── Expanded view: tabs + grid, with a Done affordance to collapse ──
   return (
-    <div>
+    <div dir={dir}>
       <div className="flex items-center justify-between mb-2">
         <label className="block text-sm font-bold text-on-surface-variant">
           {label}
@@ -209,7 +209,7 @@ export default function AvatarPicker({ selected, onSelect }: AvatarPickerProps) 
                     selection reads even for kids who don't notice
                     subtle colour shifts. */}
                 {isSelected && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md">
+                  <span className="absolute -top-1 -end-1 w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-md">
                     <Check size={12} strokeWidth={3} />
                   </span>
                 )}

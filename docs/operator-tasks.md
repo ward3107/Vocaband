@@ -2,6 +2,28 @@
 
 These are actions the human needs to take — no code change will cover them.
 
+---
+
+## 🟡 OPEN — Mention the AI Help Assistant in the privacy policy
+
+**Why:** The teacher dashboard now has an AI Help Assistant (`/api/teacher-assistant`,
+Gemini Flash-Lite). When a teacher *types or speaks* a free-form question, that
+text plus minimal context (UI language, a `hasClasses` boolean, and the
+pending-approvals **count** — no names, no class codes, no student data) is sent
+to Google's Gemini API to generate the answer. Tapping a preset question stays
+fully local (no data leaves the app). This is the same Gemini provider already
+used for OCR + sentence generation, so it's not a new data processor — but the
+privacy policy should explicitly name the "AI assistant" use so it's covered.
+
+**Steps:**
+1. Add a line to the privacy policy: teacher-typed/spoken help questions may be
+   sent to Google (Gemini) to generate answers; no student personal data is sent.
+2. Confirm your Google Cloud / Gemini account is on the **paid API tier** (paid
+   API data is not used to train Google's models) and note the region.
+3. If needed for MoE compliance, confirm this is acceptable for school use, or
+   gate the free-text box behind a setting (the preset questions work offline
+   with no AI call and need no disclosure).
+
 > **Last reconciled with production:** 2026-05-19.  The four
 > CATASTROPHIC/HIGH operational items in §0 are now ⁵⁄₆ closed — §0c
 > (external HTTP + SSL-expiry monitor) is the only one still open.

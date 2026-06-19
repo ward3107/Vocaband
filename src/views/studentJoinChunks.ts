@@ -21,11 +21,13 @@ const categoryRaceFactory = () => import("./CategoryRaceStudentView");
 const quickPlayFactory = () => import("./QuickPlayStudentView");
 const speedRoundFactory = () => import("./SpeedRoundStudentView");
 const arenaFactory = () => import("./ArenaStudentView");
+const wheelFactory = () => import("./WheelStudentView");
 
 export const CategoryRaceStudentViewLazy = lazyWithRetry(categoryRaceFactory);
 export const QuickPlayStudentViewLazy = lazyWithRetry(quickPlayFactory);
 export const SpeedRoundStudentViewLazy = lazyWithRetry(speedRoundFactory);
 export const ArenaStudentViewLazy = lazyWithRetry(arenaFactory);
+export const WheelStudentViewLazy = lazyWithRetry(wheelFactory);
 
 /** Start downloading the Category Race view chunk now (fire-and-forget). */
 export function preloadCategoryRaceView(): void {
@@ -45,4 +47,9 @@ export function preloadSpeedRoundView(): void {
 /** Start downloading the Word Hunt Arena view chunk now (fire-and-forget). */
 export function preloadArenaView(): void {
   void arenaFactory().catch(() => {});
+}
+
+/** Start downloading the VocabWheel student view chunk now (fire-and-forget). */
+export function preloadWheelView(): void {
+  void wheelFactory().catch(() => {});
 }

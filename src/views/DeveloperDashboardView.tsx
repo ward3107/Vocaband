@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import {
   ArrowLeft, Bot, Database, Activity, Server, ShieldAlert, Users, School,
   Search, ScrollText, TrendingUp, ShieldCheck, Flag, Megaphone, Lock, BarChart3,
-  CreditCard, GraduationCap, RefreshCw, FileText, LayoutGrid,
+  CreditCard, GraduationCap, RefreshCw, FileText, LayoutGrid, Building2,
 } from "lucide-react";
 import { hasAdminAccess, type AppUser } from "../core/supabase";
 import type { View } from "../core/views";
@@ -25,6 +25,7 @@ import DevTrialFunnelPanel from "./developer/DevTrialFunnelPanel";
 import DevDataRequestsPanel from "./developer/DevDataRequestsPanel";
 import DevFeatureFlagsPanel from "./developer/DevFeatureFlagsPanel";
 import DevAnnouncementsPanel from "./developer/DevAnnouncementsPanel";
+import DevSchoolInquiriesPanel from "./developer/DevSchoolInquiriesPanel";
 import DevSecurityChecklistPanel from "./developer/DevSecurityChecklistPanel";
 import DevAuthzFailuresPanel from "./developer/DevAuthzFailuresPanel";
 import DevModerationPanel from "./developer/DevModerationPanel";
@@ -40,7 +41,7 @@ interface Props {
 type Tab =
   | "home"
   | "users" | "entitlements" | "classes" | "schools"
-  | "ai" | "trials" | "insights" | "broadcast"
+  | "ai" | "trials" | "insights" | "broadcast" | "inquiries"
   | "privacy" | "audit" | "security" | "moderation"
   | "system" | "flags" | "infra";
 
@@ -56,6 +57,7 @@ const TABS: { id: Tab; label: string; icon: typeof Bot; group: Group }[] = [
   { id: "trials",    label: "Trial funnel",  icon: TrendingUp, group: "Growth" },
   { id: "insights",  label: "Insights",      icon: BarChart3,  group: "Growth" },
   { id: "broadcast", label: "Broadcast",     icon: Megaphone,  group: "Growth" },
+  { id: "inquiries", label: "School leads",  icon: Building2,  group: "Growth" },
 
   { id: "privacy",    label: "Privacy requests", icon: ShieldCheck, group: "Safety & privacy" },
   { id: "moderation", label: "Content review",   icon: FileText,    group: "Safety & privacy" },
@@ -165,16 +167,16 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
     return (
       <button key={id} type="button" onClick={() => setTab(id)} title={label}
         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-        className={`shrink-0 w-[62px] lg:w-full flex flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 transition-all ${active ? "bg-teal-400/15 text-teal-300" : "text-white/45 hover:bg-white/5 hover:text-white"}`}>
-        <Icon className="w-5 h-5 shrink-0" />
-        <span className="text-[9px] font-bold leading-tight text-center w-full break-words">{label}</span>
+        className={`shrink-0 w-[84px] lg:w-full flex flex-col items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 transition-all ${active ? "bg-teal-400/15 text-teal-300" : "text-white/45 hover:bg-white/5 hover:text-white"}`}>
+        <Icon className="w-7 h-7 shrink-0" />
+        <span className="text-[11px] font-bold leading-tight text-center w-full break-words">{label}</span>
       </button>
     );
   };
 
   return (
     <div className="min-h-screen bg-[#0e1117] text-white flex flex-col lg:flex-row">
-      <aside className="lg:w-[76px] lg:shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 bg-[#0b0e14] flex flex-col lg:sticky lg:top-0 lg:h-screen">
+      <aside className="lg:w-[104px] lg:shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 bg-[#0b0e14] flex flex-col lg:sticky lg:top-0 lg:h-screen">
         <div className="p-3 flex lg:justify-center items-center border-b border-white/10">
           <button type="button" onClick={() => setView("voca-picker")} style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 shrink-0" aria-label="Back to picker">
             <ArrowLeft className="w-5 h-5" />
@@ -244,6 +246,7 @@ export default function DeveloperDashboardView({ user, setView, showToast }: Pro
           {tab === "trials"       && <DevTrialFunnelPanel showToast={showToast} />}
           {tab === "insights"     && <DevInsightsPanel showToast={showToast} />}
           {tab === "broadcast"    && <DevAnnouncementsPanel showToast={showToast} />}
+          {tab === "inquiries"    && <DevSchoolInquiriesPanel showToast={showToast} />}
           {tab === "privacy"      && <DevDataRequestsPanel showToast={showToast} />}
           {tab === "moderation"   && <DevModerationPanel showToast={showToast} />}
           {tab === "audit"        && <DevAuditLogPanel showToast={showToast} />}

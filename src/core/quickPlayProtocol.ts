@@ -108,6 +108,15 @@ export const QP_EVENTS = {
   ARENA_GRAB:      "qp:student:arena:grab",
   // A teacher ending the arena round (back to the lobby).
   ARENA_END:       "qp:teacher:arena:end",
+
+  // ─── VocabWheel (live, phone-answer mode) ─────────────────────────
+  // A teacher pushing the current wheel question to the ONE student the
+  // wheel landed on. The server relays it to that student's socket only;
+  // the correct answer is NOT sent (the host scores the reply).
+  WHEEL_ASK:       "qp:teacher:wheel:ask",
+  // The picked student's chosen option index, relayed back to the
+  // teacher's observer sockets so the host can score + drive the wheel.
+  WHEEL_ANSWER:    "qp:student:wheel:answer",
 } as const;
 
 /** Server → client events. */
@@ -177,7 +186,49 @@ export const QP_SERVER_EVENTS = {
   ARENA_GRAB_DENIED:  "qp:arena:grab:denied",
   // The teacher closed the arena — clients drop to the podium.
   ARENA_ENDED:        "qp:arena:ended",
+
+  // ─── VocabWheel (live, phone-answer mode) ─────────────────────────
+  // Sent to ONE student: "the wheel landed on you — here's the question".
+  WHEEL_QUESTION:     "qp:wheel:question",
+  // Relayed to the teacher's observer sockets: the picked student's reply.
+  WHEEL_ANSWER:       "qp:wheel:answer",
 } as const;
+
+/** Teacher → server: push the wheel question to one student. The correct
+ *  answer is intentionally omitted — the host scores the reply. */
+export interface QpWheelAskPayload {
+  sessionCode: string;
+  /** Supabase access token — verified server-side (teacher action). */
+  token: string;
+  /** clientId of the student the wheel landed on. */
+  clientId: string;
+  /** Correlates the reply to this specific ask (ignore stale answers). */
+  askId: string;
+  prompt: string;
+  /** "audio" → the student sees a 🔊 prompt instead of text. */
+  promptKind?: "text" | "audio";
+  options: string[];
+}
+
+/** server → the whole room (WHEEL_QUESTION); each student renders it only
+ *  if `targetClientId` is theirs. Broadcasting + self-filtering keeps the
+ *  targeting cross-VM-safe (no per-VM socket lookup) and the question has no
+ *  correct-answer marker, so a non-target client seeing it is harmless. */
+export interface QpWheelQuestionPayload {
+  targetClientId: string;
+  askId: string;
+  prompt: string;
+  promptKind?: "text" | "audio";
+  options: string[];
+}
+export interface QpWheelAnswerPayload {
+  sessionCode: string;
+  askId: string;
+  /** Index into options the student tapped (-1 = timed out / no answer). */
+  choiceIndex: number;
+  /** Filled server-side when relaying to the teacher. */
+  clientId?: string;
+}
 
 /** Red vs Blue team mode. A student's team rides on their leaderboard
  *  entry; the host sums each side from the unioned leaderboard. */
@@ -661,6 +712,9 @@ export interface QpArenaStartPayload {
     grabRadius?: number;
     /** Seconds a grabber gets to answer. Same choices as Speed Round. */
     roundSeconds?: number;
+    /** Themed board background (QP_ARENA_MAP_IDS). Validated server-side and
+     *  echoed in ARENA_STATE so every student sees the teacher's pick. */
+    mapId?: QpArenaMapId;
   };
 }
 
@@ -701,6 +755,9 @@ export interface QpArenaStatePayload {
   roundSeconds: number;
   words: QpArenaWordPublic[];
   positions: QpArenaPlayer[];
+  /** Teacher-chosen themed background (QP_ARENA_MAP_IDS). Absent ⇒ the
+   *  canvas falls back to its plain gradient. */
+  mapId?: QpArenaMapId;
   /** Opaque id of the Fly VM that owns this arena — same multi-VM union
    *  rationale as QpLeaderboardPayload.serverId. */
   serverId?: string;
@@ -993,6 +1050,24 @@ export function isValidSpeedRoundSeconds(v: unknown): v is number {
  *  Hunt Arena session. The student bootstrap branches on this to show the
  *  arena instead of the regular game — same pattern as QP_SPEED_MODE. */
 export const QP_ARENA_MODE = "word-hunt-arena";
+
+/** allowed_modes sentinel that marks a quick_play_sessions row as a
+ *  VocabWheel "live" session. Students join only to register their name +
+ *  avatar (the wheel runs on the teacher's board); the student bootstrap
+ *  branches on this to show the lightweight "you're in, watch the board"
+ *  screen — same wordless pattern as QP_ARENA_MODE. */
+export const QP_WHEEL_MODE = "vocab-wheel";
+
+/** Themed board backgrounds a teacher can pick for the arena. The teacher
+ *  chooses one (or "random") at start; the id rides ARENA_START → ARENA_STATE
+ *  so every student's phone paints the SAME map as the projector. This is the
+ *  shared source of truth (server validates against it; the client registry
+ *  in components/game/arenaMaps.ts hangs art + names off these ids). */
+export const QP_ARENA_MAP_IDS = [
+  "islands", "forest", "frozen", "volcano", "space", "candy",
+  "underwater", "desert", "jungle", "kingdom", "city",
+] as const;
+export type QpArenaMapId = (typeof QP_ARENA_MAP_IDS)[number];
 
 /** Arena dimensions in LOGICAL units (not pixels) — every client maps
  *  logical → its own canvas size, so phones and the projector agree on

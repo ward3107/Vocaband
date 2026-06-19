@@ -16,24 +16,32 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
-import { Play, Users, LogOut, Check, Copy, Maximize2, X, Monitor, Minimize2, Square, Music, VolumeX } from "lucide-react";
+import { Play, Users, LogOut, Check, Copy, Maximize2, X, Monitor, Minimize2, Square, Zap } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
+import { useAutoAdvance } from "../hooks/useAutoAdvance";
 import { useVocabularyLazy } from "../hooks/useVocabularyLazy";
 import { useSavedWordGroups } from "../hooks/useSavedWordGroups";
 import CategoryRacePodium from "../components/game/CategoryRacePodium";
+import GameMusicPlayer from "../components/game/GameMusicPlayer";
 import LobbyRoster from "../components/game/LobbyRoster";
+import KickConfirmModal from "../components/game/KickConfirmModal";
+import GameThemePicker from "../components/game/GameThemePicker";
+import { useGameTheme } from "../hooks/useGameTheme";
 import GameResults from "../components/game/GameResults";
+import TeamScoreBar from "../components/game/TeamScoreBar";
+import TeamModeToggle from "../components/game/TeamModeToggle";
 import ArenaCanvas from "../components/game/ArenaCanvas";
+import { ARENA_MAPS, randomArenaMapId } from "../components/game/arenaMaps";
 import SpeedWordPicker from "../components/game/SpeedWordPicker";
 import { primeAudio } from "../utils/primeAudio";
-import { playRoundStart, startArenaMusic, stopArenaMusic } from "../utils/raceSfx";
+import { playRoundStart } from "../utils/raceSfx";
 import { shuffle } from "../utils";
 import { buildSpeedQuestion, type L1 } from "../utils/speedRoundQuestion";
 import {
   QP_SPEED_ROUND_SECONDS, QP_SPEED_MODES, QP_ARENA_MAX_WORDS,
-  type QpSpeedMode, type QpArenaWordSeed,
+  type QpSpeedMode, type QpArenaWordSeed, type QpArenaMapId,
 } from "../core/quickPlayProtocol";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
@@ -47,12 +55,16 @@ interface ArenaHostViewProps {
 
 /** Enough words for distractor options (questions need 2–4 choices). */
 const MIN_WORDS = 4;
+/** Podium beat between auto-played hunts (mirrors Speed Round). */
+const AUTO_ADVANCE_SECONDS = 5;
 
 export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewProps) {
   const { language, dir } = useLanguage();
   const t = ARENA_HOST_STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
   // Arabic sessions read the Arabic column; everything else reads Hebrew.
   const l1: L1 = language === "ar" ? "ar" : "he";
+  // Teacher-selected board skin (persisted, shared across live games).
+  const { themeId, theme, setThemeId } = useGameTheme();
 
   const vocab = useVocabularyLazy(true);
 
@@ -60,6 +72,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   const {
     status, currentArena, arenaPositionsRef, leaderboard,
     observeAsTeacher, startArena, endArena, endSession,
+    teamMode, setTeamMode,
   } = qp;
 
   // The teacher's own word list (typed / picked from the library) — the
@@ -71,12 +84,27 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   // walks, so the floating words mix question types. Default: all six.
   const [enabledModes, setEnabledModes] = useState<Set<QpSpeedMode>>(new Set(QP_SPEED_MODES));
   const [roundSeconds, setRoundSeconds] = useState<number>(10);
+  // Themed board background. "random" picks a fresh map each hunt; a concrete
+  // id locks the scene. Persisted so the teacher's pick sticks across games
+  // (mirrors the GameThemePicker persistence). Default: random for variety.
+  const [mapChoice, setMapChoice] = useState<string>(
+    () => (typeof localStorage !== "undefined" && localStorage.getItem("vb-arena-map")) || "random",
+  );
+  const selectMap = (choice: string) => {
+    setMapChoice(choice);
+    try { localStorage.setItem("vb-arena-map", choice); } catch { /* private mode — ignore */ }
+  };
   const [copied, setCopied] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
   // Celebratory results overlay when ending a played hunt.
   const [showResults, setShowResults] = useState(false);
   const [presenting, setPresenting] = useState(false);
   const [buildError, setBuildError] = useState(false);
+  // Student pending removal (clientId + nickname) — drives the confirm modal.
+  const [confirmKick, setConfirmKick] = useState<{ clientId: string; nickname: string } | null>(null);
+  // Auto-play: once the first hunt runs, each finished hunt chains into the
+  // next wave after a short podium beat — no per-hunt click.
+  const [autoPlay, setAutoPlay] = useState(true);
   const tokenRef = useRef<string | null>(null);
 
   const canStart = pickedWords.length >= MIN_WORDS && enabledModes.size > 0;
@@ -116,21 +144,6 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   // way to the leaderboard (which then doubles as the post-game results).
   const [hasStarted, setHasStarted] = useState(false);
 
-  // Teacher-controlled background music — plays on THIS screen (the
-  // projector/dashboard) only, never on student phones. Default on; the
-  // choice is remembered across sessions.
-  const [musicOn, setMusicOn] = useState(() => {
-    try { return localStorage.getItem("vb-arena-music") !== "off"; } catch { return true; }
-  });
-  useEffect(() => {
-    try { localStorage.setItem("vb-arena-music", musicOn ? "on" : "off"); } catch { /* storage blocked */ }
-  }, [musicOn]);
-  useEffect(() => {
-    if (!arenaActive || !musicOn) { stopArenaMusic(); return; }
-    startArenaMusic();
-    return () => stopArenaMusic();
-  }, [arenaActive, musicOn]);
-
   // &mode=arena lets the student bootstrap skip the unused vocab prefetch.
   const joinUrl = useMemo(() => `${window.location.origin}/?session=${sessionCode}&mode=arena`, [sessionCode]);
 
@@ -162,20 +175,39 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
     return seeds;
   };
 
+  // Set when the teacher ENDS a hunt by hand, so auto-play doesn't instantly
+  // relaunch it (the whole point of "End" is to stop). Cleared on the next
+  // manual Start.
+  const endedManuallyRef = useRef(false);
+
   const handleStart = () => {
     if (!tokenRef.current || arenaActive || !canStart) return;
     const seeds = buildBatch();
     if (seeds.length === 0) { setBuildError(true); return; }
     setBuildError(false);
+    endedManuallyRef.current = false;
     // The Start tap is a user gesture — prime + play the jingle.
     primeAudio();
     playRoundStart();
-    startArena(seeds, { roundSeconds }, tokenRef.current);
+    // "random" resolves to a fresh map per hunt; otherwise honour the pick.
+    const mapId: QpArenaMapId = mapChoice === "random" ? randomArenaMapId() : (mapChoice as QpArenaMapId);
+    startArena(seeds, { roundSeconds, mapId }, tokenRef.current);
     setHasStarted(true);
     setPresenting(true);
   };
 
+  // Auto-play: after the first hunt, launch the next wave once the podium
+  // beat passes. Armed only between hunts (hasStarted && !arenaActive) so the
+  // teacher always starts the FIRST hunt explicitly; the countdown feeds the
+  // start buttons below. Suppressed after a manual End.
+  const autoCountdown = useAutoAdvance(
+    autoPlay && hasStarted && !arenaActive && canStart && !endedManuallyRef.current,
+    AUTO_ADVANCE_SECONDS,
+    handleStart,
+  );
+
   const handleEndArena = () => {
+    endedManuallyRef.current = true;
     if (arenaActive && tokenRef.current) endArena(tokenRef.current);
   };
 
@@ -212,30 +244,16 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   const pillIdle = "bg-surface border-outline-variant text-on-surface-variant hover:border-outline";
   const iconBtn = "bg-surface text-indigo-600 hover:bg-surface-container border border-outline-variant";
 
-  // Music on/off — shown in both the controls and presenting headers so the
-  // teacher can silence the room at any moment.
-  const musicBtn = (
-    <button
-      type="button"
-      onClick={() => setMusicOn(v => !v)}
-      role="switch"
-      aria-checked={musicOn}
-      aria-label={musicOn ? t.musicOff : t.musicOn}
-      title={musicOn ? t.musicOff : t.musicOn}
-      style={{ touchAction: "manipulation" }}
-      className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl font-black text-sm transition active:scale-95 ${
-        musicOn ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-200" : "bg-stone-200 text-stone-500 hover:bg-stone-300"
-      }`}
-    >
-      {musicOn ? <Music size={16} /> : <VolumeX size={16} />}
-    </button>
-  );
+  // Remove a student — available both in Controls and on the live/projected
+  // board, since teachers need to drop a disruptive kid mid-game. The confirm
+  // modal guards against an accidental tap in front of the class.
+  const onKick = (clientId: string, nickname: string) => setConfirmKick({ clientId, nickname });
 
   return (
-    <div className="min-h-[100dvh] transition-colors" dir={dir} style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
+    <div className="min-h-[100dvh] transition-colors" dir={dir} style={presenting ? theme.page : { backgroundColor: 'var(--vb-surface-alt)' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
         <header className="flex items-center justify-between gap-2 mb-5">
-          <h1 className={`min-w-0 text-xl sm:text-3xl font-black flex items-center gap-2 ${headingCls}`}>
+          <h1 className={`min-w-0 text-xl sm:text-3xl font-black flex items-center gap-2 ${presenting ? theme.name : headingCls}`}>
             <span className="text-2xl sm:text-3xl flex-shrink-0">🏟️</span>
             <span className="truncate">{t.title}</span>
           </h1>
@@ -244,7 +262,6 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
               <span className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-black text-base sm:text-lg tracking-[0.12em] bg-indigo-50 text-indigo-700">
                 {t.code}: {sessionCode}
               </span>
-              {musicBtn}
               <button
                 type="button"
                 onClick={() => setPresenting(false)}
@@ -256,7 +273,6 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             </div>
           ) : (
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-              {musicBtn}
               <button
                 type="button"
                 onClick={() => setPresenting(true)}
@@ -277,6 +293,13 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
           )}
         </header>
 
+        {/* Background music — teacher can play/pause, skip, and adjust volume
+            for the room while the hunt runs. Slate accents keep it calmer than
+            the brand-fuchsia bar on the other live games. In presentation mode
+            it docks to a compact corner pill (kept mounted, so the music never
+            cuts out when the hunt starts). */}
+        <GameMusicPlayer language={language} theme="slate" floating={presenting} />
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Main: the live map (when running) + the big leaderboard */}
           <div className={`${presenting ? "lg:col-span-12" : "lg:col-span-8"} space-y-4 order-2 lg:order-1`}>
@@ -294,23 +317,29 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
               </section>
             )}
 
+            {/* Live Red vs Blue total — only in team mode. */}
+            {teamMode && <TeamScoreBar entries={sorted} />}
+
             {/* Before the first hunt it's a waiting room; once started the
                 leaderboard takes over (and stays as the post-game results). */}
             {hasStarted ? (
-              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${cardCls}`}>
+              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${presenting ? theme.card : cardCls}`}>
                 <h2 className="text-sm font-black uppercase tracking-widest text-indigo-500 mb-4 flex items-center gap-2">
                   <Users size={18} /> {t.leaderboard}
                   <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
                 </h2>
-                <CategoryRacePodium entries={sorted} emptyText={t.noStudents} large />
+                <CategoryRacePodium entries={sorted} emptyText={t.noStudents} large onKick={onKick} theme={presenting ? theme : undefined} />
               </section>
             ) : (
-              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${cardCls}`}>
+              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${presenting ? theme.card : cardCls}`}>
                 <LobbyRoster
                   players={sorted}
                   countLabel={t.inRoom}
                   emptyLabel={t.noStudents}
                   accent="from-indigo-500 to-violet-600"
+                  large={presenting}
+                  onKick={onKick}
+                  theme={presenting ? theme : undefined}
                 />
               </section>
             )}
@@ -347,6 +376,16 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                 </div>
               </div>
             </section>
+
+            <GameThemePicker themeId={themeId} onSelect={setThemeId} language={language} />
+
+            <TeamModeToggle
+              teamMode={teamMode}
+              onToggle={(en) => tokenRef.current && setTeamMode(en, tokenRef.current)}
+              headingClass="text-indigo-500"
+              idleClass={pillIdle}
+              cardClass={cardCls}
+            />
 
             <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
               {/* The teacher's word list — typed / picked from the library. */}
@@ -404,6 +443,56 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                 })}
               </div>
 
+              {/* Arena map — themed background the whole class sees. "Surprise
+                  me" rolls a fresh scene per hunt; tapping a tile locks it. */}
+              <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500 mt-5 mb-3">{t.mapHeading}</h2>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => selectMap("random")}
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  className={`relative aspect-[10/7] rounded-xl overflow-hidden border-2 flex flex-col items-center justify-center gap-0.5 bg-gradient-to-br from-indigo-500 to-violet-600 text-white transition ${mapChoice === "random" ? "border-amber-400 ring-2 ring-amber-300" : "border-transparent opacity-90 hover:opacity-100"}`}
+                >
+                  <span className="text-xl">🎲</span>
+                  <span className="text-[10px] font-black leading-tight px-1 text-center">{t.randomMap}</span>
+                </button>
+                {ARENA_MAPS.map((m) => {
+                  const picked = mapChoice === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => selectMap(m.id)}
+                      aria-label={m.name[language === "he" ? "he" : language === "ar" ? "ar" : "en"]}
+                      title={m.name[language === "he" ? "he" : language === "ar" ? "ar" : "en"]}
+                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                      className={`relative aspect-[10/7] rounded-xl overflow-hidden border-2 transition ${picked ? "border-amber-400 ring-2 ring-amber-300" : "border-transparent opacity-80 hover:opacity-100"}`}
+                    >
+                      <img src={m.thumb} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                      <span className="absolute bottom-0 inset-x-0 bg-black/45 text-white text-[9px] font-black leading-tight px-1 py-0.5 truncate flex items-center justify-center gap-0.5">
+                        <span>{m.emoji}</span>
+                        <span className="truncate">{m.name[language === "he" ? "he" : language === "ar" ? "ar" : "en"]}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Auto-play toggle — hunts chain themselves after the first. */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoPlay}
+                onClick={() => setAutoPlay(v => !v)}
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                className={`mt-5 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border-2 transition-all ${autoPlay ? "bg-indigo-50 border-indigo-300" : pillIdle}`}
+              >
+                <span className={`font-black text-xs ${autoPlay ? "text-indigo-700" : ""}`}>⚡ {t.autoPlayLabel}</span>
+                <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${autoPlay ? "bg-indigo-500" : "bg-stone-300"}`}>
+                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${autoPlay ? "start-[18px]" : "start-0.5"}`} />
+                </span>
+              </button>
+
               {buildError && <p className="mt-3 text-xs font-bold text-rose-600">{t.buildError}</p>}
 
               {arenaActive ? (
@@ -411,7 +500,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                   type="button"
                   onClick={handleEndArena}
                   style={{ touchAction: "manipulation" }}
-                  className="mt-5 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base bg-rose-100 text-rose-700 hover:bg-rose-200 active:scale-[0.98] transition"
+                  className="mt-3 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base bg-rose-100 text-rose-700 hover:bg-rose-200 active:scale-[0.98] transition"
                 >
                   <Square size={18} /> {t.endArena}
                 </button>
@@ -421,9 +510,11 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                   onClick={handleStart}
                   disabled={!canStart}
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                  className={`mt-5 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${!canStart ? "bg-stone-300 cursor-not-allowed" : "bg-gradient-to-r from-indigo-500 to-violet-600 shadow-indigo-500/30 active:scale-[0.98]"}`}
+                  className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${!canStart ? "bg-stone-300 cursor-not-allowed" : "bg-gradient-to-r from-indigo-500 to-violet-600 shadow-indigo-500/30 active:scale-[0.98]"}`}
                 >
-                  <Play size={18} /> {t.start}
+                  {autoCountdown !== null
+                    ? <><Zap size={18} /> {t.autoNextIn(autoCountdown)}</>
+                    : <><Play size={18} /> {hasStarted ? t.restart : t.start}</>}
                 </button>
               )}
             </section>
@@ -442,7 +533,9 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             style={{ touchAction: "manipulation" }}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-lg text-white shadow-xl shadow-indigo-500/40 bg-gradient-to-r from-indigo-500 to-violet-600 active:scale-[0.98] transition disabled:opacity-60"
           >
-            <Play size={20} /> {t.start}
+            {autoCountdown !== null
+              ? <><Zap size={20} /> {t.autoNextIn(autoCountdown)}</>
+              : <><Play size={20} /> {hasStarted ? t.restart : t.start}</>}
           </motion.button>
         )}
       </AnimatePresence>
@@ -459,6 +552,17 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
           </motion.button>
         )}
       </AnimatePresence>
+
+      {/* Confirm before removing a student from the session. */}
+      <KickConfirmModal
+        name={confirmKick?.nickname ?? null}
+        language={language}
+        onCancel={() => setConfirmKick(null)}
+        onConfirm={() => {
+          if (confirmKick && tokenRef.current) qp.kickStudent(confirmKick.clientId, tokenRef.current);
+          setConfirmKick(null);
+        }}
+      />
 
       {/* Celebratory results — shown when ending a hunt that has scores. */}
       <AnimatePresence>

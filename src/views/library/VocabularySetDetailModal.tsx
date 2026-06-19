@@ -16,9 +16,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Sparkles, Printer, Send, Pencil, Trash2, Loader2, ListChecks, RefreshCcw } from "lucide-react";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
-import { loadHebrewArabicFonts, registerHebrewArabicFonts, fixRtl, disableJsPdfArabicProcessor } from "../../lib/pdfFonts";
+import { fetchPdfBlob } from "../../lib/pdf/requestWorksheetPdf";
 import { useLanguage } from "../../hooks/useLanguage";
 import { setDetailT, type SetDetailStrings } from "../../locales/teacher/vocabulary-library-detail";
 import {
@@ -606,6 +604,134 @@ function SentenceRow({
 // the function next to the modal that owns it avoids an import dance
 // for what's effectively view-layer code.
 
+const escHtml = (s: string | null | undefined): string =>
+  String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+// Build the worksheet as self-contained print HTML. Chromium (server-side)
+// shapes Hebrew/Arabic natively — no jsPDF, no fixRtl/arabicShaper hacks.
+function buildSetWorksheetHtml({
+  set,
+  grouped,
+  t,
+}: {
+  set: VocabularySet;
+  grouped: WordWithSentences[];
+  t: SetDetailStrings;
+}): string {
+  const today = new Date().toLocaleDateString();
+  const nameLine = `${escHtml(t.pdfNameLabel)} ________________________________`;
+
+  const fillRows = grouped
+    .map((g, idx) => ({ idx, g }))
+    .filter((x) => x.g.fillBlank !== null);
+  const mcqRows = fillRows
+    .map((r) => {
+      const d = getDistractorsFromMetadata(r.g.word.metadata);
+      return d && d.length === 3 ? { ...r, distractors: d } : null;
+    })
+    .filter((x): x is typeof fillRows[number] & { distractors: string[] } => x !== null);
+
+  const sheets: string[] = [];
+
+  // Section 1: vocabulary table.
+  sheets.push(`
+    <h1>${escHtml(t.pdfTitle(set.name))}</h1>
+    <div class="meta"><span>${escHtml(t.pdfDateLabel)} ${escHtml(today)}</span><span>${nameLine}</span></div>
+    <div class="sec">${escHtml(t.pdfSectionVocabulary)}</div>
+    <table>
+      <thead><tr><th class="num">#</th><th>English</th><th>Hebrew</th><th>Arabic</th></tr></thead>
+      <tbody>${grouped
+        .map(
+          (g, i) => `<tr><td class="num">${i + 1}</td><td class="b">${escHtml(g.word.english)}</td><td class="he" dir="rtl">${escHtml(g.word.hebrew)}</td><td class="ar" dir="rtl">${escHtml(g.word.arabic)}</td></tr>`,
+        )
+        .join("")}</tbody>
+    </table>`);
+
+  // Section 2: fill-in-the-blank.
+  if (fillRows.length > 0) {
+    sheets.push(`
+      <div class="sec">${escHtml(t.pdfSectionFillBlank)}</div>
+      <div class="meta"><span>${nameLine}</span></div>
+      <table class="lined"><tbody>${fillRows
+        .map(
+          (r, i) => `<tr><td class="num">${i + 1}</td><td>${escHtml(r.g.fillBlank?.text)}</td></tr>`,
+        )
+        .join("")}</tbody></table>`);
+  }
+
+  // Section 3: multiple-choice (only when distractors exist).
+  if (mcqRows.length > 0) {
+    sheets.push(`
+      <div class="sec">${escHtml(t.pdfSectionMcq)}</div>
+      <div class="meta"><span>${escHtml(t.pdfMcqInstructions)}</span></div>
+      <div class="meta"><span>${nameLine}</span></div>
+      ${mcqRows
+        .map((r, i) => {
+          // Stable rotation so the same set always prints the same order.
+          const seed = (r.g.word.english.charCodeAt(0) + i) % 4;
+          const opts = [r.g.word.english, ...r.distractors];
+          const rotated = [...opts.slice(seed), ...opts.slice(0, seed)];
+          const labelled = rotated
+            .map((w, j) => `(${"abcd"[j]}) ${escHtml(w)}`)
+            .join("&nbsp;&nbsp;&nbsp;");
+          return `<div class="mcq-q"><b>${i + 1}.</b> ${escHtml(r.g.fillBlank?.text)}</div><div class="mcq-o">${labelled}</div>`;
+        })
+        .join("")}`);
+  }
+
+  // Section 4: answer key.
+  if (fillRows.length > 0) {
+    sheets.push(`
+      <div class="sec">${escHtml(t.pdfSectionAnswers)}</div>
+      <table>
+        <thead><tr><th class="num">#</th><th>Word</th><th>Sentence</th></tr></thead>
+        <tbody>${fillRows
+          .map((r, i) => {
+            const sentence =
+              r.g.sentence?.text ??
+              r.g.fillBlank?.text.replace(/_+/g, r.g.word.english) ??
+              "";
+            return `<tr><td class="num">${i + 1}</td><td class="b">${escHtml(r.g.word.english)}</td><td>${escHtml(sentence)}</td></tr>`;
+          })
+          .join("")}</tbody>
+      </table>`);
+  }
+
+  const total = sheets.length;
+  const body = sheets
+    .map(
+      (inner, i) =>
+        `<div class="sheet">${inner}<div class="foot"><span>${escHtml(t.pdfFooter)}</span><span>${i + 1} / ${total}</span></div></div>`,
+    )
+    .join("");
+
+  return `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&family=Heebo:wght@400;700&family=Cairo:wght@400;700&display=swap">
+<style>
+  *{box-sizing:border-box}
+  .sheet{width:210mm;min-height:297mm;padding:18mm;page-break-after:always;position:relative;font-family:'Inter',sans-serif;color:#1e293b}
+  .sheet:last-child{page-break-after:auto}
+  h1{font-size:20pt;margin:0 0 3mm;font-weight:800}
+  .meta{display:flex;justify-content:space-between;gap:8mm;color:#6b7280;font-size:10pt;margin-bottom:4mm}
+  .sec{font-size:13pt;font-weight:800;color:#283042;margin:6mm 0 3mm}
+  table{width:100%;border-collapse:collapse;font-size:10pt}
+  th{background:#6366f1;color:#fff;padding:2.4mm;text-align:left;font-weight:700}
+  td{padding:2.2mm;border-bottom:1px solid #eef2f7;vertical-align:top}
+  tr:nth-child(even) td{background:#f8fafc}
+  .num{text-align:center;width:9mm;font-weight:700;color:#6b7280}
+  .b{font-weight:700}
+  .he{font-family:'Heebo',sans-serif;text-align:right;font-size:12pt;color:#5b21b6}
+  .ar{font-family:'Cairo',sans-serif;text-align:right;font-size:12pt;color:#be185d}
+  table.lined td{padding:5mm 2mm;border-bottom:1px solid #d6d9e0}
+  .mcq-q{font-size:11pt;margin:4mm 0 1mm}
+  .mcq-o{background:#f8fafc;color:#3c3c50;font-size:10pt;padding:1.5mm 4mm 4mm}
+  .foot{position:absolute;bottom:8mm;left:18mm;right:18mm;display:flex;justify-content:space-between;color:#9ca3af;font-size:8pt}
+</style>
+${body}`;
+}
+
 async function buildAndDownloadPdf({
   set,
   grouped,
@@ -615,194 +741,17 @@ async function buildAndDownloadPdf({
   grouped: WordWithSentences[];
   t: SetDetailStrings;
 }): Promise<void> {
-  const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait" });
-  // jsPDF auto-subscribes its own (incorrect for our use) Arabic shaper to
-  // every doc's preProcessText event. Disable it so our pre-shaped PF-B
-  // text from fixRtl() survives intact instead of being decomposed back
-  // to base U+06xx letters.
-  disableJsPdfArabicProcessor(pdf);
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const margin = 18;
-
-  // Helvetica has no glyphs for Hebrew/Arabic — without registering Noto
-  // Sans here, the worksheet's translation columns render as Latin-1
-  // garbage (the low byte of each Unicode codepoint).
-  const fonts = await loadHebrewArabicFonts().catch(() => null);
-  if (fonts) registerHebrewArabicFonts(pdf, fonts);
-
-  // ── Page 1 header ──────────────────────────────────────────────────
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(20);
-  pdf.text(t.pdfTitle(set.name), margin, 22);
-
-  const today = new Date().toLocaleDateString();
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(10);
-  pdf.setTextColor(110);
-  pdf.text(`${t.pdfDateLabel} ${today}`, margin, 30);
-  pdf.text(`${t.pdfNameLabel} ________________________________`, pageWidth - margin, 30, { align: "right" });
-
-  // ── Section 1: Vocabulary table ────────────────────────────────────
-  pdf.setFontSize(12);
-  pdf.setTextColor(40);
-  pdf.setFont("helvetica", "bold");
-  pdf.text(t.pdfSectionVocabulary, margin, 42);
-
-  autoTable(pdf, {
-    startY: 46,
-    margin: { left: margin, right: margin },
-    head: [["#", "English", "Hebrew", "Arabic"]],
-    headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: "bold" },
-    body: grouped.map((g, i) => [
-      String(i + 1),
-      g.word.english,
-      // jsPDF writes glyphs left-to-right — pre-reverse RTL runs so the
-      // text reads correctly. fixRtl is a no-op on cells without RTL chars.
-      fixRtl(g.word.hebrew ?? ""),
-      fixRtl(g.word.arabic ?? ""),
-    ]),
-    styles: { fontSize: 10, cellPadding: 2.2 },
-    columnStyles: {
-      0: { halign: "center", cellWidth: 10 },
-      1: { fontStyle: "bold" },
-      // Only switches when the font was actually registered; otherwise
-      // autoTable falls back to helvetica (same as before this fix).
-      ...(fonts ? { 2: { font: "Hebrew", halign: "right" }, 3: { font: "Arabic", halign: "right" } } : {}),
-    },
-    alternateRowStyles: { fillColor: [248, 250, 252] },
-  });
-
-  // ── Section 2: Fill-in-the-blank (new page if there are sentences) ─
-  const fillRows = grouped
-    .map((g, idx) => ({ idx, g }))
-    .filter((x) => x.g.fillBlank !== null);
-
-  if (fillRows.length > 0) {
-    pdf.addPage();
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(16);
-    pdf.setTextColor(40);
-    pdf.text(t.pdfSectionFillBlank, margin, 22);
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(10);
-    pdf.setTextColor(110);
-    pdf.text(`${t.pdfNameLabel} ________________________________`, margin, 30);
-
-    autoTable(pdf, {
-      startY: 38,
-      margin: { left: margin, right: margin },
-      body: fillRows.map((r, i) => [
-        String(i + 1),
-        r.g.fillBlank?.text ?? "",
-      ]),
-      styles: { fontSize: 11, cellPadding: 3, valign: "top" },
-      columnStyles: {
-        0: { halign: "center", cellWidth: 10, fontStyle: "bold", textColor: 80 },
-      },
-      didDrawCell: (data) => {
-        // Light hairline under each row so students have a visual guide.
-        if (data.column.index === 1 && data.section === "body") {
-          const y = data.cell.y + data.cell.height;
-          pdf.setDrawColor(220);
-          pdf.line(data.cell.x, y, data.cell.x + data.cell.width, y);
-        }
-      },
-    });
-
-    // ── Section 3: Multiple-choice page — only when distractors exist ─
-    // For each fill-row that also has distractors, render a numbered
-    // sentence + a 4-option line (target + distractors, shuffled
-    // deterministically by word id so the same PDF prints the same
-    // option order each time).
-    const mcqRows = fillRows
-      .map((r) => {
-        const d = getDistractorsFromMetadata(r.g.word.metadata);
-        return d && d.length === 3 ? { ...r, distractors: d } : null;
-      })
-      .filter((x): x is typeof fillRows[number] & { distractors: string[] } => x !== null);
-
-    if (mcqRows.length > 0) {
-      pdf.addPage();
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(16);
-      pdf.setTextColor(40);
-      pdf.text(t.pdfSectionMcq, margin, 22);
-
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(10);
-      pdf.setTextColor(110);
-      pdf.text(t.pdfMcqInstructions, margin, 30);
-      pdf.text(`${t.pdfNameLabel} ________________________________`, margin, 38);
-
-      autoTable(pdf, {
-        startY: 46,
-        margin: { left: margin, right: margin },
-        body: mcqRows.flatMap((r, i) => {
-          // Stable 4-letter shuffle so the same PDF always prints the
-          // same option order — students can swap sheets without copying.
-          const seed = (r.g.word.english.charCodeAt(0) + i) % 4;
-          const opts = [r.g.word.english, ...r.distractors];
-          const rotated = [...opts.slice(seed), ...opts.slice(0, seed)];
-          const labelled = rotated.map((w, j) => `(${"abcd"[j]}) ${w}`).join("   ");
-          return [
-            [String(i + 1), r.g.fillBlank?.text ?? ""],
-            ["", labelled],
-          ];
-        }),
-        styles: { fontSize: 11, cellPadding: 2, valign: "top" },
-        columnStyles: {
-          0: { halign: "center", cellWidth: 10, fontStyle: "bold", textColor: 80 },
-        },
-        didParseCell: (data) => {
-          // The option-row sits in shaded-grey, with no border, slightly
-          // smaller font — visually links it to the sentence above.
-          if (data.section === "body" && data.row.index % 2 === 1) {
-            data.cell.styles.fillColor = [248, 250, 252];
-            data.cell.styles.fontSize = 10;
-            data.cell.styles.textColor = [60, 60, 80];
-            data.cell.styles.cellPadding = { top: 1, right: 2, bottom: 4, left: 4 };
-          }
-        },
-      });
-    }
-
-    // ── Section 4: Answer key on its own page ───────────────────────
-    pdf.addPage();
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(16);
-    pdf.setTextColor(40);
-    pdf.text(t.pdfSectionAnswers, margin, 22);
-
-    autoTable(pdf, {
-      startY: 30,
-      margin: { left: margin, right: margin },
-      head: [["#", "Word", "Sentence"]],
-      headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: "bold" },
-      body: fillRows.map((r, i) => [
-        String(i + 1),
-        r.g.word.english,
-        r.g.sentence?.text ?? r.g.fillBlank?.text.replace(/_+/g, r.g.word.english) ?? "",
-      ]),
-      styles: { fontSize: 10, cellPadding: 2.4 },
-      columnStyles: {
-        0: { halign: "center", cellWidth: 10 },
-        1: { fontStyle: "bold", cellWidth: 35 },
-      },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-    });
+  const html = buildSetWorksheetHtml({ set, grouped, t });
+  const blob = await fetchPdfBlob({ kind: "html", html, orientation: "portrait" });
+  const url = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${safeFilename(set.name)}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   }
-
-  // Footer on every page.
-  const pageCount = pdf.getNumberOfPages();
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(8);
-  pdf.setTextColor(160);
-  for (let i = 1; i <= pageCount; i++) {
-    pdf.setPage(i);
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    pdf.text(t.pdfFooter, pageWidth / 2, pageHeight - 8, { align: "center" });
-    pdf.text(`${i} / ${pageCount}`, pageWidth - margin, pageHeight - 8, { align: "right" });
-  }
-
-  pdf.save(`${safeFilename(set.name)}.pdf`);
 }

@@ -3055,6 +3055,34 @@ const FreeResourcesView: React.FC<FreeResourcesViewProps> = ({ onNavigate, onGet
   const handleConfirmDownload = async () => {
     if (!preview) return;
     setIsExporting(true);
+    setExportStage("rendering");
+    // Preferred path: render on the server with real Chromium (vector text,
+    // correct Hebrew/Arabic shaping, real CSS page breaks). The generators
+    // already emit self-contained HTML, so we ship it as kind:"html" and let
+    // the Worker render it. Fall back to the legacy iframe + html2pdf pass on
+    // any failure so the teacher always gets a file.
+    try {
+      const { fetchPdfBlob } = await import("../lib/pdf/requestWorksheetPdf");
+      const blob = await fetchPdfBlob({
+        kind: "html",
+        html: preview.html,
+        orientation: settings.orientation,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = preview.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      setIsExporting(false);
+      setExportStage(null);
+      setPreviewSource(null);
+      return;
+    } catch {
+      // Server unreachable (offline / cold start) — fall through to html2pdf.
+    }
     setExportStage("preparing");
     // Render the preview HTML inside an off-screen iframe rather than a
     // plain <div> appended to document.body.  preview.html embeds a

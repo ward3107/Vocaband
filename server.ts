@@ -132,12 +132,15 @@ import {
   QP_ARENA_GRAB_COOLDOWN_MS,
   QP_ARENA_BASE_POINTS,
   QP_ARENA_BONUS_MAX,
+  QP_ARENA_MAP_IDS,
   type QpStudentJoinPayload,
   type QpScoreUpdatePayload,
   type QpReactionSendPayload,
   type QpStudentLeavePayload,
   type QpTeacherObservePayload,
   type QpTeacherKickPayload,
+  type QpWheelAskPayload,
+  type QpWheelAnswerPayload,
   type QpTeacherBonusPayload,
   type QpTeacherEndPayload,
   type QpTeacherTeamModePayload,
@@ -793,6 +796,28 @@ const TRANSLATE_SCHEMA = {
 const OCR_SCHEMA = {
   type: Type.ARRAY,
   items: { type: Type.STRING },
+};
+
+// Teacher Help assistant — Gemini returns a short answer in the
+// teacher's language plus ONE navigation target from a fixed list, so
+// the client routes deterministically (the model can never invent a
+// destination). See app.post("/api/teacher-assistant", …).
+const TEACHER_ASSISTANT_ACTIONS = [
+  "live_games",
+  "classroom_tools",
+  "create_class",
+  "my_classes",
+  "classroom",
+  "approvals",
+  "none",
+] as const;
+const TEACHER_ASSISTANT_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    answer: { type: Type.STRING },
+    action: { type: Type.STRING, enum: [...TEACHER_ASSISTANT_ACTIONS] },
+  },
+  required: ["answer", "action"],
 };
 
 const AI_TEXT_SCHEMA = {
@@ -1846,6 +1871,8 @@ async function startServer() {
         grabRadius: number;
         roundSeconds: number;
         visibleWords: number;
+        /** Teacher-chosen themed background id, or null for the plain board. */
+        mapId: string | null;
       };
       words: Map<string, {
         label: string;
@@ -2389,6 +2416,7 @@ async function startServer() {
       height: arena.config.height,
       grabRadius: arena.config.grabRadius,
       roundSeconds: arena.config.roundSeconds,
+      ...(arena.config.mapId ? { mapId: arena.config.mapId as QpArenaStatePayload["mapId"] } : {}),
       words,
       positions,
       serverId: QP_SERVER_ID,
@@ -3052,6 +3080,56 @@ async function startServer() {
       qpScheduleBroadcast(sessionCode);
     });
 
+    // ─── VocabWheel phone-answer relay ────────────────────────────────
+    // Teacher pushes the current wheel question to the ONE student the
+    // wheel landed on. We broadcast to the room with a targetClientId and
+    // let each student render it only if it's theirs (cross-VM-safe — no
+    // per-VM socket lookup). The correct answer is never sent; the host
+    // scores the reply.
+    socket.on(QP_EVENTS.WHEEL_ASK, async (payload: QpWheelAskPayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, token, clientId, askId, prompt, promptKind, options } = payload;
+      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) {
+        return qpEmitError(socket, QP_EVENTS.WHEEL_ASK, "invalid_payload", "bad payload");
+      }
+      if (typeof askId !== "string" || askId.length > 64
+        || typeof prompt !== "string" || prompt.length > 300
+        || !Array.isArray(options) || options.length < 2 || options.length > 6
+        || options.some((o) => typeof o !== "string" || o.length > 200)) {
+        return qpEmitError(socket, QP_EVENTS.WHEEL_ASK, "invalid_payload", "bad question");
+      }
+      if (!qpTeacherLimiter.checkLimit(socket.id)) {
+        return qpEmitError(socket, QP_EVENTS.WHEEL_ASK, "rate_limited", "too many teacher actions");
+      }
+      const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
+      if (!verify.ok) return qpEmitError(socket, QP_EVENTS.WHEEL_ASK, verify.reason, "access denied");
+
+      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.WHEEL_QUESTION, {
+        targetClientId: clientId,
+        askId,
+        prompt,
+        promptKind: promptKind === "audio" ? "audio" : "text",
+        options,
+      });
+    });
+
+    // The picked student's reply. Relayed to the whole room (the host
+    // listens; other students have no WHEEL_ANSWER handler, so they ignore
+    // it). Only a joined student of this session may answer.
+    socket.on(QP_EVENTS.WHEEL_ANSWER, (payload: QpWheelAnswerPayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, askId, choiceIndex } = payload;
+      if (!isValidSessionCode(sessionCode)) return;
+      if (typeof askId !== "string" || askId.length > 64 || typeof choiceIndex !== "number") return;
+      const state = qpSessions.get(sessionCode);
+      if (!state) return;
+      const clientId = state.socketToClient.get(socket.id);
+      if (!clientId) return; // not a joined student of this session
+      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.WHEEL_ANSWER, {
+        sessionCode, askId, choiceIndex, clientId,
+      });
+    });
+
     // Manual bonus points — teacher-authoritative, bypasses the
     // student-side delta cap. Bounded by QP_MAX_BONUS_AMOUNT to keep a
     // stuck key or runaway client from writing pathological values, and
@@ -3693,6 +3771,11 @@ async function startServer() {
       const visibleWords = typeof cfg.visibleWords === "number" && isFinite(cfg.visibleWords)
         ? Math.min(15, Math.max(3, Math.round(cfg.visibleWords)))
         : QP_ARENA_DEFAULT_VISIBLE;
+      // Themed background — only an id from the known set survives, so a
+      // bogus value can never reach students or point at a missing asset.
+      const mapId = (QP_ARENA_MAP_IDS as readonly string[]).includes(cfg.mapId as string)
+        ? (cfg.mapId as string)
+        : null;
 
       // Scatter the first visibleWords tokens; the rest wait as reserves
       // (pos: null) for the phase-2c refill.
@@ -3719,7 +3802,7 @@ async function startServer() {
       }
 
       const arena: NonNullable<QpSessionState["currentArena"]> = {
-        config: { width: QP_ARENA_WIDTH, height: QP_ARENA_HEIGHT, grabRadius, roundSeconds, visibleWords },
+        config: { width: QP_ARENA_WIDTH, height: QP_ARENA_HEIGHT, grabRadius, roundSeconds, visibleWords, mapId },
         words,
         positions,
         grabCooldownUntil: new Map(),
@@ -5598,6 +5681,117 @@ Quality rules:
     legacyHeaders: false,
     message: { error: "Too many AI requests. Please wait a minute before trying again." },
     keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req.ip || "unknown") || "unknown",
+  });
+
+  // ── Teacher Help assistant ───────────────────────────────────────
+  // Natural-language concierge for the teacher dashboard. The teacher
+  // types or speaks a question in any language; Gemini Flash-Lite
+  // answers in their language and picks ONE destination from a fixed
+  // enum so the client navigates deterministically. The client keeps a
+  // rule-based fallback, so this endpoint being unavailable is non-fatal.
+  // Only teachers/admins; rate-limited by aiRateLimiter (10/min) and the
+  // question length is clamped to keep each call cheap.
+  app.post("/api/teacher-assistant", aiRateLimiter, async (req, res) => {
+    const ip = req.ip || "unknown";
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const token = authHeader.substring(7);
+    const uid = await verifyToken(token);
+    if (!uid) return res.status(401).json({ error: "Invalid token" });
+
+    const userData = await getUserRoleAndClass(uid);
+    if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
+      console.warn(`[teacher-assistant] non-teacher caller: ip=${ip} uid=${uid}`);
+      return res.status(403).json({ error: "Only teachers can use the assistant" });
+    }
+
+    const { message, language, context } = req.body ?? {};
+    if (typeof message !== "string" || message.trim().length === 0) {
+      return res.status(400).json({ error: "message is required" });
+    }
+    // Clamp the question so the model stays focused and each call cheap.
+    const question = message.trim().slice(0, 500);
+
+    const injection = detectPromptInjection(question);
+    if (injection.detected) {
+      return res.status(400).json({ error: "That question contains a disallowed pattern" });
+    }
+
+    const lang =
+      language === "he" ? "Hebrew" :
+      language === "ar" ? "Arabic" :
+      language === "ru" ? "Russian" : "English";
+    const hasClasses = !!(context && context.hasClasses);
+    const pending =
+      context && Number.isFinite(context.pendingStudentsCount)
+        ? Math.max(0, Math.trunc(context.pendingStudentsCount))
+        : 0;
+
+    const apiKey = process.env.GOOGLE_AI_API_KEY;
+    if (!apiKey || apiKey.trim() === "") {
+      return res.status(503).json({ error: "Gemini API key not configured" });
+    }
+
+    const prompt = `IMPORTANT — LANGUAGE: Detect the language of the teacher's question (shown at the very bottom) and write your entire "answer" in THAT SAME language — an Arabic question gets an Arabic answer, Hebrew gets Hebrew, English gets English, Russian gets Russian. The dashboard is currently set to ${lang}, but ALWAYS follow the language the teacher actually wrote in, NOT the dashboard setting. (The "action" field still uses one of the English ids listed below.)
+
+You are the friendly in-app help assistant on the TEACHER dashboard of Vocaband, an English-vocabulary app used by teachers in Israeli schools (grades 4–9). You help non-technical teachers understand what to do and send them to the right place. Be warm, brief, and concrete.
+
+WHAT THE TEACHER CAN DO ON THIS DASHBOARD, with the navigation target ("action") for each:
+- "live_games": Competitive games where every student plays on their OWN PHONE and joins by scanning a QR code (no login). Includes Quick Play, Category Race, Speed Round, Word Hunt Arena. Best for energetic, whole-class competition.
+- "classroom_tools": In-room games run on ONE screen / projector, for when students don't have phones. Includes Class Show, Hot Seat, Vocab Wheel.
+- "create_class": Make a new class; the teacher gets a short class code. (The teacher ${hasClasses ? "ALREADY has at least one class" : "has NO classes yet"} — only suggest creating one if it fits.)
+- "my_classes": The teacher's class cards — where they see the class code, share the QR / join link, open the roster, tap "New activity" to assign homework, or choose "Worksheet" to print a PDF.
+- "classroom": Analytics — who's active, average scores, each student's strengths and struggling words, weekly reports and CSV/PDF export.
+- "approvals": Approve students waiting to join. There ${pending > 0 ? `are currently ${pending} student(s) waiting` : "are no students waiting right now"}.
+- "none": The question isn't about navigating the dashboard (a greeting, thanks, or general chat) — just answer kindly.
+
+KEY FACTS to use when relevant:
+- Students join a class in 3 ways: (1) type the class code, (2) scan the QR code / open the join link the teacher shares, (3) log in with a name + 4-digit PIN the teacher creates. New students who use the code wait under Approvals.
+- Homework: open a class → "New activity" → pick words + game modes → assign. Students play it on their phones.
+- Printable worksheet: pick words → "Worksheet" → print or save a PDF.
+
+RULES:
+- Write your entire "answer" in the SAME language the teacher used in their question (Arabic→Arabic, Hebrew→Hebrew, English→English, Russian→Russian) — match THEIR question, not the dashboard setting. Keep it to 1–4 short sentences, plain words, no jargon.
+- Choose exactly ONE "action" from the list that best helps the teacher's request, or "none".
+- Never invent features that aren't listed above. If unsure, give the closest helpful answer and pick the most relevant action.
+
+Teacher's question: "${question}"`;
+
+    try {
+      const genAI = createGeminiClient(apiKey.trim());
+      const result = await genAI.models.generateContent({
+        model: "gemini-2.5-flash-lite",
+        contents: prompt,
+        config: {
+          temperature: 0.3,
+          maxOutputTokens: 400,
+          responseMimeType: "application/json",
+          responseSchema: TEACHER_ASSISTANT_SCHEMA,
+          httpOptions: { timeout: GEMINI_TIMEOUT_MS },
+        },
+      });
+      const raw = result.text ?? "";
+      let parsed: { answer?: string; action?: string };
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        console.warn(`[teacher-assistant] unparseable model output: ip=${ip}`);
+        return res.status(502).json({ error: "Assistant returned an unexpected response" });
+      }
+      const answer = typeof parsed.answer === "string" ? parsed.answer.trim() : "";
+      const action = (TEACHER_ASSISTANT_ACTIONS as readonly string[]).includes(parsed.action ?? "")
+        ? parsed.action
+        : "none";
+      if (!answer) {
+        return res.status(502).json({ error: "Assistant returned an empty answer" });
+      }
+      return res.json({ answer, action });
+    } catch (err) {
+      console.error(`[teacher-assistant] generation failed: ip=${ip}`, (err as Error)?.message || err);
+      return res.status(502).json({ error: "Assistant is temporarily unavailable" });
+    }
   });
 
   // Per-level constraints. Each entry is split into a one-line spec (the

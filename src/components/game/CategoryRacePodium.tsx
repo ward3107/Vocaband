@@ -14,14 +14,17 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Trophy } from "lucide-react";
+import { Trophy, X } from "lucide-react";
 import QPAvatar from "../QPAvatar";
+import type { GameTheme } from "../../constants/gameThemes";
 
 export interface PodiumEntry {
   clientId: string;
   nickname: string;
   avatar?: string;
   score: number;
+  /** Red vs Blue team mode — colours the lane so the split is visible. */
+  team?: "red" | "blue";
 }
 
 interface CategoryRacePodiumProps {
@@ -32,6 +35,13 @@ interface CategoryRacePodiumProps {
    *  class reading the board from the back of the room can make out
    *  who's who. Defaults off for any compact/preview use. */
   large?: boolean;
+  /** When set, each lane shows a "remove" button that calls this with the
+   *  student's clientId + nickname (guarded by a confirm modal in the host).
+   *  Available in both the Controls and the live/projected view. */
+  onKick?: (clientId: string, nickname: string) => void;
+  /** Live-game skin. Re-colours the name / track / empty text; defaults to
+   *  the dashboard's semantic tokens when omitted. */
+  theme?: GameTheme;
 }
 
 // easeOutCubic count-up so a +10 visibly ticks up instead of snapping.
@@ -56,7 +66,7 @@ function AnimatedScore({ value }: { value: number }) {
   return <>{display}</>;
 }
 
-export default function CategoryRacePodium({ entries, emptyText, large = false }: CategoryRacePodiumProps) {
+export default function CategoryRacePodium({ entries, emptyText, large = false, onKick, theme }: CategoryRacePodiumProps) {
   // Detect score increases between renders to fire a "+N" burst.
   const prev = useRef<Map<string, number>>(new Map());
   const gainId = useRef(0);
@@ -94,7 +104,7 @@ export default function CategoryRacePodium({ entries, emptyText, large = false }
 
   if (entries.length === 0) {
     return (
-      <p className={`font-semibold text-center text-on-surface-variant ${large ? "text-2xl py-20" : "text-sm py-10"}`}>
+      <p className={`font-semibold text-center ${theme ? theme.muted : "text-on-surface-variant"} ${large ? "text-2xl py-20" : "text-sm py-10"}`}>
         {emptyText}
       </p>
     );
@@ -114,6 +124,12 @@ export default function CategoryRacePodium({ entries, emptyText, large = false }
           const pct = Math.max(2, Math.min(100, (e.score / leaderScore) * 100));
           const isLeader = i === 0;
           const gain = gains.get(e.clientId);
+          // Team mode: paint the lane red/blue so the split reads at a glance.
+          const teamFill = e.team === "red"
+            ? "bg-gradient-to-r from-rose-500 to-red-600 shadow-rose-500/40"
+            : e.team === "blue"
+              ? "bg-gradient-to-r from-sky-500 to-blue-600 shadow-sky-500/40"
+              : null;
           return (
             <motion.li
               key={e.clientId}
@@ -128,36 +144,48 @@ export default function CategoryRacePodium({ entries, emptyText, large = false }
               <div className={`flex items-center mb-1.5 ${large ? "gap-3" : "gap-2"}`}>
                 {/* Top three get medals; everyone else a numbered chip. */}
                 {i < 3 ? (
-                  <span className={`inline-flex items-center justify-center ${large ? "w-9 h-9 text-3xl" : "w-6 h-6 text-lg"}`} aria-label={`Rank ${i + 1}`}>
+                  <span className={`inline-flex items-center justify-center ${large ? "w-9 h-9 text-3xl min-[1280px]:w-14 min-[1280px]:h-14 min-[1280px]:text-5xl" : "w-6 h-6 text-lg"}`} aria-label={`Rank ${i + 1}`}>
                     {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
                   </span>
                 ) : (
                   <span
                     className={`inline-flex items-center justify-center rounded-full font-black bg-surface-container text-on-surface-variant ${
-                      large ? "w-9 h-9 text-lg" : "w-6 h-6 text-xs"
+                      large ? "w-9 h-9 text-lg min-[1280px]:w-14 min-[1280px]:h-14 min-[1280px]:text-3xl" : "w-6 h-6 text-xs"
                     }`}
                   >
                     {i + 1}
                   </span>
                 )}
-                <span className={`flex items-center justify-center ${large ? "text-3xl" : "text-lg"}`}>
-                  <QPAvatar value={e.avatar || "🦊"} iconSize={large ? 30 : 18} />
+                <span className={`flex items-center justify-center ${large ? "text-3xl min-[1280px]:text-5xl" : "text-lg"}`}>
+                  <QPAvatar value={e.avatar || "🦊"} iconSize={large ? 44 : 18} />
                 </span>
                 <span
-                  className={`font-black truncate min-w-0 flex-1 text-on-surface ${
-                    large ? "text-2xl sm:text-3xl" : "text-sm"
+                  className={`font-black truncate min-w-0 flex-1 ${theme ? theme.name : "text-on-surface"} ${
+                    large ? "text-2xl sm:text-3xl min-[1280px]:text-5xl" : "text-sm"
                   }`}
                   dir="auto"
                 >
                   {e.nickname}
                 </span>
+                {onKick && (
+                  <button
+                    type="button"
+                    onClick={() => onKick(e.clientId, e.nickname)}
+                    style={{ touchAction: "manipulation" }}
+                    className={`shrink-0 inline-flex items-center justify-center rounded-full bg-rose-100 text-rose-600 opacity-70 hover:opacity-100 hover:bg-rose-200 transition active:scale-90 ${large ? "w-8 h-8" : "w-6 h-6"}`}
+                    aria-label={`Remove ${e.nickname}`}
+                    title={`Remove ${e.nickname}`}
+                  >
+                    <X size={large ? 18 : 14} strokeWidth={3} />
+                  </button>
+                )}
               </div>
 
               {/* Track + fill — the race itself. Trophy sits at the
                   end of the leader's fill so it travels with whoever
                   is in front. */}
               <div
-                className={`relative rounded-full overflow-hidden bg-surface-container ${large ? "h-12" : "h-8"}`}
+                className={`relative rounded-full overflow-hidden ${theme ? theme.track : "bg-surface-container"} ${large ? "h-12 min-[1280px]:h-16" : "h-8"}`}
                 style={gain ? { boxShadow: "0 0 0 2px rgba(16,185,129,0.55)" } : undefined}
               >
                 <motion.div
@@ -165,11 +193,13 @@ export default function CategoryRacePodium({ entries, emptyText, large = false }
                   animate={{ width: `${pct}%` }}
                   transition={{ type: "spring", stiffness: 220, damping: 28 }}
                   className={`relative h-full rounded-full flex items-center justify-end text-white font-black shadow-md ${
-                    large ? "px-5 text-2xl" : "px-3 text-sm"
+                    large ? "px-5 text-2xl min-[1280px]:text-4xl" : "px-3 text-sm"
                   } ${
-                    isLeader
-                      ? "bg-gradient-to-r from-fuchsia-500 via-pink-500 to-rose-500 shadow-fuchsia-500/40"
-                      : "bg-gradient-to-r from-fuchsia-400 to-pink-500 shadow-fuchsia-400/30"
+                    teamFill
+                      ? teamFill
+                      : isLeader
+                        ? "bg-gradient-to-r from-fuchsia-500 via-pink-500 to-rose-500 shadow-fuchsia-500/40"
+                        : "bg-gradient-to-r from-fuchsia-400 to-pink-500 shadow-fuchsia-400/30"
                   }`}
                 >
                   <span className={`tabular-nums ${large && isLeader ? "me-9" : large ? "me-2" : ""}`}>
@@ -203,7 +233,7 @@ export default function CategoryRacePodium({ entries, emptyText, large = false }
                       exit={{ opacity: 0, scale: 0.6 }}
                       transition={{ type: "spring", stiffness: 380, damping: 22 }}
                       className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full bg-white shadow-md ring-2 ring-amber-300 pointer-events-none ${
-                        large ? "end-2 w-10 h-10" : "end-1.5 w-7 h-7"
+                        large ? "end-2 w-10 h-10 min-[1280px]:w-14 min-[1280px]:h-14" : "end-1.5 w-7 h-7"
                       }`}
                       aria-hidden
                     >

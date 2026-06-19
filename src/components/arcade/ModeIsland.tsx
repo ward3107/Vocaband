@@ -2,6 +2,10 @@
  * One mode-island medallion on the picker map. Pure presentation — the
  * parent decides position and state. Keeps each mode's own gradient per
  * the project's "each item gets its own gradient" rule.
+ *
+ * Visual: a large frosted-glass medallion — the per-mode gradient base,
+ * a glossy top highlight, an inner glass rim, and a soft coloured glow
+ * halo behind. Bigger and more tactile than the old flat circles.
  */
 import type { ReactNode } from "react";
 import { motion } from "motion/react";
@@ -51,6 +55,13 @@ export default function ModeIsland({
     state === "next" ? L.next :
     state === "locked" ? L.locked : L.todo;
 
+  // Ring treatment per state. 'next' gets the loudest treatment so the
+  // recommended mode reads at a glance.
+  const ring =
+    done ? "ring-[3px] ring-amber-300/90" :
+    next ? "ring-4 ring-amber-300/60" :
+    "ring-2 ring-white/30";
+
   return (
     <div
       className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
@@ -63,35 +74,48 @@ export default function ModeIsland({
         aria-label={`${name} — ${stateWord}${done ? `, ${L.stars(mastery)}` : ""}`}
         whileTap={reduced || locked ? undefined : { scale: 0.92 }}
         whileHover={reduced || locked ? undefined : { scale: 1.06 }}
-        className={`${ARCADE_BUTTON_TOUCH} relative flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br ${gradient} text-4xl shadow-lg sm:h-28 sm:w-28 sm:text-5xl ${
-          done ? "ring-[3px] ring-amber-300" :
-          next ? "ring-4 ring-amber-300/50 shadow-cyan-500/40" :
-          "ring-2 ring-white/25"
+        className={`${ARCADE_BUTTON_TOUCH} group relative flex h-28 w-28 items-center justify-center rounded-full ${ring} shadow-xl sm:h-32 sm:w-32 ${
+          next ? "shadow-cyan-500/40" : "shadow-black/30"
         } ${locked ? "opacity-50 grayscale" : ""}`}
       >
-        <span aria-hidden className="drop-shadow">{emoji}</span>
+        {/* Soft coloured glow halo behind the medallion. */}
+        <span
+          aria-hidden
+          className={`absolute -inset-1.5 -z-10 rounded-full bg-gradient-to-br ${gradient} ${
+            next ? "opacity-70 blur-lg" : "opacity-40 blur-md"
+          }`}
+        />
+
+        {/* Gradient base. */}
+        <span aria-hidden className={`absolute inset-0 rounded-full bg-gradient-to-br ${gradient}`} />
+        {/* Glossy top highlight for the glass read. */}
+        <span aria-hidden className="absolute inset-0 rounded-full bg-gradient-to-b from-white/45 via-white/10 to-transparent" />
+        {/* Frosted inner rim. */}
+        <span aria-hidden className="absolute inset-[5px] rounded-full ring-1 ring-inset ring-white/35 backdrop-blur-[1px]" />
+
+        <span aria-hidden className="relative text-5xl drop-shadow-lg sm:text-6xl">{emoji}</span>
 
         {next && !reduced && (
-          <span aria-hidden className="absolute inset-0 -z-10 animate-ping rounded-full bg-cyan-400/30" />
+          <span aria-hidden className="absolute inset-0 -z-20 animate-ping rounded-full bg-cyan-400/30" />
         )}
 
         {/* Show earned stars whenever mastery > 0, including replay-round
             islands where state="next" but the mode was already completed. */}
         {mastery > 0 && (
-          <span aria-hidden className="absolute -top-3.5 left-1/2 flex -translate-x-1/2 gap-0.5">
+          <span aria-hidden className="absolute -top-4 left-1/2 flex -translate-x-1/2 gap-0.5">
             {[0, 1, 2].map((i) => (
-              <Star key={i} size={12} strokeWidth={2}
-                className={i < mastery ? "text-amber-300" : "text-white/25"}
+              <Star key={i} size={14} strokeWidth={2}
+                className={i < mastery ? "text-amber-300 drop-shadow" : "text-white/25"}
                 fill={i < mastery ? "currentColor" : "none"} />
             ))}
           </span>
         )}
 
-        {done && <Check aria-hidden size={18} strokeWidth={3} className="absolute -bottom-1 -end-1 rounded-full bg-emerald-500 p-0.5 text-white" />}
-        {locked && <Lock aria-hidden size={16} className="absolute -bottom-1 -end-1 text-white/70" />}
+        {done && <Check aria-hidden size={20} strokeWidth={3} className="absolute -bottom-1 -end-1 rounded-full bg-emerald-500 p-0.5 text-white shadow-md" />}
+        {locked && <Lock aria-hidden size={18} className="absolute -bottom-1 -end-1 rounded-full bg-black/40 p-0.5 text-white/80" />}
       </motion.button>
 
-      <span className="pointer-events-none absolute left-1/2 top-full mt-2 w-28 -translate-x-1/2 text-center text-xs font-bold leading-tight text-white/90 drop-shadow">
+      <span className="pointer-events-none absolute left-1/2 top-full mt-2.5 w-32 -translate-x-1/2 text-center text-sm font-bold leading-tight text-white drop-shadow-md">
         {name}
       </span>
     </div>

@@ -47,7 +47,7 @@ export default function QuickPlayEndgameCard({
   leaderboard, mistakes, gameWords, targetLanguage,
   isDark, disabled, speakWord, onPlayAgain, onBackToHome,
 }: QuickPlayEndgameCardProps) {
-  const { language, isRTL } = useLanguage();
+  const { language, isRTL, dir } = useLanguage();
   const tt = gameFinishedT[language];
 
   // Score + rank from the leaderboard snapshot.  Matching by the
@@ -79,7 +79,7 @@ export default function QuickPlayEndgameCard({
   useEffect(() => { celebrate("big"); }, []);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div dir={dir} className="flex flex-col gap-3">
       {standing && (
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
