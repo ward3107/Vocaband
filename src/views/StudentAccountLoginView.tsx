@@ -5,6 +5,7 @@ import StudentPinLoginCard from "../components/StudentPinLoginCard";
 import type { View } from "../core/views";
 import { useLanguage, languageNames, type Language } from "../hooks/useLanguage";
 import { studentLoginT } from "../locales/student/student-login";
+import { isStudentShell } from "../utils/studentShell";
 import { Globe } from "lucide-react";
 
 interface StudentAccountLoginViewProps {
@@ -228,17 +229,26 @@ export default function StudentAccountLoginView({
 
         <div className="relative z-10 h-screen flex flex-col overflow-hidden">
             <header className="flex items-center justify-between px-4 sm:px-6 py-4">
-              <button
-                onClick={() => {
-                  setView("public-landing");
-                  setStudentLoginClassCode("");
-                }}
-                type="button"
-                className="flex items-center gap-2 text-white/80 hover:text-white transition-colors font-bold text-sm px-3 py-2 rounded-full bg-white/10 backdrop-blur-sm"
-              >
-                <ArrowLeft size={16} className={isRTL ? 'rotate-180' : ''} />
-                {t.back}
-              </button>
+              {/* In the native student app this login screen is the root —
+                  there is no marketing landing to return to (the shell blocks
+                  it), so "Back" did nothing and only confused students. Hide
+                  it inside the shell; keep an empty spacer so the language
+                  picker stays right-aligned. On the website Back still works. */}
+              {isStudentShell() ? (
+                <div />
+              ) : (
+                <button
+                  onClick={() => {
+                    setView("public-landing");
+                    setStudentLoginClassCode("");
+                  }}
+                  type="button"
+                  className="flex items-center gap-2 text-white/80 hover:text-white transition-colors font-bold text-sm px-3 py-2 rounded-full bg-white/10 backdrop-blur-sm"
+                >
+                  <ArrowLeft size={16} className={isRTL ? 'rotate-180' : ''} />
+                  {t.back}
+                </button>
+              )}
               <div className="flex items-center gap-3">
                 <span className="text-white/60 text-xs font-black uppercase tracking-[0.3em] hidden sm:inline">
                   {t.student}
