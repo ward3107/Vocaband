@@ -179,17 +179,21 @@ export function useGameModeSetup(params: UseGameModeSetupParams): void {
         window.speechSynthesis.cancel();
         const utter = new SpeechSynthesisUtterance(word[idx]);
         utter.rate = 0.8;
-        utter.onend = () => {
-          if (!cancelled) setTimeout(() => revealNext(idx + 1), 200);
-        };
-        // Fallback if onend doesn't fire (Safari / some mobile browsers).
-        const fallbackTimer = setTimeout(() => {
-          if (!cancelled) revealNext(idx + 1);
-        }, 1500);
-        utter.onend = () => {
+        // Advance to the next letter EXACTLY once. `onend` is the happy
+        // path; the 1500 ms fallback covers browsers (Firefox, some
+        // mobile) where onend fires late or never. Without the `advanced`
+        // guard BOTH could fire — on Firefox onend arrives after the
+        // 1500 ms fallback, so the chain forked and every letter after
+        // the first was spoken twice.
+        let advanced = false;
+        const advance = () => {
+          if (advanced || cancelled) return;
+          advanced = true;
           clearTimeout(fallbackTimer);
-          if (!cancelled) setTimeout(() => revealNext(idx + 1), 200);
+          setTimeout(() => revealNext(idx + 1), 200);
         };
+        const fallbackTimer = setTimeout(advance, 1500);
+        utter.onend = advance;
         window.speechSynthesis.speak(utter);
       }, 250);
     };
