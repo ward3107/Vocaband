@@ -30,6 +30,7 @@
  * close + history reset so the caller just has to do signOut.
  */
 import { useCallback, useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
+import { App as CapacitorApp } from '@capacitor/app';
 import { supabase, hasTeacherAccess, type AppUser } from '../core/supabase';
 import type { View } from '../core/views';
 import { pathForView } from '../utils/routes';
@@ -325,6 +326,26 @@ export function useBackButtonTrap(
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Native (Capacitor) hardware back button ──────────────────────
+  //
+  // The popstate handler above only fires for in-app History API
+  // navigation. Inside the native store shell the Android hardware
+  // back button does NOT emit popstate — Capacitor delivers it via the
+  // App plugin's 'backButton' event, and with no listener registered
+  // its default handler EXITS the app on every press. Bridge the event
+  // to history.back() so each native back-press flows through the same
+  // trap above (walk back / re-trap floor / exit-confirm) and never
+  // quits the app. On the web build the listener simply never fires.
+  useEffect(() => {
+    let remove: (() => void) | undefined;
+    CapacitorApp.addListener('backButton', () => {
+      window.history.back();
+    })
+      .then((handle) => { remove = () => handle.remove(); })
+      .catch(() => { /* plugin unavailable (web) — popstate covers it */ });
+    return () => { remove?.(); };
   }, []);
 
   // ─── Public exit-intent trigger ───────────────────────────────────
