@@ -88,7 +88,6 @@ export type AppViewRouterProps =
     showModeSelection: boolean;
     showModeIntro: boolean;
     /** Live Challenge reaction parity — fed from useLiveChallengeSocket. */
-    isLiveChallenge: boolean;
     liveSendReaction: (emoji: string) => void;
   };
 
@@ -139,7 +138,7 @@ export function AppViewRouter(props: AppViewRouterProps) {
     worksheetAssignment, setWorksheetAssignment,
     onPickerOcrUpload,
     setIsLiveChallenge, leaderboard, socketConnected, liveLastReaction,
-    isLiveChallenge, liveSendReaction,
+    liveSendReaction,
     setQuickPlaySelectedWords,
     setQuickPlayCustomWords, setQuickPlayAddingCustom, setQuickPlayTranslating,
     xp, setXp, coins, setCoins, boosters,
@@ -361,11 +360,15 @@ export function AppViewRouter(props: AppViewRouterProps) {
   // Once the student is actually answering questions, the prompt
   // sits high on the screen with comfortable space underneath, so
   // the bar can dock at the bottom without colliding.
-  // A live-challenge STUDENT mid-game gets the same affordances — a guest
-  // Quick Play session and an authenticated Live Challenge are mutually
-  // exclusive, so `isLiveChallenge && !quickPlayActiveSession` cleanly
-  // isolates the live student (the teacher never reaches view === "game").
-  const inLiveStudentGame = isLiveChallenge && !quickPlayActiveSession;
+  // A live-challenge STUDENT mid-game gets the same affordances. `isLiveChallenge`
+  // is TEACHER-only state (set when a teacher opens the podium) — it's always
+  // false for students, so we key off a populated live leaderboard instead,
+  // mirroring GameActiveView's own sidebar guard (`!isGuest && board non-empty`).
+  // That's exactly "this student is on an active live challenge". Guests use the
+  // Quick Play path, so they're excluded here.
+  const inLiveStudentGame = !user?.isGuest
+    && !quickPlayActiveSession
+    && Object.keys(leaderboard).length > 0;
   // Pick the matching emitter so a live student's taps go out on the
   // authenticated `/` socket, not the (absent) Quick Play one.
   const reactionSender = quickPlayActiveSession

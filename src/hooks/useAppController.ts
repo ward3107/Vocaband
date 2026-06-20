@@ -1038,7 +1038,7 @@ export function useAppController(initialView?: View): AppViewRouterProps {
     classShowAssignment, setClassShowAssignment,
     worksheetAssignment, setWorksheetAssignment,
     onPickerOcrUpload,
-    isLiveChallenge, setIsLiveChallenge, leaderboard, socketConnected,
+    setIsLiveChallenge, leaderboard, socketConnected,
     liveLastReaction, liveSendReaction,
     setQuickPlaySelectedWords,
     setQuickPlayCustomWords, setQuickPlayAddingCustom, setQuickPlayTranslating,

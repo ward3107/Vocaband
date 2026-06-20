@@ -16,15 +16,14 @@
  */
 import { useEffect, useMemo } from "react";
 import { motion } from "motion/react";
-import { Home, RotateCcw, Volume2 } from "lucide-react";
+import { Home, RotateCcw } from "lucide-react";
 import type { QpStudentEntry } from "../core/quickPlayProtocol";
 import type { Word } from "../data/vocabulary";
 import { readStoredClientId } from "../hooks/useQuickPlaySocket";
 import { useLanguage } from "../hooks/useLanguage";
 import { gameFinishedT } from "../locales/student/game-finished";
 import { celebrate } from "../utils/celebrate";
-
-const MAX_PRACTICE_WORDS = 5;
+import { EndgameStanding, EndgamePracticeWords, MAX_PRACTICE_WORDS } from "./endgame/EndgameParts";
 
 interface QuickPlayEndgameCardProps {
   /** Merged session leaderboard from the /quick-play socket. */
@@ -47,7 +46,7 @@ export default function QuickPlayEndgameCard({
   leaderboard, mistakes, gameWords, targetLanguage,
   isDark, disabled, speakWord, onPlayAgain, onBackToHome,
 }: QuickPlayEndgameCardProps) {
-  const { language, isRTL, dir } = useLanguage();
+  const { language, dir } = useLanguage();
   const tt = gameFinishedT[language];
 
   // Score + rank from the leaderboard snapshot.  Matching by the
@@ -67,12 +66,6 @@ export default function QuickPlayEndgameCard({
     [gameWords, mistakes],
   );
 
-  // Russian-UI kids get the Russian column when a custom word carries
-  // one; everyone else sees the translation they just played with.
-  const translationFor = (w: Word) =>
-    (language === "ru" && w.russian) ? w.russian
-      : targetLanguage === "arabic" ? w.arabic : w.hebrew;
-
   // One celebratory burst on mount — QP guests skip the assignment
   // save path where celebrate() normally fires, so without this the
   // QP finish felt flatter than the regular one.
@@ -80,51 +73,14 @@ export default function QuickPlayEndgameCard({
 
   return (
     <div dir={dir} className="flex flex-col gap-3">
-      {standing && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.15 }}
-          className="rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white px-5 py-4 shadow-lg shadow-violet-500/20 text-center"
-        >
-          <p className="text-xl sm:text-2xl font-black">{tt.qpScoredXp(standing.xp)}</p>
-          {standing.total > 1 && (
-            <p className="text-sm font-bold text-white/85 mt-1">
-              {tt.qpRankOf(standing.rank, standing.total)}
-            </p>
-          )}
-        </motion.div>
-      )}
+      <EndgameStanding standing={standing} />
 
-      {practiceWords.length > 0 && (
-        <div className={`rounded-2xl border p-4 ${isDark ? 'border-gray-700 bg-gray-800/60' : 'border-rose-100 bg-rose-50/60'}`}>
-          <p className={`text-xs font-black uppercase tracking-widest mb-3 ${isDark ? 'text-rose-300' : 'text-rose-500'}`}>
-            {tt.wordsToPractice}
-          </p>
-          <ul className="flex flex-col gap-2">
-            {practiceWords.map(w => (
-              <li
-                key={w.id}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2 ${isRTL ? 'flex-row-reverse' : ''} ${isDark ? 'bg-gray-900/60' : 'bg-white shadow-sm'}`}
-              >
-                <button
-                  onClick={() => speakWord(w.id, w.english)}
-                  type="button"
-                  aria-label={w.english}
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                  className={`shrink-0 p-1.5 rounded-lg transition-colors ${isDark ? 'text-violet-300 hover:bg-gray-800' : 'text-violet-500 hover:bg-violet-50'}`}
-                >
-                  <Volume2 size={16} />
-                </button>
-                {/* dir=ltr pins the English word's glyph order even in
-                    RTL UIs; row order still flips via flex-row-reverse. */}
-                <span dir="ltr" className={`font-bold ${isDark ? 'text-white' : 'text-stone-800'}`}>{w.english}</span>
-                <span className={`ms-auto font-semibold ${isDark ? 'text-gray-300' : 'text-stone-500'}`}>{translationFor(w)}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <EndgamePracticeWords
+        words={practiceWords}
+        targetLanguage={targetLanguage}
+        isDark={isDark}
+        speakWord={speakWord}
+      />
 
       <motion.button
         whileHover={{ scale: 1.02 }}
