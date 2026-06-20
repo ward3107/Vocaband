@@ -164,8 +164,18 @@ jobs:
         #   on core tables under drifted version numbers — re-running them
         #   blindly via CI is unsafe.  Apply that backlog deliberately, then
         #   leave this frontier where it is.
+        #
+        #   2026-06-20: bumped 20260712000000 -> 20260723000000.  A direct audit
+        #   of the live DB (list_tables + column checks) confirmed every
+        #   migration through 20260723000000 is ALREADY applied — the schema is
+        #   current; only the schema_migrations bookkeeping had drifted.  The
+        #   coins migrations (20260722/20260723) and the award_reward fixes
+        #   (20260721) were applied by hand.  Raising the frontier to the current
+        #   max makes the first reconciled CI run a no-op (mark-all-applied, push
+        #   nothing) instead of re-running already-live DDL and erroring on
+        #   duplicate objects.
         env:
-          APPLIED_THROUGH: "20260712000000"
+          APPLIED_THROUGH: "20260723000000"
         run: |
           for f in supabase/migrations/*.sql; do
             v=$(basename "$f" | sed -E 's/^([0-9]+)_.*/\1/')
