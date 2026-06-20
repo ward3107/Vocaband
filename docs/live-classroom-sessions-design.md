@@ -114,15 +114,23 @@ The hard rule: **nothing about authorization is trusted from the client.**
    a proof, behind a feature flag, internal-test only.
 3. **Phase 2:** harden + security-test (the cross-class tamper test above), then
    extend to Category Race, Word Hunt Arena, Quick Play, Hot Seat, Class Show.
-4. **Phase 3:** remove the flag; keep QR join as a fallback for guests / non-
-   logged-in devices.
+4. **Phase 3:** remove the flag. QR join stays permanently (additive, per the
+   locked decision below) — it's the path for guests / shared / non-logged-in
+   devices.
 
 ---
 
+## Decisions (locked)
+
+- **QR join stays — this feature is purely ADDITIVE.** We do NOT remove or change
+  the existing QR / `?session=` scan flow. The roster-based "teacher starts →
+  student taps Join" path is a *second* way to join the same session. Teachers
+  pick per moment: QR for a shared screen / guest device, per-class start for
+  their logged-in students. Because nothing existing is modified, today's flows
+  cannot regress. (Operator decision, 2026-06-20.)
+
 ## Open questions for the operator
 
-- Keep **QR join** as a fallback (e.g. shared classroom tablet, guest device), or
-  go logged-in-only?
 - Should a student get the prompt only when the **app is open**, or also as a
   push notification when it's closed? (Push = extra native work + permissions.)
 - One active live session per class at a time, or several in parallel?
