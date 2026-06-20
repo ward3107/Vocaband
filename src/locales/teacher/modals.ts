@@ -81,6 +81,14 @@ export interface TeacherModalsT {
   sendXp: string;
   /** "Sent +{xp} XP to {name}!". */
   sentXpToast: (xp: number, name: string) => string;
+  // ─── Coin reward variant (teacher gives spend currency) ───────────
+  sendCoinsTitle: string;
+  /** "Reward {name} with coins for their hard work". */
+  sendCoinsBlurb: (name: string) => string;
+  selectCoinAmount: string;
+  sendCoins: string;
+  /** "Sent +{coins} coins to {name}!". */
+  sentCoinsToast: (coins: number, name: string) => string;
   /** "Couldn't give reward: {reason}". */
   rewardErrorToast: (reason: string) => string;
   rewardUnknownError: string;
@@ -154,6 +162,11 @@ export const teacherModalsT: Record<Language, TeacherModalsT> = {
     sendingShort: "Sending...",
     sendXp: "Send XP",
     sentXpToast: (xp, name) => `Sent +${xp} XP to ${name}!`,
+    sendCoinsTitle: "Send Coins",
+    sendCoinsBlurb: (name) => `Reward ${name} with coins for their hard work`,
+    selectCoinAmount: "Select coin amount:",
+    sendCoins: "Send Coins",
+    sentCoinsToast: (coins, name) => `Sent +${coins} coins to ${name}!`,
     rewardErrorToast: (reason) => `Couldn't give reward: ${reason}`,
     rewardUnknownError: "unknown error",
 
@@ -221,6 +234,11 @@ export const teacherModalsT: Record<Language, TeacherModalsT> = {
     sendingShort: "שולח...",
     sendXp: "שלח XP",
     sentXpToast: (xp, name) => `נשלחו +${xp} XP אל ${name}!`,
+    sendCoinsTitle: "שלח מטבעות",
+    sendCoinsBlurb: (name) => `תגמל את ${name} במטבעות על ההשקעה`,
+    selectCoinAmount: "בחר כמות מטבעות:",
+    sendCoins: "שלח מטבעות",
+    sentCoinsToast: (coins, name) => `נשלחו +${coins} מטבעות אל ${name}!`,
     rewardErrorToast: (reason) => `לא ניתן היה להעניק תגמול: ${reason}`,
     rewardUnknownError: "שגיאה לא ידועה",
 
@@ -288,6 +306,11 @@ export const teacherModalsT: Record<Language, TeacherModalsT> = {
     sendingShort: "جارٍ الإرسال...",
     sendXp: "أرسل XP",
     sentXpToast: (xp, name) => `أُرسلت +${xp} XP إلى ${name}!`,
+    sendCoinsTitle: "أرسل عملات",
+    sendCoinsBlurb: (name) => `كافِئ ${name} بالعملات على جهده`,
+    selectCoinAmount: "اختر كمية العملات:",
+    sendCoins: "أرسل عملات",
+    sentCoinsToast: (coins, name) => `أُرسلت +${coins} عملة إلى ${name}!`,
     rewardErrorToast: (reason) => `تعذر منح المكافأة: ${reason}`,
     rewardUnknownError: "خطأ غير معروف",
 
@@ -353,6 +376,11 @@ export const teacherModalsT: Record<Language, TeacherModalsT> = {
     sendingShort: "Sending...",
     sendXp: "Send XP",
     sentXpToast: (xp, name) => `Sent +${xp} XP to ${name}!`,
+    sendCoinsTitle: "Send Coins",
+    sendCoinsBlurb: (name) => `Reward ${name} with coins for their hard work`,
+    selectCoinAmount: "Select coin amount:",
+    sendCoins: "Send Coins",
+    sentCoinsToast: (coins, name) => `Sent +${coins} coins to ${name}!`,
     rewardErrorToast: (reason) => `Couldn't give reward: ${reason}`,
     rewardUnknownError: "unknown error",
 

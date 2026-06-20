@@ -85,7 +85,7 @@ interface StudentDashboardViewProps {
    * syncs the dashboard's in-memory xp/badges to match.  Implementation
    * must NOT write to the users table (that'd double-count).
    */
-  onApplyServerRewards: (summary: { xpToAdd: number; badgesToAppend: string[] }) => void;
+  onApplyServerRewards: (summary: { xpToAdd: number; coinsToAdd: number; badgesToAppend: string[] }) => void;
   /** Active booster snapshot for the dashboard chip strip. */
   boosters: {
     isXpBoosterActive: boolean;
@@ -258,8 +258,8 @@ export default function StudentDashboardView({
             celebration before anything else. Hides itself when empty. */}
         <RewardInboxCard
           userUid={user.uid}
-          onServerRewardsArrived={({ xpToAdd, badgesToAppend }) => {
-            onApplyServerRewards({ xpToAdd, badgesToAppend });
+          onServerRewardsArrived={({ xpToAdd, coinsToAdd, badgesToAppend }) => {
+            onApplyServerRewards({ xpToAdd, coinsToAdd, badgesToAppend });
           }}
         />
         {/* Always-visible 3D pet — a real spinnable model so every student
