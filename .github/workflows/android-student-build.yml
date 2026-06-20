@@ -1,0 +1,139 @@
+# Builds the students-only Android app (com.vocaband.student) in the cloud,
+# so the operator never needs Android Studio / a local JDK. Two manual modes:
+#
+#   • generate-keystore — one-time: creates the upload signing key, prints the
+#     values to paste into repo Secrets, and uploads the key as a 1-day artifact.
+#   • build (default)   — produces the signed .aab to upload to Google Play.
+#
+# The app is a Capacitor shell that loads https://www.vocaband.com/student, so
+# the bundle is thin and web changes ship via the normal Cloudflare deploy —
+# a new .aab is only needed for shell-level changes (icon, splash, this config).
+#
+# Run from GitHub → Actions → "Build Student Android App" → Run workflow.
+name: Build Student Android App
+
+# Least privilege: the workflow only reads the repo (checkout) and uploads
+# artifacts via the API token implicitly — no write scopes needed.
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "What to do"
+        type: choice
+        default: build
+        options:
+          - build
+          - generate-keystore
+
+jobs:
+  # ── One-time: mint the upload signing key ────────────────────────────────
+  generate-keystore:
+    if: ${{ github.event.inputs.mode == 'generate-keystore' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Generate upload keystore + secret values
+        run: |
+          set -euo pipefail
+          # Strong random password reused for store + key (kept identical to
+          # keep the operator's secret-setup simple — Play App Signing holds
+          # the real release key anyway, so this is "just" the upload key).
+          PASS="$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 28)"
+          keytool -genkeypair -v \
+            -keystore upload.jks \
+            -alias vocaband \
+            -keyalg RSA -keysize 2048 -validity 9125 \
+            -storepass "$PASS" -keypass "$PASS" \
+            -dname "CN=Vocaband, OU=Vocaband, O=Vocaband, C=IL"
+          base64 -w0 upload.jks > upload.jks.base64
+          cat > SECRETS-README.txt <<EOF
+          Add these 4 repository secrets in GitHub → Settings → Secrets and
+          variables → Actions → New repository secret:
+
+          ANDROID_KEYSTORE_PASSWORD = $PASS
+          ANDROID_KEY_PASSWORD      = $PASS
+          ANDROID_KEY_ALIAS         = vocaband
+          ANDROID_KEYSTORE_BASE64   = (paste the entire contents of upload.jks.base64)
+
+          KEEP upload.jks somewhere safe (password manager). It is your upload
+          key. Then DELETE this workflow-run's artifact once the secrets are set.
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vocaband-upload-keystore-KEEP-PRIVATE
+          path: |
+            upload.jks
+            upload.jks.base64
+            SECRETS-README.txt
+          retention-days: 1
+
+  # ── Default: build the signed app bundle ─────────────────────────────────
+  build:
+    if: ${{ github.event.inputs.mode == 'build' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci --legacy-peer-deps
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android platform 36
+        run: yes | sdkmanager "platforms;android-36"
+
+      # Copies native/shell-www + Capacitor plugins into android/ and writes
+      # the runtime capacitor.config.json from capacitor.config.ts.
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Decode upload keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "${KEYSTORE_BASE64:-}" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 secret is missing. Run this workflow once in 'generate-keystore' mode first."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+
+      - name: Build signed AAB
+        working-directory: android
+        env:
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x ./gradlew
+          # versionCode = the run number, so every build is monotonically
+          # increasing (Play rejects reused codes). Signing is injected at the
+          # CLI so build.gradle stays unmodified and debug builds still work.
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file="$RUNNER_TEMP/upload.jks" \
+            -Pandroid.injected.signing.store.password="$STORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD" \
+            -Pandroid.injected.version.code="${{ github.run_number }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vocaband-student-aab
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
