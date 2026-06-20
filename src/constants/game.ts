@@ -64,6 +64,10 @@ export const MASTERY_THRESHOLD = 5; // correct answers before a word counts as "
 // XP preset amounts for quick selection
 export const TEACHER_XP_PRESETS = [10, 25, 50, 100] as const;
 
+// Coin preset amounts for the teacher reward modal (spend currency).
+// Smaller than XP presets because coins are the scarcer shop currency.
+export const TEACHER_COIN_PRESETS = [5, 10, 25, 50] as const;
+
 // Special badges teachers can award (recognition for effort/behavior)
 export const TEACHER_BADGES = [
   { id: '⭐', label: 'Star Student' },

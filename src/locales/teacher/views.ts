@@ -88,6 +88,7 @@ export interface TeacherViewsT {
 
   // ─── RewardInboxCard ───────────────────────────────────────────
   rewardXpLabel: string;
+  rewardCoinsLabel: string;
   rewardBadgeLabel: string;
   rewardTitleLabel: string;
   rewardAvatarLabel: string;
@@ -165,6 +166,7 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpConfirmKickAfter: " from this Quick Play session?",
 
     rewardXpLabel: "XP Boost",
+    rewardCoinsLabel: "Coins",
     rewardBadgeLabel: "New Badge",
     rewardTitleLabel: "New Title",
     rewardAvatarLabel: "New Avatar",
@@ -240,6 +242,7 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpConfirmKickAfter: " ממשחק המהיר הזה?",
 
     rewardXpLabel: "בוסט XP",
+    rewardCoinsLabel: "מטבעות",
     rewardBadgeLabel: "תג חדש",
     rewardTitleLabel: "תואר חדש",
     rewardAvatarLabel: "אווטאר חדש",
@@ -315,6 +318,7 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpConfirmKickAfter: " من جلسة اللعب السريع هذه؟",
 
     rewardXpLabel: "دعم XP",
+    rewardCoinsLabel: "عملات",
     rewardBadgeLabel: "شارة جديدة",
     rewardTitleLabel: "لقب جديد",
     rewardAvatarLabel: "صورة جديدة",
@@ -390,6 +394,7 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpConfirmKickAfter: " from this Quick Play session?",
 
     rewardXpLabel: "XP Boost",
+    rewardCoinsLabel: "Coins",
     rewardBadgeLabel: "New Badge",
     rewardTitleLabel: "New Title",
     rewardAvatarLabel: "New Avatar",

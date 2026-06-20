@@ -21,7 +21,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Gift, Sparkles, X, Trophy, Crown, Smile } from "lucide-react";
+import { Gift, Sparkles, X, Trophy, Crown, Smile, Coins } from "lucide-react";
 import { supabase } from "../../core/supabase";
 import { celebrate } from "../../utils/celebrate";
 import { useLanguage } from "../../hooks/useLanguage";
@@ -31,7 +31,7 @@ interface RewardRow {
   id: string;
   teacher_uid: string;
   teacher_name: string;
-  reward_type: 'xp' | 'badge' | 'title' | 'avatar' | string;
+  reward_type: 'xp' | 'coins' | 'badge' | 'title' | 'avatar' | string;
   reward_value: string;
   reason: string | null;
   created_at: string;
@@ -58,6 +58,7 @@ interface RewardInboxCardProps {
    */
   onServerRewardsArrived?: (summary: {
     xpToAdd: number;
+    coinsToAdd: number;
     badgesToAppend: string[];
     rewards: RewardRow[];
   }) => void;
@@ -65,6 +66,7 @@ interface RewardInboxCardProps {
 
 const buildTypeMeta = (t: TeacherViewsT): Record<string, { gradient: string; icon: ReactNode; label: string }> => ({
   xp:     { gradient: 'from-amber-400 to-orange-500',   icon: <Sparkles size={22} />, label: t.rewardXpLabel },
+  coins:  { gradient: 'from-yellow-400 to-amber-500',   icon: <Coins size={22} />,    label: t.rewardCoinsLabel },
   badge:  { gradient: 'from-emerald-400 to-teal-500',   icon: <Trophy size={22} />,   label: t.rewardBadgeLabel },
   title:  { gradient: 'from-fuchsia-500 to-pink-600',   icon: <Crown size={22} />,    label: t.rewardTitleLabel },
   avatar: { gradient: 'from-sky-400 to-indigo-600',     icon: <Smile size={22} />,    label: t.rewardAvatarLabel },
@@ -79,6 +81,10 @@ const formatValue = (type: string, value: string): string => {
   if (type === 'xp') {
     const n = Number(value);
     return Number.isFinite(n) ? `+${n} XP` : value;
+  }
+  if (type === 'coins') {
+    const n = Number(value);
+    return Number.isFinite(n) ? `+${n} 🪙` : value;
   }
   return value;
 };
@@ -150,12 +156,16 @@ export default function RewardInboxCard({ userUid, onServerRewardsArrived }: Rew
         // dashboard — their in-memory user stats are stale and need
         // to match the DB (which the RPC has already updated).
         let xpToAdd = 0;
+        let coinsToAdd = 0;
         const badgesToAppend: string[] = [];
         for (const r of truelyNew) {
           appliedIdsRef.current.add(r.id);
           if (r.reward_type === 'xp') {
             const n = Number(r.reward_value);
             if (Number.isFinite(n)) xpToAdd += n;
+          } else if (r.reward_type === 'coins') {
+            const n = Number(r.reward_value);
+            if (Number.isFinite(n)) coinsToAdd += n;
           } else if (r.reward_type === 'badge') {
             badgesToAppend.push(r.reward_value);
           } else if (r.reward_type === 'title') {
@@ -164,7 +174,7 @@ export default function RewardInboxCard({ userUid, onServerRewardsArrived }: Rew
             badgesToAppend.push(`🎭 ${r.reward_value}`);
           }
         }
-        onServerRewardsArrivedRef.current({ xpToAdd, badgesToAppend, rewards: truelyNew });
+        onServerRewardsArrivedRef.current({ xpToAdd, coinsToAdd, badgesToAppend, rewards: truelyNew });
       }
 
       setRewards(newList);

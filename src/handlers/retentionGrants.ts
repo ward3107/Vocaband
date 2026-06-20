@@ -120,22 +120,26 @@ export async function claimBadgeXp(
 
 export interface ApplyServerRewardsDeps {
   setXp: React.Dispatch<React.SetStateAction<number>>;
+  setCoins: React.Dispatch<React.SetStateAction<number>>;
   setBadges: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 /**
- * Sync the dashboard's LOCAL XP + badges snapshot to a server-applied
- * teacher-reward burst.  The award_reward RPC already incremented
- * users.xp and appended badges in the same transaction as the
- * teacher_rewards insert — writing to Supabase here would double-count.
- * Called from RewardInboxCard when polling detects new rewards.
+ * Sync the dashboard's LOCAL XP + coins + badges snapshot to a
+ * server-applied teacher-reward burst.  The award_reward RPC already
+ * incremented users.xp / users.coins and appended badges in the same
+ * transaction as the teacher_rewards insert — writing to Supabase here
+ * would double-count.  Called from RewardInboxCard when polling detects
+ * new rewards.
  */
 export function applyServerRewards(
   xpToAdd: number,
+  coinsToAdd: number,
   badgesToAppend: string[],
   deps: ApplyServerRewardsDeps,
 ): void {
   if (xpToAdd > 0) deps.setXp((prev) => prev + xpToAdd);
+  if (coinsToAdd > 0) deps.setCoins((prev) => prev + coinsToAdd);
   if (badgesToAppend.length > 0) {
     deps.setBadges((prev) => {
       const next = [...prev];

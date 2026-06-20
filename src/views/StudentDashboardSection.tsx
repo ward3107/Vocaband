@@ -167,8 +167,8 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
         onGrantCoins={(amount, reason) => grantRetentionCoins(amount, reason, { user, setCoins, showToast })}
         onClaimBadgeXp={(badgeId, xp, reason) => claimBadgeXp(badgeId, xp, reason, { setXp, showToast })}
         evolutionPending={evolutionPending}
-        onApplyServerRewards={({ xpToAdd, badgesToAppend }) =>
-          applyServerRewards(xpToAdd, badgesToAppend, { setXp, setBadges })
+        onApplyServerRewards={({ xpToAdd, coinsToAdd, badgesToAppend }) =>
+          applyServerRewards(xpToAdd, coinsToAdd, badgesToAppend, { setXp, setCoins, setBadges })
         }
         onGrantReward={(kind, value) => grantNonXpReward(kind, value, { user, setUser })}
         onRenameDisplayName={renameStudentDisplayName}
