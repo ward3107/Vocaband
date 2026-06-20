@@ -12,6 +12,11 @@
 # Run from GitHub → Actions → "Build Student Android App" → Run workflow.
 name: Build Student Android App
 
+# Least privilege: the workflow only reads the repo (checkout) and uploads
+# artifacts via the API token implicitly — no write scopes needed.
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
     inputs:
