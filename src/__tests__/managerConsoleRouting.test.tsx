@@ -93,6 +93,7 @@ describe("useViewGuards — orphaned 'landing' redirect", () => {
       setView,
       user,
       loading,
+      gameMode: 'classic',
       activeAssignment: null,
       quickPlayActiveSession: null,
       selectedClass: null,

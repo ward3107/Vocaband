@@ -748,7 +748,7 @@ export function useAppController(initialView?: View): AppViewRouterProps {
 
   // View-state guards — redirect out of orphaned/broken views.
   useViewGuards({
-    view, setView, user, loading,
+    view, setView, user, loading, gameMode,
     activeAssignment, quickPlayActiveSession,
     selectedClass, classes, setSelectedClass,
   });

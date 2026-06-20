@@ -32,12 +32,25 @@ import { useEffect, type Dispatch, type SetStateAction } from 'react';
 import { hasTeacherAccess, hasManagerAccess, type AppUser, type AssignmentData, type ClassData } from '../core/supabase';
 import { isStudentShell } from '../utils/studentShell';
 import type { View } from '../core/views';
+import type { GameMode } from '../constants/game';
+
+// Self-contained modes launched straight from the dashboard / practice
+// hub (NOT from an assignment's mode picker). They supply their own word
+// source — idioms from the curated dataset, review from the SRS queue,
+// class-minute from pre-seeded due words — so they legitimately run with
+// no activeAssignment. Guard 2 must NOT bounce these, or tapping Idioms /
+// Review / the 60-second drill silently kicks the student back to the
+// dashboard the instant `view` flips to 'game'.
+const ASSIGNMENT_FREE_MODES = new Set<GameMode>(['idiom', 'review', 'class-minute']);
 
 export interface UseViewGuardsParams {
   view: View;
   setView: Dispatch<SetStateAction<View>>;
   user: AppUser | null;
   loading: boolean;
+  /** Current game mode — lets Guard 2 spare the assignment-free modes
+   *  (idiom / review / class-minute) from the "no assignment" bounce. */
+  gameMode: GameMode;
   activeAssignment: AssignmentData | null;
   quickPlayActiveSession: { id: string; sessionCode: string } | null;
   selectedClass: ClassData | null;
@@ -50,7 +63,7 @@ export interface UseViewGuardsParams {
 export function useViewGuards(params: UseViewGuardsParams): void {
   const {
     view, setView,
-    user, loading,
+    user, loading, gameMode,
     activeAssignment, quickPlayActiveSession,
     selectedClass, classes, setSelectedClass,
   } = params;
@@ -82,8 +95,10 @@ export function useViewGuards(params: UseViewGuardsParams): void {
   }, [view, user, loading, setView]);
 
   // ─── Guard 2: `game` view needs an active assignment ──────────────
+  // …except the self-contained modes (idiom / review / class-minute),
+  // which carry their own word source and run with no activeAssignment.
   useEffect(() => {
-    if (view !== 'game' || activeAssignment) return;
+    if (view !== 'game' || activeAssignment || ASSIGNMENT_FREE_MODES.has(gameMode)) return;
     if (user?.isGuest) {
       setView('quick-play-student');
     } else if (user?.role === 'student') {
