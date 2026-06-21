@@ -7,10 +7,10 @@ android {
         applicationId "com.vocaband.student"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        // versionCode comes from the CI build (-PVERSION_CODE=<run number>) so
-        // every uploaded .aab is unique and monotonically increasing, which
-        // Google Play requires. Falls back to 1 for local/dev builds.
-        versionCode (project.findProperty("VERSION_CODE") ?: "1").toString().toInteger()
+        // versionCode is defined in gradle.properties (default 1) and overridden
+        // by CI via -PVERSION_CODE=<run number>, so every uploaded .aab is unique
+        // and strictly increasing — which Google Play requires.
+        versionCode project.property("VERSION_CODE").toString().toInteger()
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
