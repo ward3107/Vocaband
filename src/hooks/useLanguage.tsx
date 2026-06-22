@@ -72,6 +72,22 @@ const getInitialLanguage = (): Language => {
     const saved = localStorage.getItem(LANGUAGE_KEY);
     if (isSupported(saved)) return saved;
   }
+  // Device-language auto-detect for a brand-new visitor (no ?lang, no
+  // saved choice). An Israeli student on a Hebrew/Arabic device lands in
+  // their own language instead of always defaulting to English. Only
+  // he/ar are matched — anything else (incl. English devices) keeps the
+  // English default. The user can always change it from the picker.
+  try {
+    const navLangs = (navigator.languages && navigator.languages.length)
+      ? navigator.languages
+      : [navigator.language];
+    for (const raw of navLangs) {
+      const base = (raw || '').toLowerCase().split('-')[0];
+      if (base === 'he' || base === 'iw') return 'he'; // 'iw' = legacy Hebrew code
+      if (base === 'ar') return 'ar';
+      if (base === 'en') return 'en';
+    }
+  } catch { /* navigator unavailable — fall through to English */ }
   return 'en';
 };
 

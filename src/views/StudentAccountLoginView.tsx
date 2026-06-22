@@ -191,10 +191,13 @@ export default function StudentAccountLoginView({
   const { language, setLanguage, isRTL } = useLanguage();
   const t = studentLoginT[language];
   const [langOpen, setLangOpen] = useState(false);
-  // Students learn English → their native language, so the instruction
-  // language is Hebrew or Arabic only (no English-UI option, which would
-  // show no translations). This is the single place the choice is made.
-  const langs: Language[] = ['he', 'ar'];
+  // UI language for the student-facing chrome. English is included so a
+  // student who switched to HE/AR can get back to English — the dashboard
+  // has no language switcher, so this picker is the only place to change
+  // it. NOTE: word translations are driven by a SEPARATE setting
+  // (`targetLanguage`, hebrew/arabic — see useTargetLanguageState), so an
+  // English UI does NOT remove the per-word translation in games.
+  const langs: Language[] = ['en', 'he', 'ar'];
   // Single login path: class code + roster-issued PIN.  Google /
   // Microsoft OAuth and email-OTP were removed in the 2026-05-18
   // privacy review (see PR #787 and PRIVACY_CHECKLIST §3) to align
