@@ -119,20 +119,6 @@ interface LandingPageProps {
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onTryDemo, isAuthenticated }) => {
   const { language, dir, isRTL } = useLanguage();
   const t = landingPageT[language];
-  // "Join a live game by code" — for students without a QR to scan. Typing a
-  // valid 6-char session code navigates to /?session=CODE, which the existing
-  // Quick Play bootstrap picks up (so this needs no new routing).
-  const [gameCode, setGameCode] = useState('');
-  const gc = ({
-    en: { placeholder: 'GAME CODE', go: 'Join', hint: 'Have a game code? Type it to join a live game.' },
-    he: { placeholder: 'קוד משחק', go: 'הצטרף', hint: 'יש לך קוד משחק? הקלידו אותו כדי להצטרף למשחק חי.' },
-    ar: { placeholder: 'رمز اللعبة', go: 'انضمام', hint: 'لديك رمز لعبة؟ اكتبه للانضمام إلى لعبة مباشرة.' },
-    ru: { placeholder: 'GAME CODE', go: 'Join', hint: 'Have a game code? Type it to join a live game.' },
-  } as const)[language] ?? { placeholder: 'GAME CODE', go: 'Join', hint: 'Have a game code? Type it to join a live game.' };
-  const onJoinByCode = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (gameCode.length === 6) window.location.href = `/?session=${gameCode}`;
-  };
   const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState(false);
   const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false);
@@ -313,12 +299,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
               {t.heroSubtitle}
             </p>
 
-            {/* Two sign-in lanes — staff (teachers + principals, role-routed
-                on login) and students (class code). Both routes unchanged.
-                Stacked on phones but compacted so the student sees BOTH
-                doors at once — otherwise the staff card alone fills the
-                screen and reads like "the" entrance. */}
-            <div className={`grid sm:grid-cols-2 gap-3 sm:gap-6 max-w-5xl mx-auto ${isRTL ? "text-right" : "text-left"}`}>
+            {/* Single sign-in lane — staff (teachers + principals, role-routed
+                on login). The student lane was removed so the landing page
+                presents one clear entrance for teachers. */}
+            <div className={`max-w-md mx-auto ${isRTL ? "text-right" : "text-left"}`}>
               {/* Staff lane */}
               <div className="rounded-[1.75rem] p-5 sm:p-6 md:tall:p-10 bg-white/10 backdrop-blur-md border border-white/15 hover:border-violet-300/40 transition-colors flex flex-col">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 md:tall:w-[4.5rem] md:tall:h-[4.5rem] rounded-2xl md:tall:rounded-3xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/40 mb-3 md:tall:mb-5">
@@ -337,49 +321,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   {t.navSignIn}
                 </button>
                 <p className="text-center text-xs sm:text-sm text-white/55 mt-2 md:tall:mt-3">{t.heroV2.staffNote}</p>
-              </div>
-
-              {/* Student lane */}
-              <div className="rounded-[1.75rem] p-5 sm:p-6 md:tall:p-10 bg-white/10 backdrop-blur-md border border-white/15 hover:border-amber-300/40 transition-colors flex flex-col">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 md:tall:w-[4.5rem] md:tall:h-[4.5rem] rounded-2xl md:tall:rounded-3xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 flex items-center justify-center shadow-lg shadow-orange-500/40 mb-3 md:tall:mb-5">
-                  <BookOpen size={40} strokeWidth={2.5} className="text-white w-7 h-7 sm:w-8 sm:h-8 md:tall:w-10 md:tall:h-10" aria-hidden="true" />
-                </div>
-                <h2 className="text-xl sm:text-2xl md:tall:text-3xl font-black text-white mb-1.5 sm:mb-2">{t.navStudents}</h2>
-                <p className="hidden sm:block text-sm md:tall:text-base text-white/70 mb-3 md:tall:mb-6 flex-1">{t.heroV2.studentDesc}</p>
-                <button
-                  type="button"
-                  onClick={onGetStarted}
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                  aria-label={t.heroV2.studentCta}
-                  className="w-full px-6 py-3.5 md:tall:py-5 rounded-2xl text-lg sm:text-xl font-black text-white flex items-center justify-center gap-3 bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 ring-4 ring-amber-300/40 hover:ring-amber-300/60 shadow-[0_10px_0_0_#9a3412,0_22px_44px_rgba(251,146,60,0.45)] active:translate-y-1 active:shadow-[0_4px_0_0_#9a3412] transition-all"
-                >
-                  <LogIn size={24} strokeWidth={2.5} />
-                  {t.heroV2.studentCta}
-                </button>
-                <p className="text-center text-xs sm:text-sm text-white/55 mt-2 md:tall:mt-3">{t.heroV2.studentNote}</p>
-
-                {/* Join a live game by code — for students without a QR. */}
-                <form onSubmit={onJoinByCode} className="mt-3 flex items-center gap-2" dir={dir}>
-                  <input
-                    type="text"
-                    inputMode="text"
-                    autoCapitalize="characters"
-                    value={gameCode}
-                    onChange={(e) => setGameCode(e.target.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 6))}
-                    placeholder={gc.placeholder}
-                    aria-label={gc.placeholder}
-                    className="flex-1 min-w-0 px-3 py-2.5 rounded-xl bg-white/15 border-2 border-white/25 focus:border-amber-300 text-white placeholder:text-white/45 font-black tracking-[0.2em] text-center uppercase outline-none transition-colors"
-                  />
-                  <button
-                    type="submit"
-                    disabled={gameCode.length !== 6}
-                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                    className={`px-4 py-2.5 rounded-xl font-black text-sm transition ${gameCode.length === 6 ? 'bg-amber-400 text-stone-900 active:scale-95' : 'bg-white/10 text-white/40 cursor-not-allowed'}`}
-                  >
-                    {gc.go}
-                  </button>
-                </form>
-                <p className="text-center text-[11px] text-white/45 mt-1">{gc.hint}</p>
               </div>
             </div>
 
@@ -497,7 +438,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </DeferredSection>
       </main>
 
-      <FloatingButtons />
+      {/* Share + Back-to-top laid out as a horizontal row on the same
+          bottom line as the Accessibility trigger, all the same 48px
+          size — see the `horizontal` prop in FloatingButtons. */}
+      <FloatingButtons showBackToTop horizontal />
 
       {/* Sticky Teacher Sign-In — slides up once the hero CTA scrolls
           out of view so the primary conversion path is always one tap
