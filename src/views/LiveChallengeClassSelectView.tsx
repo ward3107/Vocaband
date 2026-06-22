@@ -8,6 +8,7 @@ import { SOCKET_EVENTS } from "../core/types";
 import type { View } from "../core/views";
 import { useLanguage } from "../hooks/useLanguage";
 import { teacherViewsT } from "../locales/teacher/views";
+import { pushNotify } from "../utils/pushNotify";
 
 interface LiveChallengeClassSelectViewProps {
   user: { displayName?: string; avatar?: string } | null;
@@ -71,6 +72,9 @@ export default function LiveChallengeClassSelectView({
                 if (socket) {
                   socket.emit(SOCKET_EVENTS.OBSERVE_CHALLENGE, { classCode: cls.code });
                 }
+                // Best-effort "live challenge starting" push to opted-in
+                // students. No-ops unless the flag is on + they subscribed.
+                void pushNotify("live_challenge", { classCode: cls.code });
               }}
               className="bg-surface-container-lowest rounded-lg p-6 border-2 border-surface-container hover:border-primary/50 hover:shadow-xl transition-all text-left group"
             >

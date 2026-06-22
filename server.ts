@@ -85,6 +85,7 @@ import { validateBagrutTest, validateBagrutQuestion, computeMcMax, scoreMcAnswer
 import { MODULE_SPECS } from "./src/features/vocabagrut/lib/moduleMap";
 import type { BagrutModule, BagrutTest, BagrutQuestion } from "./src/features/vocabagrut/types";
 import { synthesizeSpeechMp3 } from "./tts-common";
+import webpush from "web-push";
 import { isDevEmail } from "./src/core/dev-allowlist";
 import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload } from "./src/core/types";
 import {
@@ -4585,6 +4586,186 @@ async function startServer() {
   //
   // Response shape is unchanged: { hebrew: string[], arabic: string[] } in
   // input order, so existing frontend code keeps working.
+  // ---------------------------------------------------------------------
+  // Push notifications (opt-in, behind the `push_notifications` flag).
+  //
+  // A teacher's client calls this right after creating an assignment /
+  // granting a reward / starting a live challenge. We verify the caller is
+  // a teacher who owns the class, then fan out a PII-FREE push to that
+  // class's opted-in students. The whole path no-ops unless VAPID keys are
+  // configured AND the feature flag is on for the class — so a stray call
+  // can never leak or spam.
+  // ---------------------------------------------------------------------
+  const PUSH_VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY;
+  const PUSH_VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
+  const pushEnabled = !!(PUSH_VAPID_PUBLIC && PUSH_VAPID_PRIVATE);
+  if (pushEnabled) {
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT || "mailto:privacy@vocaband.com",
+      PUSH_VAPID_PUBLIC as string,
+      PUSH_VAPID_PRIVATE as string,
+    );
+    console.log("[push] VAPID configured — push notifications ENABLED");
+  } else {
+    console.log("[push] VAPID keys missing — push notifications DISABLED (no-op)");
+  }
+
+  type PushType = "new_assignment" | "reward" | "live_challenge";
+  const PUSH_LANGS = ["en", "he", "ar", "ru"] as const;
+  type PushLang = (typeof PUSH_LANGS)[number];
+
+  // PII-FREE copy only — no student name, class, or score ever leaves here.
+  const PUSH_COPY: Record<PushType, Record<PushLang, { title: string; body: string }>> = {
+    new_assignment: {
+      en: { title: "New task from your teacher", body: "Tap to play" },
+      he: { title: "משימה חדשה מהמורה שלך", body: "הקש כדי לשחק" },
+      ar: { title: "مهمة جديدة من معلمك", body: "اضغط للعب" },
+      ru: { title: "Новое задание от учителя", body: "Нажмите, чтобы играть" },
+    },
+    reward: {
+      en: { title: "You earned a reward! 🎉", body: "Open Vocaband to see it" },
+      he: { title: "קיבלת פרס! 🎉", body: "פתח את Vocaband כדי לראות" },
+      ar: { title: "حصلت على مكافأة! 🎉", body: "افتح Vocaband لرؤيتها" },
+      ru: { title: "Вы получили награду! 🎉", body: "Откройте Vocaband, чтобы увидеть" },
+    },
+    live_challenge: {
+      en: { title: "Live challenge starting! ⚡", body: "Join your class now" },
+      he: { title: "אתגר חי מתחיל! ⚡", body: "הצטרף לכיתה עכשיו" },
+      ar: { title: "تحدٍّ مباشر يبدأ! ⚡", body: "انضم لصفك الآن" },
+      ru: { title: "Начинается живое соревнование! ⚡", body: "Присоединяйтесь к классу" },
+    },
+  };
+  const PUSH_URL: Record<PushType, string> = {
+    new_assignment: "/student?open=tasks",
+    reward: "/student",
+    live_challenge: "/student?open=live",
+  };
+
+  // Server-side flag gate (fail-closed). Mirrors isFlagOn() on the client:
+  // a class listed in enabled_for_classes always passes; else the master
+  // `enabled`; else off.
+  async function isPushFlagOn(classCode: string): Promise<boolean> {
+    if (!supabaseAdmin) return false;
+    try {
+      const { data } = await supabaseAdmin
+        .from("feature_flags")
+        .select("enabled, enabled_for_classes")
+        .eq("name", "push_notifications")
+        .maybeSingle();
+      if (!data) return false;
+      const list = (data.enabled_for_classes as string[] | null) ?? [];
+      if (list.includes(classCode)) return true;
+      return !!data.enabled;
+    } catch {
+      return false;
+    }
+  }
+
+  const pushNotifyLimiter = createSharedRateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many notification sends. Please wait a minute." },
+    keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req.ip || "unknown") || "unknown",
+    handler: (req, res, _next, options) => {
+      console.warn(`[abuse] /api/push/notify rate-limited: ip=${req.ip || "unknown"}`);
+      res.status(options.statusCode).json(options.message);
+    },
+  });
+
+  app.post("/api/push/notify", pushNotifyLimiter, async (req, res) => {
+    // Soft no-op when the channel isn't configured — never an error so the
+    // teacher's already-successful action is unaffected.
+    if (!pushEnabled || !supabaseAdmin) return res.json({ ok: true, sent: 0, reason: "disabled" });
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) return res.status(401).json({ error: "Authentication required" });
+    const uid = await verifyToken(authHeader.substring(7));
+    if (!uid) return res.status(401).json({ error: "Invalid token" });
+
+    const { type, classCode, studentUid } = req.body ?? {};
+    if (type !== "new_assignment" && type !== "reward" && type !== "live_challenge") {
+      return res.status(400).json({ error: "invalid type" });
+    }
+
+    // Caller must be a teacher/admin.
+    const userData = await getUserRoleAndClass(uid);
+    if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
+      return res.status(403).json({ error: "Only teachers can send notifications" });
+    }
+
+    // Two targeting modes: a single student (reward) or a whole class
+    // (assignment / live challenge). In both, the teacher must own the
+    // class the student(s) belong to.
+    let targetClassCode: string;
+    let uids: string[];
+
+    if (studentUid) {
+      if (!isValidUid(studentUid)) return res.status(400).json({ error: "invalid studentUid" });
+      const studentData = await getUserRoleAndClass(studentUid);
+      if (!studentData || studentData.role !== "student" || !studentData.classCode) {
+        return res.status(404).json({ error: "student not found" });
+      }
+      targetClassCode = studentData.classCode;
+      if (!(await isTeacherForClass(uid, targetClassCode))) {
+        return res.status(403).json({ error: "You don't own this student's class" });
+      }
+      uids = [studentUid];
+    } else {
+      if (!isValidClassCode(classCode)) return res.status(400).json({ error: "invalid classCode" });
+      if (!(await isTeacherForClass(uid, classCode))) {
+        return res.status(403).json({ error: "You don't own this class" });
+      }
+      targetClassCode = classCode;
+      const { data: students } = await supabaseAdmin
+        .from("users")
+        .select("uid")
+        .eq("class_code", classCode)
+        .eq("role", "student");
+      uids = (students ?? []).map((s: { uid: string }) => s.uid);
+    }
+
+    if (!(await isPushFlagOn(targetClassCode))) return res.json({ ok: true, sent: 0, reason: "flag off" });
+    if (uids.length === 0) return res.json({ ok: true, sent: 0 });
+
+    const { data: subs } = await supabaseAdmin
+      .from("push_subscriptions")
+      .select("endpoint, p256dh, auth, lang")
+      .in("uid", uids)
+      .is("revoked_at", null);
+
+    let sent = 0;
+    await Promise.all(
+      (subs ?? []).map(async (sub: { endpoint: string; p256dh: string; auth: string; lang: string }) => {
+        const lang: PushLang = (PUSH_LANGS as readonly string[]).includes(sub.lang) ? (sub.lang as PushLang) : "en";
+        const copy = PUSH_COPY[type as PushType][lang];
+        const payload = JSON.stringify({
+          type,
+          title: copy.title,
+          body: copy.body,
+          url: PUSH_URL[type as PushType],
+          lang,
+        });
+        try {
+          await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload);
+          sent++;
+        } catch (err) {
+          // 404/410 = the device unsubscribed or the endpoint expired.
+          const status = (err as { statusCode?: number })?.statusCode;
+          if (status === 404 || status === 410) {
+            await supabaseAdmin!
+              .from("push_subscriptions")
+              .update({ revoked_at: new Date().toISOString() })
+              .eq("endpoint", sub.endpoint);
+          }
+        }
+      }),
+    );
+
+    return res.json({ ok: true, sent });
+  });
+
   app.post("/api/translate", translateRateLimiter, async (req, res) => {
     const ip = req.ip || "unknown";
     const authHeader = req.headers.authorization;

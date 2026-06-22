@@ -131,6 +131,13 @@
       <td>api.vocaband.com (vocaband.fly.dev)</td>
     </tr>
     <tr>
+      <td><strong>Google Firebase Cloud Messaging (FCM)</strong></td>
+      <td>Transit-only delivery of opt-in push notifications to Android/Chrome devices (new assignment / reward / live challenge alerts)</td>
+      <td>push subscription endpoint (opaque device ID); PII-free notification payload in transit (no name/class/score)</td>
+      <td>Global (US-anchored) — fcm.googleapis.com</td>
+      <td>fcm.googleapis.com</td>
+    </tr>
+    <tr>
       <td><strong>Cloudflare</strong></td>
       <td>DNS, CDN, TLS termination, DDoS mitigation, Workers (request routing), privacy-friendly Web Analytics (no cookies)</td>
       <td>HTTP request metadata (IP, User-Agent, geolocation country); TLS handshake metadata</td>
@@ -231,6 +238,11 @@
       <td>EU (Amsterdam) — ams</td>
       <td>Fly.io</td>
       <td>Processor under DPA; encryption in transit + at rest</td>
+    </tr>
+    <tr>
+      <td>Global (US-anchored) — fcm.googleapis.com</td>
+      <td>Google Firebase Cloud Messaging (FCM)</td>
+      <td>EU-US Data Privacy Framework (DPF) certified — verify at <a href="https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI" target="_blank" rel="noopener">vendor record</a>. DPA: <a href="https://business.safety.google/adsprocessorterms/" target="_blank" rel="noopener">link</a>. TIA risk: low. Last reviewed: 2026-06-22.</td>
     </tr>
     <tr>
       <td>Global edge network</td>
@@ -355,6 +367,10 @@
     <tr>
       <td><code>vocaband_student_visibility_version</code></td>
       <td>studentVisibilityVersion</td>
+    </tr>
+    <tr>
+      <td><code>vocaband_push_consent_version</code></td>
+      <td>pushConsentVersion</td>
     </tr>
   </table>
   <p>Cloudflare Web Analytics is used for traffic measurement; it stores no cookies and does not identify individual users.</p>

@@ -68,6 +68,21 @@ export const TERMS_VERSION = "2026-05-23";            // Version 2.3 - bumped al
  */
 export const STUDENT_VISIBILITY_VERSION = "2026-05-24";
 
+/**
+ * Push-notification opt-in version.
+ *
+ * Recorded when a student affirmatively turns ON device notifications
+ * (separate, revocable channel consent — NOT a processing basis; see
+ * docs/legal/PUSH-NOTIFICATIONS-COMPLIANCE.md Paper 0). Bumping it can be
+ * used to re-confirm the opt-in if the notification scope ever changes.
+ *
+ * Tracked in:
+ *   - localStorage  → CLIENT_STORAGE_KEYS.pushConsentVersion
+ *   - consent_log   → action = 'accept' / 'withdraw', policy_version = this
+ *   - push_subscriptions.consent_version
+ */
+export const PUSH_CONSENT_VERSION = "2026-06-22";
+
 // ---------------------------------------------------------------------------
 // 3. Hosting regions (for cross-border transfer disclosures)
 // ---------------------------------------------------------------------------
@@ -87,6 +102,9 @@ export const HOSTING_REGIONS = {
   googleCloud: "Google-global (AI Studio API; not regionally pinned — migration to Vertex AI EU pending)",
   googleFonts: "Global edge network",
   sentry: "EU (Germany) — *.ingest.de.sentry.io",
+  // Firebase Cloud Messaging routes Web Push to Android/Chrome devices.
+  // Transit only — receives an opaque endpoint + PII-free payload.
+  googleFcm: "Global (US-anchored) — fcm.googleapis.com",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -166,6 +184,23 @@ export const THIRD_PARTY_REGISTRY: ThirdPartyEntry[] = [
     processorOnly: true,
     hostingRegion: HOSTING_REGIONS.flyio,
     endpoint: "api.vocaband.com (vocaband.fly.dev)",
+  },
+  {
+    name: "Google Firebase Cloud Messaging (FCM)",
+    purpose: "Transit-only delivery of opt-in push notifications to Android/Chrome devices (new assignment / reward / live challenge alerts)",
+    dataCategories: ["push subscription endpoint (opaque device ID)", "PII-free notification payload in transit (no name/class/score)"],
+    processorOnly: true,
+    hostingRegion: HOSTING_REGIONS.googleFcm,
+    endpoint: "fcm.googleapis.com",
+    notes: "Message router only. Active ONLY for students who explicitly opt in (push_notifications feature flag). Payload never contains a student name, class, or score — see docs/legal/PUSH-NOTIFICATIONS-COMPLIANCE.md.",
+    transfer: {
+      destination: "United States",
+      mechanism: "dpf",
+      verificationUrl: "https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI",
+      dpaUrl: "https://business.safety.google/adsprocessorterms/",
+      tiaRisk: "low",
+      lastReviewed: "2026-06-22",
+    },
   },
   {
     name: "Cloudflare",
@@ -466,4 +501,6 @@ export const CLIENT_STORAGE_KEYS = {
   privacyReminderDismissed: "vocaband_privacy_reminder_dismissed",
   /** Student-side "teacher sees my plays" acknowledgement version */
   studentVisibilityVersion: "vocaband_student_visibility_version",
+  /** Push-notification opt-in version the student last accepted */
+  pushConsentVersion: "vocaband_push_consent_version",
 } as const;
