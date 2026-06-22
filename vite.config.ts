@@ -266,7 +266,10 @@ export default defineConfig(() => {
           // public/sw-error-suppress.js for the listener — importScripts
           // injects it BEFORE workbox boots so every subsequent
           // expiration update is covered.
-          importScripts: ['/sw-error-suppress.js'],
+          // sw-push.js adds the `push` + `notificationclick` handlers for
+          // the opt-in push-notification feature (behind the
+          // `push_notifications` flag). Inert until a client subscribes.
+          importScripts: ['/sw-error-suppress.js', '/sw-push.js'],
           // Precache ONLY the SPA bootstrap shell.
           //
           // History: a previous config precached every file under dist/

@@ -5,6 +5,7 @@ import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_
 import type { View } from "../core/views";
 import { useLanguage } from "../hooks/useLanguage";
 import { privacySettingsT } from "../locales/privacy-settings";
+import PushSettingsToggle from "../components/PushSettingsToggle";
 
 // (Parent Weekly Digest opt-in was removed in the 2026-05-18 privacy
 // review.  See migration 20260618000000_drop_parent_digest_stub.sql
@@ -161,6 +162,10 @@ export default function PrivacySettingsView({
             {t.pageTitle}
           </h1>
         </div>
+
+        {/* Push-notification on/off (self-hides unless enabled for the
+            class + supported by the browser) */}
+        <PushSettingsToggle user={user} />
 
         {/* Profile Info (editable name) */}
         <div

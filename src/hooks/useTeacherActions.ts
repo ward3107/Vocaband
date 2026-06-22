@@ -21,6 +21,7 @@ import { trackAutoError } from "../errorTracking";
 import { compressImageForUpload } from "../utils/compressImage";
 import { requestCustomWordAudio } from "../utils/requestCustomWordAudio";
 import { logAudit } from "../utils/audit";
+import { pushNotify } from "../utils/pushNotify";
 import { isPro, FREE_TIER_LIMITS } from "../core/plan";
 import { createCompetition } from "./useCompetitions";
 
@@ -702,6 +703,11 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
           }
         }
         showToast("Assignment created successfully!", "success");
+
+        // Best-effort push to opted-in students ("New task from your
+        // teacher"). No-ops unless the push_notifications flag is on +
+        // students have subscribed — never blocks the create flow.
+        void pushNotify("new_assignment", { classCode: selectedClass?.code });
 
         // Refresh assignments list — await so the teacher-dashboard
         // redirect below doesn't land on a stale list.

@@ -4,6 +4,7 @@ import StudentTopBar from "../components/dashboard/StudentTopBar";
 import PetCompanion from "../components/dashboard/PetCompanion";
 import Pet3DCard from "../components/dashboard/Pet3DCard";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
+import PushOptInCard from "../components/PushOptInCard";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
 import StudentWelcomeCard from "../components/dashboard/StudentWelcomeCard";
 import StudentGreetingCard from "../components/dashboard/StudentGreetingCard";
@@ -254,6 +255,10 @@ export default function StudentDashboardView({
         }
       >
         {classNotFoundBanner}
+        {/* Opt-in nudge for push notifications. Self-hides unless the
+            feature flag is on for this class and the student hasn't
+            decided yet — so it's invisible until the feature is enabled. */}
+        <PushOptInCard user={user} />
         {/* Teacher rewards land here FIRST so the student sees the
             celebration before anything else. Hides itself when empty. */}
         <RewardInboxCard
