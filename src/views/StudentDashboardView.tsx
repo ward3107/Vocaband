@@ -5,6 +5,7 @@ import PetCompanion from "../components/dashboard/PetCompanion";
 import Pet3DCard from "../components/dashboard/Pet3DCard";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import PushOptInCard from "../components/PushOptInCard";
+import StudentVisibilityConsent from "../components/StudentVisibilityConsent";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
 import StudentWelcomeCard from "../components/dashboard/StudentWelcomeCard";
 import StudentGreetingCard from "../components/dashboard/StudentGreetingCard";
@@ -217,6 +218,11 @@ export default function StudentDashboardView({
       {consentModal}
       {exitConfirmModal}
       {classSwitchModal}
+      {/* First-login disclosure: the student must affirm they understand
+          their teacher can see their gameplay before they can play.
+          Hard-gates the dashboard until accepted; self-skips once the
+          current STUDENT_VISIBILITY_VERSION is on file. */}
+      <StudentVisibilityConsent studentUid={user.uid} />
       {showStudentOnboarding && (
         <StudentOnboarding
           userName={user.displayName}
