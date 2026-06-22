@@ -41,6 +41,10 @@ const BRAND_COLORS = {
 interface FloatingButtonsProps {
   showBackToTop?: boolean;
   className?: string;
+  /** Landing page only: lay the buttons out as a horizontal row aligned on
+   * the same bottom line as the Accessibility trigger, and size the share
+   * button to 48px so Share / Accessibility / Back-to-top all match. */
+  horizontal?: boolean;
   /** When provided, the share button shares the student's level/XP card
    * instead of the generic "check out Vocaband" message.  Drives viral
    * growth — students posting "I'm Level X Word Wizard" on social. */
@@ -114,6 +118,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
   showBackToTop = false,
   className = "",
   shareLevel,
+  horizontal = false,
 }) => {
   const { language } = useLanguage();
   const shareAria = language === "he" ? "אפשרויות שיתוף" : language === "ar" ? "خيارات المشاركة" : "Share options";
@@ -453,7 +458,11 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
     <div
       ref={shareRef}
       data-floating-buttons
-      className={`fixed start-3 bottom-28 md:start-4 md:bottom-28 z-[80] flex flex-col gap-3 ${className}`}
+      className={`fixed z-[80] ${
+        horizontal
+          ? "bottom-6 left-[5.25rem] flex flex-row items-center gap-3"
+          : "start-3 bottom-28 md:start-4 md:bottom-28 flex flex-col gap-3"
+      } ${className}`}
     >
       <div
         ref={containerRef}
@@ -488,7 +497,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
         }}
         onMouseEnter={() => setIsHovered('share')}
         onMouseLeave={() => setIsHovered(null)}
-        className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95"
+        className={`${horizontal ? "w-12 h-12" : "w-10 h-10"} rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95`}
         style={getButtonStyle('share')}
         aria-label={shareAria}
         aria-expanded={shareOpen}
@@ -501,7 +510,11 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
       {/* Share Options - Horizontal popup */}
       {shareOpen && (
         <div
-          className="absolute top-[-12px] left-[44px] flex items-center gap-2 p-2 z-50 min-w-fit max-w-[calc(100vw-70px)]"
+          className={`absolute z-50 p-2 min-w-fit flex gap-2 ${
+            horizontal
+              ? "bottom-[3.75rem] left-1/2 -translate-x-1/2 flex-col items-center"
+              : "top-[-12px] left-[44px] items-center max-w-[calc(100vw-70px)]"
+          }`}
           style={styles.popup}
           role="menu"
           aria-label={shareAria}
