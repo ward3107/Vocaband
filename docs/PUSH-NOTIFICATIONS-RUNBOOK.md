@@ -67,3 +67,49 @@ Kill switch (instant off for all): set `enabled = false` and clear the array.
 - Expired endpoints (404/410) are auto-revoked by the sender.
 - Quiet hours / frequency caps are NOT yet implemented — add before a wide
   rollout (see design doc §4).
+
+---
+
+## Native Android (FCM) — for the Google Play app
+
+The Web Push above works in Chrome / installed PWAs but **not inside the
+Capacitor Play Store app** (its WebView has no Push API). The code for the
+native path is already in the repo (the app uses
+`@capacitor/push-notifications`; the server sends via Firebase when
+`FIREBASE_SERVICE_ACCOUNT` is set; `push_subscriptions.kind='native'` rows
+hold the FCM token). It stays inert until the Firebase steps below are done.
+
+### One-time setup (operator)
+1. **Create a Firebase project** (free) → add an Android app with package
+   name **`com.vocaband.student`**.
+2. Download **`google-services.json`** → place it at
+   **`android/app/google-services.json`**.
+3. **Apply the Google Services Gradle plugin** (two small edits):
+   - `android/build.gradle` (project) → in `dependencies`, add:
+     `classpath 'com.google.gms:google-services:4.4.2'`
+   - `android/app/build.gradle` (app) → at the very bottom, add:
+     `apply plugin: 'com.google.gms.google-services'`
+   > These are left to you on purpose: applying the plugin without the JSON
+   > would break the Android build, so we don't ship it half-wired.
+4. **Server credential:** in Firebase → Project settings → Service accounts
+   → "Generate new private key". Set the whole JSON as a Fly secret:
+   `fly secrets set FIREBASE_SERVICE_ACCOUNT='<paste the JSON>'`
+
+### Build + ship
+5. Run GitHub → Actions → **Build Student Android App** (build mode) → it
+   produces the signed `.aab`.
+6. Upload the `.aab` to Google Play (internal testing track first).
+7. **Update the Play Data Safety form**: now collects a "Device ID" (FCM
+   token) for notifications — optional, opt-in, encrypted in transit.
+
+### Verify
+8. Install the internal-testing app on a real Android phone → open it.
+9. The opt-in card appears → tap "Yes" → grant the Android 13+ permission.
+10. As the teacher, post an assignment → the phone shows the notification
+    even with the app closed.
+
+### Notes
+- Same children-safety rules: functional-only, PII-free, opt-in, easy off.
+- Stale FCM tokens (`registration-token-not-registered`) auto-revoke.
+- **iOS** is a separate job: same plugin, but APNs + Apple Push key + an
+  App Store release ($99/yr Apple Developer).

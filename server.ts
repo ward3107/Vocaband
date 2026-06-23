@@ -86,6 +86,8 @@ import { MODULE_SPECS } from "./src/features/vocabagrut/lib/moduleMap";
 import type { BagrutModule, BagrutTest, BagrutQuestion } from "./src/features/vocabagrut/types";
 import { synthesizeSpeechMp3 } from "./tts-common";
 import webpush from "web-push";
+import { initializeApp as initFirebaseApp, cert as firebaseCert, getApps as getFirebaseApps } from "firebase-admin/app";
+import { getMessaging } from "firebase-admin/messaging";
 import { isDevEmail } from "./src/core/dev-allowlist";
 import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload } from "./src/core/types";
 import {
@@ -4605,9 +4607,29 @@ async function startServer() {
       PUSH_VAPID_PUBLIC as string,
       PUSH_VAPID_PRIVATE as string,
     );
-    console.log("[push] VAPID configured — push notifications ENABLED");
+    console.log("[push] VAPID configured — Web Push ENABLED");
   } else {
-    console.log("[push] VAPID keys missing — push notifications DISABLED (no-op)");
+    console.log("[push] VAPID keys missing — Web Push DISABLED (no-op)");
+  }
+
+  // Native FCM (Android Play Store app). Initialised from a Firebase
+  // service-account JSON in FIREBASE_SERVICE_ACCOUNT. Like VAPID, this is a
+  // no-op when the secret is absent — so the native path stays inert until
+  // the operator sets it up.
+  let fcmEnabled = false;
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      const creds = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      if (getFirebaseApps().length === 0) {
+        initFirebaseApp({ credential: firebaseCert(creds) });
+      }
+      fcmEnabled = true;
+      console.log("[push] Firebase service account configured — native FCM ENABLED");
+    } catch (err) {
+      console.warn("[push] FIREBASE_SERVICE_ACCOUNT present but invalid — native FCM DISABLED:", (err as Error)?.message);
+    }
+  } else {
+    console.log("[push] FIREBASE_SERVICE_ACCOUNT missing — native FCM DISABLED (no-op)");
   }
 
   type PushType = "new_assignment" | "reward" | "live_challenge";
@@ -4677,7 +4699,7 @@ async function startServer() {
   app.post("/api/push/notify", pushNotifyLimiter, async (req, res) => {
     // Soft no-op when the channel isn't configured — never an error so the
     // teacher's already-successful action is unaffected.
-    if (!pushEnabled || !supabaseAdmin) return res.json({ ok: true, sent: 0, reason: "disabled" });
+    if ((!pushEnabled && !fcmEnabled) || !supabaseAdmin) return res.json({ ok: true, sent: 0, reason: "disabled" });
 
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) return res.status(401).json({ error: "Authentication required" });
@@ -4731,22 +4753,46 @@ async function startServer() {
 
     const { data: subs } = await supabaseAdmin
       .from("push_subscriptions")
-      .select("endpoint, p256dh, auth, lang")
+      .select("endpoint, p256dh, auth, lang, kind")
       .in("uid", uids)
       .is("revoked_at", null);
 
+    const revoke = (endpoint: string) =>
+      supabaseAdmin!
+        .from("push_subscriptions")
+        .update({ revoked_at: new Date().toISOString() })
+        .eq("endpoint", endpoint);
+
     let sent = 0;
     await Promise.all(
-      (subs ?? []).map(async (sub: { endpoint: string; p256dh: string; auth: string; lang: string }) => {
+      (subs ?? []).map(async (sub: { endpoint: string; p256dh: string | null; auth: string | null; lang: string; kind: string }) => {
         const lang: PushLang = (PUSH_LANGS as readonly string[]).includes(sub.lang) ? (sub.lang as PushLang) : "en";
         const copy = PUSH_COPY[type as PushType][lang];
-        const payload = JSON.stringify({
-          type,
-          title: copy.title,
-          body: copy.body,
-          url: PUSH_URL[type as PushType],
-          lang,
-        });
+        const url = PUSH_URL[type as PushType];
+
+        // Native Android (Capacitor app) → FCM; Web Push → web-push.
+        if (sub.kind === "native") {
+          if (!fcmEnabled) return;
+          try {
+            await getMessaging().send({
+              token: sub.endpoint, // endpoint holds the FCM registration token
+              notification: { title: copy.title, body: copy.body },
+              data: { type: String(type), url, lang },
+            });
+            sent++;
+          } catch (err) {
+            const code = (err as { code?: string; errorInfo?: { code?: string } })?.errorInfo?.code
+              || (err as { code?: string })?.code;
+            // Stale/unregistered token → soft-revoke so we stop targeting it.
+            if (code === "messaging/registration-token-not-registered" || code === "messaging/invalid-registration-token") {
+              await revoke(sub.endpoint);
+            }
+          }
+          return;
+        }
+
+        if (!pushEnabled || !sub.p256dh || !sub.auth) return;
+        const payload = JSON.stringify({ type, title: copy.title, body: copy.body, url, lang });
         try {
           await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload);
           sent++;
@@ -4754,10 +4800,7 @@ async function startServer() {
           // 404/410 = the device unsubscribed or the endpoint expired.
           const status = (err as { statusCode?: number })?.statusCode;
           if (status === 404 || status === 410) {
-            await supabaseAdmin!
-              .from("push_subscriptions")
-              .update({ revoked_at: new Date().toISOString() })
-              .eq("endpoint", sub.endpoint);
+            await revoke(sub.endpoint);
           }
         }
       }),
