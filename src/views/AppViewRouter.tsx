@@ -36,11 +36,10 @@ import { renderPrivacySettingsSection } from "./PrivacySettingsSection";
 import { navigateToTeacherLogin, navigateToStudentLogin } from "../handlers/landingNav";
 import type { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 
-// Lazy — these render only mid-Quick-Play, and they pull in motion/react.
-// Keeping them off App's eager import graph drops the ~42 kB gz motion
+// Lazy — renders only mid-Quick-Play, and it pulls in motion/react.
+// Keeping it off App's eager import graph drops the ~42 kB gz motion
 // bundle from the cold first-paint (landing) critical path.
 const QpReactionBar = lazyWithRetry(() => import("../components/QpReactionBar"));
-const QuickPlayHelpButton = lazyWithRetry(() => import("../components/QuickPlayHelpButton"));
 
 type PrivacySettingsArgs = Parameters<typeof renderPrivacySettingsSection>[0];
 
@@ -357,29 +356,22 @@ export function AppViewRouter(props: AppViewRouterProps) {
   // Once the student is actually answering questions, the prompt
   // sits high on the screen with comfortable space underneath, so
   // the bar can dock at the bottom without colliding.
-  // Reaction bar + help button are Quick-Play-only affordances now. An
-  // authenticated student who joins their own classroom for a live challenge
-  // does NOT get them — that screen already has its own Exit button, and the
-  // floating emoji row + rescue ring were unwanted clutter there. Guests in
-  // Quick Play (the projected, physical-classroom game) still get both.
+  // Reaction bar is a Quick-Play-only affordance, and only in the
+  // competitive, shared-moment modes. In self-paced practice (flashcards,
+  // spelling, etc.) the floating emoji row was clutter with nothing to
+  // react to, so it's gated to Speed Round — the lone competitive mode that
+  // runs through the main game view (Arena / Category Race have their own
+  // views). An authenticated student in a live challenge never gets it either.
   const reactionSender = quickPlaySocket.sendReaction;
+
+  const isCompetitiveQpMode = gameRouteDeps.gameMode === "speed-round";
 
   const showQpReactionBar = !!quickPlayActiveSession
     && view === "game"
     && !isFinished
     && !showModeSelection
-    && !showModeIntro;
-
-  // Floating help button mirrors the reaction bar's gating: visible
-  // only mid-Quick-Play game so unauthenticated kids who are stuck
-  // have a one-tap escape hatch without being able to invoke it from
-  // unrelated views. Same overlap concern — hide it on mode selection
-  // / intro so it doesn't sit on top of the mode tiles.
-  const showQpHelpButton = !!quickPlayActiveSession
-    && view === "game"
-    && !isFinished
-    && !showModeSelection
-    && !showModeIntro;
+    && !showModeIntro
+    && isCompetitiveQpMode;
 
   // ── Legacy default-screen safety net ────────────────────────────────
   // The original app rendered the word game as its root screen, and this
@@ -409,17 +401,6 @@ export function AppViewRouter(props: AppViewRouterProps) {
       {showQpReactionBar && (
         <Suspense fallback={null}>
           <QpReactionBar sendReaction={reactionSender} />
-        </Suspense>
-      )}
-      {showQpHelpButton && (
-        <Suspense fallback={null}>
-          <QuickPlayHelpButton
-            onAlertTeacher={() => reactionSender('🙋')}
-            onLeave={() => {
-              gameRouteDeps.cleanupQuickPlayGuest();
-              setView('public-landing');
-            }}
-          />
         </Suspense>
       )}
       <AppCelebrations

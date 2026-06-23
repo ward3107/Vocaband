@@ -167,11 +167,10 @@ export default function StudentRtlPreview() {
           <SectionLabel>Retention</SectionLabel>
           <RetentionStrip retention={FAKE_RETENTION} onGrantXp={() => {}} />
 
-          <SectionLabel>Daily practice (collapsed trio)</SectionLabel>
+          <SectionLabel>Daily practice (collapsed)</SectionLabel>
           <DailyPracticeRow
             review={{ dueCount: 12, isLoading: false, onStart: () => {} }}
             classMinute={{ doneToday: false, streak: 4, isLoading: false, onStart: () => {} }}
-            idioms={{ onStart: () => {} }}
           />
 
           <SectionLabel>Assignments</SectionLabel>
