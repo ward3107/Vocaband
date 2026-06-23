@@ -29,17 +29,44 @@ No app store. No personal data required for students. Works on any device with a
 
 ## Screenshots
 
-<p align="center">
-  <img src="docs/screenshots/landing-desktop.png" alt="Vocaband landing page on desktop (English)" width="380">
-  &nbsp;&nbsp;
-  <img src="docs/screenshots/landing-mobile.png" alt="Vocaband landing page on mobile" width="130">
-</p>
+A quick tour — from a teacher launching a class to a student earning XP.
+
+**One trilingual front door.** Teachers sign in, students join with a class code or QR — no app store, fully right-to-left for Hebrew and Arabic.
 
 <p align="center">
-  <img src="docs/screenshots/landing-rtl.png" alt="Vocaband landing page on desktop in Hebrew (right-to-left)" width="380">
+  <img src="docs/screenshots/landing-desktop.png" alt="Landing page on desktop (English)" width="340">
+  &nbsp;
+  <img src="docs/screenshots/landing-rtl.png" alt="Landing page on desktop (Hebrew, right-to-left)" width="340">
+  &nbsp;
+  <img src="docs/screenshots/landing-mobile.png" alt="Landing page on mobile" width="115">
 </p>
 
-<p align="center"><sub>Trilingual, RTL-aware landing page — desktop, mobile, and Hebrew (RTL).</sub></p>
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/app-teacher-dashboard.png" alt="Teacher dashboard" width="360"><br>
+      <b>Teacher dashboard</b><br>
+      <sub>Launch Quick Play, build assignments, and run live challenges in a couple of taps — everything in one place.</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/app-game-select.png" alt="Game mode selection" width="360"><br>
+      <b>Pick a game mode</b><br>
+      <sub>A dozen game modes, each with its own look and mechanic, so practice never feels repetitive.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/app-game-active.png" alt="Gameplay with audio and translations" width="360"><br>
+      <b>Play &amp; learn</b><br>
+      <sub>Every word has audio and instant feedback in English, Hebrew, or Arabic — vocabulary that actually sticks.</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/app-live-challenge.png" alt="Live Challenge leaderboard podium" width="360"><br>
+      <b>Live Challenge</b><br>
+      <sub>Turn revision into a whole-class competition with a real-time podium that updates as students answer.</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
