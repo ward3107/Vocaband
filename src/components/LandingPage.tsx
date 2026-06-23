@@ -292,7 +292,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   {t.heroV2.eyebrow}
                 </span>
 
-                <h1 className="relative z-20 text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black font-headline italic leading-[1.05] text-balance break-words mb-3 md:mb-4">
+                <h1 className={`relative z-20 text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black font-headline ${isRTL ? "" : "italic"} leading-[1.05] text-balance break-words mb-3 md:mb-4`}>
                   <span className="inline-block bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
                     {t.heroTitleLine1}
                   </span>
