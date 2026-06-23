@@ -144,17 +144,6 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
           setView('game');
         }}
         onStartClassMinute={startClassMinute}
-        onStartIdioms={() => {
-          // Idiom entry — bypasses the mode picker, so prime iOS audio
-          // on this tap (no Let's Go screen downstream to catch it).
-          primeAudio();
-          // IdiomGame self-fetches its question pool from
-          // src/data/idioms.ts, so we don't need to seed gameWords.
-          setGameMode('idiom');
-          setIsFinished(false);
-          setShowModeSelection(false);
-          setView('game');
-        }}
         retention={retention}
         boosters={{
           isXpBoosterActive: boosters.isXpBoosterActive,
@@ -229,13 +218,6 @@ export function StudentHubSection(
           setView('game');
         }}
         onStartClassMinute={startClassMinute}
-        onStartIdioms={() => {
-          primeAudio();
-          setGameMode('idiom');
-          setIsFinished(false);
-          setShowModeSelection(false);
-          setView('game');
-        }}
         boosters={{
           isXpBoosterActive: boosters.isXpBoosterActive,
           isFocusModeActive: boosters.isFocusModeActive,

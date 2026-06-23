@@ -35,7 +35,6 @@ interface StudentHubSubViewProps {
   studentDataLoading: boolean;
   onStartReview?: () => void;
   onStartClassMinute?: () => void;
-  onStartIdioms?: () => void;
   /** Daily page — active boosts strip. */
   boosters: {
     isXpBoosterActive: boolean;
@@ -82,7 +81,7 @@ const BACK_LABEL: Record<Language, string> = {
 export default function StudentHubSubView({
   section, user, onBack,
   studentProgress, studentDataLoading,
-  onStartClassMinute, onStartIdioms,
+  onStartClassMinute,
   boosters, badges, onClaimBadgeXp,
   retention, onGrantXp, onPlay,
 }: StudentHubSubViewProps) {
@@ -144,7 +143,6 @@ export default function StudentHubSubView({
               isLoading: studentDataLoading,
               onStart: onStartClassMinute,
             } : undefined}
-            idioms={onStartIdioms ? { onStart: onStartIdioms } : undefined}
           />
         )}
 
@@ -154,7 +152,7 @@ export default function StudentHubSubView({
             <RetentionStrip retention={retention} onGrantXp={onGrantXp} />
 
             {/* Daily goal nudge. */}
-            <DailyGoalBanner studentProgress={studentProgress} onPlay={onPlay} />
+            <DailyGoalBanner studentProgress={studentProgress} onPlay={onPlay} userUid={user.uid} onGrantXp={onGrantXp} />
 
             {/* Today's missions. */}
             <section className="space-y-2">

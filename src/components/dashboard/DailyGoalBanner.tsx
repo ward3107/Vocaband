@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Flame, CheckCircle2, Target } from "lucide-react";
 import type { ProgressData } from "../../core/supabase";
@@ -6,6 +6,15 @@ import { useLanguage } from "../../hooks/useLanguage";
 import { useFeatureFlag } from "../../hooks/useFeatureFlag";
 import { ARCADE_CARD, ARCADE_REWARD_GRADIENT } from "../arcade/theme";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
+import { DAILY_GOAL_REWARD_XP } from "../../constants/game";
+
+// Local calendar-day key (not UTC) — matches the day boundary the goal
+// counter uses below and the discipline in useRetention, so the bonus
+// resets at the student's own midnight.
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 interface DailyGoalBannerProps {
   studentProgress: ProgressData[];
@@ -16,6 +25,13 @@ interface DailyGoalBannerProps {
    *  ("1 more to go!") stops feeling like dead information.  The hit
    *  state never wires this — they already did it. */
   onPlay?: () => void;
+  /** Student uid — keys the once-per-day "bonus already claimed" flag in
+   *  localStorage so the reward fires exactly once per calendar day. */
+  userUid?: string;
+  /** Grants the daily-goal bonus XP. Same handler the chest/weekly tiles
+   *  use, so the bonus flows through the existing claim_retention_xp RPC.
+   *  When omitted (e.g. the dev preview), the banner is display-only. */
+  onGrantXp?: (amount: number, reason: string) => void;
 }
 
 /**
@@ -29,7 +45,7 @@ interface DailyGoalBannerProps {
  * per (mode, assignment) is what `progress` already gives us, so we can
  * trust raw count.
  */
-export default function DailyGoalBanner({ studentProgress, goal = 1, onPlay }: DailyGoalBannerProps) {
+export default function DailyGoalBanner({ studentProgress, goal = 1, onPlay, userUid, onGrantXp }: DailyGoalBannerProps) {
   const { language } = useLanguage();
   const t = studentDashboardT[language];
   // Arcade theme: gold reward banner when the goal is hit, frosted
@@ -46,6 +62,20 @@ export default function DailyGoalBanner({ studentProgress, goal = 1, onPlay }: D
     const percent = Math.min(100, Math.round((count / Math.max(1, goal)) * 100));
     return { playedToday: count, pct: percent, hit: count >= goal };
   }, [studentProgress, goal]);
+
+  // Pay out the bonus the banner has always promised. Granted the first
+  // time the student lands on the hit state each day; the localStorage
+  // flag (written before the grant) keeps it one-shot even if the effect
+  // re-runs on re-render.
+  useEffect(() => {
+    if (!hit || !userUid || !onGrantXp) return;
+    const claimKey = `vocaband_dailygoal_${userUid}`;
+    try {
+      if (localStorage.getItem(claimKey) === todayKey()) return;
+      localStorage.setItem(claimKey, todayKey());
+    } catch { return; /* storage unavailable — skip rather than double-grant */ }
+    onGrantXp(DAILY_GOAL_REWARD_XP, t.youDidIt(DAILY_GOAL_REWARD_XP));
+  }, [hit, userUid, onGrantXp, t]);
 
   return (
     <AnimatePresence mode="wait">
@@ -69,7 +99,7 @@ export default function DailyGoalBanner({ studentProgress, goal = 1, onPlay }: D
             <div className="flex-1 min-w-0">
               <p className={`text-xs uppercase tracking-widest ${arcade ? "text-amber-950 font-extrabold" : "font-bold text-white/80"}`}>{t.dailyGoal}</p>
               <h3 className={`text-base sm:text-lg leading-tight ${arcade ? "text-amber-950 font-extrabold" : "font-black text-white"}`}>
-                {t.youDidIt(10)}
+                {t.youDidIt(DAILY_GOAL_REWARD_XP)}
               </h3>
             </div>
           </div>
@@ -159,7 +189,7 @@ export default function DailyGoalBanner({ studentProgress, goal = 1, onPlay }: D
                 />
               </div>
               <p className="text-xs sm:text-sm font-semibold mt-1.5" style={{ color: arcade ? "#fff" : "#4A3B7A" }}>
-                {playedToday === 0 ? t.playGameForBonus(10) : t.almostThere(goal - playedToday)}
+                {playedToday === 0 ? t.playGameForBonus(DAILY_GOAL_REWARD_XP) : t.almostThere(goal - playedToday)}
               </p>
             </div>
           </div>

@@ -61,12 +61,6 @@ interface StudentDashboardViewProps {
    *  Loads SRS-due words first then fills from assignment, sets
    *  gameMode='class-minute', and routes to the game view. */
   onStartClassMinute?: () => void;
-  /** Optional handler for the Idioms bonus tile.  Idioms run on a
-   *  curated dataset (not the teacher's assignment words), so the
-   *  mode lives on the dashboard rather than in the assignment mode
-   *  picker.  Same routing pattern as onStartReview — bypasses mode
-   *  selection + intro and routes straight into the game. */
-  onStartIdioms?: () => void;
   retention: RetentionState;
   onGrantXp: (amount: number, reason: string) => void;
   /** Coin grant for pet-milestone claims (evolutions now pay coins). */
@@ -121,7 +115,6 @@ export default function StudentDashboardView({
   evolutionPending,
   onStartReview,
   onStartClassMinute,
-  onStartIdioms,
   onRenameDisplayName,
   onRequestLogout,
 }: StudentDashboardViewProps) {
@@ -204,7 +197,7 @@ export default function StudentDashboardView({
     { key: "leaderboard", onClick: () => setView("global-leaderboard") },
     { key: "daily", onClick: () => setView("student-daily") },
   ];
-  if (onStartReview || onStartClassMinute || onStartIdioms) {
+  if (onStartReview || onStartClassMinute) {
     orbitItems.push({ key: "practice", onClick: () => setView("student-practice"), badge: dueReviews.dueCount || undefined });
   }
 

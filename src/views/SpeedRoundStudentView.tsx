@@ -16,7 +16,6 @@ import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import QPAvatarPicker from "../components/QPAvatarPicker";
 import QPAvatar from "../components/QPAvatar";
-import QuickPlayHelpButton from "../components/QuickPlayHelpButton";
 import QuickPlayErrorScreen from "../components/QuickPlayErrorScreen";
 import SpeedBuzzer, { CountUp } from "../components/game/SpeedBuzzer";
 import TeamSwitcher from "../components/game/TeamSwitcher";
@@ -45,7 +44,7 @@ export default function SpeedRoundStudentView({ sessionCode, setView }: SpeedRou
   const qp = useQuickPlaySocket({ sessionCode, enabled: true });
   const {
     currentSpeed, leaderboard, clientId, joinedSessionCode, lastError,
-    joinAsStudent, submitSpeedAnswer, sendReaction,
+    joinAsStudent, submitSpeedAnswer,
     onSpeedResult, onSpeedEnded, onSessionEnded, onKicked,
     teamMode, myTeam, switchTeam,
   } = qp;
@@ -195,13 +194,6 @@ export default function SpeedRoundStudentView({ sessionCode, setView }: SpeedRou
     }
   }, [phase, myIndex]);
 
-  const helpButton = (
-    <QuickPlayHelpButton
-      onAlertTeacher={() => sendReaction("🙋")}
-      onLeave={() => { forgetGame(); setView("public-landing"); }}
-    />
-  );
-
   // ─── Join screen ────────────────────────────────────────────────────
   if (phase === "join") {
     const canContinue = name.trim().length > 0;
@@ -268,7 +260,6 @@ export default function SpeedRoundStudentView({ sessionCode, setView }: SpeedRou
           result={lastResult}
           className="min-h-[100dvh]"
         />
-        {helpButton}
       </>
     );
   }
@@ -305,7 +296,6 @@ export default function SpeedRoundStudentView({ sessionCode, setView }: SpeedRou
             {t.backHome}
           </button>
         </motion.div>
-        {helpButton}
       </Shell>
     );
   }
@@ -337,7 +327,6 @@ export default function SpeedRoundStudentView({ sessionCode, setView }: SpeedRou
           ))}
         </div>
       </motion.div>
-      {helpButton}
     </Shell>
   );
 }

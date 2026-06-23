@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, QrCode, Globe } from "lucide-react";
 import AvatarPicker from "../components/QPAvatarPicker";
 import QuickPlayErrorScreen, { type QuickPlayErrorKind } from "../components/QuickPlayErrorScreen";
-import QuickPlayHelpButton from "../components/QuickPlayHelpButton";
 import { shuffle } from "../utils";
 import { generateSentencesForAssignment } from "../data/sentence-bank";
 import { ALL_GAME_MODES } from "../constants/game";
@@ -792,25 +791,6 @@ export default function QuickPlayStudentView({
           ) : null}
       </main>
 
-      {/* Floating help button — visible across every join step + the
-          resume card so a stuck student always has a one-tap escape
-          hatch. Hidden once we've left the join surface (the in-game
-          mount lives in App.tsx alongside QpReactionBar). The teacher
-          alert path uses sendReaction so kids on the join screen who
-          can't figure out the name field can ping the projector. */}
-      {quickPlayActiveSession && !fatalError && (
-        <QuickPlayHelpButton
-          onAlertTeacher={() => quickPlaySocket.sendReaction('🙋')}
-          onLeave={() => {
-            cleanupSessionData();
-            try { localStorage.removeItem('vocaband_qp_guest'); } catch { /* storage unavailable */ }
-            setQuickPlayActiveSession(null);
-            setQuickPlayStudentName('');
-            setUser(null);
-            setView('public-landing');
-          }}
-        />
-      )}
     </div>
   );
 }
