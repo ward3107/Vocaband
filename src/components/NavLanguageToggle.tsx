@@ -13,6 +13,9 @@ interface NavLanguageToggleProps {
 
 const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" }) => {
   const { language, setLanguage } = useLanguage();
+  // Short code shown on the trigger so it's obviously a language switcher
+  // (and which language is active), not a bare globe icon.
+  const shortLabel = ({ en: "EN", he: "עב", ar: "ع", ru: "RU" } as Record<string, string>)[language] ?? "EN";
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   // Hover-to-open is a nicety on desktop but breaks badly on touch:
@@ -133,18 +136,19 @@ const NavLanguageToggle: React.FC<NavLanguageToggleProps> = ({ className = "" })
           cancelClose();
           setIsOpen((v) => !v);
         }}
-        className="relative bg-white text-slate-700 px-3 py-2.5 rounded-full shadow-lg hover:shadow-xl flex items-center gap-2 border-2 border-slate-200 hover:border-violet-400 transition-all cursor-pointer active:scale-95"
+        className="bg-white text-slate-700 px-3 py-2 rounded-full shadow-sm hover:shadow-md flex items-center gap-1.5 border border-slate-200 hover:border-violet-400 transition-all cursor-pointer active:scale-95"
         type="button"
         aria-label={language === 'he' ? 'החלף שפה' : language === 'ar' ? 'تغيير اللغة' : 'Change language'}
         aria-haspopup="menu"
         aria-expanded={isOpen}
         style={{ touchAction: "manipulation" }}
       >
-        {/* Inner shadow for depth */}
-        <div className="absolute inset-0 bg-black/10 rounded-full pointer-events-none" />
-
         {/* Globe icon */}
-        <Globe size={18} className="relative z-10" strokeWidth={2.5} aria-hidden />
+        <Globe size={16} className="relative z-10" strokeWidth={2.5} aria-hidden />
+
+        {/* Active language code — makes the control read as a language
+            switcher instead of a bare globe button. */}
+        <span className="relative z-10 text-xs font-black tracking-wide">{shortLabel}</span>
 
         {/* Dropdown arrow — CSS rotation tied to open state */}
         <svg
