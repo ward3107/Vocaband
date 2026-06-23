@@ -27,6 +27,22 @@ No app store. No personal data required for students. Works on any device with a
 
 ---
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/landing-desktop.png" alt="Vocaband landing page on desktop (English)" width="380">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/landing-mobile.png" alt="Vocaband landing page on mobile" width="130">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/landing-rtl.png" alt="Vocaband landing page on desktop in Hebrew (right-to-left)" width="380">
+</p>
+
+<p align="center"><sub>Trilingual, RTL-aware landing page — desktop, mobile, and Hebrew (RTL).</sub></p>
+
+---
+
 ## Table of contents
 
 - [Why Vocaband](#why-vocaband)
