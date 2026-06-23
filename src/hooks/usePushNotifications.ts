@@ -1,41 +1,57 @@
 /**
- * usePushNotifications — manage a student's Web Push opt-in.
+ * usePushNotifications — manage a student's push opt-in across BOTH
+ * delivery channels:
  *
- * Responsibilities:
- *   - Detect browser support (serviceWorker + PushManager + Notification).
- *   - Subscribe: request permission → PushManager.subscribe(VAPID) → store
- *     the subscription in `push_subscriptions` and log consent.
- *   - Unsubscribe: tear down the browser subscription, soft-revoke the row,
- *     and log withdrawal.
+ *   - Web Push (Chrome / installed PWA): service worker + PushManager +
+ *     VAPID. Row stored with kind='web' (endpoint + p256dh + auth).
+ *   - Native FCM (Capacitor Android Play Store app): the WebView can't do
+ *     Web Push, so we use @capacitor/push-notifications to get an FCM
+ *     registration token. Row stored with kind='native' (endpoint = token,
+ *     no key pair).
  *
- * The whole feature is gated upstream by the `push_notifications` flag —
- * this hook just does the plumbing. PII never leaves the device here: we
- * store only the opaque endpoint + the W3C public keys.
+ * The hook auto-detects which platform it's on. Everything is gated
+ * upstream by the `push_notifications` flag; PII never leaves the device.
  *
- * Requires VITE_VAPID_PUBLIC_KEY at build time; when absent the hook
- * reports `supported: false` so the UI hides itself cleanly.
+ * Web needs VITE_VAPID_PUBLIC_KEY; native needs a Firebase-configured app
+ * build. When neither is available the hook reports `supported: false`.
  */
 import { useCallback, useEffect, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { PushNotifications } from "@capacitor/push-notifications";
 import { supabase } from "../core/supabase";
 import { PUSH_CONSENT_VERSION, CLIENT_STORAGE_KEYS } from "../config/privacy-config";
 import type { Language } from "./useLanguage";
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
+const NATIVE_TOKEN_KEY = "vocaband_native_push_token";
 
 export type PushPermission = "default" | "granted" | "denied" | "unsupported";
 
 export interface PushState {
-  /** Browser can do Web Push AND we have a VAPID key configured. */
   supported: boolean;
-  /** Current Notification permission, or 'unsupported'. */
   permission: PushPermission;
-  /** True when an active push subscription exists for this device. */
   subscribed: boolean;
-  /** A subscribe/unsubscribe call is in flight. */
   busy: boolean;
 }
 
-function isSupported(): boolean {
+const isNative = (): boolean => {
+  try { return Capacitor.isNativePlatform(); } catch { return false; }
+};
+
+// Wire the "tapped the notification" handler once per app session so a tap
+// deep-links to the right screen. Module-level guard avoids duplicate
+// listeners when several components use this hook at the same time.
+let nativeTapWired = false;
+function wireNativeTap(): void {
+  if (nativeTapWired || !isNative()) return;
+  nativeTapWired = true;
+  void PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+    const url = action.notification?.data?.url;
+    if (typeof url === "string") { try { window.location.assign(url); } catch { /* navigation blocked */ } }
+  });
+}
+
+function webSupported(): boolean {
   return (
     typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
@@ -43,6 +59,10 @@ function isSupported(): boolean {
     "Notification" in window &&
     !!VAPID_PUBLIC_KEY
   );
+}
+
+function supportedNow(): boolean {
+  return isNative() ? true : webSupported();
 }
 
 // VAPID keys are base64url; PushManager wants a Uint8Array.
@@ -55,18 +75,32 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return out;
 }
 
-// Best-effort, human-readable device label (UX only, never used for auth).
 function deviceLabel(): string {
   const ua = navigator.userAgent || "";
   const browser = /Edg/.test(ua) ? "Edge" : /Chrome/.test(ua) ? "Chrome" : /Firefox/.test(ua) ? "Firefox" : /Safari/.test(ua) ? "Safari" : "Browser";
   const os = /Android/.test(ua) ? "Android" : /iPhone|iPad|iPod/.test(ua) ? "iOS" : /Windows/.test(ua) ? "Windows" : /Mac/.test(ua) ? "Mac" : "device";
-  return `${browser} on ${os}`;
+  return isNative() ? `App on ${os}` : `${browser} on ${os}`;
 }
 
 function keyToBase64(sub: PushSubscription, name: "p256dh" | "auth"): string {
   const key = sub.getKey(name);
   if (!key) return "";
   return btoa(String.fromCharCode(...new Uint8Array(key)));
+}
+
+// Native: ask permission, register with FCM, and resolve the device token
+// from the one-shot 'registration' event (with a timeout fallback).
+async function getNativeToken(): Promise<string | null> {
+  const perm = await PushNotifications.requestPermissions();
+  if (perm.receive !== "granted") return null;
+  return new Promise<string | null>((resolve) => {
+    let done = false;
+    const finish = (v: string | null) => { if (!done) { done = true; resolve(v); } };
+    PushNotifications.addListener("registration", (t) => finish(t.value));
+    PushNotifications.addListener("registrationError", () => finish(null));
+    void PushNotifications.register();
+    setTimeout(() => finish(null), 8000);
+  });
 }
 
 export function usePushNotifications(opts: { uid: string | null; lang: Language }): {
@@ -76,10 +110,10 @@ export function usePushNotifications(opts: { uid: string | null; lang: Language 
   refresh: () => Promise<void>;
 } {
   const { uid, lang } = opts;
-  const supported = isSupported();
+  const supported = supportedNow();
   const [state, setState] = useState<PushState>({
     supported,
-    permission: supported ? (Notification.permission as PushPermission) : "unsupported",
+    permission: supported && !isNative() ? (Notification.permission as PushPermission) : supported ? "default" : "unsupported",
     subscribed: false,
     busy: false,
   });
@@ -87,50 +121,43 @@ export function usePushNotifications(opts: { uid: string | null; lang: Language 
   const refresh = useCallback(async () => {
     if (!supported) return;
     try {
+      if (isNative()) {
+        const perm = await PushNotifications.checkPermissions();
+        const stored = (() => { try { return localStorage.getItem(NATIVE_TOKEN_KEY); } catch { return null; } })();
+        setState((s) => ({
+          ...s,
+          permission: perm.receive === "granted" ? "granted" : perm.receive === "denied" ? "denied" : "default",
+          subscribed: !!stored && perm.receive === "granted",
+        }));
+        return;
+      }
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
-      setState((s) => ({
-        ...s,
-        permission: Notification.permission as PushPermission,
-        subscribed: !!sub,
-      }));
+      setState((s) => ({ ...s, permission: Notification.permission as PushPermission, subscribed: !!sub }));
     } catch {
-      /* SW not ready yet — leave state as-is */
+      /* not ready — leave state */
     }
   }, [supported]);
 
   useEffect(() => {
-    // refresh() reads the live subscription state from the service worker
-    // (an external system) and reconciles our state to it — the setState
-    // only fires after the async SW read, never synchronously.
+    wireNativeTap();
+    // refresh() reconciles our state to the live subscription held by the
+    // service worker / native plugin (external systems) — the setState only
+    // fires after the async read, never synchronously.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
   }, [refresh]);
 
-  const subscribe = useCallback(async (): Promise<boolean> => {
-    if (!supported || !uid) return false;
-    setState((s) => ({ ...s, busy: true }));
-    try {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        setState((s) => ({ ...s, permission: permission as PushPermission, busy: false }));
-        return false;
-      }
-
-      const reg = await navigator.serviceWorker.ready;
-      const sub =
-        (await reg.pushManager.getSubscription()) ||
-        (await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY as string) as BufferSource,
-        }));
-
+  const storeRow = useCallback(
+    async (row: { endpoint: string; p256dh: string | null; auth: string | null; kind: "web" | "native" }) => {
+      if (!uid) return false;
       const { error } = await supabase.from("push_subscriptions").upsert(
         {
           uid,
-          endpoint: sub.endpoint,
-          p256dh: keyToBase64(sub, "p256dh"),
-          auth: keyToBase64(sub, "auth"),
+          endpoint: row.endpoint,
+          p256dh: row.p256dh,
+          auth: row.auth,
+          kind: row.kind,
           device_label: deviceLabel(),
           lang,
           consent_version: PUSH_CONSENT_VERSION,
@@ -139,55 +166,78 @@ export function usePushNotifications(opts: { uid: string | null; lang: Language 
         },
         { onConflict: "endpoint" },
       );
-      if (error) throw error;
-
-      // Record the channel-consent opt-in (best-effort).
+      if (error) return false;
       void supabase.from("consent_log").insert({
-        uid,
-        policy_version: PUSH_CONSENT_VERSION,
-        terms_version: PUSH_CONSENT_VERSION,
-        action: "accept",
+        uid, policy_version: PUSH_CONSENT_VERSION, terms_version: PUSH_CONSENT_VERSION, action: "accept",
       });
-      try {
-        localStorage.setItem(CLIENT_STORAGE_KEYS.pushConsentVersion, PUSH_CONSENT_VERSION);
-      } catch {
-        /* private mode — server row is the source of truth */
+      try { localStorage.setItem(CLIENT_STORAGE_KEYS.pushConsentVersion, PUSH_CONSENT_VERSION); } catch { /* private mode */ }
+      return true;
+    },
+    [uid, lang],
+  );
+
+  const subscribe = useCallback(async (): Promise<boolean> => {
+    if (!supported || !uid) return false;
+    setState((s) => ({ ...s, busy: true }));
+    try {
+      if (isNative()) {
+        const token = await getNativeToken();
+        if (!token) {
+          setState((s) => ({ ...s, permission: "denied", busy: false }));
+          return false;
+        }
+        const ok = await storeRow({ endpoint: token, p256dh: null, auth: null, kind: "native" });
+        if (ok) { try { localStorage.setItem(NATIVE_TOKEN_KEY, token); } catch { /* ignore */ } }
+        setState((s) => ({ ...s, permission: "granted", subscribed: ok, busy: false }));
+        return ok;
       }
 
-      setState((s) => ({ ...s, permission: "granted", subscribed: true, busy: false }));
-      return true;
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        setState((s) => ({ ...s, permission: permission as PushPermission, busy: false }));
+        return false;
+      }
+      const reg = await navigator.serviceWorker.ready;
+      const sub =
+        (await reg.pushManager.getSubscription()) ||
+        (await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY as string) as BufferSource,
+        }));
+      const ok = await storeRow({ endpoint: sub.endpoint, p256dh: keyToBase64(sub, "p256dh"), auth: keyToBase64(sub, "auth"), kind: "web" });
+      setState((s) => ({ ...s, permission: "granted", subscribed: ok, busy: false }));
+      return ok;
     } catch {
       setState((s) => ({ ...s, busy: false }));
       return false;
     }
-  }, [supported, uid, lang]);
+  }, [supported, uid, storeRow]);
 
   const unsubscribe = useCallback(async (): Promise<void> => {
     if (!supported) return;
     setState((s) => ({ ...s, busy: true }));
     try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
-      if (sub) {
-        await supabase
-          .from("push_subscriptions")
-          .update({ revoked_at: new Date().toISOString() })
-          .eq("endpoint", sub.endpoint);
+      let endpoint: string | null = null;
+      if (isNative()) {
+        try { endpoint = localStorage.getItem(NATIVE_TOKEN_KEY); } catch { endpoint = null; }
+      } else {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        endpoint = sub?.endpoint ?? null;
+        if (sub) await sub.unsubscribe();
+      }
+      if (endpoint) {
+        await supabase.from("push_subscriptions").update({ revoked_at: new Date().toISOString() }).eq("endpoint", endpoint);
         if (uid) {
           void supabase.from("consent_log").insert({
-            uid,
-            policy_version: PUSH_CONSENT_VERSION,
-            terms_version: PUSH_CONSENT_VERSION,
-            action: "withdraw",
+            uid, policy_version: PUSH_CONSENT_VERSION, terms_version: PUSH_CONSENT_VERSION, action: "withdraw",
           });
         }
-        await sub.unsubscribe();
       }
       try {
         localStorage.removeItem(CLIENT_STORAGE_KEYS.pushConsentVersion);
-      } catch {
-        /* ignore */
-      }
+        localStorage.removeItem(NATIVE_TOKEN_KEY);
+      } catch { /* ignore */ }
       setState((s) => ({ ...s, subscribed: false, busy: false }));
     } catch {
       setState((s) => ({ ...s, busy: false }));
