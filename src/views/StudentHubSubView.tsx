@@ -152,7 +152,7 @@ export default function StudentHubSubView({
             <RetentionStrip retention={retention} onGrantXp={onGrantXp} />
 
             {/* Daily goal nudge. */}
-            <DailyGoalBanner studentProgress={studentProgress} onPlay={onPlay} />
+            <DailyGoalBanner studentProgress={studentProgress} onPlay={onPlay} userUid={user.uid} onGrantXp={onGrantXp} />
 
             {/* Today's missions. */}
             <section className="space-y-2">
