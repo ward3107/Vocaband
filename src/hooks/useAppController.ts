@@ -218,7 +218,7 @@ export function useAppController(initialView?: View): AppViewRouterProps {
   // `isLiveChallenge` stays local — views set it imperatively.  The
   // socket + leaderboard are owned by useLiveChallengeSocket.
   const [isLiveChallenge, setIsLiveChallenge] = useState(false);
-  const { socket, socketConnected, leaderboard, lastReaction: liveLastReaction, sendReaction: liveSendReaction } = useLiveChallengeSocket({
+  const { socket, socketConnected, leaderboard, lastReaction: liveLastReaction } = useLiveChallengeSocket({
     user,
     isLiveChallenge,
   });
@@ -1039,7 +1039,7 @@ export function useAppController(initialView?: View): AppViewRouterProps {
     worksheetAssignment, setWorksheetAssignment,
     onPickerOcrUpload,
     setIsLiveChallenge, leaderboard, socketConnected,
-    liveLastReaction, liveSendReaction,
+    liveLastReaction,
     setQuickPlaySelectedWords,
     setQuickPlayCustomWords, setQuickPlayAddingCustom, setQuickPlayTranslating,
     xp, setXp, coins, setCoins, boosters,
