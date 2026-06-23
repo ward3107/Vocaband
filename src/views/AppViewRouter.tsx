@@ -87,8 +87,6 @@ export type AppViewRouterProps =
     isFinished: boolean;
     showModeSelection: boolean;
     showModeIntro: boolean;
-    /** Live Challenge reaction parity — fed from useLiveChallengeSocket. */
-    liveSendReaction: (emoji: string) => void;
   };
 
 export function AppViewRouter(props: AppViewRouterProps) {
@@ -138,7 +136,6 @@ export function AppViewRouter(props: AppViewRouterProps) {
     worksheetAssignment, setWorksheetAssignment,
     onPickerOcrUpload,
     setIsLiveChallenge, leaderboard, socketConnected, liveLastReaction,
-    liveSendReaction,
     setQuickPlaySelectedWords,
     setQuickPlayCustomWords, setQuickPlayAddingCustom, setQuickPlayTranslating,
     xp, setXp, coins, setCoins, boosters,
@@ -360,22 +357,14 @@ export function AppViewRouter(props: AppViewRouterProps) {
   // Once the student is actually answering questions, the prompt
   // sits high on the screen with comfortable space underneath, so
   // the bar can dock at the bottom without colliding.
-  // A live-challenge STUDENT mid-game gets the same affordances. `isLiveChallenge`
-  // is TEACHER-only state (set when a teacher opens the podium) — it's always
-  // false for students, so we key off a populated live leaderboard instead,
-  // mirroring GameActiveView's own sidebar guard (`!isGuest && board non-empty`).
-  // That's exactly "this student is on an active live challenge". Guests use the
-  // Quick Play path, so they're excluded here.
-  const inLiveStudentGame = !user?.isGuest
-    && !quickPlayActiveSession
-    && Object.keys(leaderboard).length > 0;
-  // Pick the matching emitter so a live student's taps go out on the
-  // authenticated `/` socket, not the (absent) Quick Play one.
-  const reactionSender = quickPlayActiveSession
-    ? quickPlaySocket.sendReaction
-    : liveSendReaction;
+  // Reaction bar + help button are Quick-Play-only affordances now. An
+  // authenticated student who joins their own classroom for a live challenge
+  // does NOT get them — that screen already has its own Exit button, and the
+  // floating emoji row + rescue ring were unwanted clutter there. Guests in
+  // Quick Play (the projected, physical-classroom game) still get both.
+  const reactionSender = quickPlaySocket.sendReaction;
 
-  const showQpReactionBar = (!!quickPlayActiveSession || inLiveStudentGame)
+  const showQpReactionBar = !!quickPlayActiveSession
     && view === "game"
     && !isFinished
     && !showModeSelection
@@ -386,7 +375,7 @@ export function AppViewRouter(props: AppViewRouterProps) {
   // have a one-tap escape hatch without being able to invoke it from
   // unrelated views. Same overlap concern — hide it on mode selection
   // / intro so it doesn't sit on top of the mode tiles.
-  const showQpHelpButton = (!!quickPlayActiveSession || inLiveStudentGame)
+  const showQpHelpButton = !!quickPlayActiveSession
     && view === "game"
     && !isFinished
     && !showModeSelection
@@ -426,17 +415,10 @@ export function AppViewRouter(props: AppViewRouterProps) {
         <Suspense fallback={null}>
           <QuickPlayHelpButton
             onAlertTeacher={() => reactionSender('🙋')}
-            onLeave={inLiveStudentGame
-              ? () => {
-                  // Authenticated live student — drop the challenge and head
-                  // home, never the guest cleanup / public-landing path.
-                  setIsLiveChallenge(false);
-                  setView('student-dashboard');
-                }
-              : () => {
-                  gameRouteDeps.cleanupQuickPlayGuest();
-                  setView('public-landing');
-                }}
+            onLeave={() => {
+              gameRouteDeps.cleanupQuickPlayGuest();
+              setView('public-landing');
+            }}
           />
         </Suspense>
       )}
