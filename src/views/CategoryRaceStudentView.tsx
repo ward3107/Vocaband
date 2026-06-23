@@ -26,7 +26,6 @@ import CategoryRaceFocusCard from "../components/game/CategoryRaceFocusCard";
 import TeamSwitcher from "../components/game/TeamSwitcher";
 import QPAvatarPicker from "../components/QPAvatarPicker";
 import QPAvatar from "../components/QPAvatar";
-import QuickPlayHelpButton from "../components/QuickPlayHelpButton";
 import QuickPlayErrorScreen from "../components/QuickPlayErrorScreen";
 import { celebrate } from "../utils/celebrate";
 import { primeAudio } from "../utils/primeAudio";
@@ -125,7 +124,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
   const qp = useQuickPlaySocket({ sessionCode, enabled: true });
   const {
     currentRace, leaderboard, clientId, joinedSessionCode, lastError,
-    joinAsStudent, submitRaceAnswers, sendReaction,
+    joinAsStudent, submitRaceAnswers,
     onRaceResult, onRaceEnded, onSessionEnded, onKicked,
     teamMode, myTeam, switchTeam,
   } = qp;
@@ -372,13 +371,6 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
     }
   }, [phase, myIndex]);
 
-  const helpButton = (
-    <QuickPlayHelpButton
-      onAlertTeacher={() => sendReaction("🙋")}
-      onLeave={() => { forgetRace(); setView("public-landing"); }}
-    />
-  );
-
   // ─── Join screen (name + rich avatar picker) ─────────────────────────
   if (phase === "join") {
     const canContinue = name.trim().length > 0;
@@ -483,7 +475,6 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
             {t.backHome}
           </button>
         </motion.div>
-        {helpButton}
       </Shell>
     );
   }
@@ -594,7 +585,6 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
             <Hourglass size={16} className="animate-pulse" /> {t.waitingNext}
           </div>
         </motion.div>
-        {helpButton}
       </Shell>
     );
   }
@@ -626,7 +616,6 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
           ))}
         </div>
       </motion.div>
-      {helpButton}
     </Shell>
   );
 }

@@ -85,6 +85,9 @@ import { validateBagrutTest, validateBagrutQuestion, computeMcMax, scoreMcAnswer
 import { MODULE_SPECS } from "./src/features/vocabagrut/lib/moduleMap";
 import type { BagrutModule, BagrutTest, BagrutQuestion } from "./src/features/vocabagrut/types";
 import { synthesizeSpeechMp3 } from "./tts-common";
+import webpush from "web-push";
+import { initializeApp as initFirebaseApp, cert as firebaseCert, getApps as getFirebaseApps } from "firebase-admin/app";
+import { getMessaging } from "firebase-admin/messaging";
 import { isDevEmail } from "./src/core/dev-allowlist";
 import { LeaderboardEntry, SOCKET_EVENTS, type JoinChallengePayload, type ObserveChallengePayload } from "./src/core/types";
 import {
@@ -4585,6 +4588,227 @@ async function startServer() {
   //
   // Response shape is unchanged: { hebrew: string[], arabic: string[] } in
   // input order, so existing frontend code keeps working.
+  // ---------------------------------------------------------------------
+  // Push notifications (opt-in, behind the `push_notifications` flag).
+  //
+  // A teacher's client calls this right after creating an assignment /
+  // granting a reward / starting a live challenge. We verify the caller is
+  // a teacher who owns the class, then fan out a PII-FREE push to that
+  // class's opted-in students. The whole path no-ops unless VAPID keys are
+  // configured AND the feature flag is on for the class — so a stray call
+  // can never leak or spam.
+  // ---------------------------------------------------------------------
+  const PUSH_VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY;
+  const PUSH_VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
+  const pushEnabled = !!(PUSH_VAPID_PUBLIC && PUSH_VAPID_PRIVATE);
+  if (pushEnabled) {
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT || "mailto:privacy@vocaband.com",
+      PUSH_VAPID_PUBLIC as string,
+      PUSH_VAPID_PRIVATE as string,
+    );
+    console.log("[push] VAPID configured — Web Push ENABLED");
+  } else {
+    console.log("[push] VAPID keys missing — Web Push DISABLED (no-op)");
+  }
+
+  // Native FCM (Android Play Store app). Initialised from a Firebase
+  // service-account JSON in FIREBASE_SERVICE_ACCOUNT. Like VAPID, this is a
+  // no-op when the secret is absent — so the native path stays inert until
+  // the operator sets it up.
+  let fcmEnabled = false;
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      const creds = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      if (getFirebaseApps().length === 0) {
+        initFirebaseApp({ credential: firebaseCert(creds) });
+      }
+      fcmEnabled = true;
+      console.log("[push] Firebase service account configured — native FCM ENABLED");
+    } catch (err) {
+      console.warn("[push] FIREBASE_SERVICE_ACCOUNT present but invalid — native FCM DISABLED:", (err as Error)?.message);
+    }
+  } else {
+    console.log("[push] FIREBASE_SERVICE_ACCOUNT missing — native FCM DISABLED (no-op)");
+  }
+
+  type PushType = "new_assignment" | "reward" | "live_challenge";
+  const PUSH_LANGS = ["en", "he", "ar", "ru"] as const;
+  type PushLang = (typeof PUSH_LANGS)[number];
+
+  // PII-FREE copy only — no student name, class, or score ever leaves here.
+  const PUSH_COPY: Record<PushType, Record<PushLang, { title: string; body: string }>> = {
+    new_assignment: {
+      en: { title: "New task from your teacher", body: "Tap to play" },
+      he: { title: "משימה חדשה מהמורה שלך", body: "הקש כדי לשחק" },
+      ar: { title: "مهمة جديدة من معلمك", body: "اضغط للعب" },
+      ru: { title: "Новое задание от учителя", body: "Нажмите, чтобы играть" },
+    },
+    reward: {
+      en: { title: "You earned a reward! 🎉", body: "Open Vocaband to see it" },
+      he: { title: "קיבלת פרס! 🎉", body: "פתח את Vocaband כדי לראות" },
+      ar: { title: "حصلت على مكافأة! 🎉", body: "افتح Vocaband لرؤيتها" },
+      ru: { title: "Вы получили награду! 🎉", body: "Откройте Vocaband, чтобы увидеть" },
+    },
+    live_challenge: {
+      en: { title: "Live challenge starting! ⚡", body: "Join your class now" },
+      he: { title: "אתגר חי מתחיל! ⚡", body: "הצטרף לכיתה עכשיו" },
+      ar: { title: "تحدٍّ مباشر يبدأ! ⚡", body: "انضم لصفك الآن" },
+      ru: { title: "Начинается живое соревнование! ⚡", body: "Присоединяйтесь к классу" },
+    },
+  };
+  const PUSH_URL: Record<PushType, string> = {
+    new_assignment: "/student?open=tasks",
+    reward: "/student",
+    live_challenge: "/student?open=live",
+  };
+
+  // Server-side flag gate (fail-closed). Mirrors isFlagOn() on the client:
+  // a class listed in enabled_for_classes always passes; else the master
+  // `enabled`; else off.
+  async function isPushFlagOn(classCode: string): Promise<boolean> {
+    if (!supabaseAdmin) return false;
+    try {
+      const { data } = await supabaseAdmin
+        .from("feature_flags")
+        .select("enabled, enabled_for_classes")
+        .eq("name", "push_notifications")
+        .maybeSingle();
+      if (!data) return false;
+      const list = (data.enabled_for_classes as string[] | null) ?? [];
+      if (list.includes(classCode)) return true;
+      return !!data.enabled;
+    } catch {
+      return false;
+    }
+  }
+
+  const pushNotifyLimiter = createSharedRateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many notification sends. Please wait a minute." },
+    keyGenerator: (req) => req.headers.authorization?.substring(7) || ipKeyGenerator(req.ip || "unknown") || "unknown",
+    handler: (req, res, _next, options) => {
+      console.warn(`[abuse] /api/push/notify rate-limited: ip=${req.ip || "unknown"}`);
+      res.status(options.statusCode).json(options.message);
+    },
+  });
+
+  app.post("/api/push/notify", pushNotifyLimiter, async (req, res) => {
+    // Soft no-op when the channel isn't configured — never an error so the
+    // teacher's already-successful action is unaffected.
+    if ((!pushEnabled && !fcmEnabled) || !supabaseAdmin) return res.json({ ok: true, sent: 0, reason: "disabled" });
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) return res.status(401).json({ error: "Authentication required" });
+    const uid = await verifyToken(authHeader.substring(7));
+    if (!uid) return res.status(401).json({ error: "Invalid token" });
+
+    const { type, classCode, studentUid } = req.body ?? {};
+    if (type !== "new_assignment" && type !== "reward" && type !== "live_challenge") {
+      return res.status(400).json({ error: "invalid type" });
+    }
+
+    // Caller must be a teacher/admin.
+    const userData = await getUserRoleAndClass(uid);
+    if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
+      return res.status(403).json({ error: "Only teachers can send notifications" });
+    }
+
+    // Two targeting modes: a single student (reward) or a whole class
+    // (assignment / live challenge). In both, the teacher must own the
+    // class the student(s) belong to.
+    let targetClassCode: string;
+    let uids: string[];
+
+    if (studentUid) {
+      if (!isValidUid(studentUid)) return res.status(400).json({ error: "invalid studentUid" });
+      const studentData = await getUserRoleAndClass(studentUid);
+      if (!studentData || studentData.role !== "student" || !studentData.classCode) {
+        return res.status(404).json({ error: "student not found" });
+      }
+      targetClassCode = studentData.classCode;
+      if (!(await isTeacherForClass(uid, targetClassCode))) {
+        return res.status(403).json({ error: "You don't own this student's class" });
+      }
+      uids = [studentUid];
+    } else {
+      if (!isValidClassCode(classCode)) return res.status(400).json({ error: "invalid classCode" });
+      if (!(await isTeacherForClass(uid, classCode))) {
+        return res.status(403).json({ error: "You don't own this class" });
+      }
+      targetClassCode = classCode;
+      const { data: students } = await supabaseAdmin
+        .from("users")
+        .select("uid")
+        .eq("class_code", classCode)
+        .eq("role", "student");
+      uids = (students ?? []).map((s: { uid: string }) => s.uid);
+    }
+
+    if (!(await isPushFlagOn(targetClassCode))) return res.json({ ok: true, sent: 0, reason: "flag off" });
+    if (uids.length === 0) return res.json({ ok: true, sent: 0 });
+
+    const { data: subs } = await supabaseAdmin
+      .from("push_subscriptions")
+      .select("endpoint, p256dh, auth, lang, kind")
+      .in("uid", uids)
+      .is("revoked_at", null);
+
+    const revoke = (endpoint: string) =>
+      supabaseAdmin!
+        .from("push_subscriptions")
+        .update({ revoked_at: new Date().toISOString() })
+        .eq("endpoint", endpoint);
+
+    let sent = 0;
+    await Promise.all(
+      (subs ?? []).map(async (sub: { endpoint: string; p256dh: string | null; auth: string | null; lang: string; kind: string }) => {
+        const lang: PushLang = (PUSH_LANGS as readonly string[]).includes(sub.lang) ? (sub.lang as PushLang) : "en";
+        const copy = PUSH_COPY[type as PushType][lang];
+        const url = PUSH_URL[type as PushType];
+
+        // Native Android (Capacitor app) → FCM; Web Push → web-push.
+        if (sub.kind === "native") {
+          if (!fcmEnabled) return;
+          try {
+            await getMessaging().send({
+              token: sub.endpoint, // endpoint holds the FCM registration token
+              notification: { title: copy.title, body: copy.body },
+              data: { type: String(type), url, lang },
+            });
+            sent++;
+          } catch (err) {
+            const code = (err as { code?: string; errorInfo?: { code?: string } })?.errorInfo?.code
+              || (err as { code?: string })?.code;
+            // Stale/unregistered token → soft-revoke so we stop targeting it.
+            if (code === "messaging/registration-token-not-registered" || code === "messaging/invalid-registration-token") {
+              await revoke(sub.endpoint);
+            }
+          }
+          return;
+        }
+
+        if (!pushEnabled || !sub.p256dh || !sub.auth) return;
+        const payload = JSON.stringify({ type, title: copy.title, body: copy.body, url, lang });
+        try {
+          await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload);
+          sent++;
+        } catch (err) {
+          // 404/410 = the device unsubscribed or the endpoint expired.
+          const status = (err as { statusCode?: number })?.statusCode;
+          if (status === 404 || status === 410) {
+            await revoke(sub.endpoint);
+          }
+        }
+      }),
+    );
+
+    return res.json({ ok: true, sent });
+  });
+
   app.post("/api/translate", translateRateLimiter, async (req, res) => {
     const ip = req.ip || "unknown";
     const authHeader = req.headers.authorization;

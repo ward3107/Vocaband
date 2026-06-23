@@ -44,13 +44,15 @@ export const DATA_PROTECTION_OFFICER = {
 // 2. Privacy policy versioning
 // ---------------------------------------------------------------------------
 
-// Bumped 2026-05-23 — added explicit disclosure of EU hosting region
-// (Frankfurt + Amsterdam) and the automatic PII-scrubbing of server
-// logs that landed alongside the DPA/RoPA/DPIA executive summary.
+// Bumped 2026-06-23 — disclosed the teacher dashboard AI Help Assistant
+// (free-text/spoken how-to questions + minimal non-identifying UI context
+// sent to Google Gemini; preset questions stay local). Same processor as
+// OCR + sentence generation — no new processor, no student data.
 // Bumping triggers the consent re-prompt so existing users see the
 // refreshed summary before continuing.
-export const PRIVACY_POLICY_VERSION = "2026-05-23";  // Version 2.3 - EU hosting + log-scrubbing disclosed
-export const TERMS_VERSION = "2026-05-23";            // Version 2.3 - bumped alongside privacy version
+// (Prev: 2026-05-23 — EU hosting region + server-log PII-scrubbing.)
+export const PRIVACY_POLICY_VERSION = "2026-06-23";  // Version 2.4 - AI Help Assistant disclosed
+export const TERMS_VERSION = "2026-05-23";            // Version 2.3 - terms unchanged this round
 
 /**
  * Student "teacher can see my plays" acknowledgement version.
@@ -67,6 +69,21 @@ export const TERMS_VERSION = "2026-05-23";            // Version 2.3 - bumped al
  *   - consent_log   → action = 'accept_student_visibility'
  */
 export const STUDENT_VISIBILITY_VERSION = "2026-05-24";
+
+/**
+ * Push-notification opt-in version.
+ *
+ * Recorded when a student affirmatively turns ON device notifications
+ * (separate, revocable channel consent — NOT a processing basis; see
+ * docs/legal/PUSH-NOTIFICATIONS-COMPLIANCE.md Paper 0). Bumping it can be
+ * used to re-confirm the opt-in if the notification scope ever changes.
+ *
+ * Tracked in:
+ *   - localStorage  → CLIENT_STORAGE_KEYS.pushConsentVersion
+ *   - consent_log   → action = 'accept' / 'withdraw', policy_version = this
+ *   - push_subscriptions.consent_version
+ */
+export const PUSH_CONSENT_VERSION = "2026-06-22";
 
 // ---------------------------------------------------------------------------
 // 3. Hosting regions (for cross-border transfer disclosures)
@@ -87,6 +104,9 @@ export const HOSTING_REGIONS = {
   googleCloud: "Google-global (AI Studio API; not regionally pinned — migration to Vertex AI EU pending)",
   googleFonts: "Global edge network",
   sentry: "EU (Germany) — *.ingest.de.sentry.io",
+  // Firebase Cloud Messaging routes Web Push to Android/Chrome devices.
+  // Transit only — receives an opaque endpoint + PII-free payload.
+  googleFcm: "Global (US-anchored) — fcm.googleapis.com",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -168,6 +188,23 @@ export const THIRD_PARTY_REGISTRY: ThirdPartyEntry[] = [
     endpoint: "api.vocaband.com (vocaband.fly.dev)",
   },
   {
+    name: "Google Firebase Cloud Messaging (FCM)",
+    purpose: "Transit-only delivery of opt-in push notifications to Android/Chrome devices (new assignment / reward / live challenge alerts)",
+    dataCategories: ["push subscription endpoint (opaque device ID)", "PII-free notification payload in transit (no name/class/score)"],
+    processorOnly: true,
+    hostingRegion: HOSTING_REGIONS.googleFcm,
+    endpoint: "fcm.googleapis.com",
+    notes: "Message router only. Active ONLY for students who explicitly opt in (push_notifications feature flag). Payload never contains a student name, class, or score — see docs/legal/PUSH-NOTIFICATIONS-COMPLIANCE.md.",
+    transfer: {
+      destination: "United States",
+      mechanism: "dpf",
+      verificationUrl: "https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI",
+      dpaUrl: "https://business.safety.google/adsprocessorterms/",
+      tiaRisk: "low",
+      lastReviewed: "2026-06-22",
+    },
+  },
+  {
     name: "Cloudflare",
     purpose: "DNS, CDN, TLS termination, DDoS mitigation, Workers (request routing), privacy-friendly Web Analytics (no cookies)",
     dataCategories: ["HTTP request metadata (IP, User-Agent, geolocation country)", "TLS handshake metadata"],
@@ -219,12 +256,12 @@ export const THIRD_PARTY_REGISTRY: ThirdPartyEntry[] = [
   },
   {
     name: "Google Cloud (Gemini API)",
-    purpose: "Server-side OCR of teacher-uploaded vocabulary list images (replaces previous in-process Tesseract.js)",
-    dataCategories: ["uploaded image bytes (typically a worksheet photo containing only English words)"],
+    purpose: "Server-side OCR of teacher-uploaded vocabulary list images (replaces previous in-process Tesseract.js), and the teacher dashboard AI Help Assistant (answers free-text / spoken how-to questions)",
+    dataCategories: ["uploaded image bytes (typically a worksheet photo containing only English words)", "teacher-typed or spoken help questions plus minimal non-identifying UI context (interface language, a hasClasses boolean, and the pending-approvals count — no names, class codes, or student data)"],
     processorOnly: true,
     hostingRegion: HOSTING_REGIONS.googleCloud,
     endpoint: "generativelanguage.googleapis.com (AI Studio API)",
-    notes: "Triggered only on explicit teacher action.  Image discarded after the API returns the extracted text; not stored on Vocaband infrastructure.  CURRENT TIER (2026-05-23): AI Studio API via aistudio.google.com — Google's Pay-As-You-Go terms apply when billing is enabled in the GCP project; the free tier may use prompts for product improvement and model training.  Operator action: verify the project's billing status and enable Pay-As-You-Go before processing any data the audit cycle has not blessed for free-tier disclosure.  Migration to Vertex AI Gemini (region-pinned, no-training contract) is tracked at docs/operator-tasks.md.",
+    notes: "Triggered only on explicit teacher action.  Image discarded after the API returns the extracted text; not stored on Vocaband infrastructure.  AI Help Assistant (/api/teacher-assistant): only the teacher's free-text question and the minimal UI context above are sent — tapping a preset question is answered fully locally with no API call, and no student personal data is ever transmitted.  CURRENT TIER (2026-05-23): AI Studio API via aistudio.google.com — Google's Pay-As-You-Go terms apply when billing is enabled in the GCP project; the free tier may use prompts for product improvement and model training.  Operator action: verify the project's billing status and enable Pay-As-You-Go before processing any data the audit cycle has not blessed for free-tier disclosure.  Migration to Vertex AI Gemini (region-pinned, no-training contract) is tracked at docs/operator-tasks.md.",
     transfer: {
       destination: "Google-global (AI Studio API endpoint; US parent entity)",
       mechanism: "dpf",
@@ -302,6 +339,7 @@ export interface SubprocessorChange {
  * tamper-evident under standard git-history inspection.
  */
 export const SUBPROCESSOR_CHANGELOG: SubprocessorChange[] = [
+  { date: "2026-06-23", vendor: "Google Cloud (Gemini API)", changeType: "scope_changed", description: "Disclosed the teacher dashboard AI Help Assistant (/api/teacher-assistant): a teacher's free-text or spoken how-to question plus minimal non-identifying UI context (interface language, a hasClasses boolean, and the pending-approvals count) is sent to Gemini to generate an answer. No student personal data is sent; preset questions are answered locally with no API call. Same processor already used for OCR + sentence generation — not a new data processor." },
   { date: "2026-05-23", vendor: "Google Cloud (Gemini API)", changeType: "region_changed", description: "Honest verification (audit H-5): the AI Studio API endpoint is Google-global, NOT regionally pinned to europe-west as previously published. Transfer mechanism reclassified from intra-EEA adequacy to EU-US DPF. Migration to Vertex AI in europe-west remains the roadmap target." },
   { date: "2026-05-22", vendor: "Google Cloud (Text-to-Speech API)", changeType: "added", description: "Disclosed as a distinct entry (previously implicit under the Google Cloud Gemini row)." },
   { date: "2026-05-22", vendor: "Sentry", changeType: "added", description: "Disclosed for the first time. Active since launch but undeclared until the C-9 audit pass; DSN points at the EU (Germany) region." },
@@ -406,6 +444,13 @@ export const DATA_COLLECTION_POINTS: DataCollectionPoint[] = [
     mandatory: false,
     role: "teacher",
   },
+  {
+    location: "AI Help Assistant (teacher)",
+    fields: ["typed/spoken question text", "interface language", "hasClasses (boolean)", "pending-approvals count"],
+    purpose: "Answer a free-form how-to question via Google Gemini; preset questions are answered locally with no API call and no data sent",
+    mandatory: false,
+    role: "teacher",
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -466,4 +511,6 @@ export const CLIENT_STORAGE_KEYS = {
   privacyReminderDismissed: "vocaband_privacy_reminder_dismissed",
   /** Student-side "teacher sees my plays" acknowledgement version */
   studentVisibilityVersion: "vocaband_student_visibility_version",
+  /** Push-notification opt-in version the student last accepted */
+  pushConsentVersion: "vocaband_push_consent_version",
 } as const;

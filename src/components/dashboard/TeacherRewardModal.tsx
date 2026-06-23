@@ -17,6 +17,7 @@ import { useState } from "react";
 import { Coins, Wand2 } from "lucide-react";
 import { supabase } from "../../core/supabase";
 import { logAudit } from "../../utils/audit";
+import { pushNotify } from "../../utils/pushNotify";
 import { TEACHER_COIN_PRESETS } from "../../constants/game";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherModalsT } from "../../locales/teacher/modals";
@@ -72,6 +73,10 @@ export function TeacherRewardModal({ student, onClose, onRewardGiven, showToast 
         targetUid: student.uid,
         metadata: { coins: selectedCoins },
       });
+
+      // Best-effort push to just this student ("You earned a reward!").
+      // No-ops unless push is enabled + the student opted in.
+      void pushNotify('reward', { studentUid: student.uid });
 
       showToast?.(t.sentCoinsToast(selectedCoins, student.name), 'success');
       onRewardGiven?.();

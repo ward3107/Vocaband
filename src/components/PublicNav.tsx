@@ -182,7 +182,7 @@ const PublicNav: React.FC<PublicNavProps> = ({
               control (the previous gap-2 + the Globe's hover-scale
               animation made the language popover open when the user
               meant the hamburger). */}
-          <div className="flex items-center gap-3 md:gap-2 flex-shrink-0 mr-12 md:mr-0">
+          <div className="flex items-center gap-3 md:gap-2 flex-shrink-0 me-12 md:me-0">
             <NavLanguageToggle />
             {/* Demo — quiet, always-visible "try it without signing up". */}
             {onTryDemo && (
@@ -202,19 +202,13 @@ const PublicNav: React.FC<PublicNavProps> = ({
             {onTeacherLogin && (
               <button
                 onClick={onTeacherLogin}
-                className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 text-sm font-black text-white bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600 hover:from-indigo-600 hover:via-violet-700 hover:to-fuchsia-700 rounded-lg shadow-lg shadow-violet-500/40 hover:shadow-xl hover:shadow-violet-500/55 ring-2 ring-violet-300/50 hover:ring-violet-300/70 hover:scale-[1.04] transition-all"
+                className="hidden md:inline-flex items-center gap-2 px-5 py-2 text-sm font-black text-white bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600 hover:from-indigo-600 hover:via-violet-700 hover:to-fuchsia-700 rounded-lg shadow-md shadow-violet-500/30 hover:shadow-lg hover:shadow-violet-500/45 ring-1 ring-violet-300/40 hover:ring-violet-300/60 transition-all"
                 type="button"
                 style={{ touchAction: 'manipulation' }}
                 aria-label={`${t.navSignIn} — ${t.heroV2.staffTitle}`}
               >
-                <GraduationCap size={18} strokeWidth={2.5} />
-                <div className="flex flex-col items-start leading-tight">
-                  <span>{t.navSignIn}</span>
-                  <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-violet-100/90">
-                    {t.heroV2.staffTitle}
-                  </span>
-                </div>
-                <LogIn size={14} strokeWidth={2.5} className="opacity-90" />
+                {t.navSignIn}
+                <LogIn size={16} strokeWidth={2.5} className={isRTL ? "-scale-x-100" : ""} />
               </button>
             )}
 

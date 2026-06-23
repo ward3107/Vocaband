@@ -119,20 +119,6 @@ interface LandingPageProps {
 const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onTeacherLogin, onTryDemo, isAuthenticated }) => {
   const { language, dir, isRTL } = useLanguage();
   const t = landingPageT[language];
-  // "Join a live game by code" — for students without a QR to scan. Typing a
-  // valid 6-char session code navigates to /?session=CODE, which the existing
-  // Quick Play bootstrap picks up (so this needs no new routing).
-  const [gameCode, setGameCode] = useState('');
-  const gc = ({
-    en: { placeholder: 'GAME CODE', go: 'Join', hint: 'Have a game code? Type it to join a live game.' },
-    he: { placeholder: 'קוד משחק', go: 'הצטרף', hint: 'יש לך קוד משחק? הקלידו אותו כדי להצטרף למשחק חי.' },
-    ar: { placeholder: 'رمز اللعبة', go: 'انضمام', hint: 'لديك رمز لعبة؟ اكتبه للانضمام إلى لعبة مباشرة.' },
-    ru: { placeholder: 'GAME CODE', go: 'Join', hint: 'Have a game code? Type it to join a live game.' },
-  } as const)[language] ?? { placeholder: 'GAME CODE', go: 'Join', hint: 'Have a game code? Type it to join a live game.' };
-  const onJoinByCode = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (gameCode.length === 6) window.location.href = `/?session=${gameCode}`;
-  };
   const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState(false);
   const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false);
@@ -287,145 +273,108 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-full blur-3xl" />
           </div>
 
-          <div className="max-w-6xl mx-auto w-full relative z-10 text-center" dir={dir}>
-            {/* Eyebrow */}
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 text-xs font-bold text-white/80 mb-2 md:tall:mb-4">
-              <Sparkles size={13} aria-hidden="true" />
-              {t.heroV2.eyebrow}
-            </span>
+          <div className="max-w-6xl mx-auto w-full relative z-10" dir={dir}>
+            {/*
+              Desktop hero = two columns: the pitch (headline + copy + trust
+              badges) beside the sign-in card. The grid carries `dir`, so its
+              column order follows the writing direction automatically —
+              LTR puts the card on the right, RTL flips it to the left, with
+              no per-language overrides. Below `lg` the grid collapses to one
+              column so tablets and phones get a clean centred stack:
+              headline → card → demo → features.
+            */}
+            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+              {/* Pitch column */}
+              <div className="text-center lg:text-start">
+                {/* Eyebrow */}
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/15 text-xs font-bold text-white/80 mb-3 md:mb-4">
+                  <Sparkles size={13} aria-hidden="true" />
+                  {t.heroV2.eyebrow}
+                </span>
 
-            {/* Headline — smaller on phones so the two lanes below clear
-                the fold; 6xl/7xl only on screens tall enough to spend
-                ~130px on the headline without pushing the CTAs under. */}
-            <h1 className="relative z-20 text-3xl sm:text-5xl md:tall:text-6xl xl:tall:text-7xl font-black font-headline italic leading-[1.05] text-balance break-words mb-2 md:mb-3">
-              <span className="inline-block bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
-                {t.heroTitleLine1}
-              </span>
-              <br />
-              <span className="inline-block bg-gradient-to-r from-violet-300 via-fuchsia-300 to-amber-300 bg-clip-text text-transparent">
-                {t.heroTitleLine2}
-              </span>
-            </h1>
+                <h1 className={`relative z-20 text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black font-headline ${isRTL ? "" : "italic"} leading-[1.05] text-balance break-words mb-3 md:mb-4`}>
+                  <span className="inline-block bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
+                    {t.heroTitleLine1}
+                  </span>
+                  <br />
+                  <span className="inline-block bg-gradient-to-r from-violet-300 via-fuchsia-300 to-amber-300 bg-clip-text text-transparent">
+                    {t.heroTitleLine2}
+                  </span>
+                </h1>
 
-            {/* Subtitle — hidden on phones so both sign-in lanes sit in
-                the first viewport; the eyebrow already carries the pitch. */}
-            <p className="hidden sm:block text-base md:tall:text-lg text-white/75 max-w-2xl mx-auto mb-3 md:tall:mb-6">
-              {t.heroSubtitle}
-            </p>
+                <p className="text-base md:text-lg text-white/75 max-w-xl mx-auto lg:mx-0 mb-5 md:mb-6">
+                  {t.heroSubtitle}
+                </p>
 
-            {/* Two sign-in lanes — staff (teachers + principals, role-routed
-                on login) and students (class code). Both routes unchanged.
-                Stacked on phones but compacted so the student sees BOTH
-                doors at once — otherwise the staff card alone fills the
-                screen and reads like "the" entrance. */}
-            <div className={`grid sm:grid-cols-2 gap-3 sm:gap-6 max-w-5xl mx-auto ${isRTL ? "text-right" : "text-left"}`}>
-              {/* Staff lane */}
-              <div className="rounded-[1.75rem] p-5 sm:p-6 md:tall:p-10 bg-white/10 backdrop-blur-md border border-white/15 hover:border-violet-300/40 transition-colors flex flex-col">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 md:tall:w-[4.5rem] md:tall:h-[4.5rem] rounded-2xl md:tall:rounded-3xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/40 mb-3 md:tall:mb-5">
-                  <GraduationCap size={32} strokeWidth={2.5} className="text-white w-7 h-7 sm:w-8 sm:h-8 md:tall:w-10 md:tall:h-10" aria-hidden="true" />
+                {/* Trust strip — factual claims only. */}
+                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 text-amber-100 border border-amber-400/30 font-bold text-xs backdrop-blur-sm">
+                    <BookOpen size={12} aria-hidden="true" />
+                    {t.heroTrustCurriculum}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-fuchsia-500/15 text-fuchsia-100 border border-fuchsia-400/30 font-bold text-xs backdrop-blur-sm">
+                    <Globe size={12} aria-hidden="true" />
+                    {t.heroTrustTrilingual}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/15 text-emerald-100 border border-emerald-400/30 font-bold text-xs backdrop-blur-sm">
+                    <ShieldCheck size={12} aria-hidden="true" />
+                    {t.heroTrustEu}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sky-500/15 text-sky-100 border border-sky-400/30 font-bold text-xs backdrop-blur-sm">
+                    <MapPin size={12} aria-hidden="true" />
+                    {t.heroTrustOrigin}
+                  </span>
                 </div>
-                <h2 className="text-xl sm:text-2xl md:tall:text-3xl font-black text-white mb-1.5 sm:mb-2">{t.heroV2.staffTitle}</h2>
-                <p className="hidden sm:block text-sm md:tall:text-base text-white/70 mb-3 md:tall:mb-6 flex-1">{t.heroV2.staffDesc}</p>
-                <button
-                  type="button"
-                  onClick={onTeacherLogin}
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                  aria-label={`${t.navSignIn} — ${t.heroV2.staffTitle}`}
-                  className="w-full px-6 py-3.5 md:tall:py-5 rounded-2xl text-lg sm:text-xl font-black text-white flex items-center justify-center gap-3 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/30 hover:ring-violet-300/50 shadow-[0_10px_0_0_#581c87,0_22px_44px_rgba(168,85,247,0.45)] active:translate-y-1 active:shadow-[0_4px_0_0_#581c87] transition-all"
-                >
-                  <LogIn size={24} strokeWidth={2.5} />
-                  {t.navSignIn}
-                </button>
-                <p className="text-center text-xs sm:text-sm text-white/55 mt-2 md:tall:mt-3">{t.heroV2.staffNote}</p>
               </div>
 
-              {/* Student lane */}
-              <div className="rounded-[1.75rem] p-5 sm:p-6 md:tall:p-10 bg-white/10 backdrop-blur-md border border-white/15 hover:border-amber-300/40 transition-colors flex flex-col">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 md:tall:w-[4.5rem] md:tall:h-[4.5rem] rounded-2xl md:tall:rounded-3xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 flex items-center justify-center shadow-lg shadow-orange-500/40 mb-3 md:tall:mb-5">
-                  <BookOpen size={40} strokeWidth={2.5} className="text-white w-7 h-7 sm:w-8 sm:h-8 md:tall:w-10 md:tall:h-10" aria-hidden="true" />
-                </div>
-                <h2 className="text-xl sm:text-2xl md:tall:text-3xl font-black text-white mb-1.5 sm:mb-2">{t.navStudents}</h2>
-                <p className="hidden sm:block text-sm md:tall:text-base text-white/70 mb-3 md:tall:mb-6 flex-1">{t.heroV2.studentDesc}</p>
-                <button
-                  type="button"
-                  onClick={onGetStarted}
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                  aria-label={t.heroV2.studentCta}
-                  className="w-full px-6 py-3.5 md:tall:py-5 rounded-2xl text-lg sm:text-xl font-black text-white flex items-center justify-center gap-3 bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 ring-4 ring-amber-300/40 hover:ring-amber-300/60 shadow-[0_10px_0_0_#9a3412,0_22px_44px_rgba(251,146,60,0.45)] active:translate-y-1 active:shadow-[0_4px_0_0_#9a3412] transition-all"
-                >
-                  <LogIn size={24} strokeWidth={2.5} />
-                  {t.heroV2.studentCta}
-                </button>
-                <p className="text-center text-xs sm:text-sm text-white/55 mt-2 md:tall:mt-3">{t.heroV2.studentNote}</p>
-
-                {/* Join a live game by code — for students without a QR. */}
-                <form onSubmit={onJoinByCode} className="mt-3 flex items-center gap-2" dir={dir}>
-                  <input
-                    type="text"
-                    inputMode="text"
-                    autoCapitalize="characters"
-                    value={gameCode}
-                    onChange={(e) => setGameCode(e.target.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 6))}
-                    placeholder={gc.placeholder}
-                    aria-label={gc.placeholder}
-                    className="flex-1 min-w-0 px-3 py-2.5 rounded-xl bg-white/15 border-2 border-white/25 focus:border-amber-300 text-white placeholder:text-white/45 font-black tracking-[0.2em] text-center uppercase outline-none transition-colors"
-                  />
+              {/* Sign-in column — staff (teachers + principals, role-routed
+                  on login) plus the live-demo secondary action. */}
+              <div className={`w-full max-w-md mx-auto lg:mx-0 lg:justify-self-end ${isRTL ? "text-right" : "text-left"}`}>
+                {/* Staff lane */}
+                <div className="rounded-[1.75rem] p-6 sm:p-8 bg-white/10 backdrop-blur-md border border-white/15 hover:border-violet-300/40 transition-colors flex flex-col">
+                  <div className="w-14 h-14 lg:w-16 lg:h-16 rounded-2xl lg:rounded-3xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/40 mb-4">
+                    <GraduationCap size={32} strokeWidth={2.5} className="text-white w-8 h-8 lg:w-9 lg:h-9" aria-hidden="true" />
+                  </div>
+                  <h2 className="text-2xl lg:text-3xl font-black text-white mb-2">{t.heroV2.staffTitle}</h2>
+                  <p className="text-sm lg:text-base text-white/70 mb-5 flex-1">{t.heroV2.staffDesc}</p>
                   <button
-                    type="submit"
-                    disabled={gameCode.length !== 6}
+                    type="button"
+                    onClick={onTeacherLogin}
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                    className={`px-4 py-2.5 rounded-xl font-black text-sm transition ${gameCode.length === 6 ? 'bg-amber-400 text-stone-900 active:scale-95' : 'bg-white/10 text-white/40 cursor-not-allowed'}`}
+                    aria-label={`${t.navSignIn} — ${t.heroV2.staffTitle}`}
+                    className="w-full px-6 py-4 rounded-2xl text-lg sm:text-xl font-black text-white flex items-center justify-center gap-3 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/30 hover:ring-violet-300/50 shadow-[0_10px_0_0_#581c87,0_22px_44px_rgba(168,85,247,0.45)] active:translate-y-1 active:shadow-[0_4px_0_0_#581c87] transition-all"
                   >
-                    {gc.go}
+                    <LogIn size={24} strokeWidth={2.5} />
+                    {t.navSignIn}
                   </button>
-                </form>
-                <p className="text-center text-[11px] text-white/45 mt-1">{gc.hint}</p>
+                  <p className="text-center text-xs sm:text-sm text-white/55 mt-3">{t.heroV2.staffNote}</p>
+                </div>
+
+                {/* Live demo — clear secondary action (only when available). */}
+                {onTryDemo && (
+                  <>
+                    <div className="mt-4 flex items-center justify-center gap-3" aria-hidden="true">
+                      <span className="h-px w-12 bg-white/20" />
+                      <span className="text-xs uppercase tracking-widest text-white/40 font-bold">{t.heroV2.or}</span>
+                      <span className="h-px w-12 bg-white/20" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={onTryDemo}
+                      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                      className="mt-3 w-full flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-2xl text-base font-bold text-white bg-white/10 border-2 border-white/30 hover:bg-white/15 hover:border-white/50 transition-colors backdrop-blur-sm"
+                    >
+                      <PlayCircle size={22} strokeWidth={2.5} />
+                      {t.heroV2.demoCta}
+                      <span className="text-xs font-semibold text-white/60">{t.heroV2.demoNote}</span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Live demo — clear secondary action (only when available). */}
-            {onTryDemo && (
-              <>
-                <div className="mt-3 md:tall:mt-5 flex items-center justify-center gap-3" aria-hidden="true">
-                  <span className="h-px w-12 bg-white/20" />
-                  <span className="text-xs uppercase tracking-widest text-white/40 font-bold">{t.heroV2.or}</span>
-                  <span className="h-px w-12 bg-white/20" />
-                </div>
-                <button
-                  type="button"
-                  onClick={onTryDemo}
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                  className="mt-2 md:tall:mt-3 inline-flex items-center gap-2.5 px-7 py-3.5 rounded-2xl text-base font-bold text-white bg-white/10 border-2 border-white/30 hover:bg-white/15 hover:border-white/50 transition-colors backdrop-blur-sm"
-                >
-                  <PlayCircle size={22} strokeWidth={2.5} />
-                  {t.heroV2.demoCta}
-                  <span className="text-xs font-semibold text-white/60">{t.heroV2.demoNote}</span>
-                </button>
-              </>
-            )}
-
-            {/* Hero trust strip — factual claims only. */}
-            <div className="mt-5 md:tall:mt-7 flex flex-wrap items-center justify-center gap-2" dir={dir}>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 text-amber-100 border border-amber-400/30 font-bold text-xs backdrop-blur-sm">
-                <BookOpen size={12} aria-hidden="true" />
-                {t.heroTrustCurriculum}
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-fuchsia-500/15 text-fuchsia-100 border border-fuchsia-400/30 font-bold text-xs backdrop-blur-sm">
-                <Globe size={12} aria-hidden="true" />
-                {t.heroTrustTrilingual}
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/15 text-emerald-100 border border-emerald-400/30 font-bold text-xs backdrop-blur-sm">
-                <ShieldCheck size={12} aria-hidden="true" />
-                {t.heroTrustEu}
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-sky-500/15 text-sky-100 border border-sky-400/30 font-bold text-xs backdrop-blur-sm">
-                <MapPin size={12} aria-hidden="true" />
-                {t.heroTrustOrigin}
-              </span>
-            </div>
-
-            {/* Feature highlights — secondary, below the sign-in lanes. */}
-            <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-4xl mx-auto">
+            {/* Feature highlights — full-width band under the two columns. */}
+            <div className="mt-10 lg:mt-14 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-4xl mx-auto">
               {featureItems.map((f, i) => (
                 <div
                   key={i}
@@ -497,7 +446,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </DeferredSection>
       </main>
 
-      <FloatingButtons />
+      {/* Share + Back-to-top laid out as a horizontal row on the same
+          bottom line as the Accessibility trigger, all the same 48px
+          size — see the `horizontal` prop in FloatingButtons. */}
+      <FloatingButtons showBackToTop horizontal />
 
       {/* Sticky Teacher Sign-In — slides up once the hero CTA scrolls
           out of view so the primary conversion path is always one tap

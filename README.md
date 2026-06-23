@@ -27,6 +27,82 @@ No app store. No personal data required for students. Works on any device with a
 
 ---
 
+## Screenshots
+
+A quick tour — from a teacher launching a class to a student earning XP.
+
+### One trilingual front door
+
+Teachers sign in, students join with a class code or QR — no app store, fully right-to-left for Hebrew and Arabic.
+
+<p align="center">
+  <img src="docs/screenshots/landing-desktop.png" alt="Landing page on desktop (English)" width="320">
+  &nbsp;
+  <img src="docs/screenshots/landing-rtl.png" alt="Landing page on desktop (Hebrew, right-to-left)" width="320">
+  &nbsp;
+  <img src="docs/screenshots/landing-mobile.png" alt="Landing page on mobile" width="108">
+</p>
+
+### For teachers
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/app-teacher-dashboard.png" alt="Teacher dashboard" width="360"><br>
+      <b>Teacher dashboard</b><br>
+      <sub>Launch Quick Play, build assignments, and run live challenges in a couple of taps — everything in one place.</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/app-live-challenge.png" alt="Live Challenge leaderboard podium" width="360"><br>
+      <b>Live Challenge</b><br>
+      <sub>Turn revision into a whole-class competition with a real-time podium that updates as students answer.</sub>
+    </td>
+  </tr>
+</table>
+
+### For students
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/app-avatar-picker.png" alt="Student avatar and nickname picker" width="360"><br>
+      <b>Join in seconds</b><br>
+      <sub>Pick a nickname and an avatar — no email, no password, no account to remember.</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/app-game-select.png" alt="Game mode selection" width="360"><br>
+      <b>Pick a game mode</b><br>
+      <sub>A dozen game modes, each with its own look and mechanic, so practice never feels repetitive.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/app-game-flashcards.png" alt="Flashcards game mode" width="360"><br>
+      <b>Flashcards</b><br>
+      <sub>Learn each word first — flip the card, hear it spoken, then start earning XP.</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/app-game-matching.png" alt="Matching game mode" width="360"><br>
+      <b>Matching</b><br>
+      <sub>Drag to connect each English word to its Hebrew or Arabic translation.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/app-game-spelling.png" alt="Spelling game mode" width="360"><br>
+      <b>Spelling</b><br>
+      <sub>See the translation, hear the word, and type it — instant, positional feedback.</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="docs/screenshots/app-game-listening.png" alt="Listening game mode" width="360"><br>
+      <b>Listening</b><br>
+      <sub>Audio-only practice that trains the ear — tap what you hear.</sub>
+    </td>
+  </tr>
+</table>
+
+---
+
 ## Table of contents
 
 - [Why Vocaband](#why-vocaband)
@@ -67,6 +143,7 @@ No app store. No personal data required for students. Works on any device with a
 
 The platform has matured significantly in 2026. Headline improvements:
 
+- **Refreshed landing page** — a focused, single teacher/principal sign-in with a two-column hero that places the pitch beside the sign-in card on desktop, flips left/right for Hebrew & Arabic, and collapses to a clean stack on tablet and mobile.
 - **Trilingual UI everywhere** — every student-facing screen, every teacher-facing screen, every dashboard module, every onboarding flow, every privacy/cookie banner, every live-challenge / setup wizard / Quick Play monitor, and every analytics/gradebook view now renders cleanly in English, Hebrew, and Arabic with full RTL mirroring.
 - **Streamlined teacher dashboard** — assignment building, Quick Play, and roster tools were consolidated into a single "New Activity" surface. Fewer clicks, no hunting for buttons.
 - **Per-mode visual identity** — each game mode has its own colour theme, mechanic-specific layout, and bigger mobile tap targets (88px+).
@@ -216,7 +293,7 @@ Operational, infrastructure, and implementation details are intentionally kept o
 
 **Teachers:** visit [www.vocaband.com](https://www.vocaband.com), request access (your email must be approved — contact us at [contact@vocaband.com](mailto:contact@vocaband.com)), create a class, and share the class code with your students.
 
-**Students:** go to [www.vocaband.com](https://www.vocaband.com), tap "I'm a student", enter the class code your teacher gave you, pick your name (or tap "I'm new" to request a new account — your teacher approves it), then start playing.
+**Students:** open the class link (or scan the QR code) your teacher shares — or go straight to [www.vocaband.com/student](https://www.vocaband.com/student). Enter your class code, pick your name and avatar, and start playing. Tap "I'm new" to request an account your teacher approves. No email or password required.
 
 **Quick Play (no account, no class):** when your teacher launches Quick Play, scan the QR code they show on their screen, pick a name, and start playing immediately.
 

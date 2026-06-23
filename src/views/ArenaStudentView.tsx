@@ -18,7 +18,6 @@ import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import QPAvatarPicker from "../components/QPAvatarPicker";
 import QPAvatar from "../components/QPAvatar";
-import QuickPlayHelpButton from "../components/QuickPlayHelpButton";
 import QuickPlayErrorScreen from "../components/QuickPlayErrorScreen";
 import SpeedBuzzer, { CountUp, type SpeedBuzzerPhase } from "../components/game/SpeedBuzzer";
 import ArenaCanvas from "../components/game/ArenaCanvas";
@@ -54,7 +53,7 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
   const qp = useQuickPlaySocket({ sessionCode, enabled: true });
   const {
     currentArena, arenaPositionsRef, leaderboard, clientId, joinedSessionCode, lastError,
-    joinAsStudent, sendArenaMove, requestGrab, sendArenaPickup, submitSpeedAnswer, sendReaction,
+    joinAsStudent, sendArenaMove, requestGrab, sendArenaPickup, submitSpeedAnswer,
     onArenaGrabGranted, onArenaGrabDenied, onArenaPickup, onArenaEnded, onSpeedResult, onSessionEnded, onKicked,
     teamMode, myTeam, switchTeam,
     roughMode, sendTackle, onTackled,
@@ -327,13 +326,6 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
     }
   }, [phase, myIndex]);
 
-  const helpButton = (
-    <QuickPlayHelpButton
-      onAlertTeacher={() => sendReaction("🙋")}
-      onLeave={() => { forgetGame(); setView("public-landing"); }}
-    />
-  );
-
   // ─── Join screen ────────────────────────────────────────────────────
   if (phase === "join") {
     const canContinue = name.trim().length > 0;
@@ -412,7 +404,6 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
             {t.backHome}
           </button>
         </motion.div>
-        {helpButton}
       </Shell>
     );
   }
@@ -519,7 +510,6 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
             </motion.div>
           )}
         </AnimatePresence>
-        {helpButton}
       </div>
     );
   }
@@ -551,7 +541,6 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
           ))}
         </div>
       </motion.div>
-      {helpButton}
     </Shell>
   );
 }

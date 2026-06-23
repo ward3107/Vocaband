@@ -41,7 +41,7 @@
 
   <h1>Privacy Policy</h1>
   <div class="meta">
-    <p><strong>Effective Date:</strong> 2026-05-23 | <strong>Version:</strong> 2.1</p>
+    <p><strong>Effective Date:</strong> 2026-06-23 | <strong>Version:</strong> 2.1</p>
     <p><strong>Legal Basis:</strong> Privacy Protection Law, 5741-1981 (Israel), Amendment 13 (תיקון 13 לחוק הגנת הפרטיות)</p>
   </div>
 
@@ -131,6 +131,13 @@
       <td>api.vocaband.com (vocaband.fly.dev)</td>
     </tr>
     <tr>
+      <td><strong>Google Firebase Cloud Messaging (FCM)</strong></td>
+      <td>Transit-only delivery of opt-in push notifications to Android/Chrome devices (new assignment / reward / live challenge alerts)</td>
+      <td>push subscription endpoint (opaque device ID); PII-free notification payload in transit (no name/class/score)</td>
+      <td>Global (US-anchored) — fcm.googleapis.com</td>
+      <td>fcm.googleapis.com</td>
+    </tr>
+    <tr>
       <td><strong>Cloudflare</strong></td>
       <td>DNS, CDN, TLS termination, DDoS mitigation, Workers (request routing), privacy-friendly Web Analytics (no cookies)</td>
       <td>HTTP request metadata (IP, User-Agent, geolocation country); TLS handshake metadata</td>
@@ -153,8 +160,8 @@
     </tr>
     <tr>
       <td><strong>Google Cloud (Gemini API)</strong></td>
-      <td>Server-side OCR of teacher-uploaded vocabulary list images (replaces previous in-process Tesseract.js)</td>
-      <td>uploaded image bytes (typically a worksheet photo containing only English words)</td>
+      <td>Server-side OCR of teacher-uploaded vocabulary list images (replaces previous in-process Tesseract.js), and the teacher dashboard AI Help Assistant (answers free-text / spoken how-to questions)</td>
+      <td>uploaded image bytes (typically a worksheet photo containing only English words); teacher-typed or spoken help questions plus minimal non-identifying UI context (interface language, a hasClasses boolean, and the pending-approvals count — no names, class codes, or student data)</td>
       <td>Google-global (AI Studio API; not regionally pinned — migration to Vertex AI EU pending)</td>
       <td>generativelanguage.googleapis.com (AI Studio API)</td>
     </tr>
@@ -231,6 +238,11 @@
       <td>EU (Amsterdam) — ams</td>
       <td>Fly.io</td>
       <td>Processor under DPA; encryption in transit + at rest</td>
+    </tr>
+    <tr>
+      <td>Global (US-anchored) — fcm.googleapis.com</td>
+      <td>Google Firebase Cloud Messaging (FCM)</td>
+      <td>EU-US Data Privacy Framework (DPF) certified — verify at <a href="https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI" target="_blank" rel="noopener">vendor record</a>. DPA: <a href="https://business.safety.google/adsprocessorterms/" target="_blank" rel="noopener">link</a>. TIA risk: low. Last reviewed: 2026-06-22.</td>
     </tr>
     <tr>
       <td>Global edge network</td>
@@ -355,6 +367,10 @@
     <tr>
       <td><code>vocaband_student_visibility_version</code></td>
       <td>studentVisibilityVersion</td>
+    </tr>
+    <tr>
+      <td><code>vocaband_push_consent_version</code></td>
+      <td>pushConsentVersion</td>
     </tr>
   </table>
   <p>Cloudflare Web Analytics is used for traffic measurement; it stores no cookies and does not identify individual users.</p>

@@ -70,16 +70,6 @@ export default function LiveLeaderboardWidget({ user, leaderboard }: LiveLeaderb
                 </div>
               );
             })}
-          {Object.values(leaderboard).length === 0 && (
-            <div className="text-center py-6">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                className="text-3xl mb-2"
-              >⏳</motion.div>
-              <p className="text-xs text-white/70 italic">{t.waitingForPlayers}</p>
-            </div>
-          )}
         </div>
       </div>
     </div>

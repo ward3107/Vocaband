@@ -4,6 +4,7 @@ import StudentTopBar from "../components/dashboard/StudentTopBar";
 import PetCompanion from "../components/dashboard/PetCompanion";
 import Pet3DCard from "../components/dashboard/Pet3DCard";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
+import PushOptInCard from "../components/PushOptInCard";
 import StudentVisibilityConsent from "../components/StudentVisibilityConsent";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
 import StudentWelcomeCard from "../components/dashboard/StudentWelcomeCard";
@@ -60,12 +61,6 @@ interface StudentDashboardViewProps {
    *  Loads SRS-due words first then fills from assignment, sets
    *  gameMode='class-minute', and routes to the game view. */
   onStartClassMinute?: () => void;
-  /** Optional handler for the Idioms bonus tile.  Idioms run on a
-   *  curated dataset (not the teacher's assignment words), so the
-   *  mode lives on the dashboard rather than in the assignment mode
-   *  picker.  Same routing pattern as onStartReview — bypasses mode
-   *  selection + intro and routes straight into the game. */
-  onStartIdioms?: () => void;
   retention: RetentionState;
   onGrantXp: (amount: number, reason: string) => void;
   /** Coin grant for pet-milestone claims (evolutions now pay coins). */
@@ -120,7 +115,6 @@ export default function StudentDashboardView({
   evolutionPending,
   onStartReview,
   onStartClassMinute,
-  onStartIdioms,
   onRenameDisplayName,
   onRequestLogout,
 }: StudentDashboardViewProps) {
@@ -203,7 +197,7 @@ export default function StudentDashboardView({
     { key: "leaderboard", onClick: () => setView("global-leaderboard") },
     { key: "daily", onClick: () => setView("student-daily") },
   ];
-  if (onStartReview || onStartClassMinute || onStartIdioms) {
+  if (onStartReview || onStartClassMinute) {
     orbitItems.push({ key: "practice", onClick: () => setView("student-practice"), badge: dueReviews.dueCount || undefined });
   }
 
@@ -260,6 +254,10 @@ export default function StudentDashboardView({
         }
       >
         {classNotFoundBanner}
+        {/* Opt-in nudge for push notifications. Self-hides unless the
+            feature flag is on for this class and the student hasn't
+            decided yet — so it's invisible until the feature is enabled. */}
+        <PushOptInCard user={user} />
         {/* Teacher rewards land here FIRST so the student sees the
             celebration before anything else. Hides itself when empty. */}
         <RewardInboxCard

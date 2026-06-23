@@ -410,6 +410,10 @@ export const DAILY_CHEST_XP = { min: 20, max: 60 };
 export const WEEKLY_CHALLENGE_PLAYS = 5;      // plays required
 export const WEEKLY_CHALLENGE_REWARD_XP = 100; // + a free common egg (granted via RPC)
 export const COMEBACK_AFTER_DAYS = 3;          // offline this many days → free golden egg on return
+// Daily-goal bonus — the XP a student collects the first time they hit
+// their daily play goal. Granted once per calendar day; the claimed date
+// persists in localStorage (per uid), same discipline as the chest above.
+export const DAILY_GOAL_REWARD_XP = 10;
 // One-shot XP a student collects by tapping an earned badge on the
 // dashboard. Claimed state persists in localStorage (per uid) to stop
 // re-claim spam — same pattern as the pet-evolution rewards above.

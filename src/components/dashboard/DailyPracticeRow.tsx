@@ -1,6 +1,6 @@
 /**
- * DailyPracticeRow — collapses the three "play something quick" cards
- * (Review Queue, Class Minute, Idioms) into a single compact row.
+ * DailyPracticeRow — collapses the "play something quick" cards
+ * (Review Queue, Class Minute) into a single compact row.
  *
  * Each tile takes ~⅓ the vertical space of the original full-width
  * cards, so the dashboard surfaces ~3× more retention nudges in the
@@ -22,7 +22,6 @@ import {
   ARCADE_CARD,
   ARCADE_HERO_GRADIENT,
   ARCADE_REWARD_GRADIENT,
-  ARCADE_STREAK_GRADIENT,
 } from "../arcade/theme";
 
 interface DailyPracticeRowProps {
@@ -40,10 +39,6 @@ interface DailyPracticeRowProps {
     isLoading: boolean;
     onStart: () => void;
   };
-  /** Idioms bonus practice — when omitted, the tile is hidden. */
-  idioms?: {
-    onStart: () => void;
-  };
 }
 
 const STRINGS: Record<Language, {
@@ -55,8 +50,6 @@ const STRINGS: Record<Language, {
   classMinuteSubtitle: string;
   classMinuteDone: string;
   classMinuteStreak: (n: number) => string;
-  idioms: string;
-  idiomsSubtitle: string;
 }> = {
   en: {
     header: "Daily practice",
@@ -67,8 +60,6 @@ const STRINGS: Record<Language, {
     classMinuteSubtitle: "60s drill",
     classMinuteDone: "Back tomorrow!",
     classMinuteStreak: (n) => `${n}🔥`,
-    idioms: "Idioms",
-    idiomsSubtitle: "Bonus",
   },
   he: {
     header: "תרגול יומי",
@@ -79,8 +70,6 @@ const STRINGS: Record<Language, {
     classMinuteSubtitle: "תרגול 60 שניות",
     classMinuteDone: "חזרו מחר!",
     classMinuteStreak: (n) => `${n}🔥`,
-    idioms: "ביטויים",
-    idiomsSubtitle: "בונוס",
   },
   ar: {
     header: "تدريب يومي",
@@ -91,8 +80,6 @@ const STRINGS: Record<Language, {
     classMinuteSubtitle: "تمرين 60 ثانية",
     classMinuteDone: "عُد غدًا!",
     classMinuteStreak: (n) => `${n}🔥`,
-    idioms: "تعابير",
-    idiomsSubtitle: "إضافي",
   },
   ru: {
     header: "Daily practice",
@@ -103,8 +90,6 @@ const STRINGS: Record<Language, {
     classMinuteSubtitle: "60s drill",
     classMinuteDone: "Back tomorrow!",
     classMinuteStreak: (n) => `${n}🔥`,
-    idioms: "Idioms",
-    idiomsSubtitle: "Bonus",
   },
 };
 
@@ -203,7 +188,6 @@ function PracticeTile({
 export default function DailyPracticeRow({
   review,
   classMinute,
-  idioms,
 }: DailyPracticeRowProps) {
   const { language, dir } = useLanguage();
   const t = STRINGS[language] || STRINGS.en;
@@ -211,8 +195,8 @@ export default function DailyPracticeRow({
   // text. Falls back to the existing light styling when off.
   const arcade = useFeatureFlag("arcade_hub", false);
 
-  // Hide the whole row when none of the three are wired.
-  if (!review && !classMinute && !idioms) return null;
+  // Hide the whole row when neither tile is wired.
+  if (!review && !classMinute) return null;
 
   // Shared arcade overrides reused across all three tiles.
   const arcadeIconBg = "bg-white/20 backdrop-blur-sm";
@@ -283,18 +267,6 @@ export default function DailyPracticeRow({
             loading={classMinute.isLoading}
             onClick={classMinute.onStart}
             disabled={classMinute.doneToday}
-          />
-        )}
-        {idioms && (
-          <PracticeTile
-            icon={<span className={arcade ? "text-base drop-shadow" : "text-base"} aria-hidden>💭</span>}
-            iconBg={arcade ? arcadeIconBg : "bg-gradient-to-br from-sky-400 to-blue-500"}
-            surfaceClass={arcade ? ARCADE_STREAK_GRADIENT : "bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-50"}
-            ringClass={arcade ? arcadeRing : "border-white/80"}
-            arcade={arcade}
-            title={t.idioms}
-            caption={t.idiomsSubtitle}
-            onClick={idioms.onStart}
           />
         )}
       </div>
