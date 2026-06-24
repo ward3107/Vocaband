@@ -4,6 +4,49 @@ These are actions the human needs to take — no code change will cover them.
 
 ---
 
+## 🔴 OPEN — Push notifications: LEGAL/COMPLIANCE sign-off before any real rollout
+
+**⏰ REMINDER (operator asked to be reminded, 2026-06-24):** Do **not** flip
+the `push_notifications` master switch on for real students until the
+compliance package `docs/legal/PUSH-NOTIFICATIONS-COMPLIANCE.md` is
+**ratified by the lawyer**. The audience is minors (Israeli Privacy Law +
+GDPR + Communications Law §30A), so the legal review is a hard gate, not a
+nicety. Chase the lawyer; record the sign-off date here when done.
+
+**Current state (verified in prod `vocaband-eu`, 2026-06-24):**
+- ✅ DB done: `push_subscriptions` table + RLS (4 policies) + the
+  `push_notifications` feature flag all exist.
+- ✅ Flag is **master-OFF** but pre-enabled for ONE test class
+  (`enabled_for_classes = ['4ZSFLQZ9']`) — test-only, no real students.
+- ✅ One test web-push subscription already exists ("Firefox on Windows",
+  created 2026-06-24) — so the **client** `VITE_VAPID_PUBLIC_KEY` is already
+  deployed and working. **Do NOT rotate the VAPID keys** or that (and any
+  future) subscription breaks.
+
+**Remaining to finish WEB push (operator):**
+1. Confirm the **server** half is wired: `fly secrets list` should show
+   `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`. The public key
+   MUST equal the deployed `VITE_VAPID_PUBLIC_KEY`. If the server keys are
+   missing the sender no-ops (`[push] VAPID keys missing`).
+2. End-to-end test on test class `4ZSFLQZ9`: opt in on a device → post an
+   assignment as that class's teacher → device should get "New task from
+   your teacher" within seconds.
+3. Before WIDE rollout: implement quiet hours + frequency caps (design
+   doc §4 — NOT yet built) AND get the legal sign-off above.
+
+**Remaining to finish NATIVE ANDROID push (FCM) — operator wants this:**
+See `docs/PUSH-NOTIFICATIONS-RUNBOOK.md` "Native Android (FCM)". Summary:
+1. Create a Firebase project → add Android app, package `com.vocaband.student`.
+2. Download `google-services.json` → `android/app/google-services.json`.
+3. Apply the Google Services Gradle plugin (2 edits — left undone on purpose
+   because applying it without the JSON breaks the Android build).
+4. `fly secrets set FIREBASE_SERVICE_ACCOUNT='<service-account JSON>'`.
+5. Build the signed `.aab` (Actions → Build Student Android App) → upload to
+   Play internal testing → update the Play Data Safety form (collects FCM
+   "Device ID", optional/opt-in/encrypted).
+
+---
+
 ## 🟡 OPEN — Mention the AI Help Assistant in the privacy policy
 
 **Why:** The teacher dashboard now has an AI Help Assistant (`/api/teacher-assistant`,
