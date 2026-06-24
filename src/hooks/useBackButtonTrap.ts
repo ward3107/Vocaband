@@ -81,6 +81,14 @@ const PAD_COUNT = 20;
 // propagate before the guard releases.
 const EXIT_INTENT_WINDOW_MS = 500;
 
+// Window (ms) for the student double-back-to-exit gesture at the
+// dashboard floor.  A second hardware-back within this window of the
+// first quits the app; a slower second press just re-shows the hint.
+// Matches the Android-standard "press back again to exit" timing so a
+// kid mashing back accidentally can't trip it, but a deliberate
+// double-tap exits like any other Android app.
+const DOUBLE_BACK_WINDOW_MS = 2000;
+
 export interface UseBackButtonTrapParams {
   view: View;
   setView: Dispatch<SetStateAction<View>>;
@@ -91,6 +99,10 @@ export interface UseBackButtonTrapParams {
    *  the user as "present" and re-traps to avoid escaping during
    *  the ~500 ms restore window after a fresh mount. */
   restoreInProgressRef: MutableRefObject<boolean>;
+  /** Shown on a student's FIRST back-press at the dashboard floor —
+   *  the "press back again to exit" hint. The caller wires this to a
+   *  toast so the hook stays UI-agnostic. */
+  onFloorExitHint: () => void;
 }
 
 export interface UseBackButtonTrapApi {
@@ -113,6 +125,7 @@ export function useBackButtonTrap(
     showExitConfirmModal,
     setShowExitConfirmModal,
     restoreInProgressRef,
+    onFloorExitHint,
   } = params;
 
   // ─── Internal refs ─────────────────────────────────────────────────
@@ -121,6 +134,12 @@ export function useBackButtonTrap(
   const exitModalOpenRef = useRef(false);
   const viewRef = useRef(view);
   const userRef = useRef(user);
+  // Timestamp of the student's last back-press at the dashboard floor,
+  // for the double-back-to-exit gesture.
+  const lastFloorBackRef = useRef(0);
+  // Latest hint callback, mirrored so the once-attached popstate
+  // handler never calls a stale closure.
+  const onFloorExitHintRef = useRef(onFloorExitHint);
 
   // Mirror reactive inputs into refs so the popstate handler (attached
   // once with [] deps) always sees the latest values without a
@@ -130,6 +149,7 @@ export function useBackButtonTrap(
   useEffect(() => {
     exitModalOpenRef.current = showExitConfirmModal;
   }, [showExitConfirmModal]);
+  useEffect(() => { onFloorExitHintRef.current = onFloorExitHint; }, [onFloorExitHint]);
 
   // Tracks the previous `user` value across renders so we can detect
   // the user → null transition (logout) and refill the pad buffer.
@@ -261,28 +281,45 @@ export function useBackButtonTrap(
       const home = currentUser ? getHomeView() : null;
       const atDashboardFloor = !!currentUser && currentView === home;
 
-      // CASE A: at dashboard floor, ANY back press re-traps and shows
-      //         the exit confirmation.  We never navigate away from
-      //         the dashboard via popstate — it's an absolute floor.
+      // CASE A: at dashboard floor, back never navigates away — the
+      //         dashboard is an absolute floor — but the exit gesture
+      //         differs by role:
       //
-      //         Double-back behaviour differs by role:
-      //         - Teachers / guests: second back while modal open =
-      //           "yes, really leave" → signOut + public landing.
-      //         - Students: second back is treated as "Stay" — the
-      //           modal closes, no signout.  Real exit requires
-      //           tapping the explicit "Switch class" link in the
-      //           friendly soft-landing modal.  Kids 9–14 frequently
-      //           mash back; auto-signout on the second tap throws
-      //           them out of their session even though the modal
-      //           was supposed to be the safety net.
+      //         - Students (native app): Android-standard
+      //           double-back-to-exit. A single back shows a "press
+      //           back again to exit" hint and re-traps; a deliberate
+      //           second back within DOUBLE_BACK_WINDOW_MS quits the app
+      //           via Capacitor's exitApp(). exitApp does NOT sign out,
+      //           so reopening returns the student to their session —
+      //           a kid mashing back can't lose their login, but a real
+      //           "I want to leave" gesture works like every other app.
+      //           (On web/PWA exitApp is a no-op — a tab can't self-close
+      //           — which is fine; the hint still shows.) If the explicit
+      //           logout modal happens to be open (opened from the UI
+      //           logout button), back just closes it (= "Stay").
+      //         - Teachers / guests: unchanged exit-confirm modal. Second
+      //           back while the modal is open = "yes, really leave" →
+      //           signOut + public landing.
       const isStudent = currentUser?.role === 'student';
       if (atDashboardFloor) {
-        if (exitModalOpenRef.current) {
-          if (isStudent) {
+        if (isStudent) {
+          if (exitModalOpenRef.current) {
             setShowExitConfirmModal(false);
             pushDashboardTrap();
             return;
           }
+          const now = Date.now();
+          if (now - lastFloorBackRef.current < DOUBLE_BACK_WINDOW_MS) {
+            exitIntentRef.current = true;
+            CapacitorApp.exitApp().catch(() => { /* web/PWA — no native shell */ });
+            return;
+          }
+          lastFloorBackRef.current = now;
+          pushDashboardTrap();
+          onFloorExitHintRef.current();
+          return;
+        }
+        if (exitModalOpenRef.current) {
           setShowExitConfirmModal(false);
           exitIntentRef.current = true;
           supabase.auth.signOut().catch(() => {});

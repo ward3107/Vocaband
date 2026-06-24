@@ -707,6 +707,7 @@ export function useAppController(initialView?: View): AppViewRouterProps {
     view, setView, user,
     showExitConfirmModal, setShowExitConfirmModal,
     restoreInProgressRef: restoreInProgress,
+    onFloorExitHint: () => showToast(appToasts.pressBackAgainToExit, "info"),
   });
 
   // Re-consent, exit-confirm, class-not-found, class-switch overlay markup.
