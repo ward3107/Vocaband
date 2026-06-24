@@ -26,6 +26,9 @@ export interface AppToastStrings {
   // Class setup
   couldNotSetupClass: string;
 
+  // Native app exit (Android double-back-to-exit hint)
+  pressBackAgainToExit: string;
+
   // Quick Play / Live session
   failedCreateSession: (message: string) => string;
 
@@ -44,6 +47,7 @@ export const appToastsT: Record<Language, AppToastStrings> = {
     failedDeleteAssignment: (m) => `Failed to delete assignment: ${m}`,
     assignmentDeleted: "Assignment deleted successfully",
     couldNotSetupClass: "Couldn't set up your class — please try again.",
+    pressBackAgainToExit: "Press back again to exit",
     failedCreateSession: (m) => `Failed to create session: ${m}`,
     savedLocally: "Saved locally — will sync when online",
     allSynced: "All progress synced",
@@ -57,6 +61,7 @@ export const appToastsT: Record<Language, AppToastStrings> = {
     failedDeleteAssignment: (m) => `מחיקת המטלה נכשלה: ${m}`,
     assignmentDeleted: "המטלה נמחקה בהצלחה",
     couldNotSetupClass: "לא הצלחנו להקים את הכיתה — נסו שוב.",
+    pressBackAgainToExit: "לחצו שוב כדי לצאת",
     failedCreateSession: (m) => `יצירת המשחק נכשלה: ${m}`,
     savedLocally: "נשמר מקומית — יסונכרן כשתחזרו לרשת",
     allSynced: "כל ההתקדמות סונכרנה",
@@ -70,6 +75,7 @@ export const appToastsT: Record<Language, AppToastStrings> = {
     failedDeleteAssignment: (m) => `فشل حذف المهمة: ${m}`,
     assignmentDeleted: "تم حذف المهمة بنجاح",
     couldNotSetupClass: "تعذّر إعداد صفّك — حاول مرة أخرى.",
+    pressBackAgainToExit: "اضغط رجوع مرة أخرى للخروج",
     failedCreateSession: (m) => `فشل إنشاء الجلسة: ${m}`,
     savedLocally: "تم الحفظ محلياً — ستتم المزامنة عند عودة الاتصال",
     allSynced: "تمت مزامنة كل التقدم",
@@ -83,6 +89,7 @@ export const appToastsT: Record<Language, AppToastStrings> = {
     failedDeleteAssignment: (m) => `Failed to delete assignment: ${m}`,
     assignmentDeleted: "Assignment deleted successfully",
     couldNotSetupClass: "Couldn't set up your class — please try again.",
+    pressBackAgainToExit: "Press back again to exit",
     failedCreateSession: (m) => `Failed to create session: ${m}`,
     savedLocally: "Saved locally — will sync when online",
     allSynced: "All progress synced",

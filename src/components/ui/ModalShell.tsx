@@ -17,7 +17,8 @@
  */
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { useEffect, type ReactNode, type ButtonHTMLAttributes } from "react";
+import { useEffect, useRef, type ReactNode, type ButtonHTMLAttributes } from "react";
+import { modalBackStack } from "../../utils/modalBackStack";
 export type ModalVariant = "brand" | "success" | "danger" | "calm";
 
 interface ModalShellProps {
@@ -87,6 +88,20 @@ export default function ModalShell({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  // Back-to-close — register with the shared stack while open so the
+  // hardware/browser back button (handled by useBackButtonTrap) closes
+  // this modal instead of navigating. A stable wrapper reads onClose via
+  // a ref so the registry entry's identity never changes across renders
+  // (push and remove must match by identity).
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  useEffect(() => {
+    if (!open) return;
+    const entry = () => onCloseRef.current();
+    modalBackStack.push(entry);
+    return () => modalBackStack.remove(entry);
+  }, [open]);
 
   return (
     <AnimatePresence>
