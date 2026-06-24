@@ -30,14 +30,13 @@ import {
 } from "../components/LazyComponents";
 import { LazyErrorBoundary } from "../components/LazyErrorBoundary";
 import { lazyWithRetry } from "../utils/lazyWithRetry";
-// TeacherLoginView, FloatingButtons, InteractiveWorksheetView are
-// only used on specific routes — lazy-loading keeps them out of the
-// App.tsx chunk so the landing page first-paint isn't paying for
-// teacher-login / worksheet code it doesn't need. lazyWithRetry adds
-// a single retry + a hard chunk-reload recovery so stale-deploy hash
-// failures self-heal instead of bubbling to the root ErrorBoundary.
+// TeacherLoginView, InteractiveWorksheetView are only used on specific
+// routes — lazy-loading keeps them out of the App.tsx chunk so the
+// landing page first-paint isn't paying for teacher-login / worksheet
+// code it doesn't need. lazyWithRetry adds a single retry + a hard
+// chunk-reload recovery so stale-deploy hash failures self-heal instead
+// of bubbling to the root ErrorBoundary.
 const TeacherLoginView = lazyWithRetry(() => import("./TeacherLoginView"));
-const FloatingButtons = lazyWithRetry(() => import("../components/FloatingButtons"));
 const InteractiveWorksheetView = lazyWithRetry(() => import("./InteractiveWorksheetView"));
 
 type PublicNavigatePage = "home" | "terms" | "privacy" | "accessibility" | "security" | "resources" | "status";
@@ -285,11 +284,10 @@ function LandingPageWithScrollRestore({
         />
       )}
       {cookieBannerOverlay}
-      <LazyErrorBoundary fallback={null}>
-        <Suspense fallback={null}>
-          <FloatingButtons showBackToTop={true} />
-        </Suspense>
-      </LazyErrorBoundary>
+      {/* FloatingButtons (share + back-to-top) is rendered by LandingPage
+          itself as a designed horizontal row next to the accessibility
+          trigger — mounting a second one here duplicated the whole bottom
+          cluster on the landing page. */}
     </>
   );
 }
