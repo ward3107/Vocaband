@@ -5,6 +5,7 @@ import PetCompanion from "../components/dashboard/PetCompanion";
 import Pet3DCard from "../components/dashboard/Pet3DCard";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import PushOptInCard from "../components/PushOptInCard";
+import JoinGameModal from "../components/JoinGameModal";
 import StudentVisibilityConsent from "../components/StudentVisibilityConsent";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
 import StudentWelcomeCard from "../components/dashboard/StudentWelcomeCard";
@@ -164,6 +165,9 @@ export default function StudentDashboardView({
   // sheet, so the home page stays a clean hub (no long list scrolling
   // below the ring).
   const [tasksOpen, setTasksOpen] = React.useState(false);
+  // "Join a game" sheet — lets a logged-in student enter the teacher's live
+  // Quick Play game (code or in-app QR scan) without leaving the app.
+  const [joinOpen, setJoinOpen] = React.useState(false);
   // Pet Shop accessory the student has equipped — worn on the pet here.
   const petAccessory = usePetAccessory(user.uid);
   const petAccessoryEmoji = petAccessory.equipped
@@ -192,6 +196,7 @@ export default function StudentDashboardView({
   // Order = clockwise from the top so Play sits dead-centre at 12 o'clock.
   const orbitItems: OrbitItem[] = [
     { key: "play", onClick: () => { void launchNextAssignment?.(); }, disabled: !launchNextAssignment },
+    { key: "join", onClick: () => setJoinOpen(true) },
     { key: "tasks", onClick: () => setTasksOpen(true), badge: studentAssignments.length || undefined },
     { key: "shop", onClick: () => setView("shop") },
     { key: "leaderboard", onClick: () => setView("global-leaderboard") },
@@ -319,6 +324,9 @@ export default function StudentDashboardView({
             </div>
           </motion.div>
         )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {joinOpen && <JoinGameModal onClose={() => setJoinOpen(false)} />}
       </AnimatePresence>
       <PetCompanion
         open={petCardOpen}

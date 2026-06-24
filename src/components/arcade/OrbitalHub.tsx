@@ -26,6 +26,7 @@ import { ARCADE_BUTTON_TOUCH } from "./theme";
 
 export type OrbitKey =
   | "play"
+  | "join"
   | "tasks"
   | "shop"
   | "leaderboard"
@@ -50,6 +51,7 @@ interface OrbitalHubProps {
 /** Per-destination look. Emoji + its own gradient (CLAUDE.md UI rule). */
 const CATALOGUE: Record<OrbitKey, { emoji: string; gradient: string }> = {
   play: { emoji: "🎮", gradient: "bg-gradient-to-br from-cyan-400 via-violet-500 to-fuchsia-500" },
+  join: { emoji: "📡", gradient: "bg-gradient-to-br from-rose-400 via-red-500 to-orange-500" },
   tasks: { emoji: "📋", gradient: "bg-gradient-to-br from-emerald-400 to-teal-500" },
   shop: { emoji: "🛍️", gradient: "bg-gradient-to-br from-fuchsia-400 via-pink-500 to-rose-500" },
   leaderboard: { emoji: "🏆", gradient: "bg-gradient-to-br from-amber-300 to-orange-500" },
@@ -58,10 +60,10 @@ const CATALOGUE: Record<OrbitKey, { emoji: string; gradient: string }> = {
 };
 
 const LABELS: Record<Language, Record<OrbitKey, string>> = {
-  en: { play: "Play", tasks: "Tasks", shop: "Shop", leaderboard: "Ranks", practice: "Practice", daily: "Daily" },
-  he: { play: "שחק", tasks: "משימות", shop: "חנות", leaderboard: "דירוג", practice: "תרגול", daily: "יומי" },
-  ar: { play: "العب", tasks: "المهام", shop: "المتجر", leaderboard: "الترتيب", practice: "تدريب", daily: "يومي" },
-  ru: { play: "Играть", tasks: "Задания", shop: "Магазин", leaderboard: "Рейтинг", practice: "Практика", daily: "Ежедневно" },
+  en: { play: "Play", join: "Join", tasks: "Tasks", shop: "Shop", leaderboard: "Ranks", practice: "Practice", daily: "Daily" },
+  he: { play: "שחק", join: "הצטרף", tasks: "משימות", shop: "חנות", leaderboard: "דירוג", practice: "תרגול", daily: "יומי" },
+  ar: { play: "العب", join: "انضم", tasks: "المهام", shop: "المتجر", leaderboard: "الترتيب", practice: "تدريب", daily: "يومي" },
+  ru: { play: "Играть", join: "Войти", tasks: "Задания", shop: "Магазин", leaderboard: "Рейтинг", practice: "Практика", daily: "Ежедневно" },
 };
 
 export default function OrbitalHub({ center, items }: OrbitalHubProps) {
