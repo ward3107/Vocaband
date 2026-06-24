@@ -35,6 +35,7 @@ import { supabase, hasTeacherAccess, type AppUser } from '../core/supabase';
 import type { View } from '../core/views';
 import { pathForView } from '../utils/routes';
 import { URL_ROUTING_PUSH } from '../utils/urlRouting';
+import { modalBackStack } from '../utils/modalBackStack';
 
 // Views that a logged-in user should never land on via back button.
 // If popstate would navigate to one of these, we block it.
@@ -278,6 +279,19 @@ export function useBackButtonTrap(
         return;
       }
 
+      // Modal-first: if a ModalShell modal is open, back closes the
+      // topmost one instead of navigating (native-app behavior). We
+      // consumed one history entry getting here, so re-push to keep the
+      // stack (and the dashboard-floor pad buffer) intact. Runs before
+      // the floor/auth logic so back never exits or navigates while a
+      // modal is up. The hand-rolled exit-confirm / consent / class-switch
+      // modals don't register here, so their flows are unaffected.
+      if (modalBackStack.size > 0) {
+        modalBackStack.closeTop();
+        window.history.pushState({ view: currentView }, '');
+        return;
+      }
+
       const home = currentUser ? getHomeView() : null;
       const atDashboardFloor = !!currentUser && currentView === home;
 
@@ -288,15 +302,19 @@ export function useBackButtonTrap(
       //         - Students (native app): Android-standard
       //           double-back-to-exit. A single back shows a "press
       //           back again to exit" hint and re-traps; a deliberate
-      //           second back within DOUBLE_BACK_WINDOW_MS quits the app
-      //           via Capacitor's exitApp(). exitApp does NOT sign out,
-      //           so reopening returns the student to their session —
-      //           a kid mashing back can't lose their login, but a real
-      //           "I want to leave" gesture works like every other app.
-      //           (On web/PWA exitApp is a no-op — a tab can't self-close
-      //           — which is fine; the hint still shows.) If the explicit
-      //           logout modal happens to be open (opened from the UI
-      //           logout button), back just closes it (= "Stay").
+      //           second back within DOUBLE_BACK_WINDOW_MS signs the
+      //           student out and then quits the app. The double-tap
+      //           guard means a kid mashing back accidentally can't trip
+      //           it (one press only shows the hint), but a real "I want
+      //           to leave" gesture logs out + exits like the explicit
+      //           Log out button. exitApp fires after signOut settles
+      //           (with a fallback timer if the network hangs) so the
+      //           local session is cleared before the process dies —
+      //           reopening lands on the login screen. (On web/PWA
+      //           exitApp is a no-op — a tab can't self-close — so the
+      //           SIGNED_OUT handler drops them on login instead.) If the
+      //           explicit logout modal happens to be open (opened from
+      //           the UI logout button), back just closes it (= "Stay").
       //         - Teachers / guests: unchanged exit-confirm modal. Second
       //           back while the modal is open = "yes, really leave" →
       //           signOut + public landing.
@@ -310,8 +328,14 @@ export function useBackButtonTrap(
           }
           const now = Date.now();
           if (now - lastFloorBackRef.current < DOUBLE_BACK_WINDOW_MS) {
+            // Deliberate double-back: sign out, then quit the app. Quit
+            // after signOut settles so the local session is cleared
+            // first; the fallback timer guarantees we still exit if the
+            // network hangs. Calling exitApp twice is harmless.
             exitIntentRef.current = true;
-            CapacitorApp.exitApp().catch(() => { /* web/PWA — no native shell */ });
+            const quit = () => { CapacitorApp.exitApp().catch(() => { /* web/PWA — no native shell */ }); };
+            supabase.auth.signOut().catch(() => {}).finally(quit);
+            setTimeout(quit, 1500);
             return;
           }
           lastFloorBackRef.current = now;
