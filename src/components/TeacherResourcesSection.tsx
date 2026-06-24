@@ -209,7 +209,7 @@ const CardGroup: React.FC<CardGroupProps> = ({ heading, cards, t, language, isRT
       <h3 className={`text-xs md:text-sm font-black text-violet-700 uppercase tracking-[0.18em] mb-4 ${isRTL ? "text-right" : "text-left"}`}>
         {heading}
       </h3>
-      <div className="grid grid-cols-1 gap-4 md:gap-5 items-stretch">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 items-stretch">
         {cards.map((card) => {
           const title = titleFor(card, t);
           const blurb = blurbFor(card, t);
