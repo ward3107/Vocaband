@@ -23,6 +23,12 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // Bundle native (.so) debug symbols into the .aab so Play Console can
+            // symbolicate native crashes/ANRs from Capacitor + its plugins.
+            // Clears the "native code, no debug symbols" upload warning.
+            ndk {
+                debugSymbolLevel 'FULL'
+            }
         }
     }
 }
