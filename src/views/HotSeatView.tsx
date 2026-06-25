@@ -40,8 +40,8 @@
 import { useCallback, useMemo, useState, useRef, type ChangeEvent, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Trophy, Users, ArrowRight, Volume2, X, ChevronRight, Play, BookOpen,
-  Camera, Sparkles, Eye, ClipboardPaste, Loader2, AlertTriangle, Image as ImageIcon,
+  Trophy, Users, ArrowRight, Volume2, X, ChevronRight, Play,
+  Camera, Eye, Loader2, AlertTriangle, Image as ImageIcon,
   Trash2, Pencil, Check,
 } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
@@ -141,6 +141,8 @@ const STRINGS: Record<Language, {
   playersPlaceholder: string;
   playersHint: string;
   wordsLabel: string;
+  pasteTitle: string;
+  or: string;
   sourcePaste: string;
   sourceAssignment: string;
   sourceCamera: string;
@@ -201,10 +203,12 @@ const STRINGS: Record<Language, {
     playersPlaceholder: 'Sarah\nDaniel\nMaya\n…',
     playersHint: 'Need at least 2 players.',
     wordsLabel: 'Words',
+    pasteTitle: 'Paste your word list here',
+    or: 'OR',
     sourcePaste: 'Paste',
     sourceAssignment: 'Assignment',
-    sourceCamera: 'Camera',
-    sourceTopic: 'Topic',
+    sourceCamera: 'Scan & Upload',
+    sourceTopic: 'Topic Packs',
     pickAssignment: 'Pick an assignment',
     pickTopic: 'Pick a topic pack',
     wordsPlaceholder: 'apple\nbook\ncat\n…',
@@ -264,10 +268,12 @@ const STRINGS: Record<Language, {
     playersPlaceholder: 'שרה\nדניאל\nמאיה\n…',
     playersHint: 'צריך לפחות 2 שחקנים.',
     wordsLabel: 'מילים',
+    pasteTitle: 'הדביקו כאן את רשימת המילים',
+    or: 'או',
     sourcePaste: 'הדבקה',
     sourceAssignment: 'מטלה',
-    sourceCamera: 'מצלמה',
-    sourceTopic: 'נושא',
+    sourceCamera: 'סריקה והעלאה',
+    sourceTopic: 'חבילות נושא',
     pickAssignment: 'בחר מטלה',
     pickTopic: 'בחר חבילת נושא',
     wordsPlaceholder: 'apple\nbook\ncat\n…',
@@ -327,10 +333,12 @@ const STRINGS: Record<Language, {
     playersPlaceholder: 'سارة\nدانيال\nمايا\n…',
     playersHint: 'تحتاج إلى لاعبَين على الأقل.',
     wordsLabel: 'الكلمات',
+    pasteTitle: 'الصق قائمة كلماتك هنا',
+    or: 'أو',
     sourcePaste: 'لصق',
     sourceAssignment: 'مهمة',
-    sourceCamera: 'الكاميرا',
-    sourceTopic: 'موضوع',
+    sourceCamera: 'مسح وتحميل',
+    sourceTopic: 'حزم المواضيع',
     pickAssignment: 'اختر مهمة',
     pickTopic: 'اختر حزمة موضوع',
     wordsPlaceholder: 'apple\nbook\ncat\n…',
@@ -390,10 +398,12 @@ const STRINGS: Record<Language, {
     playersPlaceholder: 'Sarah\nDaniel\nMaya\n…',
     playersHint: 'Need at least 2 players.',
     wordsLabel: 'Words',
+    pasteTitle: 'Paste your word list here',
+    or: 'OR',
     sourcePaste: 'Paste',
     sourceAssignment: 'Assignment',
-    sourceCamera: 'Camera',
-    sourceTopic: 'Topic',
+    sourceCamera: 'Scan & Upload',
+    sourceTopic: 'Topic Packs',
     pickAssignment: 'Pick an assignment',
     pickTopic: 'Pick a topic pack',
     wordsPlaceholder: 'apple\nbook\ncat\n…',
@@ -449,6 +459,30 @@ const STRINGS: Record<Language, {
 };
 
 const MEDAL = ['🥇', '🥈', '🥉'];
+
+// ── Shared design tokens — mirror the Assignment / Class Show surfaces
+// (WordInputStep2026) so Hot Seat reads as the same product, not a
+// one-off.  Violet brand gradient for active pills + the paste hero;
+// frosted lavender tile for the option cards.
+const VIOLET_GRAD = 'linear-gradient(110deg,#7B61D6,#9F87F2)';
+const CARD_BORDER = 'rgba(231,229,228,0.8)';
+const CARD_SHADOW =
+  '0 1px 0 rgba(255,255,255,0.7) inset, 0 10px 24px -22px rgba(60,40,120,0.18)';
+const OPT_TILE_BG = 'linear-gradient(135deg,#EEF0FF,#F8E8FF)';
+
+/** Section label — small gradient-dot eyebrow used across every
+ *  creation surface (see ActivityTypeTabs). */
+function SectionEyebrow({ children }: { children: ReactNode }) {
+  return (
+    <div className="mb-2.5 flex items-center gap-2 px-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#8B5CF6]">
+      <span
+        className="inline-block h-1.5 w-1.5 rounded-full"
+        style={{ background: 'linear-gradient(135deg,#8B5CF6,#D946EF)' }}
+      />
+      {children}
+    </div>
+  );
+}
 
 export default function HotSeatView({ onExit, speak, assignments, topicPacks, classes, initialClassId, initialPlayerNames, fallbackNamesByCode, activityTabs }: HotSeatViewProps) {
   const { language, dir, isRTL } = useLanguage();
@@ -784,8 +818,14 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, cl
         backLabel={t.exitBtn}
         activityTabs={activityTabs}
       >
-        <div className="rounded-2xl bg-white shadow-lg border border-orange-100 overflow-hidden">
-            <div className="px-6 py-6 space-y-5">
+        <div className="space-y-7">
+          {/* ── PLAYERS ─────────────────────────────────────────────── */}
+          <section>
+            <SectionEyebrow>{t.playersLabel}</SectionEyebrow>
+            <div
+              className="rounded-[22px] border bg-white p-4 space-y-3"
+              style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
+            >
               <ClassRosterPicker
                 classes={classes ?? []}
                 initialClassId={initialClassId}
@@ -793,222 +833,259 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, cl
                 fallbackNamesByCode={fallbackNamesByCode}
                 accent="orange"
               />
-              <div>
-                <label className="block text-sm font-bold text-stone-700 mb-2">
-                  {t.playersLabel}
-                </label>
-                <textarea
-                  value={playersText}
-                  onChange={e => setPlayersText(e.target.value)}
-                  placeholder={t.playersPlaceholder}
-                  rows={6}
-                  dir={dir}
-                  className="w-full rounded-lg border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-base font-semibold text-stone-800 placeholder:text-stone-400 placeholder:font-normal"
-                />
-                <p className="mt-1 text-xs text-stone-500">{t.playersHint}</p>
-              </div>
+              <textarea
+                value={playersText}
+                onChange={e => setPlayersText(e.target.value)}
+                placeholder={t.playersPlaceholder}
+                rows={5}
+                dir={dir}
+                className="w-full rounded-xl border-[1.5px] border-stone-200 focus:border-[#8B5CF6] focus:outline-none focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)] px-3.5 py-3 text-base font-semibold text-stone-800 placeholder:text-stone-400 placeholder:font-normal transition-shadow"
+              />
+              <p className="text-xs text-stone-500">{t.playersHint}</p>
+            </div>
+          </section>
 
-              <div>
-                <div className="flex items-center gap-1.5 mb-2">
-                  <BookOpen size={14} className="text-stone-600" />
-                  <p className="text-sm font-bold text-stone-700">{t.wordsLabel}</p>
+          {/* ── WORDS ───────────────────────────────────────────────── */}
+          <section>
+            <SectionEyebrow>{t.wordsLabel}</SectionEyebrow>
+
+            {/* Paste hero — same violet-header card as the Assignment /
+                Class Show word picker.  Hot Seat matches words live (no
+                Analyze step), so the textarea lives in the hero body. */}
+            <div
+              className="rounded-[24px] overflow-hidden border bg-white"
+              style={{ borderColor: CARD_BORDER, boxShadow: '0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)' }}
+            >
+              <div className="flex items-center gap-3 px-[22px] py-[18px] text-white" style={{ background: VIOLET_GRAD }}>
+                <div
+                  className="grid h-9 w-9 place-items-center rounded-xl text-[18px]"
+                  style={{ background: 'rgba(255,255,255,0.22)', border: '1px solid rgba(255,255,255,0.35)' }}
+                  aria-hidden
+                >
+                  ✨
                 </div>
-                {/* Source picker — 4 cards in a 2×2 (or 2×1 when assignments
-                    is empty + no topics) grid.  Each card shows an icon + label
-                    so the teacher scans the choices visually instead of
-                    reading text-only chips. */}
-                <div className="grid grid-cols-2 gap-2 mb-3">
-                  {([
-                    { kind: 'paste' as SourceKind, label: t.sourcePaste, Icon: ClipboardPaste, visible: true },
-                    { kind: 'camera' as SourceKind, label: t.sourceCamera, Icon: Camera, visible: true },
-                    { kind: 'topic' as SourceKind, label: t.sourceTopic, Icon: Sparkles, visible: availableTopics.length > 0 },
-                    { kind: 'assignment' as SourceKind, label: t.sourceAssignment, Icon: BookOpen, visible: availableAssignments.length > 0 },
-                  ])
-                    .filter(opt => opt.visible)
-                    .map(opt => {
-                      const Icon = opt.Icon;
-                      const active = sourceKind === opt.kind;
-                      return (
-                        <button
-                          key={opt.kind}
-                          type="button"
-                          onClick={() => setSourceKind(opt.kind)}
-                          style={{ touchAction: 'manipulation' }}
-                          className={`flex flex-col items-center justify-center gap-1.5 py-3.5 rounded-lg font-black text-sm border-2 transition-all ${
-                            active
-                              ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                              : 'bg-white text-stone-700 border-stone-200 hover:border-orange-200'
-                          }`}
+                <div className="text-[15px] font-extrabold tracking-[-0.01em]">{t.pasteTitle}</div>
+              </div>
+              <div className="px-[22px] py-5">
+                <textarea
+                  value={wordsText}
+                  onChange={e => setWordsText(e.target.value)}
+                  onFocus={() => setSourceKind('paste')}
+                  placeholder={t.wordsPlaceholder}
+                  rows={5}
+                  dir="ltr"
+                  className="block w-full min-h-[96px] resize-y rounded-2xl border-[1.5px] px-[18px] py-3.5 text-[14px] outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)] leading-relaxed text-stone-800 placeholder:text-stone-400"
+                  style={{ borderColor: CARD_BORDER }}
+                />
+                <p className="mt-3 text-sm text-stone-400 flex items-center gap-2">
+                  <span>💡</span>
+                  <span>{t.wordsHint}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* OR */}
+            <div className="flex items-center gap-4 my-6">
+              <div className="flex-1 h-px bg-stone-200" />
+              <span className="text-sm font-semibold text-stone-400 uppercase tracking-wider">{t.or}</span>
+              <div className="flex-1 h-px bg-stone-200" />
+            </div>
+
+            {/* Alternative word sources — restyled as option cards in the
+                same icon language as the Assignment / Class Show grid.
+                Only the sources Hot Seat actually supports appear (Topic
+                Packs + From Assignment stay gated on available data, same
+                as before); the paste hero above is the primary path. */}
+            {(() => {
+              const altSources = ([
+                { kind: 'topic' as SourceKind, emoji: '🧩', label: t.sourceTopic, visible: availableTopics.length > 0 },
+                { kind: 'assignment' as SourceKind, emoji: '📚', label: t.sourceAssignment, visible: availableAssignments.length > 0 },
+                { kind: 'camera' as SourceKind, emoji: '📷', label: t.sourceCamera, visible: true },
+              ]).filter(s => s.visible);
+              const cols = altSources.length >= 3 ? 'grid-cols-3' : altSources.length === 2 ? 'grid-cols-2' : 'grid-cols-1';
+              return (
+                <div className={`grid ${cols} gap-3`}>
+                  {altSources.map(s => {
+                    const active = sourceKind === s.kind;
+                    return (
+                      <button
+                        key={s.kind}
+                        type="button"
+                        onClick={() => setSourceKind(s.kind)}
+                        style={{
+                          touchAction: 'manipulation',
+                          borderColor: active ? '#c4b5fd' : CARD_BORDER,
+                          background: active ? '#f5f3ff' : '#fff',
+                          boxShadow: CARD_SHADOW,
+                        }}
+                        className="rounded-[22px] border px-3.5 pb-4 pt-[16px] text-start transition-[transform,box-shadow] active:scale-[0.98]"
+                      >
+                        <div
+                          className="grid h-11 w-11 place-items-center rounded-[14px] text-[22px] mb-3"
+                          style={{ background: OPT_TILE_BG, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9)' }}
+                          aria-hidden
                         >
-                          <Icon size={20} className={active ? 'text-white' : 'text-orange-500'} />
-                          <span>{opt.label}</span>
-                        </button>
-                      );
-                    })}
+                          {s.emoji}
+                        </div>
+                        <div className="text-[13px] font-bold text-stone-800">{s.label}</div>
+                      </button>
+                    );
+                  })}
                 </div>
-                {sourceKind === 'paste' && (
-                  <>
-                    <textarea
-                      value={wordsText}
-                      onChange={e => setWordsText(e.target.value)}
-                      placeholder={t.wordsPlaceholder}
-                      rows={5}
-                      dir="ltr"
-                      className="w-full rounded-lg border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-base font-semibold text-stone-800 placeholder:text-stone-400 placeholder:font-normal"
-                    />
-                    <p className="mt-1 text-xs text-stone-500">{t.wordsHint}</p>
-                  </>
-                )}
-                {sourceKind === 'assignment' && availableAssignments.length > 0 && (
-                  <select
-                    value={assignmentId ?? ''}
-                    onChange={e => setAssignmentId(e.target.value || null)}
-                    dir={dir}
-                    aria-label={t.pickAssignment}
-                    className="w-full rounded-lg border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-sm font-semibold text-stone-800 bg-white"
+              );
+            })()}
+
+            {/* Active alternative-source panel (paste uses the hero above). */}
+            {sourceKind === 'assignment' && availableAssignments.length > 0 && (
+              <select
+                value={assignmentId ?? ''}
+                onChange={e => setAssignmentId(e.target.value || null)}
+                dir={dir}
+                aria-label={t.pickAssignment}
+                className="mt-3 w-full rounded-xl border-[1.5px] border-stone-200 focus:border-[#8B5CF6] focus:outline-none px-3.5 py-3 text-sm font-semibold text-stone-800 bg-white"
+              >
+                {availableAssignments.map(a => (
+                  <option key={a.id} value={a.id}>{a.title}</option>
+                ))}
+              </select>
+            )}
+            {sourceKind === 'topic' && availableTopics.length > 0 && (
+              <select
+                value={String(topicIdx)}
+                onChange={e => setTopicIdx(Number(e.target.value))}
+                dir={dir}
+                aria-label={t.pickTopic}
+                className="mt-3 w-full rounded-xl border-[1.5px] border-stone-200 focus:border-[#8B5CF6] focus:outline-none px-3.5 py-3 text-sm font-semibold text-stone-800 bg-white"
+              >
+                {availableTopics.map((pack, i) => (
+                  <option key={`${pack.name}-${i}`} value={String(i)}>
+                    {pack.icon} {pack.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            {sourceKind === 'camera' && (
+              <div className="mt-3 space-y-2">
+                <p className="text-xs text-stone-500">{t.cameraHint}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCamera(true)}
+                    style={{ touchAction: 'manipulation' }}
+                    className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-stone-900 text-white font-bold text-sm active:scale-[0.98] transition"
                   >
-                    {availableAssignments.map(a => (
-                      <option key={a.id} value={a.id}>{a.title}</option>
-                    ))}
-                  </select>
-                )}
-                {sourceKind === 'topic' && availableTopics.length > 0 && (
-                  <select
-                    value={String(topicIdx)}
-                    onChange={e => setTopicIdx(Number(e.target.value))}
-                    dir={dir}
-                    aria-label={t.pickTopic}
-                    className="w-full rounded-lg border-2 border-stone-200 focus:border-orange-400 focus:outline-none px-3 py-2.5 text-sm font-semibold text-stone-800 bg-white"
+                    <Camera size={16} />
+                    {t.cameraBtn}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => galleryInputRef.current?.click()}
+                    style={{ touchAction: 'manipulation' }}
+                    className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white border-[1.5px] border-stone-200 text-stone-700 font-bold text-sm hover:border-violet-200 active:scale-[0.98] transition"
                   >
-                    {availableTopics.map((pack, i) => (
-                      <option key={`${pack.name}-${i}`} value={String(i)}>
-                        {pack.icon} {pack.name}
-                      </option>
-                    ))}
-                  </select>
+                    <ImageIcon size={16} />
+                    {t.galleryBtn}
+                  </button>
+                </div>
+                <input
+                  ref={galleryInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleGalleryChange}
+                />
+                {ocrStatus === 'reading' && (
+                  <p className="flex items-center gap-1.5 text-xs font-semibold text-stone-600">
+                    <Loader2 size={14} className="animate-spin" />
+                    {t.ocrReading}
+                  </p>
                 )}
-                {sourceKind === 'camera' && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-stone-500">{t.cameraHint}</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowCamera(true)}
-                        style={{ touchAction: 'manipulation' }}
-                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-stone-900 text-white font-bold text-sm active:scale-[0.98] transition"
-                      >
-                        <Camera size={16} />
-                        {t.cameraBtn}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => galleryInputRef.current?.click()}
-                        style={{ touchAction: 'manipulation' }}
-                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-white border-2 border-stone-200 text-stone-700 font-bold text-sm hover:border-orange-200 active:scale-[0.98] transition"
-                      >
-                        <ImageIcon size={16} />
-                        {t.galleryBtn}
-                      </button>
-                    </div>
-                    <input
-                      ref={galleryInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleGalleryChange}
-                    />
-                    {ocrStatus === 'reading' && (
-                      <p className="flex items-center gap-1.5 text-xs font-semibold text-stone-600">
-                        <Loader2 size={14} className="animate-spin" />
-                        {t.ocrReading}
-                      </p>
-                    )}
-                    {ocrStatus === 'error' && ocrError && (
-                      <p className="flex items-start gap-1.5 text-xs font-semibold text-rose-600">
-                        <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                        <span>{ocrError}</span>
-                      </p>
-                    )}
-                    {ocrStatus === 'done' && ocrWords.length > 0 && (
-                      <p className="text-xs font-semibold text-emerald-700">
-                        {t.ocrFoundCount(ocrWords.length)}
-                      </p>
-                    )}
-                  </div>
+                {ocrStatus === 'error' && ocrError && (
+                  <p className="flex items-start gap-1.5 text-xs font-semibold text-rose-600">
+                    <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                    <span>{ocrError}</span>
+                  </p>
                 )}
-                {vocab && (sourceKind !== 'camera' || ocrStatus === 'done' || rawPool.length > 0) && (
-                  <p className={`mt-1.5 text-xs font-semibold ${wordPool.length < 4 ? 'text-rose-600' : 'text-stone-500'}`}>
-                    {wordPool.length < 4
-                      ? t.poolTooSmall
-                      : sourceKind === 'paste'
-                      ? t.matchedHint(rawPool.length, pastedLines.length)
-                      : sourceKind === 'camera'
-                      ? t.matchedHint(rawPool.length, ocrWords.length)
-                      : t.poolHint(wordPool.length)}
+                {ocrStatus === 'done' && ocrWords.length > 0 && (
+                  <p className="text-xs font-semibold text-emerald-700">
+                    {t.ocrFoundCount(ocrWords.length)}
                   </p>
                 )}
               </div>
+            )}
+            {vocab && (sourceKind !== 'camera' || ocrStatus === 'done' || rawPool.length > 0) && (
+              <p className={`mt-2 text-xs font-semibold px-1 ${wordPool.length < 4 ? 'text-rose-600' : 'text-stone-500'}`}>
+                {wordPool.length < 4
+                  ? t.poolTooSmall
+                  : sourceKind === 'paste'
+                  ? t.matchedHint(rawPool.length, pastedLines.length)
+                  : sourceKind === 'camera'
+                  ? t.matchedHint(rawPool.length, ocrWords.length)
+                  : t.poolHint(wordPool.length)}
+              </p>
+            )}
+          </section>
 
-              <div>
-                <p className="text-sm font-bold text-stone-700 mb-2">{t.translateTo}</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['hebrew', 'arabic'] as TargetLang[]).map(lang => (
-                    <button
-                      key={lang}
-                      type="button"
-                      onClick={() => chooseTargetLang(lang)}
-                      style={{ touchAction: 'manipulation' }}
-                      className={`py-2.5 rounded-lg font-bold text-sm border-2 transition-all ${
-                        targetLang === lang
-                          ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                          : 'bg-white text-stone-600 border-stone-200 hover:border-orange-200'
-                      }`}
-                    >
-                      {lang === 'hebrew' ? t.hebrew : t.arabic}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-stone-700 mb-2">
-                  {t.qpp}
-                </label>
-                <div className="flex items-center gap-2">
-                  {[3, 5, 8, 10].map(n => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setQuestionsPerPlayer(n)}
-                      style={{ touchAction: 'manipulation' }}
-                      className={`flex-1 py-2 rounded-lg font-bold text-sm border-2 transition-all ${
-                        questionsPerPlayer === n
-                          ? 'bg-amber-500 text-white border-amber-500'
-                          : 'bg-white text-stone-600 border-stone-200 hover:border-amber-200'
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowReview(true)}
-                disabled={!canStart}
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className="w-full py-3.5 rounded-lg bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-black text-base shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
-              >
-                <Eye size={18} />
-                {!vocab ? t.loadingWords : t.reviewBtn(wordPool.length)}
-                {vocab && <ChevronRight size={18} />}
-              </button>
-              {parsedNameCount < 2 && (
-                <p className="text-xs text-rose-600 font-semibold text-center -mt-2">{t.needTwo}</p>
-              )}
+          {/* ── TRANSLATE TO ────────────────────────────────────────── */}
+          <section>
+            <SectionEyebrow>{t.translateTo}</SectionEyebrow>
+            <div className="grid grid-cols-2 gap-3">
+              {(['hebrew', 'arabic'] as TargetLang[]).map(lang => {
+                const on = targetLang === lang;
+                return (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => chooseTargetLang(lang)}
+                    style={{ touchAction: 'manipulation', ...(on ? { background: VIOLET_GRAD, color: '#fff', borderColor: 'transparent' } : {}) }}
+                    className={`py-3 rounded-xl font-bold text-sm border-[1.5px] transition-all ${on ? '' : 'bg-white text-stone-600 border-stone-200 hover:border-violet-200'}`}
+                  >
+                    {lang === 'hebrew' ? t.hebrew : t.arabic}
+                  </button>
+                );
+              })}
             </div>
+          </section>
+
+          {/* ── QUESTIONS PER PLAYER ────────────────────────────────── */}
+          <section>
+            <SectionEyebrow>{t.qpp}</SectionEyebrow>
+            <div className="grid grid-cols-4 gap-3">
+              {[3, 5, 8, 10].map(n => {
+                const on = questionsPerPlayer === n;
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setQuestionsPerPlayer(n)}
+                    style={{ touchAction: 'manipulation', ...(on ? { background: VIOLET_GRAD, color: '#fff', borderColor: 'transparent' } : {}) }}
+                    className={`py-2.5 rounded-xl font-bold text-sm border-[1.5px] transition-all ${on ? '' : 'bg-white text-stone-600 border-stone-200 hover:border-violet-200'}`}
+                  >
+                    {n}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* ── REVIEW CTA ──────────────────────────────────────────── */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowReview(true)}
+              disabled={!canStart}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-black text-base shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+            >
+              <Eye size={18} />
+              {!vocab ? t.loadingWords : t.reviewBtn(wordPool.length)}
+              {vocab && <ChevronRight size={18} />}
+            </button>
+            {parsedNameCount < 2 && (
+              <p className="mt-2 text-xs text-rose-600 font-semibold text-center">{t.needTwo}</p>
+            )}
           </div>
+        </div>
 
         {/* In-page camera modal — only mounted when explicitly opened so the
             getUserMedia request doesn't fire until the teacher taps. */}
