@@ -775,19 +775,38 @@ const WorksheetDetail: FC<{
         </div>
       )}
 
-      {retryFor && (
-        <ShareWorksheetDialog
-          source={{
-            topicName: buildRetryTitle(worksheet.topic_name, retryFor.student_name),
-            wordIds: extractMisses(retryFor.answers as unknown as Answer[]).map(
-              (m) => m.word_id,
-            ),
-          }}
-          defaultLang={retryLang}
-          parentSlug={worksheet.slug}
-          onClose={() => setRetryFor(null)}
-        />
-      )}
+      {retryFor && (() => {
+        // Reconstruct Word objects from the missed-word records so the
+        // retry worksheet carries its words' text, not just their ids.
+        // Off-curriculum words (Vocabulary Library / paste / OCR) have ids
+        // that don't exist in the student-side ALL_WORDS lookup; without
+        // the text, ShareWorksheetDialog can't persist settings.customWords
+        // and the retry worksheet would auto-skip every exercise (student
+        // opens it and sees no questions). The attempt's answers carry the
+        // english + translation, so rebuild the pool from them. Curriculum
+        // words resolve from ALL_WORDS regardless and are dropped by the
+        // dialog's curriculum-id filter, so this only helps custom words.
+        const misses = extractMisses(retryFor.answers as unknown as Answer[]);
+        const words = misses.map((m) => ({
+          id: m.word_id,
+          english: m.english,
+          hebrew: retryLang === "ar" ? "" : m.translation,
+          arabic: retryLang === "ar" ? m.translation : "",
+          level: "Custom" as const,
+        }));
+        return (
+          <ShareWorksheetDialog
+            source={{
+              topicName: buildRetryTitle(worksheet.topic_name, retryFor.student_name),
+              wordIds: misses.map((m) => m.word_id),
+              words,
+            }}
+            defaultLang={retryLang}
+            parentSlug={worksheet.slug}
+            onClose={() => setRetryFor(null)}
+          />
+        );
+      })()}
     </>
   );
 };
