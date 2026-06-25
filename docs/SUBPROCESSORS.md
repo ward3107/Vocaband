@@ -10,7 +10,7 @@
 > If you spot a difference between this doc and the source code, the
 > source code wins — file an issue and we'll re-sync.
 
-> Last updated 2026-05-22.
+> Last updated 2026-06-25.
 
 ---
 
@@ -140,6 +140,34 @@
 | Endpoint | `fonts.googleapis.com`, `fonts.gstatic.com` |
 | Notes | Per Google's own privacy doc, font request data is logged but not used for advertising or correlated to other Google services. We may move to self-hosted fonts in a future release to remove this. |
 
+### 10. Google — Firebase Cloud Messaging (FCM)
+
+| Field | Value |
+|---|---|
+| Type | Processor (message transit only) |
+| Purpose | Route opt-in push notifications to Android / Chrome devices (new assignment, reward, or live-challenge alerts) |
+| Data categories | Opaque push subscription endpoint (a device ID), PII-free notification payload in transit — **no** student name, class, or score |
+| Hosting region | Global (US-anchored) — `fcm.googleapis.com` |
+| Endpoint | `fcm.googleapis.com` |
+| Sub-processor agreement | Google Ads Data Processing Terms / Google Cloud DPA |
+| Notes | Active **only** for students who explicitly opt in, behind the `push_notifications` feature flag (OFF by default). The device endpoint is stored under RLS (owner-only; teachers cannot read it). ⚠️ Pending legal sign-off before any real rollout — see `docs/legal/PUSH-NOTIFICATIONS-COMPLIANCE.md`. |
+
+### 11. Mozilla — autopush
+
+| Field | Value |
+|---|---|
+| Type | Processor (message transit only) |
+| Purpose | Route opt-in push notifications to Firefox browsers / devices |
+| Data categories | Opaque push subscription endpoint (a device ID), PII-free notification payload in transit — **no** student name, class, or score |
+| Hosting region | Global (US-anchored) — `updates.push.services.mozilla.com` |
+| Endpoint | `updates.push.services.mozilla.com` |
+| Sub-processor agreement | Mozilla Privacy Policy (Mozilla is not DPF-certified) |
+| Notes | The push service Firefox assigns to a device. Active **only** for opted-in students (`push_notifications` flag, OFF by default). Mozilla is not DPF-certified, so the transit transfer relies on the student's explicit opt-in consent (GDPR Art. 49(1)(a)); only an opaque endpoint + PII-free payload is exposed. ⚠️ Legal to confirm the transfer basis at sign-off — see `docs/legal/PUSH-NOTIFICATIONS-COMPLIANCE.md`. |
+
+> Apple Push Notification service (APNs) is **not** yet a sub-processor — it
+> is only introduced when the iOS phase ships (see the compliance package
+> Paper 3). Add it here at that time.
+
 ---
 
 ## Inactive / removed sub-processors
@@ -172,6 +200,8 @@ Source of truth: `src/config/privacy-config.ts → THIRD_PARTY_REGISTRY[i].trans
 | Google Cloud (Text-to-Speech API) | Google-global (no regional pin) | **Not required** (no personal data — only vocabulary words) | [DPF list](https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI) | [DPA](https://cloud.google.com/terms/data-processing-addendum) | Low | 2026-05-22 |
 | Sentry | EU (Germany) | **Adequacy** (intra-EEA via `*.ingest.de.sentry.io`) | [Sentry data residency](https://sentry.io/legal/dpa/) | [DPA](https://sentry.io/legal/dpa/) | Low (PII scrubbed pre-send) | 2026-05-22 |
 | Google Fonts | Google global edge | **EU-US DPF** | [DPF list](https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI) | [Privacy doc](https://developers.google.com/fonts/faq/privacy) | Low (no personal data — IP + UA only on RTL pages) | 2026-05-22 |
+| Google FCM (push) | United States | **EU-US DPF** | [DPF list](https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI) | [DPA](https://business.safety.google/adsprocessorterms/) | Low (opaque endpoint + PII-free payload only; opt-in) | 2026-06-25 |
+| Mozilla autopush (push) | Global (US-anchored) | **Explicit consent** (Art. 49(1)(a) — opt-in; not DPF-certified) | [Mozilla privacy](https://www.mozilla.org/en-US/privacy/websites/) | [Privacy policy](https://www.mozilla.org/en-US/privacy/) | Low (opaque endpoint + PII-free payload only; opt-in) | 2026-06-25 |
 
 For Israeli users, the EU is an "adequate" jurisdiction under both
 EU GDPR (Israel ↔ EU adequacy) and Israeli Privacy Protection Law
@@ -200,6 +230,8 @@ audit trail.  Driven by the `SUBPROCESSOR_CHANGELOG` array in
 
 | Date | Vendor | Change | Description |
 |---|---|---|---|
+| 2026-06-25 | Mozilla autopush | Added | Disclosed the Web Push transit service for Firefox devices. Transit-only message router; opaque endpoint + PII-free payload (no name/class/score). Active only for opted-in students (`push_notifications` flag, OFF by default). Pending legal sign-off. |
+| 2026-06-25 | Google FCM (push) | Added | Disclosed the Web Push / native-Android transit service for Chrome/Android devices. Transit-only message router; opaque endpoint + PII-free payload (no name/class/score). Active only for opted-in students (`push_notifications` flag, OFF by default). Pending legal sign-off. |
 | 2026-05-23 | Google Cloud (Gemini API) | Region & mechanism corrected | Honest verification (audit H-5): the AI Studio API endpoint is Google-global, NOT regionally pinned to `europe-west` as previously published.  Transfer mechanism reclassified from "EU adequacy (intra-EEA)" to "EU-US DPF".  TIA risk unchanged (low — image bytes / vocabulary words, no student PII).  Vertex AI region-pinned migration tracked in `docs/operator-tasks.md`. |
 | 2026-05-22 | Google Cloud (Text-to-Speech API) | Added | Disclosed as a distinct entry (previously implicit under the Google Cloud Gemini row). |
 | 2026-05-22 | Sentry | Added | Disclosed for the first time.  Active since launch but undeclared until the C-9 audit pass; DSN points at the EU (Germany) region. |

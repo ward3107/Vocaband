@@ -365,13 +365,40 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                     <td className="py-2 pr-4">{language === 'en' ? 'Error tracking (PII scrubbed before send)' : language === 'he' ? 'מעקב שגיאות (PII מוסר לפני שליחה)' : 'تتبع الأخطاء (يتم تنقية PII قبل الإرسال)'}</td>
                     <td className="py-2 pr-4">{language === 'en' ? 'EU (Germany)' : language === 'he' ? 'אירופה (גרמניה)' : 'الاتحاد الأوروبي (ألمانيا)'}</td>
                   </tr>
-                  <tr>
+                  <tr className="border-b border-surface-container/50">
                     <td className="py-2 pr-4 font-medium">Google Fonts</td>
                     <td className="py-2 pr-4">{language === 'en' ? 'Web font delivery' : language === 'he' ? 'אספקת גופנים' : 'تسليم الخطوط'}</td>
                     <td className="py-2 pr-4">{language === 'en' ? 'Global edge' : language === 'he' ? 'קצה גלובלי' : 'الحافة العالمية'}</td>
                   </tr>
+                  <tr className="border-b border-surface-container/50">
+                    <td className="py-2 pr-4 font-medium">Google FCM</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'Push notification delivery to Chrome/Android (opt-in only, no name/score)' : language === 'he' ? 'משלוח התראות ל-Chrome/Android (בהסכמה בלבד, ללא שם/ציון)' : 'إرسال الإشعارات إلى Chrome/Android (بالموافقة فقط، بدون اسم/درجة)'}</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'Global (US)' : language === 'he' ? 'גלובלי (ארה"ב)' : 'عالمي (الولايات المتحدة)'}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4 font-medium">Mozilla autopush</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'Push notification delivery to Firefox (opt-in only, no name/score)' : language === 'he' ? 'משלוח התראות ל-Firefox (בהסכמה בלבד, ללא שם/ציון)' : 'إرسال الإشعارات إلى Firefox (بالموافقة فقط، بدون اسم/درجة)'}</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'Global (US)' : language === 'he' ? 'גלובלי (ארה"ב)' : 'عالمي (الولايات المتحدة)'}</td>
+                  </tr>
                 </tbody>
               </table>
+            </div>
+
+            {/* Notifications disclosure (push). Co-located with the processor
+                table because the push transit services above (FCM, Mozilla)
+                exist only for this feature. Functional-only, opt-in, PII-free,
+                one-tap off — mirrors Paper 7 of the compliance package. */}
+            <div className="mt-6 rounded-lg bg-violet-50 ring-1 ring-violet-100 p-5">
+              <h3 className="font-bold text-slate-900 mb-2">
+                {language === 'en' ? 'Notifications' : language === 'he' ? 'התראות' : 'الإشعارات'}
+              </h3>
+              <p className="text-slate-600 leading-relaxed text-sm">
+                {language === 'en'
+                  ? 'If you choose to turn on notifications, we store a push "subscription" for your device so we can alert you when your teacher assigns new work, sends a reward, or starts a live challenge. These messages are delivered through your browser or operating system’s push service (e.g. Google or Mozilla) and never contain your name, class, or scores. We send only functional notifications — never advertising. You can turn notifications off at any time in Privacy Settings, which deletes the stored subscription for that device.'
+                  : language === 'he'
+                  ? 'אם תבחרו להפעיל התראות, נשמור "מנוי" התראות עבור המכשיר שלכם כדי שנוכל להודיע לכם כשהמורה מוסיף משימה חדשה, שולח פרס או מתחיל אתגר חי. ההודעות נשלחות דרך שירות ההתראות של הדפדפן או מערכת ההפעלה (למשל Google או Mozilla) ולעולם אינן כוללות את השם, הכיתה או הציונים שלכם. אנו שולחים רק התראות פונקציונליות — לעולם לא פרסומות. אפשר לכבות התראות בכל רגע בהגדרות הפרטיות, מה שמוחק את המנוי השמור עבור אותו מכשיר.'
+                  : 'إذا اخترت تشغيل الإشعارات، فإننا نخزّن "اشتراك" دفع لجهازك حتى نتمكن من تنبيهك عندما يكلّفك معلمك بعمل جديد أو يرسل مكافأة أو يبدأ تحديًا مباشرًا. تُسلَّم هذه الرسائل عبر خدمة الدفع في متصفحك أو نظام تشغيلك (مثل Google أو Mozilla) ولا تحتوي أبدًا على اسمك أو صفك أو درجاتك. نرسل إشعارات وظيفية فقط — وليست إعلانات أبدًا. يمكنك إيقاف الإشعارات في أي وقت من إعدادات الخصوصية، مما يحذف الاشتراك المخزَّن لذلك الجهاز.'}
+              </p>
             </div>
           </section>
 

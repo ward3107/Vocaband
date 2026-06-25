@@ -21,7 +21,7 @@ This single document covers both.
 - **Authoritative source of truth:** `src/config/privacy-config.ts`
   (`DATA_CONTROLLER`, `DATA_PROTECTION_OFFICER`, `RETENTION_PERIODS`,
   `THIRD_PARTY_REGISTRY`, `DATA_COLLECTION_POINTS`).
-- **Last reviewed:** 2026-05-22.
+- **Last reviewed:** 2026-06-25 (added Activity 9 — push notifications; pending sign-off).
 - **Next review:** annually + on any material change to the data
   flows.
 
@@ -148,6 +148,24 @@ cross-referenced with the operational flows in
 | **Time limit for erasure** | Sentry retention configured at vendor default (90 days for errors, 30 days for replays); on user deletion the UID-keyed events become unlinkable (the `uid` no longer maps to any current user). |
 | **Security measures** | Telemetry gated behind explicit `analytics: true` cookie consent; pre-Sentry error buffer caps at 10 events; PII scrubber runs in `beforeSend` AND on console output (`installScrubbingConsole`); session-replay lazy-loaded after first paint. |
 | **Legal basis** | Legitimate interest in product reliability + explicit user consent (analytics cookies). |
+
+### Activity 9 — Push-notification delivery to opted-in students
+
+> ⚠️ **DRAFT — pending legal sign-off.** New processing of children's data
+> introducing a new device identifier; mirrors Paper 2 of
+> `docs/legal/PUSH-NOTIFICATIONS-COMPLIANCE.md`. Do not publish or enable for
+> real students until the DPO + lawyer ratify it.
+
+| GDPR Art. 30 field | Value |
+|---|---|
+| **Purpose** | Notify a student on their device that their teacher has assigned new work, sent a reward, or started a live challenge. |
+| **Categories of data subjects** | Students (minors) who have **explicitly opted in**. In-app badges remain the default; push is additive and opt-in. |
+| **Categories of personal data** | Push subscription endpoint (opaque URL / device ID), client public key (`p256dh`), auth secret, device label (UX only), language, consent version + timestamps. **No name, class, or score in transit.** |
+| **Categories of recipients** | Supabase (EU-Frankfurt, storage). Push transit: **Google FCM** (Chrome/Android), **Mozilla autopush** (Firefox), **Apple APNs** (only when the iOS phase ships) — message routers only. |
+| **Third-country transfer + safeguards** | Opaque token + PII-free payload transit only. Google FCM: EU-US **DPF**. Mozilla autopush: **explicit opt-in consent** (Art. 49(1)(a)) — Mozilla is not DPF-certified. Per-vendor detail in `docs/SUBPROCESSORS.md`. |
+| **Time limit for erasure** | Until opt-out or endpoint expiry (HTTP 410), then soft-deleted (`revoked_at`); hard-purged with the account via `delete_my_account` / orphan cleanup. |
+| **Security measures** | RLS (owner-only; **teachers cannot read** the endpoint); VAPID-signed sends from `server.ts` under the service-role key; no PII in payload; planned quiet hours + frequency caps; audit-log entry on opt-in / opt-out. |
+| **Legal basis** | Processing: Art. 6(1)(b) educational contract / school authorisation. Channel (sending to the device): **explicit opt-in consent** (`PUSH_CONSENT_VERSION`), independent from and revocable without affecting the account. Functional-only — not marketing (Israeli Communications Law §30A). |
 
 ---
 
