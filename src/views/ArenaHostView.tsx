@@ -288,8 +288,18 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             </div>
           </header>
 
-          <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-2 sm:gap-3">
-            {/* The live map — fills every available pixel so movement reads big */}
+          {/* Map-only board — Word Hunt Arena shows JUST the live map; students
+              roam it as moving avatars (no names, no leaderboard panel — that
+              stays on the other games). The map fills every available pixel so
+              movement reads big from the back of the room. Final standings
+              appear on the results screen when the hunt ends. A compact team
+              total floats in the corner when Red-vs-Blue is on. */}
+          <div className="flex-1 min-h-0 flex flex-col">
+            {teamMode && (
+              <div className="mb-2 max-w-md mx-auto w-full">
+                <TeamScoreBar entries={sorted} />
+              </div>
+            )}
             <section className="flex-1 min-h-0 flex flex-col">
               <div className="relative flex-1 min-h-0">
                 <ArenaCanvas
@@ -306,21 +316,6 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                 {t.wordsLeft(wordsLeft)}
               </p>
             </section>
-
-            {/* Leaderboard — own scroll; a full column beside the map on
-                desktop/tablet, a short capped strip under it on phones. */}
-            <aside className={`flex-shrink-0 lg:w-80 xl:w-96 max-h-[32dvh] lg:max-h-none overflow-y-auto rounded-2xl sm:rounded-3xl shadow-lg border p-3 sm:p-4 ${theme.card}`}>
-              {teamMode && (
-                <div className="mb-3">
-                  <TeamScoreBar entries={sorted} />
-                </div>
-              )}
-              <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500 mb-3 flex items-center gap-2">
-                <Users size={18} /> {t.leaderboard}
-                <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
-              </h2>
-              <CategoryRacePodium entries={sorted} emptyText={t.noStudents} onKick={onKick} theme={theme} />
-            </aside>
           </div>
         </div>
       ) : (
