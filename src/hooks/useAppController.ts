@@ -846,7 +846,14 @@ export function useAppController(initialView?: View): AppViewRouterProps {
 
 
   // --- GAME LOGIC ---
-  const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : SET_2_WORDS;
+  // Fallback MUST stay small. If the game view is ever reached with no
+  // assignment words loaded yet (a load race, or a live-challenge/competition
+  // path that set view="game" before populating words), we used to fall back
+  // to the ENTIRE Set 2 — 809 words — which dropped the student into an
+  // "QUESTION 1 OF 809" marathon. Cap the fallback so it can never become a
+  // giant game; the real assignment replaces it the instant its words load.
+  const GAME_FALLBACK_WORDS = SET_2_WORDS.slice(0, 12);
+  const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : GAME_FALLBACK_WORDS;
   const currentWord = gameWords[currentIndex];
 
   // Bundle of small side-effects (userRef sync, Sentry pipe, feedback
