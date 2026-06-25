@@ -69,6 +69,7 @@
     "jose": "^6.2.3",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
+    "jsqr": "^1.4.0",
     "lottie-react": "^2.4.1",
     "lucide-react": "^1.21.0",
     "mammoth": "^1.12.0",

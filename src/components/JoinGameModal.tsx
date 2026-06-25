@@ -165,9 +165,9 @@ export default function JoinGameModal({ onClose }: JoinGameModalProps) {
           // to the type-the-code field, which always works.
           onUnsupported={() => {
             setScanning(false);
-            setError(L("Scanning isn't available here — type the code above.",
-              "סריקה לא זמינה כאן — הקלידו את הקוד למעלה.",
-              "المسح غير متاح هنا — اكتب الرمز بالأعلى."));
+            setError(L("Camera not available — type the code above.",
+              "המצלמה לא זמינה — הקלידו את הקוד למעלה.",
+              "الكاميرا غير متاحة — اكتب الرمز بالأعلى."));
           }}
         />
       )}

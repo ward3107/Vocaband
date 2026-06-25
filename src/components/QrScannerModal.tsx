@@ -1,31 +1,23 @@
 /**
  * QrScannerModal — full-screen in-app QR scanner so a student who is
- * ALREADY logged into Vocaband can join the teacher's live game without
- * leaving the app to use their phone's native camera.  Reuses the same
- * in-tab getUserMedia pattern as InPageCamera (which exists precisely so
- * low-RAM Android phones don't evict the Vocaband tab when the OS camera
- * intent launches), but instead of a shutter it runs a scan loop over the
- * live frames with the native BarcodeDetector API.
+ * ALREADY in Vocaband can join the teacher's live game without leaving the
+ * app for their phone's native camera.
  *
- * BarcodeDetector ships on Chrome/Android (the bulk of Israeli school
- * devices) but NOT on iOS Safari.  Rather than pull in a heavy JS decoder,
- * we degrade gracefully: when the API is missing we surface onUnsupported
- * so the caller can fall back to the always-available "type the code"
- * path.  That keeps scan as the fast lane and type-the-code as the safety
- * net every device can use.
+ * Decoding uses jsQR (pure JS) over frames drawn to a canvas. We deliberately
+ * do NOT rely on the browser's native BarcodeDetector: it's missing in the
+ * Android WebView (the Capacitor store app) and in iOS Safari, which is
+ * exactly where students run this. jsQR works in all of them, shipping with
+ * the normal web bundle (lazy-loaded so it costs nothing until the scanner
+ * opens).
+ *
+ * If the camera itself is unavailable (permission denied, no camera, or no
+ * getUserMedia), we call onUnsupported so the caller falls back to the
+ * always-available "type the code" field.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { X, AlertTriangle, Keyboard, ScanLine } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
-
-// BarcodeDetector isn't in lib.dom's typings yet — declare the slice we use.
-interface DetectedBarcode { rawValue: string }
-interface BarcodeDetectorLike { detect(source: CanvasImageSource): Promise<DetectedBarcode[]> }
-interface BarcodeDetectorCtor {
-  new (opts?: { formats?: string[] }): BarcodeDetectorLike;
-  getSupportedFormats?: () => Promise<string[]>;
-}
 
 export interface QrScannerModalProps {
   /** Called with the raw decoded QR text (a URL or bare code). The caller
@@ -33,8 +25,8 @@ export interface QrScannerModalProps {
   onDetect: (rawValue: string) => void;
   /** Dismissed without scanning. */
   onCancel: () => void;
-  /** Fired when the browser can't scan (no BarcodeDetector / no camera /
-   *  permission denied) so the caller can route to the type-code path. */
+  /** Fired when the camera can't be used (no getUserMedia / denied / no
+   *  camera) so the caller can route to the type-code path. */
   onUnsupported: () => void;
 }
 
@@ -44,9 +36,10 @@ export default function QrScannerModal({ onDetect, onCancel, onUnsupported }: Qr
     language === "he" ? he : language === "ar" ? ar : en;
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
-  // Latch so a barcode found across consecutive frames only fires once.
+  // Latch so a code found across consecutive frames only fires once.
   const doneRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -63,32 +56,39 @@ export default function QrScannerModal({ onDetect, onCancel, onUnsupported }: Qr
   }, []);
 
   useEffect(() => {
-    const Ctor = (window as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector;
-    // No native scanner (iOS Safari, older browsers) → hand back to caller
-    // so the type-the-code field takes over. Nothing to clean up yet.
-    if (!Ctor || !navigator.mediaDevices?.getUserMedia) {
+    if (!navigator.mediaDevices?.getUserMedia) {
       onUnsupported();
       return;
     }
 
     let cancelled = false;
-    const detector = new Ctor({ formats: ["qr_code"] });
+    // jsQR is pure JS but ~40 kB — lazy-load so it only downloads when a
+    // student actually opens the scanner, not on every dashboard render.
+    const jsQRPromise = import("jsqr").then((m) => m.default);
 
     const scanFrame = async () => {
       if (cancelled || doneRef.current) return;
       const video = videoRef.current;
-      if (video && video.readyState >= 2) {
-        try {
-          const codes = await detector.detect(video);
-          const hit = codes.find((c) => c.rawValue);
-          if (hit && !doneRef.current) {
+      const canvas = canvasRef.current;
+      if (video && canvas && video.readyState >= 2 && video.videoWidth > 0) {
+        const jsQR = await jsQRPromise;
+        // Downscale to keep per-frame decode cheap on low-end school phones;
+        // QR codes survive the loss of detail fine.
+        const w = 480;
+        const h = Math.round((video.videoHeight / video.videoWidth) * w) || 480;
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, w, h);
+          const img = ctx.getImageData(0, 0, w, h);
+          const result = jsQR(img.data, w, h, { inversionAttempts: "dontInvert" });
+          if (result?.data && !doneRef.current) {
             doneRef.current = true;
             stop();
-            onDetect(hit.rawValue);
+            onDetect(result.data);
             return;
           }
-        } catch {
-          // Transient decode error on a frame — keep scanning.
         }
       }
       rafRef.current = requestAnimationFrame(scanFrame);
@@ -109,7 +109,7 @@ export default function QrScannerModal({ onDetect, onCancel, onUnsupported }: Qr
       .catch((err: Error) => {
         if (cancelled) return;
         // Denied / no camera → let the caller fall back to typing rather
-        // than dead-ending the student on an error screen.
+        // than dead-end the student on an error screen.
         if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError" || err.name === "NotFoundError") {
           onUnsupported();
           return;
@@ -186,6 +186,9 @@ export default function QrScannerModal({ onDetect, onCancel, onUnsupported }: Qr
           </div>
         </div>
       )}
+
+      {/* Hidden decode surface. */}
+      <canvas ref={canvasRef} className="hidden" />
     </motion.div>
   );
 }
