@@ -65,8 +65,12 @@ Kill switch (instant off for all): set `enabled = false` and clear the array.
 - **iOS:** only installed PWAs (16.4+) receive push; Safari tabs get nothing.
 - Payloads are PII-free by contract — never add a name/score to the push.
 - Expired endpoints (404/410) are auto-revoked by the sender.
-- Quiet hours / frequency caps are NOT yet implemented — add before a wide
-  rollout (see design doc §4).
+- Quiet hours + daily frequency cap are **implemented server-side** in
+  `server.ts`: no pushes 20:00–07:00 in `PUSH_TIMEZONE` (default
+  `Asia/Jerusalem`), and a per-student daily cap (`PUSH_DAILY_CAP`, default 5)
+  backed by the `push_daily_counts` table + `bump_push_daily_count()` RPC
+  (migration `20260725000000`). Both are env-configurable; the in-app badge is
+  unaffected.
 
 ---
 

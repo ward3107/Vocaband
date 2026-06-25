@@ -72,15 +72,16 @@ Code. Assessment for this feature:
 
 ### 1.2 Necessity & proportionality
 - Notifications are **opt-in**, **functional-only**, **PII-free**, and
-  **frequency-capped** with quiet hours — the least intrusive design that
-  meets the purpose. In-app badge remains the default; push is additive.
+  **frequency-capped with quiet hours (both enforced server-side in code)** —
+  the least intrusive design that meets the purpose. In-app badge remains the
+  default; push is additive.
 
 ### 1.3 Risks & mitigations
 | Risk to the child | Mitigation |
 |---|---|
 | Device token is a persistent identifier | Stored under RLS, visible only to the owning student + the service-role sender; **teachers cannot read it**; soft-deleted on opt-out/expiry. |
 | PII leaking through third-party push services | Payload carries **no name/class/score** — generic localized text; details fetched only post-authentication. |
-| Over-notification / pressure on a child | Quiet hours 20:00–07:00, daily cap, burst coalescing; **no streak/guilt nudges** (default OFF). |
+| Over-notification / pressure on a child | **Enforced server-side:** quiet hours 20:00–07:00 (Asia/Jerusalem) — no pushes sent during the child's night — and a daily per-student cap (default 5; counts the notification event, not per device). **No** streak/guilt nudges. The in-app badge still shows everything; only the device buzz is gated. |
 | Unsolicited contact (anti-spam) | Functional-only + explicit opt-in; marketing excluded. |
 | Cross-border transfer (US push services) | Google/Apple covered by EU-US **DPF** + SCCs; only opaque token + PII-free payload transit. |
 | Manipulative design toward minors | No countdowns, no loss-framing, no behavioural re-engagement in Phase 1. |
