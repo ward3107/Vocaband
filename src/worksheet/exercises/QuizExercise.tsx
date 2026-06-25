@@ -6,7 +6,7 @@
  * Score model: one point per correct first-pick.  `total` equals the
  * number of words in the exercise.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Volume2 } from "lucide-react";
 import { useAudio } from "../../hooks/useAudio";
@@ -28,6 +28,18 @@ export const QuizExercise: ExerciseComponent<ExerciseOf<"quiz">> = ({
   const [answers, setAnswers] = useState<Answer[]>([]);
 
   const current = order[idx];
+
+  // Empty word list — finish immediately so the runner advances instead
+  // of freezing on a blank screen. Every other exercise does this; Quiz
+  // alone used to bail to `return null` below without ever calling
+  // onComplete, so a worksheet whose words don't resolve (e.g. a sheet
+  // minted before settings.customWords was persisted for library/custom
+  // words) would stall here forever the moment the runner hit the quiz.
+  useEffect(() => {
+    if (order.length === 0) {
+      onComplete({ score: 0, total: 0, answers: [] });
+    }
+  }, [order.length, onComplete]);
 
   const options: Word[] = useMemo(() => {
     if (!current) return [];
