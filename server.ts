@@ -4727,6 +4727,16 @@ async function startServer() {
     },
   });
 
+  // Public VAPID key endpoint — the web client fetches this when the key
+  // wasn't baked into the build (VITE_VAPID_PUBLIC_KEY). The public key is
+  // not a secret (it's sent to every push service), so no auth is needed.
+  // This makes Web Push work whenever the SERVER VAPID keys are set, even
+  // if the build-time env var is missing.
+  app.get("/api/push/vapid-public-key", (_req, res) => {
+    if (!PUSH_VAPID_PUBLIC) return res.status(404).json({ error: "push not configured" });
+    return res.json({ key: PUSH_VAPID_PUBLIC });
+  });
+
   app.post("/api/push/notify", pushNotifyLimiter, async (req, res) => {
     // Soft no-op when the channel isn't configured — never an error so the
     // teacher's already-successful action is unaffected.
