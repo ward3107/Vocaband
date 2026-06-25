@@ -38,6 +38,14 @@ interface HostStrings {
   buildError: string; loadingWords: string;
   firstWinner: (name: string) => string;
   modeNames: ModeNames;
+  // Two-step flow: Step 1 (adjust the game) → Step 2 (open the room).
+  cancel: string; openRoom: string; editGame: string;
+  stepAdjust: string; stepRoom: string;
+  needWordsShort: (min: number) => string;
+  teamsHeading: string; boardThemeHeading: string;
+  // Leaderboard footer when the class is larger than the visible top rows.
+  morePlaying: (more: number, avg: number) => string;
+  ownRankHint: string;
 }
 
 export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
@@ -67,6 +75,12 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
     buildError: "Couldn't build a question for that mode — try another set or mode.",
     loadingWords: "Loading words…",
     firstWinner: (name) => `${name} was first!`,
+    cancel: "Cancel", openRoom: "Open the room", editGame: "Edit game",
+    stepAdjust: "Adjust game", stepRoom: "Open room",
+    needWordsShort: (min) => `Add at least ${min} words to start.`,
+    teamsHeading: "Teams", boardThemeHeading: "Board theme",
+    morePlaying: (more, avg) => `+${more} more playing · class avg ${avg}`,
+    ownRankHint: "every student sees their own rank on their phone 📱",
     modeNames: {
       "true-false": "True / False", "classic": "Classic", "reverse": "Reverse",
       "listening": "Listening", "idiom": "Idioms", "letter-sounds": "Letter Sounds",
@@ -98,6 +112,12 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
     buildError: "לא ניתן לבנות שאלה למצב הזה — נסו מאגר או מצב אחר.",
     loadingWords: "טוען מילים…",
     firstWinner: (name) => `${name} הראשון!`,
+    cancel: "ביטול", openRoom: "פתחו את החדר", editGame: "עריכת המשחק",
+    stepAdjust: "הגדרת המשחק", stepRoom: "פתיחת החדר",
+    needWordsShort: (min) => `הוסיפו לפחות ${min} מילים כדי להתחיל.`,
+    teamsHeading: "קבוצות", boardThemeHeading: "ערכת הלוח",
+    morePlaying: (more, avg) => `עוד ${more} משחקים · ממוצע כיתה ${avg}`,
+    ownRankHint: "כל תלמיד רואה את הדירוג שלו בטלפון 📱",
     modeNames: {
       "true-false": "נכון / לא נכון", "classic": "קלאסי", "reverse": "הפוך",
       "listening": "האזנה", "idiom": "ביטויים", "letter-sounds": "צלילי אותיות",
@@ -129,6 +149,12 @@ export const SPEED_HOST_STRINGS: Record<"en" | "he" | "ar", HostStrings> = {
     buildError: "تعذّر إنشاء سؤال لهذا الوضع — جرّب مجموعة أو وضعًا آخر.",
     loadingWords: "جارٍ تحميل الكلمات…",
     firstWinner: (name) => `${name} كان الأول!`,
+    cancel: "إلغاء", openRoom: "افتح الغرفة", editGame: "تعديل اللعبة",
+    stepAdjust: "إعداد اللعبة", stepRoom: "افتح الغرفة",
+    needWordsShort: (min) => `أضِف ${min} كلمات على الأقل للبدء.`,
+    teamsHeading: "الفِرق", boardThemeHeading: "مظهر اللوحة",
+    morePlaying: (more, avg) => `+${more} يلعبون أيضًا · متوسط الصف ${avg}`,
+    ownRankHint: "كل طالب يرى ترتيبه على هاتفه 📱",
     modeNames: {
       "true-false": "صح / خطأ", "classic": "كلاسيكي", "reverse": "عكسي",
       "listening": "استماع", "idiom": "تعابير", "letter-sounds": "أصوات الحروف",

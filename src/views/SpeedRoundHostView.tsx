@@ -90,6 +90,10 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   // Celebratory results overlay when ending a played game.
   const [showResults, setShowResults] = useState(false);
   const [presenting, setPresenting] = useState(false);
+  // Two-step flow: 'setup' = adjust the game (words/modes/time/teams),
+  // 'room' = the join board (QR + live roster) and live play. The teacher
+  // configures first, then opens the room so students can scan in.
+  const [phase, setPhase] = useState<"setup" | "room">("setup");
   const [buildError, setBuildError] = useState(false);
   // Student pending removal (clientId + nickname) — drives the confirm modal.
   const [confirmKick, setConfirmKick] = useState<{ clientId: string; nickname: string } | null>(null);
@@ -298,6 +302,19 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   // Mark the winner in the podium entries so it can be highlighted.
   const podiumEntries = useMemo(() => sorted, [sorted]);
 
+  // The board shows the top racers; the rest collapse into a "+N more"
+  // summary so a full class (20–35) stays readable on a projector. Every
+  // student still sees their own rank on their phone regardless.
+  const TOP_N = 8;
+  const shownEntries = useMemo(
+    () => podiumEntries.slice(0, presenting ? 12 : TOP_N),
+    [podiumEntries, presenting],
+  );
+  const moreCount = Math.max(0, podiumEntries.length - shownEntries.length);
+  const classAvg = podiumEntries.length
+    ? Math.round(podiumEntries.reduce((s, e) => s + e.score, 0) / podiumEntries.length)
+    : 0;
+
   const cardCls = "bg-surface border-outline-variant shadow-lg";
   const headingCls = "text-on-surface";
   const pillIdle = "bg-surface border-outline-variant text-on-surface-variant hover:border-outline";
@@ -313,12 +330,21 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   return (
     <div className="min-h-[100dvh] transition-colors" dir={dir} style={presenting ? theme.page : { backgroundColor: 'var(--vb-surface-alt)' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <header className="flex items-center justify-between gap-2 mb-5">
+        <header className="flex items-center justify-between gap-2 mb-3">
           <h1 className={`min-w-0 text-xl sm:text-3xl font-black flex items-center gap-2 ${presenting ? theme.name : headingCls}`}>
             <span className="text-2xl sm:text-3xl flex-shrink-0">⚡</span>
             <span className="truncate">{t.title}</span>
           </h1>
-          {presenting ? (
+          {phase === "setup" ? (
+            <button
+              type="button"
+              onClick={handleEnd}
+              style={{ touchAction: "manipulation" }}
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-xl font-black text-sm bg-stone-100 text-stone-600 hover:bg-stone-200 active:scale-95 transition"
+            >
+              <X size={16} /> <span className="hidden sm:inline">{t.cancel}</span>
+            </button>
+          ) : presenting ? (
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               <span className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-black text-base sm:text-lg tracking-[0.12em] bg-fuchsia-50 text-fuchsia-700">
                 {t.code}: {sessionCode}
@@ -354,117 +380,44 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
           )}
         </header>
 
-        {/* Background music — teacher can play/pause, skip, and adjust volume
-            for the room while the round runs. In presentation mode it docks
-            to a compact corner pill (kept mounted, so the music never cuts
-            out when the game starts). */}
-        <GameMusicPlayer language={language} floating={presenting} />
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Main: live word banner + the big leaderboard */}
-          <div className={`${presenting ? "lg:col-span-12" : "lg:col-span-8"} space-y-4 order-2 lg:order-1`}>
-            <AnimatePresence>
-              {roundActive && currentSpeed && (
-                <motion.section
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  className={`rounded-3xl border p-6 sm:p-7 text-center shadow-lg ${
-                    lowTime ? "bg-red-50 border-red-200 shadow-red-500/10" : cardCls
-                  }`}
-                >
-                  <div className="flex flex-col items-center gap-3">
-                    <span className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-500">
-                      {SPEED_MODE_META[currentSpeed.mode].emoji} {t.modeNames[currentSpeed.mode]}
+        {/* Step indicator — Adjust game → Open room. Hidden in projector mode. */}
+        {!presenting && (
+          <div className="flex items-center justify-center gap-2 mb-5 text-xs font-black">
+            {([["setup", "1", t.stepAdjust], ["room", "2", t.stepRoom]] as const).map(([p, num, label], i) => {
+              const active = phase === p;
+              const done = phase === "room" && p === "setup";
+              return (
+                <div key={p} className="flex items-center gap-2">
+                  {i > 0 && <span className="w-7 h-px bg-stone-300" />}
+                  <span className={`inline-flex items-center gap-1.5 ${active ? "text-fuchsia-600" : done ? "text-emerald-600" : "text-stone-400"}`}>
+                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] ${active ? "bg-fuchsia-500 text-white" : done ? "bg-emerald-500 text-white" : "bg-stone-200 text-stone-500"}`}>
+                      {done ? <Check size={12} strokeWidth={3} /> : num}
                     </span>
-                    <span className={`font-black leading-tight ${headingCls} text-3xl sm:text-5xl`} dir="auto">
-                      {currentSpeed.promptKind === "audio" ? "🔊 ?" : currentSpeed.prompt}
-                    </span>
-                    <span className={`tabular-nums font-black leading-none ${lowTime ? "text-red-600 animate-pulse" : "text-fuchsia-500"} text-5xl sm:text-6xl`}>
-                      {secondsLeft}
-                    </span>
-                  </div>
-                </motion.section>
-              )}
-            </AnimatePresence>
-
-            {/* Live Red vs Blue total — only in team mode. */}
-            {teamMode && <TeamScoreBar entries={sorted} />}
-
-            {/* Pre-game it's a waiting room (students popping in); once a word
-                has been played the leaderboard takes over. */}
-            {hasRunRound || roundActive ? (
-              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${presenting ? theme.card : cardCls}`}>
-                <h2 className="text-sm font-black uppercase tracking-widest text-fuchsia-500 mb-4 flex items-center gap-2">
-                  <Users size={18} /> {t.leaderboard}
-                  <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
-                </h2>
-                {/* Re-key the podium on roundId so it visibly re-animates each
-                    word; winner highlight is layered via the wrapper ring. */}
-                <div key={endedRoundId ?? "lobby"}>
-                  <CategoryRacePodium entries={podiumEntries} emptyText={t.noStudents} large onKick={onKick} theme={presenting ? theme : undefined} />
+                    {label}
+                  </span>
                 </div>
-                {winnerClientId && !roundActive && (
-                  <p className="mt-4 text-center text-sm font-black text-amber-600">
-                    ⚡ {t.firstWinner(sorted.find(e => e.clientId === winnerClientId)?.nickname ?? "")}
-                  </p>
-                )}
-              </section>
-            ) : (
-              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${presenting ? theme.card : cardCls}`}>
-                <LobbyRoster
-                  players={sorted}
-                  countLabel={t.inRoom}
-                  emptyLabel={t.noStudents}
-                  accent="from-amber-400 to-orange-500"
-                  large={presenting}
-                  onKick={onKick}
-                  theme={presenting ? theme : undefined}
-                />
-              </section>
-            )}
+              );
+            })}
           </div>
+        )}
 
-          {/* Sidebar: join + setup controls */}
-          <aside className={`lg:col-span-4 space-y-4 order-1 lg:order-2 ${presenting ? "hidden" : ""}`}>
-            <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500">{t.joinHeading}</h2>
-                <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
-                  className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition active:scale-95 ${iconBtn}`} aria-label={t.enlarge}>
-                  <Maximize2 size={15} />
-                </button>
-              </div>
-              <div className="flex flex-col items-center text-center">
-                <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
-                  className="bg-white p-2 rounded-2xl border border-stone-100 shadow-sm active:scale-[0.98] transition" aria-label={t.enlarge}>
-                  <QRCodeSVG value={joinUrl} size={132} />
-                </button>
-                <div className="mt-3 w-full">
-                  <div className="text-xs font-bold text-stone-400 uppercase tracking-widest">{t.code}</div>
-                  <div className={`text-4xl font-black tracking-[0.15em] ${headingCls}`}>{sessionCode}</div>
-                  <button
-                    type="button"
-                    onClick={handleCopy}
-                    style={{ touchAction: "manipulation" }}
-                    className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm transition active:scale-[0.98] ${
-                      copied ? "bg-emerald-100 text-emerald-700" : "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white shadow-md shadow-fuchsia-500/30"
-                    }`}
-                  >
-                    {copied ? <><Check size={16} /> {t.copied}</> : <><Copy size={16} /> {t.copy}</>}
-                  </button>
-                </div>
-              </div>
-            </section>
+        {/* Background music — teacher can play/pause, skip, and adjust volume
+            for the room while the round runs. Docks to a compact draggable
+            corner pill in the room/projector, so it never covers the board. */}
+        <GameMusicPlayer language={language} floating={presenting || phase === "room"} />
 
-            <GameThemePicker themeId={themeId} onSelect={setThemeId} language={language} />
-
-            <TeamModeToggle
-              teamMode={teamMode}
-              onToggle={(en) => tokenRef.current && setTeamMode(en, tokenRef.current)}
-              idleClass={pillIdle}
-              cardClass={cardCls}
-            />
+        {phase === "setup" ? (
+          /* ─────────────── STEP 1 · Adjust the game ─────────────── */
+          <div className="max-w-3xl mx-auto space-y-4 pb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <TeamModeToggle
+                teamMode={teamMode}
+                onToggle={(en) => tokenRef.current && setTeamMode(en, tokenRef.current)}
+                idleClass={pillIdle}
+                cardClass={cardCls}
+              />
+              <GameThemePicker themeId={themeId} onSelect={setThemeId} language={language} />
+            </div>
 
             <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
               {/* The teacher's word list — typed / picked from the library. */}
@@ -481,7 +434,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               {/* Modes — multi-select; each word draws a random one */}
               <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mt-5 mb-1">{t.modeHeading}</h2>
               <p className="text-[11px] font-bold text-stone-400 mb-3">{t.modeHint}</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {QP_SPEED_MODES.map((m) => {
                   const picked = modes.includes(m);
                   return (
@@ -504,45 +457,51 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                 })}
               </div>
 
-              {/* Timer */}
-              <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mt-5 mb-3">{t.timerHeading}</h2>
-              <div className="grid grid-cols-4 gap-2">
-                {QP_SPEED_ROUND_SECONDS.map((opt) => {
-                  const picked = roundSeconds === opt;
-                  return (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => setRoundSeconds(opt)}
-                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                      className={`px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white border-transparent shadow-md" : pillIdle}`}
-                    >
-                      {t.seconds(opt)}
-                    </button>
-                  );
-                })}
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5">
+                {/* Timer */}
+                <div>
+                  <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mt-5 mb-3">{t.timerHeading}</h2>
+                  <div className="grid grid-cols-4 gap-2">
+                    {QP_SPEED_ROUND_SECONDS.map((opt) => {
+                      const picked = roundSeconds === opt;
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => setRoundSeconds(opt)}
+                          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                          className={`px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white border-transparent shadow-md" : pillIdle}`}
+                        >
+                          {t.seconds(opt)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-              {/* Repeats — cycle the whole list ×1–×4 so short lists fill a
-                  longer session (e.g. 10 words ×2 = 20 rounds). */}
-              <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mt-5 mb-1">{t.repeatsHeading}</h2>
-              <p className="text-[11px] font-bold text-stone-400 mb-3">{t.repeatsHint}</p>
-              <div className="grid grid-cols-4 gap-2">
-                {SPEED_REPEAT_OPTIONS.map((opt) => {
-                  const picked = passes === opt;
-                  return (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => setPasses(opt)}
-                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                      className={`px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white border-transparent shadow-md" : pillIdle}`}
-                    >
-                      {t.repeatsLabel(opt)}
-                    </button>
-                  );
-                })}
+                {/* Repeats — cycle the whole list ×1–×4 so short lists fill a
+                    longer session (e.g. 10 words ×2 = 20 rounds). */}
+                <div>
+                  <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mt-5 mb-3">{t.repeatsHeading}</h2>
+                  <div className="grid grid-cols-4 gap-2">
+                    {SPEED_REPEAT_OPTIONS.map((opt) => {
+                      const picked = passes === opt;
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => setPasses(opt)}
+                          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                          className={`px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white border-transparent shadow-md" : pillIdle}`}
+                        >
+                          {t.repeatsLabel(opt)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
+              <p className="text-[11px] font-bold text-stone-400 mt-2">{t.repeatsHint}</p>
 
               {/* Auto-play toggle — words chain themselves after the first. */}
               <button
@@ -558,52 +517,186 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                   <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${autoPlay ? "start-[18px]" : "start-0.5"}`} />
                 </span>
               </button>
-
-              {buildError && <p className="mt-3 text-xs font-bold text-rose-600">{t.buildError}</p>}
-              {hasRunRound && !roundActive && allPlayed && (
-                <p className="mt-3 text-center text-sm font-black text-emerald-600">🎉 {t.roundDone}</p>
-              )}
-              {hasRunRound && !allPlayed && (
-                <p className="mt-3 text-center text-xs font-bold text-stone-400">{t.wordsPlayed(playedCount, totalRounds)}</p>
-              )}
-
-              {allPlayed && !roundActive ? (
-                <button
-                  type="button"
-                  onClick={handlePlayAgain}
-                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                  className="mt-4 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg bg-gradient-to-r from-emerald-500 to-teal-600 shadow-emerald-500/30 active:scale-[0.98] transition"
-                >
-                  <Play size={18} /> {t.playAgain}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleStart}
-                  disabled={roundActive || !canStart}
-                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                  className={`mt-4 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${roundActive || !canStart ? "bg-stone-300 cursor-not-allowed" : "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]"}`}
-                >
-                  {roundActive
-                    ? <><Clock size={18} /> {t.wordLive} · {secondsLeft}s</>
-                    : autoCountdown !== null
-                      ? <><Zap size={18} /> {t.autoNextIn(autoCountdown)}</>
-                      : <><Play size={18} /> {startLabel}</>}
-                </button>
-              )}
-              {roundActive && (
-                <button
-                  type="button"
-                  onClick={handleEndRound}
-                  style={{ touchAction: "manipulation" }}
-                  className="mt-2 w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-black text-base bg-rose-100 text-rose-700 hover:bg-rose-200 active:scale-[0.98] transition"
-                >
-                  <Square size={16} /> {t.endRound}
-                </button>
-              )}
             </section>
-          </aside>
-        </div>
+
+            {/* Open the room → moves to Step 2 (students can now scan in). */}
+            <button
+              type="button"
+              onClick={() => canStart && setPhase("room")}
+              disabled={!canStart}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${canStart ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]" : "bg-stone-300 cursor-not-allowed"}`}
+            >
+              {canStart ? <>{t.openRoom} →</> : t.needWordsShort(MIN_WORDS)}
+            </button>
+          </div>
+        ) : (
+          /* ─────────────── STEP 2 · The room + live play ─────────────── */
+          <>
+            {/* Live word banner — small strip; students read the full question
+                on their own phones, so the board leads with the scoreboard. */}
+            <AnimatePresence>
+              {roundActive && currentSpeed && (
+                <motion.section
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className={`mb-4 rounded-2xl border px-5 py-3 flex items-center justify-center gap-4 shadow-sm ${
+                    lowTime ? "bg-red-50 border-red-200" : cardCls
+                  }`}
+                >
+                  <span className="text-xs font-black uppercase tracking-[0.18em] text-fuchsia-500">
+                    {SPEED_MODE_META[currentSpeed.mode].emoji} {t.modeNames[currentSpeed.mode]}
+                  </span>
+                  <span className={`font-black ${headingCls} text-xl sm:text-2xl`} dir="auto">
+                    {currentSpeed.promptKind === "audio" ? "🔊 ?" : currentSpeed.prompt}
+                  </span>
+                  <span className={`tabular-nums font-black ${lowTime ? "text-red-600 animate-pulse" : "text-fuchsia-500"} text-2xl sm:text-3xl`}>
+                    {secondsLeft}
+                  </span>
+                </motion.section>
+              )}
+            </AnimatePresence>
+
+            {/* Live Red vs Blue total — only in team mode. */}
+            {teamMode && <div className="mb-4"><TeamScoreBar entries={sorted} /></div>}
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              {/* Left: the join card (QR + code) + play controls. Hidden when
+                  presenting full-screen (floating buttons take over there). */}
+              {!presenting && (
+                <aside className="lg:col-span-4 space-y-4">
+                  <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500">{t.joinHeading}</h2>
+                      <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition active:scale-95 ${iconBtn}`} aria-label={t.enlarge}>
+                        <Maximize2 size={15} />
+                      </button>
+                    </div>
+                    <div className="flex flex-col items-center text-center">
+                      <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
+                        className="bg-white p-2 rounded-2xl border border-stone-100 shadow-sm active:scale-[0.98] transition" aria-label={t.enlarge}>
+                        <QRCodeSVG value={joinUrl} size={150} />
+                      </button>
+                      <div className="mt-3 w-full">
+                        <div className="text-xs font-bold text-stone-400 uppercase tracking-widest">{t.code}</div>
+                        <div className={`text-4xl font-black tracking-[0.15em] ${headingCls}`}>{sessionCode}</div>
+                        <button
+                          type="button"
+                          onClick={handleCopy}
+                          style={{ touchAction: "manipulation" }}
+                          className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm transition active:scale-[0.98] ${
+                            copied ? "bg-emerald-100 text-emerald-700" : "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white shadow-md shadow-fuchsia-500/30"
+                          }`}
+                        >
+                          {copied ? <><Check size={16} /> {t.copied}</> : <><Copy size={16} /> {t.copy}</>}
+                        </button>
+                        {/* Back to Step 1 to tweak words/modes before play starts. */}
+                        {!hasRunRound && !roundActive && (
+                          <button
+                            type="button"
+                            onClick={() => setPhase("setup")}
+                            style={{ touchAction: "manipulation" }}
+                            className="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl font-black text-xs text-fuchsia-600 bg-fuchsia-50 hover:bg-fuchsia-100 active:scale-[0.98] transition"
+                          >
+                            ← {t.editGame}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Play controls — start / next / play-again / end-round. */}
+                  <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+                    {buildError && <p className="mb-3 text-xs font-bold text-rose-600">{t.buildError}</p>}
+                    {hasRunRound && !roundActive && allPlayed && (
+                      <p className="mb-3 text-center text-sm font-black text-emerald-600">🎉 {t.roundDone}</p>
+                    )}
+                    {hasRunRound && !allPlayed && (
+                      <p className="mb-3 text-center text-xs font-bold text-stone-400">{t.wordsPlayed(playedCount, totalRounds)}</p>
+                    )}
+                    {allPlayed && !roundActive ? (
+                      <button
+                        type="button"
+                        onClick={handlePlayAgain}
+                        style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                        className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg bg-gradient-to-r from-emerald-500 to-teal-600 shadow-emerald-500/30 active:scale-[0.98] transition"
+                      >
+                        <Play size={18} /> {t.playAgain}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleStart}
+                        disabled={roundActive || !canStart}
+                        style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                        className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${roundActive || !canStart ? "bg-stone-300 cursor-not-allowed" : "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]"}`}
+                      >
+                        {roundActive
+                          ? <><Clock size={18} /> {t.wordLive} · {secondsLeft}s</>
+                          : autoCountdown !== null
+                            ? <><Zap size={18} /> {t.autoNextIn(autoCountdown)}</>
+                            : <><Play size={18} /> {startLabel}</>}
+                      </button>
+                    )}
+                    {roundActive && (
+                      <button
+                        type="button"
+                        onClick={handleEndRound}
+                        style={{ touchAction: "manipulation" }}
+                        className="mt-2 w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-black text-base bg-rose-100 text-rose-700 hover:bg-rose-200 active:scale-[0.98] transition"
+                      >
+                        <Square size={16} /> {t.endRound}
+                      </button>
+                    )}
+                  </section>
+                </aside>
+              )}
+
+              {/* Main: the board — live roster (pre-game) or leaderboard. */}
+              <div className={`${presenting ? "lg:col-span-12" : "lg:col-span-8"}`}>
+                {hasRunRound || roundActive ? (
+                  <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${presenting ? theme.card : cardCls}`}>
+                    <h2 className="text-sm font-black uppercase tracking-widest text-fuchsia-500 mb-4 flex items-center gap-2">
+                      <Users size={18} /> {t.leaderboard}
+                      <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
+                    </h2>
+                    {/* Re-key the podium on roundId so it visibly re-animates each
+                        word; winner highlight is layered via the wrapper ring. */}
+                    <div key={endedRoundId ?? "lobby"}>
+                      <CategoryRacePodium entries={shownEntries} emptyText={t.noStudents} large={presenting} onKick={onKick} theme={presenting ? theme : undefined} />
+                    </div>
+                    {/* The rest of a full class collapses into a summary line —
+                        every student still sees their own rank on their phone. */}
+                    {moreCount > 0 && (
+                      <div className={`mt-3 flex flex-wrap items-center justify-center gap-1.5 rounded-2xl border px-4 py-3 text-center text-xs font-bold ${presenting ? "border-white/15 text-white/80" : "border-outline-variant bg-surface-container text-on-surface-variant"}`}>
+                        {t.morePlaying(moreCount, classAvg)} · {t.ownRankHint}
+                      </div>
+                    )}
+                    {winnerClientId && !roundActive && (
+                      <p className="mt-4 text-center text-sm font-black text-amber-600">
+                        ⚡ {t.firstWinner(sorted.find(e => e.clientId === winnerClientId)?.nickname ?? "")}
+                      </p>
+                    )}
+                  </section>
+                ) : (
+                  <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${presenting ? theme.card : cardCls}`}>
+                    <LobbyRoster
+                      players={sorted}
+                      countLabel={t.inRoom}
+                      emptyLabel={t.noStudents}
+                      accent="from-amber-400 to-orange-500"
+                      large={presenting}
+                      onKick={onKick}
+                      theme={presenting ? theme : undefined}
+                    />
+                  </section>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Presentation mode floating start / play-again / end-round */}

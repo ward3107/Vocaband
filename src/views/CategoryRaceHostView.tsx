@@ -106,6 +106,10 @@ const STRINGS = {
     teams: "Teams", teamsOn: "Red vs Blue", teamsOff: "Solo",
     untimed: "Untimed", answerWhenReady: "Answer when ready", endRound: "End round",
     autoPlayLabel: "Auto-start next round", autoNextIn: (n: number) => `Next round in ${n}…`,
+    cancel: "Cancel", openRoom: "Open the room", editGame: "Edit game",
+    stepAdjust: "Adjust game", stepRoom: "Open room", needCatsShort: "Pick a category to start.",
+    morePlaying: (more: number, avg: number) => `+${more} more playing · class avg ${avg}`,
+    ownRankHint: "every student sees their own rank on their phone 📱",
   },
   he: {
     title: "מרוץ קטגוריות", joinHeading: "התלמידים מצטרפים כאן", code: "קוד כיתה",
@@ -122,6 +126,10 @@ const STRINGS = {
     teams: "קבוצות", teamsOn: "אדום נגד כחול", teamsOff: "יחידני",
     untimed: "ללא זמן", answerWhenReady: "ענו כשמוכנים", endRound: "סיים סבב",
     autoPlayLabel: "התחל סבב הבא אוטומטית", autoNextIn: (n: number) => `סבב הבא בעוד ${n}…`,
+    cancel: "ביטול", openRoom: "פתחו את החדר", editGame: "עריכת המשחק",
+    stepAdjust: "הגדרת המשחק", stepRoom: "פתיחת החדר", needCatsShort: "בחרו קטגוריה כדי להתחיל.",
+    morePlaying: (more: number, avg: number) => `עוד ${more} משחקים · ממוצע כיתה ${avg}`,
+    ownRankHint: "כל תלמיד רואה את הדירוג שלו בטלפון 📱",
   },
   ar: {
     title: "سباق الفئات", joinHeading: "ينضم الطلاب هنا", code: "رمز الصف",
@@ -138,6 +146,10 @@ const STRINGS = {
     teams: "فرق", teamsOn: "أحمر ضد أزرق", teamsOff: "فردي",
     untimed: "بدون وقت", answerWhenReady: "أجب عند الاستعداد", endRound: "إنهاء الجولة",
     autoPlayLabel: "بدء الجولة التالية تلقائيًا", autoNextIn: (n: number) => `الجولة التالية خلال ${n}…`,
+    cancel: "إلغاء", openRoom: "افتح الغرفة", editGame: "تعديل اللعبة",
+    stepAdjust: "إعداد اللعبة", stepRoom: "افتح الغرفة", needCatsShort: "اختر فئة للبدء.",
+    morePlaying: (more: number, avg: number) => `+${more} يلعبون أيضًا · متوسط الصف ${avg}`,
+    ownRankHint: "كل طالب يرى ترتيبه على هاتفه 📱",
   },
 } as const;
 
@@ -171,6 +183,9 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   // Presentation mode hides ALL teacher chrome (sidebar + header actions)
   // for a clean projector — just the leaderboard + live round.
   const [presenting, setPresenting] = useState(false);
+  // Two-step flow: 'setup' = adjust the game (categories/timer/teams),
+  // 'room' = the join board (QR + live roster) and live play.
+  const [phase, setPhase] = useState<"setup" | "room">("setup");
   // Student pending removal (clientId + nickname) — drives the confirm modal.
   const [confirmKick, setConfirmKick] = useState<{ clientId: string; nickname: string } | null>(null);
   // Auto-play: once the first round is launched, each finished round chains
@@ -223,6 +238,14 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   const sorted = useMemo(() => [...leaderboard].sort((a, b) => b.score - a.score), [leaderboard]);
   const secondsLeft = currentRace ? Math.max(0, Math.round((currentRace.deadlineTs - now) / 1000)) : 0;
   const lowTime = roundActive && secondsLeft <= 10;
+
+  // The board shows the top racers; the rest collapse into a "+N more"
+  // summary so a full class stays readable on a projector.
+  const TOP_N = 8;
+  const shownEntries = useMemo(() => sorted.slice(0, presenting ? 12 : TOP_N), [sorted, presenting]);
+  const moreCount = Math.max(0, sorted.length - shownEntries.length);
+  const classAvg = sorted.length ? Math.round(sorted.reduce((s, e) => s + e.score, 0) / sorted.length) : 0;
+  const canStart = selectedCats.length > 0;
 
   const toggleCat = (id: string) =>
     setSelectedCats(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -319,12 +342,21 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   return (
     <div className="min-h-[100dvh] transition-colors" dir={dir} style={presenting ? theme.page : { backgroundColor: 'var(--vb-surface-alt)' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <header className="flex items-center justify-between gap-2 mb-5">
+        <header className="flex items-center justify-between gap-2 mb-3">
           <h1 className={`min-w-0 text-xl sm:text-3xl font-black flex items-center gap-2 ${presenting ? theme.name : headingCls}`}>
             <span className="text-2xl sm:text-3xl flex-shrink-0">🌍</span>
             <span className="truncate">{t.title}</span>
           </h1>
-          {presenting ? (
+          {phase === "setup" ? (
+            <button
+              type="button"
+              onClick={handleEnd}
+              style={{ touchAction: "manipulation" }}
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-xl font-black text-sm bg-stone-100 text-stone-600 hover:bg-stone-200 active:scale-95 transition"
+            >
+              <X size={16} /> <span className="hidden sm:inline">{t.cancel}</span>
+            </button>
+          ) : presenting ? (
             // Presentation mode: keep only the join code visible (so late
             // students can still join) + a button back to the controls.
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
@@ -373,147 +405,65 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
           )}
         </header>
 
-        {/* Background music — teacher can play/pause, skip, and adjust volume
-            for the room while the race runs. In presentation mode it docks to
-            a compact corner pill (kept mounted, so the music never cuts out
-            when the race starts). */}
-        <GameMusicPlayer language={language} floating={presenting} />
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Main: round banner (only while live) + the big leaderboard */}
-          <div className={`${presenting ? "lg:col-span-12" : "lg:col-span-8"} space-y-4 order-2 lg:order-1`}>
-            {/* Round banner — only shown while a round is live, so there's
-                no dead "round over" placeholder between rounds. */}
-            <AnimatePresence>
-              {roundActive && currentRace && (
-                <motion.section
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  className={`rounded-3xl border p-6 sm:p-7 text-center shadow-lg ${
-                    lowTime ? "bg-red-50 border-red-200 shadow-red-500/10" : cardCls
-                  }`}
-                >
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-5 sm:gap-10">
-                    <div className="flex flex-col items-center">
-                      <span className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-500">{t.letterLabel}</span>
-                      <SlotLetter letter={currentRace.letter} roundId={currentRace.roundId} />
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <span className="text-sm font-black uppercase tracking-[0.18em] text-stone-400">{t.roundLive}</span>
-                      {currentRace.untimed ? (
-                        <>
-                          <InfinityIcon className={`mt-1 ${headingCls}`} size={64} strokeWidth={2.5} />
-                          <span className="text-sm font-bold text-stone-400 mt-1">{t.answerWhenReady}</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className={`tabular-nums font-black leading-none mt-1 ${lowTime ? "text-red-600 animate-pulse" : headingCls} text-6xl sm:text-7xl`}>
-                            {secondsLeft}
-                          </span>
-                          <span className="text-sm font-bold text-stone-400 mt-1">{t.seconds(roundSeconds)}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </motion.section>
-              )}
-            </AnimatePresence>
-
-            {/* Live Red vs Blue total — only in team mode. */}
-            {teamMode && <TeamScoreBar entries={sorted} />}
-
-            {/* Before the first round it's a waiting room — show the joined
-                students popping in. Once a round has run, the leaderboard
-                (with scores) takes over as the dominant element. */}
-            {hasRunRound || roundActive ? (
-              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${presenting ? theme.card : cardCls}`}>
-                <h2 className="text-sm font-black uppercase tracking-widest text-fuchsia-500 mb-4 flex items-center gap-2">
-                  <Users size={18} /> {t.leaderboard}
-                  <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
-                </h2>
-                <CategoryRacePodium entries={sorted} emptyText={t.noStudents} large onKick={onKick} theme={presenting ? theme : undefined} />
-              </section>
-            ) : (
-              <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${presenting ? theme.card : cardCls}`}>
-                <LobbyRoster
-                  players={sorted}
-                  countLabel={t.inRoom}
-                  emptyLabel={t.noStudents}
-                  accent="from-fuchsia-500 to-pink-600"
-                  large={presenting}
-                  onKick={onKick}
-                  theme={presenting ? theme : undefined}
-                />
-              </section>
-            )}
+        {/* Step indicator — Adjust game → Open room. Hidden in projector mode. */}
+        {!presenting && (
+          <div className="flex items-center justify-center gap-2 mb-5 text-xs font-black">
+            {([["setup", "1", t.stepAdjust], ["room", "2", t.stepRoom]] as const).map(([p, num, label], i) => {
+              const active = phase === p;
+              const done = phase === "room" && p === "setup";
+              return (
+                <div key={p} className="flex items-center gap-2">
+                  {i > 0 && <span className="w-7 h-px bg-stone-300" />}
+                  <span className={`inline-flex items-center gap-1.5 ${active ? "text-fuchsia-600" : done ? "text-emerald-600" : "text-stone-400"}`}>
+                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] ${active ? "bg-fuchsia-500 text-white" : done ? "bg-emerald-500 text-white" : "bg-stone-200 text-stone-500"}`}>
+                      {done ? <Check size={12} strokeWidth={3} /> : num}
+                    </span>
+                    {label}
+                  </span>
+                </div>
+              );
+            })}
           </div>
+        )}
 
-          {/* Sidebar: join + setup controls (compact) — hidden in
-              presentation mode for a clean projector. */}
-          <aside className={`lg:col-span-4 space-y-4 order-1 lg:order-2 ${presenting ? "hidden" : ""}`}>
-            {/* Join card */}
-            <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500">{t.joinHeading}</h2>
-                {/* Just enlarge — "Present" already gives a clean projector
-                    view, so a separate hide-QR toggle was a redundant click. */}
-                <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
-                  className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition active:scale-95 ${iconBtn}`} aria-label={t.enlarge}>
-                  <Maximize2 size={15} />
-                </button>
-              </div>
-              <div className="flex flex-col items-center text-center">
-                <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
-                  className="bg-white p-2 rounded-2xl border border-stone-100 shadow-sm active:scale-[0.98] transition" aria-label={t.enlarge}>
-                  <QRCodeSVG value={joinUrl} size={132} />
-                </button>
-                <div className="mt-3 w-full">
-                  <div className="text-xs font-bold text-stone-400 uppercase tracking-widest">{t.code}</div>
-                  <div className={`text-4xl font-black tracking-[0.15em] ${headingCls}`}>{liveCode}</div>
+        {/* Background music — draggable corner pill in the room/projector so it
+            never covers the board. */}
+        <GameMusicPlayer language={language} floating={presenting || phase === "room"} />
+
+        {phase === "setup" ? (
+          /* ─────────────── STEP 1 · Adjust the game ─────────────── */
+          <div className="max-w-3xl mx-auto space-y-4 pb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Teams toggle — Solo vs Red/Blue (in-memory, per session) */}
+              <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+                <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mb-3">{t.teams}</h2>
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={handleCopy}
-                    style={{ touchAction: "manipulation" }}
-                    className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm transition active:scale-[0.98] ${
-                      copied ? "bg-emerald-100 text-emerald-700" : "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white shadow-md shadow-fuchsia-500/30"
-                    }`}
+                    onClick={() => tokenRef.current && setTeamMode(false, tokenRef.current)}
+                    style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                    className={`px-3 py-2.5 rounded-xl font-black text-sm border-2 transition ${!teamMode ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white border-transparent shadow-md" : pillIdle}`}
                   >
-                    {copied ? <><Check size={16} /> {t.copied}</> : <><Copy size={16} /> {t.copy}</>}
+                    {t.teamsOff}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => tokenRef.current && setTeamMode(true, tokenRef.current)}
+                    style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                    className={`px-3 py-2.5 rounded-xl font-black text-sm border-2 transition ${teamMode ? "bg-gradient-to-r from-rose-500 to-sky-600 text-white border-transparent shadow-md" : pillIdle}`}
+                  >
+                    🟥🟦 {t.teamsOn}
                   </button>
                 </div>
-              </div>
-            </section>
+              </section>
 
-            <GameThemePicker themeId={themeId} onSelect={setThemeId} language={language} />
-
-            {/* Teams toggle — Solo vs Red/Blue (in-memory, per session) */}
-            <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
-              <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mb-3">{t.teams}</h2>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => tokenRef.current && setTeamMode(false, tokenRef.current)}
-                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                  className={`px-3 py-2.5 rounded-xl font-black text-sm border-2 transition ${!teamMode ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white border-transparent shadow-md" : pillIdle}`}
-                >
-                  {t.teamsOff}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => tokenRef.current && setTeamMode(true, tokenRef.current)}
-                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                  className={`px-3 py-2.5 rounded-xl font-black text-sm border-2 transition ${teamMode ? "bg-gradient-to-r from-rose-500 to-sky-600 text-white border-transparent shadow-md" : pillIdle}`}
-                >
-                  🟥🟦 {t.teamsOn}
-                </button>
-              </div>
-            </section>
+              <GameThemePicker themeId={themeId} onSelect={setThemeId} language={language} />
+            </div>
 
             {/* Round setup */}
             <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
               <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mb-3">{t.catsHeading}</h2>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {CATEGORIES.map(cat => {
                   const picked = selectedCats.includes(cat.id);
                   return (
@@ -545,7 +495,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                   <InfinityIcon size={14} /> {t.untimed}
                 </button>
               </div>
-              <div className={`grid grid-cols-4 gap-2 transition-opacity ${untimed ? "opacity-40 pointer-events-none" : ""}`}>
+              <div className={`grid grid-cols-4 sm:grid-cols-8 gap-2 transition-opacity ${untimed ? "opacity-40 pointer-events-none" : ""}`}>
                 {QP_RACE_ROUND_SECONDS.map(opt => {
                   const picked = roundSeconds === opt;
                   return (
@@ -580,33 +530,167 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                   <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${autoPlay ? "start-[18px]" : "start-0.5"}`} />
                 </span>
               </button>
-
-              <button
-                type="button"
-                onClick={handleStart}
-                disabled={selectedCats.length === 0 || roundActive}
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${roundActive || selectedCats.length === 0 ? "bg-stone-300 cursor-not-allowed" : "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]"}`}
-              >
-                {roundActive
-                  ? <><Clock size={18} /> {t.roundLive}{currentRace?.untimed ? "" : ` · ${secondsLeft}s`}</>
-                  : autoCountdown !== null
-                    ? <><Zap size={18} /> {t.autoNextIn(autoCountdown)}</>
-                    : <><Play size={18} /> {hasRunRound ? t.nextRound : t.start}</>}
-              </button>
-              {roundActive && (
-                <button
-                  type="button"
-                  onClick={handleEndRound}
-                  style={{ touchAction: "manipulation" }}
-                  className="mt-2 w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-black text-base bg-rose-100 text-rose-700 hover:bg-rose-200 active:scale-[0.98] transition"
-                >
-                  <Square size={16} /> {t.endRound}
-                </button>
-              )}
             </section>
-          </aside>
-        </div>
+
+            {/* Open the room → moves to Step 2 (students can now scan in). */}
+            <button
+              type="button"
+              onClick={() => canStart && setPhase("room")}
+              disabled={!canStart}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${canStart ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]" : "bg-stone-300 cursor-not-allowed"}`}
+            >
+              {canStart ? <>{t.openRoom} →</> : t.needCatsShort}
+            </button>
+          </div>
+        ) : (
+          /* ─────────────── STEP 2 · The room + live play ─────────────── */
+          <>
+            {/* Round banner — only shown while a round is live. */}
+            <AnimatePresence>
+              {roundActive && currentRace && (
+                <motion.section
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className={`mb-4 rounded-3xl border p-6 sm:p-7 text-center shadow-lg ${
+                    lowTime ? "bg-red-50 border-red-200 shadow-red-500/10" : cardCls
+                  }`}
+                >
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-5 sm:gap-10">
+                    <div className="flex flex-col items-center">
+                      <span className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-500">{t.letterLabel}</span>
+                      <SlotLetter letter={currentRace.letter} roundId={currentRace.roundId} />
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-sm font-black uppercase tracking-[0.18em] text-stone-400">{t.roundLive}</span>
+                      {currentRace.untimed ? (
+                        <>
+                          <InfinityIcon className={`mt-1 ${headingCls}`} size={64} strokeWidth={2.5} />
+                          <span className="text-sm font-bold text-stone-400 mt-1">{t.answerWhenReady}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className={`tabular-nums font-black leading-none mt-1 ${lowTime ? "text-red-600 animate-pulse" : headingCls} text-6xl sm:text-7xl`}>
+                            {secondsLeft}
+                          </span>
+                          <span className="text-sm font-bold text-stone-400 mt-1">{t.seconds(roundSeconds)}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </motion.section>
+              )}
+            </AnimatePresence>
+
+            {/* Live Red vs Blue total — only in team mode. */}
+            {teamMode && <div className="mb-4"><TeamScoreBar entries={sorted} /></div>}
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              {/* Left: join card (QR + code) + play controls. */}
+              {!presenting && (
+                <aside className="lg:col-span-4 space-y-4">
+                  <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500">{t.joinHeading}</h2>
+                      <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
+                        className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition active:scale-95 ${iconBtn}`} aria-label={t.enlarge}>
+                        <Maximize2 size={15} />
+                      </button>
+                    </div>
+                    <div className="flex flex-col items-center text-center">
+                      <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
+                        className="bg-white p-2 rounded-2xl border border-stone-100 shadow-sm active:scale-[0.98] transition" aria-label={t.enlarge}>
+                        <QRCodeSVG value={joinUrl} size={150} />
+                      </button>
+                      <div className="mt-3 w-full">
+                        <div className="text-xs font-bold text-stone-400 uppercase tracking-widest">{t.code}</div>
+                        <div className={`text-4xl font-black tracking-[0.15em] ${headingCls}`}>{liveCode}</div>
+                        <button
+                          type="button"
+                          onClick={handleCopy}
+                          style={{ touchAction: "manipulation" }}
+                          className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm transition active:scale-[0.98] ${
+                            copied ? "bg-emerald-100 text-emerald-700" : "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white shadow-md shadow-fuchsia-500/30"
+                          }`}
+                        >
+                          {copied ? <><Check size={16} /> {t.copied}</> : <><Copy size={16} /> {t.copy}</>}
+                        </button>
+                        {!hasRunRound && !roundActive && (
+                          <button
+                            type="button"
+                            onClick={() => setPhase("setup")}
+                            style={{ touchAction: "manipulation" }}
+                            className="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl font-black text-xs text-fuchsia-600 bg-fuchsia-50 hover:bg-fuchsia-100 active:scale-[0.98] transition"
+                          >
+                            ← {t.editGame}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Play controls — start / next / end-round. */}
+                  <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+                    <button
+                      type="button"
+                      onClick={handleStart}
+                      disabled={selectedCats.length === 0 || roundActive}
+                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                      className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${roundActive || selectedCats.length === 0 ? "bg-stone-300 cursor-not-allowed" : "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]"}`}
+                    >
+                      {roundActive
+                        ? <><Clock size={18} /> {t.roundLive}{currentRace?.untimed ? "" : ` · ${secondsLeft}s`}</>
+                        : autoCountdown !== null
+                          ? <><Zap size={18} /> {t.autoNextIn(autoCountdown)}</>
+                          : <><Play size={18} /> {hasRunRound ? t.nextRound : t.start}</>}
+                    </button>
+                    {roundActive && (
+                      <button
+                        type="button"
+                        onClick={handleEndRound}
+                        style={{ touchAction: "manipulation" }}
+                        className="mt-2 w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-black text-base bg-rose-100 text-rose-700 hover:bg-rose-200 active:scale-[0.98] transition"
+                      >
+                        <Square size={16} /> {t.endRound}
+                      </button>
+                    )}
+                  </section>
+                </aside>
+              )}
+
+              {/* Main: the board — live roster (pre-game) or leaderboard. */}
+              <div className={`${presenting ? "lg:col-span-12" : "lg:col-span-8"}`}>
+                {hasRunRound || roundActive ? (
+                  <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${presenting ? theme.card : cardCls}`}>
+                    <h2 className="text-sm font-black uppercase tracking-widest text-fuchsia-500 mb-4 flex items-center gap-2">
+                      <Users size={18} /> {t.leaderboard}
+                      <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
+                    </h2>
+                    <CategoryRacePodium entries={shownEntries} emptyText={t.noStudents} large={presenting} onKick={onKick} theme={presenting ? theme : undefined} />
+                    {moreCount > 0 && (
+                      <div className={`mt-3 flex flex-wrap items-center justify-center gap-1.5 rounded-2xl border px-4 py-3 text-center text-xs font-bold ${presenting ? "border-white/15 text-white/80" : "border-outline-variant bg-surface-container text-on-surface-variant"}`}>
+                        {t.morePlaying(moreCount, classAvg)} · {t.ownRankHint}
+                      </div>
+                    )}
+                  </section>
+                ) : (
+                  <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${presenting ? theme.card : cardCls}`}>
+                    <LobbyRoster
+                      players={sorted}
+                      countLabel={t.inRoom}
+                      emptyLabel={t.noStudents}
+                      accent="from-fuchsia-500 to-pink-600"
+                      large={presenting}
+                      onKick={onKick}
+                      theme={presenting ? theme : undefined}
+                    />
+                  </section>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Presentation mode: a floating "start next round" so the teacher
