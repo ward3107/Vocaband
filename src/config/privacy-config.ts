@@ -44,14 +44,16 @@ export const DATA_PROTECTION_OFFICER = {
 // 2. Privacy policy versioning
 // ---------------------------------------------------------------------------
 
-// Bumped 2026-06-23 — disclosed the teacher dashboard AI Help Assistant
-// (free-text/spoken how-to questions + minimal non-identifying UI context
-// sent to Google Gemini; preset questions stay local). Same processor as
-// OCR + sentence generation — no new processor, no student data.
-// Bumping triggers the consent re-prompt so existing users see the
-// refreshed summary before continuing.
-// (Prev: 2026-05-23 — EU hosting region + server-log PII-scrubbing.)
-export const PRIVACY_POLICY_VERSION = "2026-06-23";  // Version 2.4 - AI Help Assistant disclosed
+// Bumped 2026-06-25 — disclosed opt-in push notifications: the Web Push
+// transit services (Google FCM for Chrome/Android, Mozilla autopush for
+// Firefox) and the new "Notifications" policy section. Push ships OFF by
+// default behind a feature flag and is opt-in + PII-free; this disclosure
+// must be ratified by the lawyer before the feature is enabled for real
+// students (see docs/legal/PUSH-NOTIFICATIONS-COMPLIANCE.md).
+// ⚠️ This bump triggers a consent re-prompt on deploy — keep it tied to the
+// go-live deploy that follows legal sign-off, not before.
+// (Prev: 2026-06-23 — AI Help Assistant. 2026-05-23 — EU hosting region.)
+export const PRIVACY_POLICY_VERSION = "2026-06-25";  // Version 2.5 - opt-in push notifications disclosed
 export const TERMS_VERSION = "2026-05-23";            // Version 2.3 - terms unchanged this round
 
 /**
@@ -107,6 +109,9 @@ export const HOSTING_REGIONS = {
   // Firebase Cloud Messaging routes Web Push to Android/Chrome devices.
   // Transit only — receives an opaque endpoint + PII-free payload.
   googleFcm: "Global (US-anchored) — fcm.googleapis.com",
+  // Mozilla autopush routes Web Push to Firefox browsers/devices.
+  // Transit only — receives an opaque endpoint + PII-free payload.
+  mozillaAutopush: "Global (US-anchored) — updates.push.services.mozilla.com",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -202,6 +207,23 @@ export const THIRD_PARTY_REGISTRY: ThirdPartyEntry[] = [
       dpaUrl: "https://business.safety.google/adsprocessorterms/",
       tiaRisk: "low",
       lastReviewed: "2026-06-22",
+    },
+  },
+  {
+    name: "Mozilla autopush",
+    purpose: "Transit-only delivery of opt-in push notifications to Firefox browsers/devices (new assignment / reward / live challenge alerts)",
+    dataCategories: ["push subscription endpoint (opaque device ID)", "PII-free notification payload in transit (no name/class/score)"],
+    processorOnly: true,
+    hostingRegion: HOSTING_REGIONS.mozillaAutopush,
+    endpoint: "updates.push.services.mozilla.com",
+    notes: "Message router only — the push service Firefox assigns to a device. Active ONLY for students who explicitly opt in (push_notifications feature flag). Payload never contains a student name, class, or score. Mozilla is NOT DPF-certified, so the transit transfer relies on the student's explicit opt-in consent (GDPR Art. 49(1)(a)); the only data exposed is an opaque endpoint + PII-free payload. ⚠️ Legal to confirm transfer basis at sign-off — see docs/legal/PUSH-NOTIFICATIONS-COMPLIANCE.md.",
+    transfer: {
+      destination: "Global (US-anchored)",
+      mechanism: "consent",
+      verificationUrl: "https://www.mozilla.org/en-US/privacy/websites/",
+      dpaUrl: "https://www.mozilla.org/en-US/privacy/",
+      tiaRisk: "low",
+      lastReviewed: "2026-06-25",
     },
   },
   {
@@ -339,6 +361,8 @@ export interface SubprocessorChange {
  * tamper-evident under standard git-history inspection.
  */
 export const SUBPROCESSOR_CHANGELOG: SubprocessorChange[] = [
+  { date: "2026-06-25", vendor: "Mozilla autopush", changeType: "added", description: "Disclosed the Web Push transit service for Firefox devices. Transit-only message router; receives an opaque push endpoint + PII-free payload (no name/class/score). Active only for students who explicitly opt in (push_notifications feature flag, OFF by default). Pending legal sign-off — see docs/legal/PUSH-NOTIFICATIONS-COMPLIANCE.md." },
+  { date: "2026-06-25", vendor: "Google Firebase Cloud Messaging (FCM)", changeType: "added", description: "Disclosed the Web Push / native-Android transit service for Chrome/Android devices. Transit-only message router; receives an opaque push endpoint + PII-free payload (no name/class/score). Active only for students who explicitly opt in (push_notifications feature flag, OFF by default). Pending legal sign-off — see docs/legal/PUSH-NOTIFICATIONS-COMPLIANCE.md." },
   { date: "2026-06-23", vendor: "Google Cloud (Gemini API)", changeType: "scope_changed", description: "Disclosed the teacher dashboard AI Help Assistant (/api/teacher-assistant): a teacher's free-text or spoken how-to question plus minimal non-identifying UI context (interface language, a hasClasses boolean, and the pending-approvals count) is sent to Gemini to generate an answer. No student personal data is sent; preset questions are answered locally with no API call. Same processor already used for OCR + sentence generation — not a new data processor." },
   { date: "2026-05-23", vendor: "Google Cloud (Gemini API)", changeType: "region_changed", description: "Honest verification (audit H-5): the AI Studio API endpoint is Google-global, NOT regionally pinned to europe-west as previously published. Transfer mechanism reclassified from intra-EEA adequacy to EU-US DPF. Migration to Vertex AI in europe-west remains the roadmap target." },
   { date: "2026-05-22", vendor: "Google Cloud (Text-to-Speech API)", changeType: "added", description: "Disclosed as a distinct entry (previously implicit under the Google Cloud Gemini row)." },

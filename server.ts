@@ -4663,6 +4663,37 @@ async function startServer() {
     live_challenge: "/student?open=live",
   };
 
+  // ── Children's-safety limits promised in the DPIA ────────────────────
+  // (docs/legal/PUSH-NOTIFICATIONS-COMPLIANCE.md §1.2/§1.3): no pushes during
+  // the child's night, and a per-student daily cap so a class can't flood one
+  // kid. The in-app badge still shows everything; these only gate the push.
+  const PUSH_TIMEZONE = process.env.PUSH_TIMEZONE || "Asia/Jerusalem";
+  const PUSH_QUIET_START_HOUR = 20; // 20:00 — quiet from here…
+  const PUSH_QUIET_END_HOUR = 7;    // …until 07:00 local
+  const PUSH_DAILY_CAP = parseInt(process.env.PUSH_DAILY_CAP || "5", 10);
+
+  // Current local hour + YYYY-MM-DD in the audience's timezone, via Intl
+  // (no extra dependency). en-CA renders the date as YYYY-MM-DD. Intl can
+  // emit "24" for midnight on some runtimes, so wrap with % 24.
+  function pushLocalNow(): { hour: number; day: string } {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: PUSH_TIMEZONE,
+      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+    }).formatToParts(new Date());
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+    const hour = (parseInt(get("hour"), 10) || 0) % 24;
+    const day = `${get("year")}-${get("month")}-${get("day")}`;
+    return { hour, day };
+  }
+
+  // Quiet window wraps midnight: [20:00, 24) ∪ [0, 07:00).
+  const isPushQuietHours = (hour: number): boolean =>
+    hour >= PUSH_QUIET_START_HOUR || hour < PUSH_QUIET_END_HOUR;
+
   // Server-side flag gate (fail-closed). Mirrors isFlagOn() on the client:
   // a class listed in enabled_for_classes always passes; else the master
   // `enabled`; else off.
@@ -4751,11 +4782,29 @@ async function startServer() {
     if (!(await isPushFlagOn(targetClassCode))) return res.json({ ok: true, sent: 0, reason: "flag off" });
     if (uids.length === 0) return res.json({ ok: true, sent: 0 });
 
+    // Quiet hours — skip the whole send during the child's night. The
+    // assignment/reward is still waiting in-app; we just don't buzz the
+    // device. Applies to every push type for a simple, defensible promise.
+    const { hour: localHour, day: localDay } = pushLocalNow();
+    if (isPushQuietHours(localHour)) return res.json({ ok: true, sent: 0, reason: "quiet_hours" });
+
     const { data: subs } = await supabaseAdmin
       .from("push_subscriptions")
-      .select("endpoint, p256dh, auth, lang, kind")
+      .select("uid, endpoint, p256dh, auth, lang, kind")
       .in("uid", uids)
       .is("revoked_at", null);
+
+    // Daily frequency cap — read today's per-student counts up front so we can
+    // skip any student already at the cap. Counts the notification EVENT per
+    // student (a 2-device kid still counts once), incremented after the send.
+    const { data: countRows } = await supabaseAdmin
+      .from("push_daily_counts")
+      .select("uid, count")
+      .eq("day", localDay)
+      .in("uid", uids);
+    const countByUid = new Map<string, number>(
+      (countRows ?? []).map((r: { uid: string; count: number }) => [r.uid, r.count]),
+    );
 
     const revoke = (endpoint: string) =>
       supabaseAdmin!
@@ -4764,8 +4813,14 @@ async function startServer() {
         .eq("endpoint", endpoint);
 
     let sent = 0;
+    // Students we actually delivered to this round — each gets ONE cap
+    // increment afterwards (not one per device).
+    const sentUids = new Set<string>();
     await Promise.all(
-      (subs ?? []).map(async (sub: { endpoint: string; p256dh: string | null; auth: string | null; lang: string; kind: string }) => {
+      (subs ?? []).map(async (sub: { uid: string; endpoint: string; p256dh: string | null; auth: string | null; lang: string; kind: string }) => {
+        // Daily cap — drop any device whose student already hit the cap today.
+        if ((countByUid.get(sub.uid) ?? 0) >= PUSH_DAILY_CAP) return;
+
         const lang: PushLang = (PUSH_LANGS as readonly string[]).includes(sub.lang) ? (sub.lang as PushLang) : "en";
         const copy = PUSH_COPY[type as PushType][lang];
         const url = PUSH_URL[type as PushType];
@@ -4780,6 +4835,7 @@ async function startServer() {
               data: { type: String(type), url, lang },
             });
             sent++;
+            sentUids.add(sub.uid);
           } catch (err) {
             const code = (err as { code?: string; errorInfo?: { code?: string } })?.errorInfo?.code
               || (err as { code?: string })?.code;
@@ -4796,6 +4852,7 @@ async function startServer() {
         try {
           await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload);
           sent++;
+          sentUids.add(sub.uid);
         } catch (err) {
           // 404/410 = the device unsubscribed or the endpoint expired.
           const status = (err as { statusCode?: number })?.statusCode;
@@ -4804,6 +4861,17 @@ async function startServer() {
           }
         }
       }),
+    );
+
+    // Record one increment per student we notified, toward their daily cap.
+    // Best-effort: a failed counter bump must not fail the teacher's action.
+    await Promise.all(
+      [...sentUids].map((u) =>
+        supabaseAdmin!.rpc("bump_push_daily_count", { p_uid: u, p_day: localDay }).then(
+          () => {},
+          () => {},
+        ),
+      ),
     );
 
     return res.json({ ok: true, sent });

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "363615210809",
+    "project_id": "vocaband-cc07c",
+    "storage_bucket": "vocaband-cc07c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:363615210809:android:37a50621a86ea68d322ce8",
+        "android_client_info": {
+          "package_name": "com.vocaband.student"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBEqBIKb_uqVbmo-lA4imr9DiJEZYggt-A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
