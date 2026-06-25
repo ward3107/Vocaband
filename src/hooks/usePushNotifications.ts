@@ -22,7 +22,23 @@ import { supabase } from "../core/supabase";
 import { PUSH_CONSENT_VERSION, CLIENT_STORAGE_KEYS } from "../config/privacy-config";
 import type { Language } from "./useLanguage";
 
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
+// VAPID public key. Primary source is the build-time env var; if that was
+// not set in the web build, we lazily fetch it from the server (the public
+// key is not a secret) so Web Push still works whenever the SERVER VAPID
+// keys are configured — removing the dependency on the Cloudflare build var.
+let vapidPublicKey: string | undefined = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
+let vapidKeyFetch: Promise<string | undefined> | null = null;
+function ensureVapidKey(): Promise<string | undefined> {
+  if (vapidPublicKey || isNative()) return Promise.resolve(vapidPublicKey);
+  if (!vapidKeyFetch) {
+    const api = (import.meta.env.VITE_API_URL as string | undefined) || "";
+    vapidKeyFetch = fetch(`${api}/api/push/vapid-public-key`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (j?.key) vapidPublicKey = j.key as string; return vapidPublicKey; })
+      .catch(() => undefined);
+  }
+  return vapidKeyFetch;
+}
 const NATIVE_TOKEN_KEY = "vocaband_native_push_token";
 
 export type PushPermission = "default" | "granted" | "denied" | "unsupported";
@@ -51,18 +67,19 @@ function wireNativeTap(): void {
   });
 }
 
-function webSupported(): boolean {
+function browserPushCapable(): boolean {
   return (
     typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
     "PushManager" in window &&
-    "Notification" in window &&
-    !!VAPID_PUBLIC_KEY
+    "Notification" in window
   );
 }
 
 function supportedNow(): boolean {
-  return isNative() ? true : webSupported();
+  // Native is always supported; web needs the browser APIs AND a VAPID key
+  // (from the build var, or — once it resolves — the server fetch).
+  return isNative() ? true : browserPushCapable() && !!vapidPublicKey;
 }
 
 // VAPID keys are base64url; PushManager wants a Uint8Array.
@@ -146,6 +163,13 @@ export function usePushNotifications(opts: { uid: string | null; lang: Language 
     // fires after the async read, never synchronously.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
+    // If the web build shipped without a VAPID key, fetch it from the server
+    // and flip `supported` on once it arrives so the opt-in card can appear.
+    if (!isNative() && !vapidPublicKey && browserPushCapable()) {
+      void ensureVapidKey().then((k) => {
+        if (k) setState((s) => ({ ...s, supported: true }));
+      });
+    }
   }, [refresh]);
 
   const storeRow = useCallback(
@@ -198,11 +222,16 @@ export function usePushNotifications(opts: { uid: string | null; lang: Language 
         return false;
       }
       const reg = await navigator.serviceWorker.ready;
+      const key = await ensureVapidKey();
+      if (!key) {
+        setState((s) => ({ ...s, busy: false }));
+        return false;
+      }
       const sub =
         (await reg.pushManager.getSubscription()) ||
         (await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY as string) as BufferSource,
+          applicationServerKey: urlBase64ToUint8Array(key) as BufferSource,
         }));
       const ok = await storeRow({ endpoint: sub.endpoint, p256dh: keyToBase64(sub, "p256dh"), auth: keyToBase64(sub, "auth"), kind: "web" });
       setState((s) => ({ ...s, permission: "granted", subscribed: ok, busy: false }));
