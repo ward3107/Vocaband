@@ -302,19 +302,16 @@ export function useBackButtonTrap(
       //         - Students (native app): Android-standard
       //           double-back-to-exit. A single back shows a "press
       //           back again to exit" hint and re-traps; a deliberate
-      //           second back within DOUBLE_BACK_WINDOW_MS signs the
-      //           student out and then quits the app. The double-tap
-      //           guard means a kid mashing back accidentally can't trip
-      //           it (one press only shows the hint), but a real "I want
-      //           to leave" gesture logs out + exits like the explicit
-      //           Log out button. exitApp fires after signOut settles
-      //           (with a fallback timer if the network hangs) so the
-      //           local session is cleared before the process dies —
-      //           reopening lands on the login screen. (On web/PWA
-      //           exitApp is a no-op — a tab can't self-close — so the
-      //           SIGNED_OUT handler drops them on login instead.) If the
-      //           explicit logout modal happens to be open (opened from
-      //           the UI logout button), back just closes it (= "Stay").
+      //           second back within DOUBLE_BACK_WINDOW_MS quits the app
+      //           but KEEPS the student signed in, so reopening lands
+      //           straight on their dashboard (personal-device UX — no
+      //           PIN re-entry every launch). The double-tap guard means a
+      //           kid mashing back accidentally can't trip it (one press
+      //           only shows the hint). Logging out is now ONLY via the
+      //           explicit Log out button — exiting no longer signs out.
+      //           (On web/PWA exitApp is a no-op — a tab can't self-close.)
+      //           If the explicit logout modal happens to be open, back
+      //           just closes it (= "Stay").
       //         - Teachers / guests: unchanged exit-confirm modal. Second
       //           back while the modal is open = "yes, really leave" →
       //           signOut + public landing.
@@ -328,14 +325,14 @@ export function useBackButtonTrap(
           }
           const now = Date.now();
           if (now - lastFloorBackRef.current < DOUBLE_BACK_WINDOW_MS) {
-            // Deliberate double-back: sign out, then quit the app. Quit
-            // after signOut settles so the local session is cleared
-            // first; the fallback timer guarantees we still exit if the
-            // network hangs. Calling exitApp twice is harmless.
+            // Deliberate double-back: quit the app but KEEP the student
+            // signed in, so reopening lands straight on their dashboard
+            // (personal-device UX — no PIN re-entry every launch). On
+            // web/PWA exitApp is a no-op (a tab can't self-close), so
+            // nothing happens there — which is fine: we explicitly do NOT
+            // log out on exit anymore.
             exitIntentRef.current = true;
-            const quit = () => { CapacitorApp.exitApp().catch(() => { /* web/PWA — no native shell */ }); };
-            supabase.auth.signOut().catch(() => {}).finally(quit);
-            setTimeout(quit, 1500);
+            CapacitorApp.exitApp().catch(() => { /* web/PWA — no native shell */ });
             return;
           }
           lastFloorBackRef.current = now;
