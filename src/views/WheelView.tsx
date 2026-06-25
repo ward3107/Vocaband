@@ -27,7 +27,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, ty
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Trophy, ArrowRight, Volume2, X, Play, BookOpen,
-  ClipboardPaste, ChevronRight, Sparkles, Disc3,
+  ChevronRight, Disc3,
   Languages, MessageSquareQuote, CheckCircle2,
   Camera, Loader2, AlertTriangle, Image as ImageIcon,
 } from 'lucide-react';
@@ -116,6 +116,30 @@ interface ActiveQuestion {
 }
 
 const ALL_CHALLENGES: ChallengeKind[] = ['meaning', 'translation', 'true-false'];
+
+// ── Shared design tokens — mirror the Assignment / Class Show surfaces
+// (WordInputStep2026) so Vocab Wheel reads as the same product.  Violet
+// brand gradient for active pills + the paste hero; frosted lavender
+// tile for the option cards.
+const VIOLET_GRAD = 'linear-gradient(110deg,#7B61D6,#9F87F2)';
+const CARD_BORDER = 'rgba(231,229,228,0.8)';
+const CARD_SHADOW =
+  '0 1px 0 rgba(255,255,255,0.7) inset, 0 10px 24px -22px rgba(60,40,120,0.18)';
+const OPT_TILE_BG = 'linear-gradient(135deg,#EEF0FF,#F8E8FF)';
+
+/** Section label — small gradient-dot eyebrow used across every
+ *  creation surface (see ActivityTypeTabs). */
+function SectionEyebrow({ children }: { children: ReactNode }) {
+  return (
+    <div className="mb-2.5 flex items-center gap-2 px-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#8B5CF6]">
+      <span
+        className="inline-block h-1.5 w-1.5 rounded-full"
+        style={{ background: 'linear-gradient(135deg,#8B5CF6,#D946EF)' }}
+      />
+      {children}
+    </div>
+  );
+}
 
 // Slice colours cycle through a kid-friendly palette.  Saturated enough
 // that the wheel reads from the back of a classroom but not so loud that
@@ -296,6 +320,8 @@ const STRINGS: Record<Language, {
   waitingForAnswer: (name: string) => string;
 
   wordsLabel: string;
+  pasteTitle: string;
+  or: string;
   sourcePaste: string;
   sourceAssignment: string;
   sourceTopic: string;
@@ -381,10 +407,12 @@ const STRINGS: Record<Language, {
     playersHint: 'Need at least 2 players.',
     needTwo: 'Add at least 2 player names to start.',
     wordsLabel: 'Words',
+    pasteTitle: 'Paste your word list here',
+    or: 'OR',
     sourcePaste: 'Paste',
     sourceAssignment: 'Assignment',
-    sourceTopic: 'Topic',
-    sourceCamera: 'Camera',
+    sourceTopic: 'Topic Packs',
+    sourceCamera: 'Scan & Upload',
     pickAssignment: 'Pick an assignment',
     pickTopic: 'Pick a topic pack',
     wordsPlaceholder: 'apple\nbook\ncat\n…',
@@ -459,10 +487,12 @@ const STRINGS: Record<Language, {
     playersHint: 'צריך לפחות 2 שחקנים.',
     needTwo: 'הוסף לפחות 2 שמות שחקנים כדי להתחיל.',
     wordsLabel: 'מילים',
+    pasteTitle: 'הדביקו כאן את רשימת המילים',
+    or: 'או',
     sourcePaste: 'הדבקה',
     sourceAssignment: 'מטלה',
-    sourceTopic: 'נושא',
-    sourceCamera: 'מצלמה',
+    sourceTopic: 'חבילות נושא',
+    sourceCamera: 'סריקה והעלאה',
     pickAssignment: 'בחר מטלה',
     pickTopic: 'בחר חבילת נושא',
     wordsPlaceholder: 'apple\nbook\ncat\n…',
@@ -537,10 +567,12 @@ const STRINGS: Record<Language, {
     playersHint: 'تحتاج إلى لاعبَين على الأقل.',
     needTwo: 'أضف اسمَي لاعبَين على الأقل للبدء.',
     wordsLabel: 'الكلمات',
+    pasteTitle: 'الصق قائمة كلماتك هنا',
+    or: 'أو',
     sourcePaste: 'لصق',
     sourceAssignment: 'مهمة',
-    sourceTopic: 'موضوع',
-    sourceCamera: 'الكاميرا',
+    sourceTopic: 'حزم المواضيع',
+    sourceCamera: 'مسح وتحميل',
     pickAssignment: 'اختر مهمة',
     pickTopic: 'اختر حزمة موضوع',
     wordsPlaceholder: 'apple\nbook\ncat\n…',
@@ -615,10 +647,12 @@ const STRINGS: Record<Language, {
     playersHint: 'Need at least 2 players.',
     needTwo: 'Add at least 2 player names to start.',
     wordsLabel: 'Words',
+    pasteTitle: 'Paste your word list here',
+    or: 'OR',
     sourcePaste: 'Paste',
     sourceAssignment: 'Assignment',
-    sourceTopic: 'Topic',
-    sourceCamera: 'Camera',
+    sourceTopic: 'Topic Packs',
+    sourceCamera: 'Scan & Upload',
     pickAssignment: 'Pick an assignment',
     pickTopic: 'Pick a topic pack',
     wordsPlaceholder: 'apple\nbook\ncat\n…',
@@ -1333,345 +1367,386 @@ export default function WheelView({ onExit, speak, assignments, topicPacks, clas
         backLabel={t.exitBtn}
         activityTabs={activityTabs}
       >
-        <div className="rounded-2xl bg-white shadow-lg border border-violet-100 overflow-hidden">
-            <div className="px-6 py-6 space-y-5">
-              {/* Players source: type manually, or go live with a QR */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setWheelMode('manual')}
-                  style={{ touchAction: 'manipulation' }}
-                  className={`flex items-center justify-center gap-1.5 py-3 rounded-lg font-black text-sm border-2 transition-all ${wheelMode === 'manual' ? 'bg-violet-500 text-white border-violet-500 shadow-sm' : 'bg-white text-stone-700 border-stone-200 hover:border-violet-200'}`}
-                >
-                  ✍️ {t.modeManual}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setWheelMode('live'); if (!liveCode) void startLive(); }}
-                  style={{ touchAction: 'manipulation' }}
-                  className={`flex items-center justify-center gap-1.5 py-3 rounded-lg font-black text-sm border-2 transition-all ${wheelMode === 'live' ? 'bg-violet-500 text-white border-violet-500 shadow-sm' : 'bg-white text-stone-700 border-stone-200 hover:border-violet-200'}`}
-                >
-                  📱 {t.modeLive}
-                </button>
+        <div className="space-y-7">
+          {/* Players source: type manually, or go live with a QR */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setWheelMode('manual')}
+              style={{ touchAction: 'manipulation', ...(wheelMode === 'manual' ? { background: VIOLET_GRAD, color: '#fff', borderColor: 'transparent' } : {}) }}
+              className={`flex items-center justify-center gap-1.5 py-3 rounded-xl font-bold text-sm border-[1.5px] transition-all ${wheelMode === 'manual' ? '' : 'bg-white text-stone-700 border-stone-200 hover:border-violet-200'}`}
+            >
+              ✍️ {t.modeManual}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setWheelMode('live'); if (!liveCode) void startLive(); }}
+              style={{ touchAction: 'manipulation', ...(wheelMode === 'live' ? { background: VIOLET_GRAD, color: '#fff', borderColor: 'transparent' } : {}) }}
+              className={`flex items-center justify-center gap-1.5 py-3 rounded-xl font-bold text-sm border-[1.5px] transition-all ${wheelMode === 'live' ? '' : 'bg-white text-stone-700 border-stone-200 hover:border-violet-200'}`}
+            >
+              📱 {t.modeLive}
+            </button>
+          </div>
+
+          {/* ── PLAYERS ─────────────────────────────────────────────── */}
+          <section>
+            <SectionEyebrow>{t.playersLabel}</SectionEyebrow>
+            {wheelMode === 'manual' ? (
+              <div
+                className="rounded-[22px] border bg-white p-4 space-y-3"
+                style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
+              >
+                <ClassRosterPicker
+                  classes={classes ?? []}
+                  initialClassId={initialClassId}
+                  onNamesLoaded={(names) => setPlayersText(names.join('\n'))}
+                  fallbackNamesByCode={fallbackNamesByCode}
+                  accent="violet"
+                />
+                <textarea
+                  value={playersText}
+                  onChange={e => setPlayersText(e.target.value)}
+                  placeholder={t.playersPlaceholder}
+                  rows={5}
+                  dir={dir}
+                  className="w-full rounded-xl border-[1.5px] border-stone-200 focus:border-[#8B5CF6] focus:outline-none focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)] px-3.5 py-3 text-base font-semibold text-stone-800 placeholder:text-stone-400 placeholder:font-normal transition-shadow"
+                />
+                <p className="text-xs text-stone-500">{t.playersHint}</p>
               </div>
-
-              {wheelMode === 'manual' ? (
-                <>
-                  <ClassRosterPicker
-                    classes={classes ?? []}
-                    initialClassId={initialClassId}
-                    onNamesLoaded={(names) => setPlayersText(names.join('\n'))}
-                    fallbackNamesByCode={fallbackNamesByCode}
-                    accent="violet"
-                  />
-                  {/* Players */}
-                  <div>
-                    <label className="block text-sm font-bold text-stone-700 mb-2">{t.playersLabel}</label>
-                    <textarea
-                      value={playersText}
-                      onChange={e => setPlayersText(e.target.value)}
-                      placeholder={t.playersPlaceholder}
-                      rows={6}
-                      dir={dir}
-                      className="w-full rounded-lg border-2 border-stone-200 focus:border-violet-400 focus:outline-none px-3 py-2.5 text-base font-semibold text-stone-800 placeholder:text-stone-400 placeholder:font-normal"
-                    />
-                    <p className="mt-1 text-xs text-stone-500">{t.playersHint}</p>
-                  </div>
-                </>
-              ) : (
-                <div className="rounded-xl border-2 border-violet-200 bg-violet-50 p-4 text-center">
-                  <p className="text-sm font-bold text-violet-700 mb-3">{t.liveJoinTitle}</p>
-                  {liveCode ? (
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="bg-white p-3 rounded-2xl shadow-sm">
-                        <QRCodeSVG value={liveJoinUrl} size={160} />
-                      </div>
-                      <div className="text-3xl font-black tracking-[0.15em] text-stone-900">{liveCode}</div>
-                      <div className="text-sm font-black text-emerald-600">● {t.liveCount(liveNames.length)}</div>
-                      <p className="text-xs text-stone-500">{t.liveJoinHint}</p>
-
-                      {/* Where the picked student answers. */}
-                      <div className="w-full mt-2">
-                        <p className="text-xs font-black uppercase tracking-widest text-violet-500 mb-2">{t.answerHeading}</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setAnswerMode('board')}
-                            style={{ touchAction: 'manipulation' }}
-                            className={`py-2.5 rounded-lg font-black text-sm border-2 transition-all ${answerMode === 'board' ? 'bg-violet-500 text-white border-violet-500 shadow-sm' : 'bg-white text-stone-700 border-stone-200 hover:border-violet-200'}`}
-                          >
-                            🖥️ {t.answerBoard}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setAnswerMode('phone')}
-                            style={{ touchAction: 'manipulation' }}
-                            className={`py-2.5 rounded-lg font-black text-sm border-2 transition-all ${answerMode === 'phone' ? 'bg-violet-500 text-white border-violet-500 shadow-sm' : 'bg-white text-stone-700 border-stone-200 hover:border-violet-200'}`}
-                          >
-                            📱 {t.answerPhone}
-                          </button>
-                        </div>
-                      </div>
+            ) : (
+              <div
+                className="rounded-[22px] border bg-white p-4 text-center"
+                style={{ borderColor: CARD_BORDER, boxShadow: CARD_SHADOW }}
+              >
+                <p className="text-sm font-bold text-violet-700 mb-3">{t.liveJoinTitle}</p>
+                {liveCode ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-stone-100">
+                      <QRCodeSVG value={liveJoinUrl} size={160} />
                     </div>
-                  ) : (
-                    <p className="text-sm font-bold text-stone-500 py-6">{t.liveStarting}</p>
-                  )}
-                </div>
-              )}
+                    <div className="text-3xl font-black tracking-[0.15em] text-stone-900">{liveCode}</div>
+                    <div className="text-sm font-black text-emerald-600">● {t.liveCount(liveNames.length)}</div>
+                    <p className="text-xs text-stone-500">{t.liveJoinHint}</p>
 
-              {/* Words source */}
-              <div>
-                <div className="flex items-center gap-1.5 mb-2">
-                  <BookOpen size={14} className="text-stone-600" />
-                  <p className="text-sm font-bold text-stone-700">{t.wordsLabel}</p>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-                  {([
-                    { kind: 'paste' as SourceKind, label: t.sourcePaste, Icon: ClipboardPaste, visible: true },
-                    { kind: 'camera' as SourceKind, label: t.sourceCamera, Icon: Camera, visible: true },
-                    { kind: 'topic' as SourceKind, label: t.sourceTopic, Icon: Sparkles, visible: availableTopics.length > 0 },
-                    { kind: 'assignment' as SourceKind, label: t.sourceAssignment, Icon: BookOpen, visible: availableAssignments.length > 0 },
-                  ])
-                    .filter(opt => opt.visible)
-                    .map(opt => {
-                      const Icon = opt.Icon;
-                      const active = sourceKind === opt.kind;
-                      return (
+                    {/* Where the picked student answers. */}
+                    <div className="w-full mt-2">
+                      <p className="text-xs font-black uppercase tracking-widest text-violet-500 mb-2">{t.answerHeading}</p>
+                      <div className="grid grid-cols-2 gap-2">
                         <button
-                          key={opt.kind}
                           type="button"
-                          onClick={() => setSourceKind(opt.kind)}
-                          style={{ touchAction: 'manipulation' }}
-                          className={`flex flex-col items-center justify-center gap-1.5 py-3.5 rounded-lg font-black text-sm border-2 transition-all ${
-                            active
-                              ? 'bg-violet-500 text-white border-violet-500 shadow-sm'
-                              : 'bg-white text-stone-700 border-stone-200 hover:border-violet-200'
-                          }`}
+                          onClick={() => setAnswerMode('board')}
+                          style={{ touchAction: 'manipulation', ...(answerMode === 'board' ? { background: VIOLET_GRAD, color: '#fff', borderColor: 'transparent' } : {}) }}
+                          className={`py-2.5 rounded-xl font-bold text-sm border-[1.5px] transition-all ${answerMode === 'board' ? '' : 'bg-white text-stone-700 border-stone-200 hover:border-violet-200'}`}
                         >
-                          <Icon size={20} className={active ? 'text-white' : 'text-violet-500'} />
-                          <span>{opt.label}</span>
+                          🖥️ {t.answerBoard}
                         </button>
-                      );
-                    })}
-                </div>
-                {sourceKind === 'paste' && (
-                  <>
-                    <textarea
-                      value={wordsText}
-                      onChange={e => setWordsText(e.target.value)}
-                      placeholder={t.wordsPlaceholder}
-                      rows={5}
-                      dir="ltr"
-                      className="w-full rounded-lg border-2 border-stone-200 focus:border-violet-400 focus:outline-none px-3 py-2.5 text-base font-semibold text-stone-800 placeholder:text-stone-400 placeholder:font-normal"
-                    />
-                    <p className="mt-1 text-xs text-stone-500">{t.wordsHint}</p>
-                  </>
-                )}
-                {sourceKind === 'assignment' && availableAssignments.length > 0 && (
-                  <select
-                    value={assignmentId ?? ''}
-                    onChange={e => setAssignmentId(e.target.value || null)}
-                    dir={dir}
-                    aria-label={t.pickAssignment}
-                    className="w-full rounded-lg border-2 border-stone-200 focus:border-violet-400 focus:outline-none px-3 py-2.5 text-sm font-semibold text-stone-800 bg-white"
-                  >
-                    {availableAssignments.map(a => (
-                      <option key={a.id} value={a.id}>{a.title}</option>
-                    ))}
-                  </select>
-                )}
-                {sourceKind === 'topic' && availableTopics.length > 0 && (
-                  <select
-                    value={String(topicIdx)}
-                    onChange={e => setTopicIdx(Number(e.target.value))}
-                    dir={dir}
-                    aria-label={t.pickTopic}
-                    className="w-full rounded-lg border-2 border-stone-200 focus:border-violet-400 focus:outline-none px-3 py-2.5 text-sm font-semibold text-stone-800 bg-white"
-                  >
-                    {availableTopics.map((pack, i) => (
-                      <option key={`${pack.name}-${i}`} value={String(i)}>
-                        {pack.icon} {pack.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {sourceKind === 'camera' && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-stone-500">{t.cameraHint}</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setShowCamera(true)}
-                        style={{ touchAction: 'manipulation' }}
-                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-stone-900 text-white font-bold text-sm active:scale-[0.98] transition"
-                      >
-                        <Camera size={16} />
-                        {t.cameraBtn}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => galleryInputRef.current?.click()}
-                        style={{ touchAction: 'manipulation' }}
-                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-white border-2 border-stone-200 text-stone-700 font-bold text-sm hover:border-violet-200 active:scale-[0.98] transition"
-                      >
-                        <ImageIcon size={16} />
-                        {t.galleryBtn}
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => setAnswerMode('phone')}
+                          style={{ touchAction: 'manipulation', ...(answerMode === 'phone' ? { background: VIOLET_GRAD, color: '#fff', borderColor: 'transparent' } : {}) }}
+                          className={`py-2.5 rounded-xl font-bold text-sm border-[1.5px] transition-all ${answerMode === 'phone' ? '' : 'bg-white text-stone-700 border-stone-200 hover:border-violet-200'}`}
+                        >
+                          📱 {t.answerPhone}
+                        </button>
+                      </div>
                     </div>
-                    <input
-                      ref={galleryInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleGalleryChange}
-                    />
-                    {ocrStatus === 'reading' && (
-                      <p className="flex items-center gap-1.5 text-xs font-semibold text-stone-600">
-                        <Loader2 size={14} className="animate-spin" />
-                        {t.ocrReading}
-                      </p>
-                    )}
-                    {ocrStatus === 'error' && ocrError && (
-                      <p className="flex items-start gap-1.5 text-xs font-semibold text-rose-600">
-                        <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                        <span>{ocrError}</span>
-                      </p>
-                    )}
-                    {ocrStatus === 'done' && ocrWords.length > 0 && (
-                      <p className="text-xs font-semibold text-emerald-700">
-                        {t.ocrFoundCount(ocrWords.length)}
-                      </p>
-                    )}
                   </div>
-                )}
-                {vocab && (sourceKind !== 'camera' || ocrStatus === 'done' || rawPool.length > 0) && (
-                  <p className={`mt-1.5 text-xs font-semibold ${wordPool.length < 4 ? 'text-rose-600' : 'text-stone-500'}`}>
-                    {wordPool.length < 4
-                      ? t.poolTooSmall
-                      : sourceKind === 'paste'
-                      ? t.matchedHint(rawPool.length, pastedLines.length)
-                      : sourceKind === 'camera'
-                      ? t.matchedHint(rawPool.length, ocrWords.length)
-                      : t.poolHint(wordPool.length)}
-                  </p>
+                ) : (
+                  <p className="text-sm font-bold text-stone-500 py-6">{t.liveStarting}</p>
                 )}
               </div>
+            )}
+          </section>
 
-              {/* Target language */}
-              <div>
-                <p className="text-sm font-bold text-stone-700 mb-2">{t.translateTo}</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['hebrew', 'arabic'] as TargetLang[]).map(lang => (
-                    <button
-                      key={lang}
-                      type="button"
-                      onClick={() => setTargetLang(lang)}
-                      style={{ touchAction: 'manipulation' }}
-                      className={`py-2.5 rounded-lg font-bold text-sm border-2 transition-all ${
-                        targetLang === lang
-                          ? 'bg-violet-500 text-white border-violet-500 shadow-sm'
-                          : 'bg-white text-stone-600 border-stone-200 hover:border-violet-200'
-                      }`}
-                    >
-                      {lang === 'hebrew' ? t.hebrew : t.arabic}
-                    </button>
-                  ))}
+          {/* ── WORDS ───────────────────────────────────────────────── */}
+          <section>
+            <SectionEyebrow>{t.wordsLabel}</SectionEyebrow>
+
+            {/* Paste hero — same violet-header card as the Assignment /
+                Class Show word picker.  The wheel matches words live (no
+                Analyze step), so the textarea lives in the hero body. */}
+            <div
+              className="rounded-[24px] overflow-hidden border bg-white"
+              style={{ borderColor: CARD_BORDER, boxShadow: '0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)' }}
+            >
+              <div className="flex items-center gap-3 px-[22px] py-[18px] text-white" style={{ background: VIOLET_GRAD }}>
+                <div
+                  className="grid h-9 w-9 place-items-center rounded-xl text-[18px]"
+                  style={{ background: 'rgba(255,255,255,0.22)', border: '1px solid rgba(255,255,255,0.35)' }}
+                  aria-hidden
+                >
+                  ✨
                 </div>
+                <div className="text-[15px] font-extrabold tracking-[-0.01em]">{t.pasteTitle}</div>
               </div>
-
-              {/* Lives picker — 1 to 5 wrong answers before elimination */}
-              <div>
-                <label className="block text-sm font-bold text-stone-700 mb-2">
-                  {t.livesLabel}
-                </label>
-                <p className="text-xs text-stone-500 mb-2">{t.livesHint}</p>
-                <div className="flex items-center gap-2">
-                  {[1, 2, 3, 4, 5].map(n => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setMaxWrongAnswers(n)}
-                      aria-pressed={maxWrongAnswers === n}
-                      style={{ touchAction: 'manipulation' }}
-                      className={`flex-1 py-2.5 rounded-lg font-black text-base border-2 transition-all ${
-                        maxWrongAnswers === n
-                          ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
-                          : 'bg-white text-stone-600 border-stone-200 hover:border-rose-200'
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
+              <div className="px-[22px] py-5">
+                <textarea
+                  value={wordsText}
+                  onChange={e => setWordsText(e.target.value)}
+                  onFocus={() => setSourceKind('paste')}
+                  placeholder={t.wordsPlaceholder}
+                  rows={5}
+                  dir="ltr"
+                  className="block w-full min-h-[96px] resize-y rounded-2xl border-[1.5px] px-[18px] py-3.5 text-[14px] outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)] leading-relaxed text-stone-800 placeholder:text-stone-400"
+                  style={{ borderColor: CARD_BORDER }}
+                />
+                <p className="mt-3 text-sm text-stone-400 flex items-center gap-2">
+                  <span>💡</span>
+                  <span>{t.wordsHint}</span>
+                </p>
               </div>
+            </div>
 
-              {/* Challenge type picker */}
-              <div>
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Sparkles size={14} className="text-stone-600" />
-                  <p className="text-sm font-bold text-stone-700">{t.challengesLabel}</p>
-                </div>
-                <p className="text-xs text-stone-500 mb-3">{t.challengesHint}</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {([
-                    { kind: 'meaning'     as ChallengeKind, label: t.meaningLabel,     desc: t.meaningDesc,     Icon: BookOpen },
-                    { kind: 'translation' as ChallengeKind, label: t.translationLabel, desc: t.translationDesc, Icon: Languages },
-                    { kind: 'true-false'  as ChallengeKind, label: t.trueFalseLabel,   desc: t.trueFalseDesc,   Icon: MessageSquareQuote },
-                  ]).map(opt => {
-                    const active = allowedChallenges.has(opt.kind);
-                    const meta = CHALLENGE_META[opt.kind];
-                    const Icon = opt.Icon;
+            {/* OR */}
+            <div className="flex items-center gap-4 my-6">
+              <div className="flex-1 h-px bg-stone-200" />
+              <span className="text-sm font-semibold text-stone-400 uppercase tracking-wider">{t.or}</span>
+              <div className="flex-1 h-px bg-stone-200" />
+            </div>
+
+            {/* Alternative word sources — restyled as option cards in the
+                same icon language as the Assignment / Class Show grid.
+                Only the sources the wheel actually supports appear. */}
+            {(() => {
+              const altSources = ([
+                { kind: 'topic' as SourceKind, emoji: '🧩', label: t.sourceTopic, visible: availableTopics.length > 0 },
+                { kind: 'assignment' as SourceKind, emoji: '📚', label: t.sourceAssignment, visible: availableAssignments.length > 0 },
+                { kind: 'camera' as SourceKind, emoji: '📷', label: t.sourceCamera, visible: true },
+              ]).filter(s => s.visible);
+              const cols = altSources.length >= 3 ? 'grid-cols-3' : altSources.length === 2 ? 'grid-cols-2' : 'grid-cols-1';
+              return (
+                <div className={`grid ${cols} gap-3`}>
+                  {altSources.map(s => {
+                    const active = sourceKind === s.kind;
                     return (
                       <button
-                        key={opt.kind}
+                        key={s.kind}
                         type="button"
-                        onClick={() => toggleChallenge(opt.kind)}
-                        aria-pressed={active}
-                        style={{ touchAction: 'manipulation' }}
-                        className={`relative flex items-start gap-2.5 p-3 rounded-lg border-2 text-left transition-all ${
-                          active
-                            ? `bg-gradient-to-br ${meta.gradient} text-white border-transparent shadow-md`
-                            : 'bg-white text-stone-700 border-stone-200 hover:border-violet-200'
-                        }`}
+                        onClick={() => setSourceKind(s.kind)}
+                        style={{
+                          touchAction: 'manipulation',
+                          borderColor: active ? '#c4b5fd' : CARD_BORDER,
+                          background: active ? '#f5f3ff' : '#fff',
+                          boxShadow: CARD_SHADOW,
+                        }}
+                        className="rounded-[22px] border px-3.5 pb-4 pt-[16px] text-start transition-[transform,box-shadow] active:scale-[0.98]"
                       >
-                        <div className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${
-                          active ? 'bg-white/20' : 'bg-stone-100'
-                        }`}>
-                          <Icon size={18} className={active ? 'text-white' : meta.iconColor} />
+                        <div
+                          className="grid h-11 w-11 place-items-center rounded-[14px] text-[22px] mb-3"
+                          style={{ background: OPT_TILE_BG, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9)' }}
+                          aria-hidden
+                        >
+                          {s.emoji}
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <p className={`font-black text-sm leading-tight ${active ? 'text-white' : 'text-stone-900'}`}>
-                            {opt.label}
-                          </p>
-                          <p className={`text-xs font-semibold leading-tight mt-0.5 ${active ? 'text-white/85' : 'text-stone-500'}`}>
-                            {opt.desc}
-                          </p>
-                        </div>
-                        {active && (
-                          <CheckCircle2 size={16} className="absolute top-2 end-2 text-white" />
-                        )}
+                        <div className="text-[13px] font-bold text-stone-800">{s.label}</div>
                       </button>
                     );
                   })}
                 </div>
-              </div>
+              );
+            })()}
 
-              <button
-                type="button"
-                onClick={handleStart}
-                disabled={!canStart}
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className="w-full py-3.5 rounded-lg bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-black text-base shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+            {/* Active alternative-source panel (paste uses the hero above). */}
+            {sourceKind === 'assignment' && availableAssignments.length > 0 && (
+              <select
+                value={assignmentId ?? ''}
+                onChange={e => setAssignmentId(e.target.value || null)}
+                dir={dir}
+                aria-label={t.pickAssignment}
+                className="mt-3 w-full rounded-xl border-[1.5px] border-stone-200 focus:border-[#8B5CF6] focus:outline-none px-3.5 py-3 text-sm font-semibold text-stone-800 bg-white"
               >
-                <Play size={18} />
-                {!vocab ? t.loadingWords : t.startBtn}
-                {vocab && <ChevronRight size={18} />}
-              </button>
-              {parsedNameCount < 2 && (
-                <p className="text-xs text-rose-600 font-semibold text-center -mt-2">{t.needTwo}</p>
-              )}
+                {availableAssignments.map(a => (
+                  <option key={a.id} value={a.id}>{a.title}</option>
+                ))}
+              </select>
+            )}
+            {sourceKind === 'topic' && availableTopics.length > 0 && (
+              <select
+                value={String(topicIdx)}
+                onChange={e => setTopicIdx(Number(e.target.value))}
+                dir={dir}
+                aria-label={t.pickTopic}
+                className="mt-3 w-full rounded-xl border-[1.5px] border-stone-200 focus:border-[#8B5CF6] focus:outline-none px-3.5 py-3 text-sm font-semibold text-stone-800 bg-white"
+              >
+                {availableTopics.map((pack, i) => (
+                  <option key={`${pack.name}-${i}`} value={String(i)}>
+                    {pack.icon} {pack.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            {sourceKind === 'camera' && (
+              <div className="mt-3 space-y-2">
+                <p className="text-xs text-stone-500">{t.cameraHint}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCamera(true)}
+                    style={{ touchAction: 'manipulation' }}
+                    className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-stone-900 text-white font-bold text-sm active:scale-[0.98] transition"
+                  >
+                    <Camera size={16} />
+                    {t.cameraBtn}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => galleryInputRef.current?.click()}
+                    style={{ touchAction: 'manipulation' }}
+                    className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white border-[1.5px] border-stone-200 text-stone-700 font-bold text-sm hover:border-violet-200 active:scale-[0.98] transition"
+                  >
+                    <ImageIcon size={16} />
+                    {t.galleryBtn}
+                  </button>
+                </div>
+                <input
+                  ref={galleryInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleGalleryChange}
+                />
+                {ocrStatus === 'reading' && (
+                  <p className="flex items-center gap-1.5 text-xs font-semibold text-stone-600">
+                    <Loader2 size={14} className="animate-spin" />
+                    {t.ocrReading}
+                  </p>
+                )}
+                {ocrStatus === 'error' && ocrError && (
+                  <p className="flex items-start gap-1.5 text-xs font-semibold text-rose-600">
+                    <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                    <span>{ocrError}</span>
+                  </p>
+                )}
+                {ocrStatus === 'done' && ocrWords.length > 0 && (
+                  <p className="text-xs font-semibold text-emerald-700">
+                    {t.ocrFoundCount(ocrWords.length)}
+                  </p>
+                )}
+              </div>
+            )}
+            {vocab && (sourceKind !== 'camera' || ocrStatus === 'done' || rawPool.length > 0) && (
+              <p className={`mt-2 text-xs font-semibold px-1 ${wordPool.length < 4 ? 'text-rose-600' : 'text-stone-500'}`}>
+                {wordPool.length < 4
+                  ? t.poolTooSmall
+                  : sourceKind === 'paste'
+                  ? t.matchedHint(rawPool.length, pastedLines.length)
+                  : sourceKind === 'camera'
+                  ? t.matchedHint(rawPool.length, ocrWords.length)
+                  : t.poolHint(wordPool.length)}
+              </p>
+            )}
+          </section>
+
+          {/* ── TRANSLATE TO ────────────────────────────────────────── */}
+          <section>
+            <SectionEyebrow>{t.translateTo}</SectionEyebrow>
+            <div className="grid grid-cols-2 gap-3">
+              {(['hebrew', 'arabic'] as TargetLang[]).map(lang => {
+                const on = targetLang === lang;
+                return (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => setTargetLang(lang)}
+                    style={{ touchAction: 'manipulation', ...(on ? { background: VIOLET_GRAD, color: '#fff', borderColor: 'transparent' } : {}) }}
+                    className={`py-3 rounded-xl font-bold text-sm border-[1.5px] transition-all ${on ? '' : 'bg-white text-stone-600 border-stone-200 hover:border-violet-200'}`}
+                  >
+                    {lang === 'hebrew' ? t.hebrew : t.arabic}
+                  </button>
+                );
+              })}
             </div>
+          </section>
+
+          {/* ── LIVES ───────────────────────────────────────────────── */}
+          <section>
+            <SectionEyebrow>{t.livesLabel}</SectionEyebrow>
+            <p className="text-xs text-stone-500 mb-2.5 px-1">{t.livesHint}</p>
+            <div className="grid grid-cols-5 gap-2.5">
+              {[1, 2, 3, 4, 5].map(n => {
+                const on = maxWrongAnswers === n;
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setMaxWrongAnswers(n)}
+                    aria-pressed={on}
+                    style={{ touchAction: 'manipulation', ...(on ? { background: VIOLET_GRAD, color: '#fff', borderColor: 'transparent' } : {}) }}
+                    className={`py-2.5 rounded-xl font-black text-base border-[1.5px] transition-all ${on ? '' : 'bg-white text-stone-600 border-stone-200 hover:border-violet-200'}`}
+                  >
+                    {n}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* ── CHALLENGE TYPES ─────────────────────────────────────── */}
+          <section>
+            <SectionEyebrow>{t.challengesLabel}</SectionEyebrow>
+            <p className="text-xs text-stone-500 mb-2.5 px-1">{t.challengesHint}</p>
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                { kind: 'meaning'     as ChallengeKind, label: t.meaningLabel,     desc: t.meaningDesc,     Icon: BookOpen },
+                { kind: 'translation' as ChallengeKind, label: t.translationLabel, desc: t.translationDesc, Icon: Languages },
+                { kind: 'true-false'  as ChallengeKind, label: t.trueFalseLabel,   desc: t.trueFalseDesc,   Icon: MessageSquareQuote },
+              ]).map(opt => {
+                const active = allowedChallenges.has(opt.kind);
+                const meta = CHALLENGE_META[opt.kind];
+                const Icon = opt.Icon;
+                return (
+                  <button
+                    key={opt.kind}
+                    type="button"
+                    onClick={() => toggleChallenge(opt.kind)}
+                    aria-pressed={active}
+                    style={{ touchAction: 'manipulation' }}
+                    className={`relative flex items-start gap-2.5 p-3.5 rounded-[18px] border-2 text-left transition-all ${
+                      active
+                        ? `bg-gradient-to-br ${meta.gradient} text-white border-transparent shadow-md`
+                        : 'bg-white text-stone-700 border-stone-200 hover:border-violet-200'
+                    }`}
+                  >
+                    <div className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${
+                      active ? 'bg-white/20' : 'bg-stone-100'
+                    }`}>
+                      <Icon size={18} className={active ? 'text-white' : meta.iconColor} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={`font-black text-sm leading-tight ${active ? 'text-white' : 'text-stone-900'}`}>
+                        {opt.label}
+                      </p>
+                      <p className={`text-xs font-semibold leading-tight mt-0.5 ${active ? 'text-white/85' : 'text-stone-500'}`}>
+                        {opt.desc}
+                      </p>
+                    </div>
+                    {active && (
+                      <CheckCircle2 size={16} className="absolute top-2 end-2 text-white" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* ── START CTA ───────────────────────────────────────────── */}
+          <div>
+            <button
+              type="button"
+              onClick={handleStart}
+              disabled={!canStart}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 text-white font-black text-base shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+            >
+              <Play size={18} />
+              {!vocab ? t.loadingWords : t.startBtn}
+              {vocab && <ChevronRight size={18} />}
+            </button>
+            {parsedNameCount < 2 && (
+              <p className="mt-2 text-xs text-rose-600 font-semibold text-center">{t.needTwo}</p>
+            )}
           </div>
+        </div>
 
         {/* In-page camera modal — only mounted when explicitly opened so the
             getUserMedia request doesn't fire until the teacher taps. */}
