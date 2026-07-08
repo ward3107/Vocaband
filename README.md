@@ -130,6 +130,7 @@ Teachers sign in, students join with a class code or QR — no app store, fully 
 | Quick Play — QR scan, no login | ✅ Yes | ❌ No |
 | Live classroom competition | ✅ Real-time leaderboard | ❌ No |
 | No student account needed | ✅ Join by class code + name | ❌ Registration required |
+| Self-serve teacher sign-up | ✅ Google + pick your school, instant | ❌ Manual/slow onboarding |
 | Game modes | ✅ Multiple modes, each with its own visual identity | ❌ 1–2 max |
 | Smart word input (paste, OCR, AI translate) | ✅ Deep | ❌ Manual only |
 | Teacher analytics (per-word, per-student) | ✅ | ❌ Basic |
@@ -143,6 +144,7 @@ Teachers sign in, students join with a class code or QR — no app store, fully 
 
 The platform has matured significantly in 2026. Headline improvements:
 
+- **Self-serve teacher sign-up** — teachers now onboard themselves: sign in with Google, confirm "I'm a teacher", and pick their school from a searchable dropdown of the **official Israeli Ministry of Education registry (~5,000 schools)** — searchable by Hebrew *or* English name, with a free-text fallback for anything not listed. No waiting for manual approval. A free trial starts automatically. (Students still sign in only with a class code + PIN — never through this door.)
 - **Refreshed landing page** — a focused, single teacher/principal sign-in with a two-column hero that places the pitch beside the sign-in card on desktop, flips left/right for Hebrew & Arabic, and collapses to a clean stack on tablet and mobile.
 - **Trilingual UI everywhere** — every student-facing screen, every teacher-facing screen, every dashboard module, every onboarding flow, every privacy/cookie banner, every live-challenge / setup wizard / Quick Play monitor, and every analytics/gradebook view now renders cleanly in English, Hebrew, and Arabic with full RTL mirroring.
 - **Streamlined teacher dashboard** — assignment building, Quick Play, and roster tools were consolidated into a single "New Activity" surface. Fewer clicks, no hunting for buttons.
@@ -186,6 +188,7 @@ Teachers can restrict which modes are available per assignment or Quick Play ses
 
 ### 👩‍🏫 For teachers
 
+- **Self-serve sign-up** — Sign in with Google, confirm you're a teacher, and pick your school from the searchable Israeli Ministry of Education registry (~5,000 schools, findable in Hebrew or English). Your teacher account and free trial are created instantly — no manual approval step.
 - **Quick Play** — Generate a QR code for instant vocabulary sessions. Students scan and play; no login required. Live podium with leader-change celebration chime, kick-student control, and a final-results modal.
 - **Class management** — Create classes with shareable, WhatsApp-friendly codes. Rename classes and pick curated avatars any time without disturbing students or progress.
 - **Roster + PIN login** — Pre-create your students; they sign in with a short PIN. No Google accounts, no email collection.
@@ -281,7 +284,7 @@ Vocaband meets **WCAG 2.0 Level AA** and **Israeli Standard IS 5568**:
 ## Privacy & security
 
 - **No personal data required for students** — class code + first name + emoji is enough.
-- **Teacher accounts are gated** — applications are reviewed manually before access is granted.
+- **Teachers self-register, students can't** — teacher sign-up is a deliberate "I'm a teacher + pick your school" step behind Google sign-in; student emails and anonymous sessions are refused server-side, so only teachers create teacher accounts. Sensitive database writes stay guarded by row-level security as a backstop.
 - **Trilingual privacy policy** at [/privacy-policy](https://www.vocaband.com/privacy-policy) (English, Hebrew, Arabic).
 - **Vulnerability disclosure** — see [SECURITY.md](./SECURITY.md). Responsible disclosure encouraged; report privately to [contact@vocaband.com](mailto:contact@vocaband.com).
 
@@ -291,7 +294,7 @@ Operational, infrastructure, and implementation details are intentionally kept o
 
 ## Getting started (users)
 
-**Teachers:** visit [www.vocaband.com](https://www.vocaband.com), request access (your email must be approved — contact us at [contact@vocaband.com](mailto:contact@vocaband.com)), create a class, and share the class code with your students.
+**Teachers:** visit [www.vocaband.com](https://www.vocaband.com), sign in with Google, confirm you're a teacher and pick your school from the dropdown, then create a class and share the class code with your students. Your account and free trial start immediately — no approval wait.
 
 **Students:** open the class link (or scan the QR code) your teacher shares — or go straight to [www.vocaband.com/student](https://www.vocaband.com/student). Enter your class code, pick your name and avatar, and start playing. Tap "I'm new" to request an account your teacher approves. No email or password required.
 
