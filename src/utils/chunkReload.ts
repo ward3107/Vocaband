@@ -19,7 +19,13 @@
 const CHUNK_ERROR_RE = /Failed to fetch dynamically imported module|error loading dynamically imported module|Loading chunk \d+ failed|ChunkLoadError|Failed to load module script|Importing a module script failed|disallowed MIME type/i;
 
 const RELOAD_GUARD_KEY = "vocaband_chunk_reload_attempted_at";
-const RELOAD_GUARD_WINDOW_MS = 60_000;
+// Guard window is short (3 s, was 60 s) — long enough to prevent an
+// infinite reload loop if a fresh deploy is genuinely broken, but short
+// enough that a stubborn service-worker cache (which sometimes needs a
+// second reload to fully release the current document as controller) gets
+// a quick second attempt instead of leaving the user stranded on an error
+// screen for a full minute.
+const RELOAD_GUARD_WINDOW_MS = 3_000;
 
 export function isChunkLoadError(error: unknown): boolean {
   const msg = error instanceof Error ? error.message : String(error ?? "");
