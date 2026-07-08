@@ -43,6 +43,14 @@ Teachers sign in, students join with a class code or QR — no app store, fully 
   <img src="docs/screenshots/landing-mobile.png" alt="Landing page on mobile" width="108">
 </p>
 
+### Teachers onboard themselves
+
+Sign in with Google, confirm you're a teacher, and find your school in the official Israeli Ministry of Education registry (~5,000 schools) — searchable in English *or* Hebrew. No manual approval, no waiting.
+
+<p align="center">
+  <img src="docs/screenshots/app-teacher-signup.png" alt="Self-serve teacher sign-up: name field, searchable school dropdown showing Haifa schools, and the 'I confirm I am a teacher' checkbox" width="300">
+</p>
+
 ### For teachers
 
 <table>

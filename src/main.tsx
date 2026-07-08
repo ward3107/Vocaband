@@ -312,6 +312,11 @@ const TeacherThemePreview = lazyWithRetry(() => import('./dev/TeacherThemePrevie
 // real-time scoreboard layout can be inspected without a socket
 // connection or teacher login.  Add ?lang=he|ar to check the RTL layout.
 const LivePodiumPreview = lazyWithRetry(() => import('./dev/LivePodiumPreview'));
+// Dev-only short-circuit: `/dev/teacher-signup` mounts the REAL self-serve
+// teacher sign-up screen (TeacherSignupView) with no-op deps, so the
+// "I'm a teacher + pick your school" flow + Ministry school dropdown can
+// be inspected without a Google OAuth session. Add ?lang=he|ar for RTL.
+const TeacherSignupPreview = lazyWithRetry(() => import('./dev/TeacherSignupPreview'));
 // AccessibilityWidget is lazy too — it doesn't render anything on
 // public pages until the user interacts, so keeping it in the entry
 // chunk (with its motion/lucide deps) was pure dead weight on first
@@ -426,7 +431,8 @@ async function bootstrap() {
   const isTeacherAffordancesPreview = devPath === '/dev/teacher-affordances';
   const isTeacherThemePreview = devPath === '/dev/teacher-theme';
   const isLivePodiumPreview = devPath === '/dev/live-podium';
-  const isDevPreview = isStudentRtlPreview || isTeacherAffordancesPreview || isTeacherThemePreview || isLivePodiumPreview;
+  const isTeacherSignupPreview = devPath === '/dev/teacher-signup';
+  const isDevPreview = isStudentRtlPreview || isTeacherAffordancesPreview || isTeacherThemePreview || isLivePodiumPreview || isTeacherSignupPreview;
 
   createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
@@ -435,6 +441,7 @@ async function bootstrap() {
           isTeacherAffordancesPreview ? <TeacherAffordancesPreview /> :
           isTeacherThemePreview ? <TeacherThemePreview /> :
           isLivePodiumPreview ? <LivePodiumPreview /> :
+          isTeacherSignupPreview ? <TeacherSignupPreview /> :
           <StudentRtlPreview />
         ) : (
           <>
