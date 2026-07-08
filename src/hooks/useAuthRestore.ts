@@ -559,27 +559,48 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
           const oauthProvider = supabaseUser.app_metadata?.provider;
           const isOAuthSignIn = oauthProvider === 'google' || oauthProvider === 'azure';
           if (isOAuthSignIn) {
-            // Student OAuth was removed in the 2026-05-18 privacy review.
-            // Sessions from before the cut still restore here — gate the
-            // student bootstrap on the teacher allowlist so non-teacher
-            // OAuth sessions get signed out and routed to PIN login
-            // instead of silently entering the student dashboard.
-            // Invite-only teacher access: only emails on teacher_allowlist may
-            // sign in via OAuth. Everyone else is signed out — students now use a
-            // class code + PIN, and would-be teachers must be added by an admin
-            // first. (A fresh "teacher intent" from clicking the teacher button
-            // used to bypass this allowlist check; that bypass is removed.)
+            // Student OAuth was removed in the 2026-05-18 privacy review, so
+            // Google/Azure is now a teacher-only door. Allowlisted emails
+            // become teachers straight away (below). Non-allowlisted emails
+            // are handled by the gate that follows: known students are bounced
+            // to PIN login, and everyone else is offered SELF-SERVE teacher
+            // signup (TeacherSignupView) — a deliberate "I'm a teacher + pick
+            // your school" step that replaced the old admin-only allowlist
+            // dead-end. The users_insert RLS lock stays as the backstop; the
+            // signup itself goes through the self_register_teacher RPC.
             const { data: isAllowedEarly } = await supabase.rpc('is_teacher_allowed', {
               check_email: supabaseUser.email ?? "",
             });
             if (!isAllowedEarly) {
-              try { await supabase.auth.signOut(); } catch { /* best-effort */ }
-              setUser(null);
-              setError(
-                "This email isn't approved for teacher access. Teachers must be added by an administrator first. Students sign in with a class code and PIN.",
-              );
-              if (!shouldPreserveView("student", currentViewRef.current)) {
-                setView('student-account-login');
+              // Not on the teacher allowlist. Two paths from here:
+              //  - a KNOWN student (has an active/approved student_profile)
+              //    keeps the PIN-only rule: sign out + student login. Students
+              //    must never enter via OAuth.
+              //  - anyone else is a would-be teacher → offer self-serve teacher
+              //    signup, KEEPING the session so self_register_teacher can run.
+              //    (Self-serve replaced the old "ask an admin" dead-end.)
+              const { data: sp } = await supabase
+                .from('student_profiles')
+                .select('id, status')
+                .eq('email', supabaseUser.email ?? "")
+                .maybeSingle();
+              const isKnownStudent = !!sp && (sp.status === 'active' || sp.status === 'approved');
+              if (isKnownStudent) {
+                try { await supabase.auth.signOut(); } catch { /* best-effort */ }
+                setUser(null);
+                setError(
+                  "This email is registered as a student. Students sign in with a class code and PIN.",
+                );
+                if (!shouldPreserveView("student", currentViewRef.current)) {
+                  setView('student-account-login');
+                }
+                setLoading(false);
+                return;
+              }
+              setOauthEmail(supabaseUser.email || "");
+              setOauthAuthUid(supabaseUser.id);
+              if (!shouldPreserveView("teacher", currentViewRef.current)) {
+                setView('teacher-signup');
               }
               setLoading(false);
               return;

@@ -15,6 +15,9 @@ export type View =
   | "public-status"
   | "accessibility-statement"
   | "teacher-login"
+  // Self-serve teacher onboarding shown after a non-allowlisted Google
+  // sign-in (see useAuthRestore early gate + TeacherSignupView).
+  | "teacher-signup"
   | "student-account-login"
   | "landing"
   // School-manager (principal) read-only oversight dashboard.

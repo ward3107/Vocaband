@@ -76,7 +76,7 @@ export function useViewGuards(params: UseViewGuardsParams): void {
   // views past the login are auth-gated, so blocking the login itself
   // is enough; no need to enumerate every teacher view here.
   useEffect(() => {
-    if (view !== 'public-landing' && view !== 'teacher-login') return;
+    if (view !== 'public-landing' && view !== 'teacher-login' && view !== 'teacher-signup') return;
     if (isStudentShell()) setView('student-account-login');
   }, [view, setView]);
 
