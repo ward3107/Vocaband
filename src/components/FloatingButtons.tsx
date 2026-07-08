@@ -497,7 +497,7 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
         }}
         onMouseEnter={() => setIsHovered('share')}
         onMouseLeave={() => setIsHovered(null)}
-        className={`${horizontal ? "w-12 h-12" : "w-10 h-10"} rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95`}
+        className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95`}
         style={getButtonStyle('share')}
         aria-label={shareAria}
         aria-expanded={shareOpen}
