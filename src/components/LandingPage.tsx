@@ -446,10 +446,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         </DeferredSection>
       </main>
 
-      {/* Share + Back-to-top laid out as a horizontal row on the same
-          bottom line as the Accessibility trigger, all the same 48px
-          size — see the `horizontal` prop in FloatingButtons. */}
-      <FloatingButtons showBackToTop horizontal />
+      {/* Share + Back-to-top stacked vertically in the bottom-start corner,
+          matching every other page that renders FloatingButtons. */}
+      <FloatingButtons showBackToTop />
 
       {/* Sticky Teacher Sign-In — slides up once the hero CTA scrolls
           out of view so the primary conversion path is always one tap
