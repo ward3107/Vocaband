@@ -45,64 +45,64 @@ export const ISRAEL_SCHOOLS: IsraelSchool[] = RAW.map(([id, name, city, sector])
 
 /**
  * City aliases so a teacher can find their school by typing the city name in
- * ENGLISH or ARABIC even though the Ministry registry stores it in Hebrew.
+ * ENGLISH even though the Ministry registry stores it in Hebrew.
  *
  * Key = Hebrew city string EXACTLY as it appears in the registry (some entries
  * come pre-truncated in the source data — those truncated forms are the keys).
- * Value = alternate names (romanized + Arabic + common English spellings).
+ * Value = alternate names (romanized / common English spellings).
  *
  * Covers the top ~100 cities by school count (~85 % of all schools). Cities not
  * in this map are still findable by their Hebrew name — the search just falls
  * back to Hebrew-only for them.
  */
 const CITY_ALIASES: Record<string, readonly string[]> = {
-  'ירושלים': ['jerusalem', 'yerushalayim', 'al-quds', 'al quds', 'القدس', 'أورشليم', 'اورشليم'],
-  'בני ברק': ['bnei brak', 'bene beraq', 'bene brak', 'بني براك'],
-  'תל אביב - יפו': ['tel aviv', 'tel-aviv', 'tel aviv-yafo', 'yafo', 'jaffa', 'تل أبيب', 'تل ابيب', 'يافا'],
-  'תל אביב-יפו': ['tel aviv', 'tel-aviv', 'tel aviv-yafo', 'yafo', 'jaffa', 'تل أبيب', 'تل ابيب', 'يافا'],
-  'אשדוד': ['ashdod', 'أشدود', 'اشدود'],
-  'חיפה': ['haifa', 'hefa', 'حيفا'],
-  'בית שמש': ['beit shemesh', 'bet shemesh', 'بيت شيمش'],
-  'פתח תקווה': ['petah tikva', 'petah tikvah', 'petach tikva', 'بيتح تكفا'],
-  'באר שבע': ['beer sheva', 'beersheba', 'be\'er sheva', 'بئر السبع'],
-  'נתניה': ['netanya', 'natanya', 'نتانيا'],
-  'ראשון לציון': ['rishon lezion', 'rishon letsiyon', 'rishon le-zion', 'ريشون لتسيون'],
-  'ביתר עילית': ['beitar illit', 'betar illit', 'بيتار عيليت'],
-  'מודיעין עילית': ['modiin illit', "modi'in illit", 'modiin ilit', 'مودعين عيليت'],
-  'רחובות': ['rehovot', 'rehoboth', 'رحوفوت'],
-  'אלעד': ['elad', 'الْعاد'],
-  'חולון': ['holon', 'حولون'],
-  'אשקלון': ['ashkelon', 'ashqelon', 'عسقلان'],
-  'נצרת': ['nazareth', 'natsrat', 'الناصرة'],
-  'חדרה': ['hadera', 'الخضيرة'],
-  'בת ים': ['bat yam', 'بات يام'],
-  'רמת גן': ['ramat gan', 'رمات جان'],
-  'לוד': ['lod', 'lydda', 'اللد'],
-  'רמלה': ['ramla', 'ramle', 'الرملة'],
-  'מודיעין-מכבים-': ['modiin', "modi'in", 'modiin-maccabim-reut', 'مودعين'],
-  'כפר סבא': ['kfar saba', 'kfar sava', 'kfar-saba', 'كفار سابا'],
-  'צפת': ['safed', 'tzfat', 'tsfat', 'zefat', 'صفد'],
-  'רעננה': ['raanana', "ra'anana", 'رعنانا'],
-  'הרצליה': ['herzliya', 'hertsliya', 'herzlia', 'هرتسليا'],
-  'טבריה': ['tiberias', 'teveria', 'tveria', 'طبريا'],
-  'נתיבות': ['netivot', 'نتيفوت'],
-  'עכו': ['acre', 'akko', 'akka', 'عكا'],
-  'אילת': ['eilat', 'elat', 'إيلات', 'ايلات'],
-  'גבעתיים': ['givatayim', 'giv\'atayim', 'جفعتايم'],
-  'באקה אל-גרביה': ['baqa al-gharbiyye', 'baqa el-gharbiya', 'باقة الغربية'],
-  'אום אל-פחם': ['umm al-fahm', 'umm el-fahm', 'أم الفحم'],
-  "סח'נין": ['sakhnin', 'sachnin', 'سخنين'],
-  'שפרעם': ['shefa-amr', "shefa 'amr", 'shfaram', 'شفاعمرو'],
-  'טמרה': ['tamra', 'tamre', 'تمرة'],
-  'טירה': ['tira', 'الطيرة'],
-  'קלנסווה': ['qalansawe', 'qalansuwa', 'قلنسوة'],
-  'כפר קאסם': ['kafr qasim', 'kafr qasem', 'كفر قاسم'],
-  'עפולה': ['afula', 'العفولة'],
-  'יבנה': ['yavne', 'yavneh', 'يفنة'],
-  'אריאל': ['ariel', 'أريئيل'],
-  'מעלה אדומים': ['maale adumim', "ma'ale adumim", 'معاليه ادوميم'],
-  'כרמיאל': ['karmiel', 'carmiel', 'كرميئيل'],
-  'נהריה': ['nahariya', 'nahariyya', 'nahariah', 'نهاريا'],
+  'ירושלים': ['jerusalem', 'yerushalayim', 'al-quds', 'al quds'],
+  'בני ברק': ['bnei brak', 'bene beraq', 'bene brak'],
+  'תל אביב - יפו': ['tel aviv', 'tel-aviv', 'tel aviv-yafo', 'yafo', 'jaffa'],
+  'תל אביב-יפו': ['tel aviv', 'tel-aviv', 'tel aviv-yafo', 'yafo', 'jaffa'],
+  'אשדוד': ['ashdod'],
+  'חיפה': ['haifa', 'hefa'],
+  'בית שמש': ['beit shemesh', 'bet shemesh'],
+  'פתח תקווה': ['petah tikva', 'petah tikvah', 'petach tikva'],
+  'באר שבע': ['beer sheva', 'beersheba', 'be\'er sheva'],
+  'נתניה': ['netanya', 'natanya'],
+  'ראשון לציון': ['rishon lezion', 'rishon letsiyon', 'rishon le-zion'],
+  'ביתר עילית': ['beitar illit', 'betar illit'],
+  'מודיעין עילית': ['modiin illit', "modi'in illit", 'modiin ilit'],
+  'רחובות': ['rehovot', 'rehoboth'],
+  'אלעד': ['elad'],
+  'חולון': ['holon'],
+  'אשקלון': ['ashkelon', 'ashqelon'],
+  'נצרת': ['nazareth', 'natsrat'],
+  'חדרה': ['hadera'],
+  'בת ים': ['bat yam'],
+  'רמת גן': ['ramat gan'],
+  'לוד': ['lod', 'lydda'],
+  'רמלה': ['ramla', 'ramle'],
+  'מודיעין-מכבים-': ['modiin', "modi'in", 'modiin-maccabim-reut'],
+  'כפר סבא': ['kfar saba', 'kfar sava', 'kfar-saba'],
+  'צפת': ['safed', 'tzfat', 'tsfat', 'zefat'],
+  'רעננה': ['raanana', "ra'anana"],
+  'הרצליה': ['herzliya', 'hertsliya', 'herzlia'],
+  'טבריה': ['tiberias', 'teveria', 'tveria'],
+  'נתיבות': ['netivot'],
+  'עכו': ['acre', 'akko', 'akka'],
+  'אילת': ['eilat', 'elat'],
+  'גבעתיים': ['givatayim', 'giv\'atayim'],
+  'באקה אל-גרביה': ['baqa al-gharbiyye', 'baqa el-gharbiya'],
+  'אום אל-פחם': ['umm al-fahm', 'umm el-fahm'],
+  "סח'נין": ['sakhnin', 'sachnin'],
+  'שפרעם': ['shefa-amr', "shefa 'amr", 'shfaram'],
+  'טמרה': ['tamra', 'tamre'],
+  'טירה': ['tira'],
+  'קלנסווה': ['qalansawe', 'qalansuwa'],
+  'כפר קאסם': ['kafr qasim', 'kafr qasem'],
+  'עפולה': ['afula'],
+  'יבנה': ['yavne', 'yavneh'],
+  'אריאל': ['ariel'],
+  'מעלה אדומים': ['maale adumim', "ma'ale adumim"],
+  'כרמיאל': ['karmiel', 'carmiel'],
+  'נהריה': ['nahariya', 'nahariyya', 'nahariah'],
   'קרית שמונה': ['kiryat shmona', 'qiryat shmona', 'kiriat shmona'],
   'קרית גת': ['kiryat gat', 'qiryat gat'],
   'קרית ביאליק': ['kiryat bialik', 'qiryat bialik'],
@@ -122,39 +122,39 @@ const CITY_ALIASES: Record<string, readonly string[]> = {
   'אבן יהודה': ['even yehuda'],
   'פרדס חנה-כרכור': ['pardes hanna', 'pardes hanna-karkur', 'pardes hana'],
   'זכרון יעקב': ['zichron yaakov', "zikhron ya'akov"],
-  'עתלית': ['atlit', 'عتليت'],
+  'עתלית': ['atlit'],
   'יקנעם עלית': ['yokneam illit', "yokne'am illit"],
   'מגדל העמק': ['migdal haemek', 'migdal ha-emek'],
   'בית שאן': ['beit shean', "beit she'an", 'beit-shean'],
   'יהוד-מונוסון': ['yehud-monosson', 'yehud monosson'],
-  'סאג\'ור': ['sajur', 'sajour', 'ساجور'],
-  'דלית אל-כרמל': ['daliyat al-karmel', 'daliyat el-carmel', 'دالية الكرمل'],
-  'עוספיה': ['isfiya', 'usfiya', 'عسفيا'],
-  'פקיעין (חורפיש)': ['peki\'in', 'pekiin', 'buqei\'a', 'البقيعة'],
-  'דבורייה': ['daburiyya', 'debouriya', 'دبورية'],
-  'עילבון': ['eilabun', 'eilaboun', 'عيلبون'],
+  'סאג\'ור': ['sajur', 'sajour'],
+  'דלית אל-כרמל': ['daliyat al-karmel', 'daliyat el-carmel'],
+  'עוספיה': ['isfiya', 'usfiya'],
+  'פקיעין (חורפיש)': ['peki\'in', 'pekiin', 'buqei\'a'],
+  'דבורייה': ['daburiyya', 'debouriya'],
+  'עילבון': ['eilabun', 'eilaboun'],
   'חצור הגלילית': ['hatzor haglilit', 'hazor haglilit'],
-  'בית ג\'ן': ['beit jann', 'بيت جن'],
-  'ג\'וליס': ['julis', 'جولس'],
-  'ירכא': ['yarka', 'يركا'],
-  'ג\'ת': ['jatt', 'jat', 'جت'],
-  'אכסאל': ['iksal', 'إكسال'],
-  'מג\'ד אל-כרום': ['majd al-krum', 'majdal krum', 'مجد الكروم'],
-  'עראבה': ['arraba', 'arabe', 'عرابة'],
-  'דיר אל-אסד': ['deir al-asad', 'deir el-asad', 'دير الأسد'],
-  'בענה': ['bi\'ne', 'bine', 'البعنة'],
-  'ריינה': ['reineh', 'raineh', 'الرينة'],
-  'עין מאהל': ['ein mahil', 'ein mahel', 'عين ماهل'],
-  'אבו סנאן': ['abu snan', 'abu sinan', 'أبو سنان'],
-  'חורה': ['hura', 'حورة'],
-  'תל שבע': ['tel sheva', 'tal as-sabi', 'تل السبع'],
-  'רהט': ['rahat', 'رهط'],
-  'כסייפה': ['ksaifa', 'kseifa', 'كسيفة'],
-  'ערערה בנגב': ["ar'arat an-naqab", 'arara banegev', 'عرعرة النقب'],
-  'שגב-שלום': ['segev-shalom', 'shaqib al-salam', 'شقيب السلام'],
-  'לקיה': ['lakiya', 'laqiya', 'لقية'],
-  'ערערה': ['arara', 'ara\'ra', 'عرعرة'],
-  'קסום (שבט)': ['qasoum', 'قسوم'],
+  'בית ג\'ן': ['beit jann'],
+  'ג\'וליס': ['julis'],
+  'ירכא': ['yarka'],
+  'ג\'ת': ['jatt', 'jat'],
+  'אכסאל': ['iksal'],
+  'מג\'ד אל-כרום': ['majd al-krum', 'majdal krum'],
+  'עראבה': ['arraba', 'arabe'],
+  'דיר אל-אסד': ['deir al-asad', 'deir el-asad'],
+  'בענה': ['bi\'ne', 'bine'],
+  'ריינה': ['reineh', 'raineh'],
+  'עין מאהל': ['ein mahil', 'ein mahel'],
+  'אבו סנאן': ['abu snan', 'abu sinan'],
+  'חורה': ['hura'],
+  'תל שבע': ['tel sheva', 'tal as-sabi'],
+  'רהט': ['rahat'],
+  'כסייפה': ['ksaifa', 'kseifa'],
+  'ערערה בנגב': ["ar'arat an-naqab", 'arara banegev'],
+  'שגב-שלום': ['segev-shalom', 'shaqib al-salam'],
+  'לקיה': ['lakiya', 'laqiya'],
+  'ערערה': ['arara', 'ara\'ra'],
+  'קסום (שבט)': ['qasoum'],
 };
 
 // Precomputed lower-cased alias map for hot search path — avoids re-lowercasing
@@ -165,8 +165,8 @@ const CITY_ALIASES_LC: Record<string, readonly string[]> = Object.fromEntries(
 
 /**
  * Type-ahead search for the dropdown. Substring match on school name OR city,
- * with **cross-language city aliases** so typing "Haifa" / "حيفا" / "חיפה" all
- * find schools in חיפה. Case-insensitive for Latin/Arabic (Hebrew has no case).
+ * with **cross-language city aliases** so typing "Haifa" and "חיפה" both find
+ * schools in חיפה. Case-insensitive for Latin (Hebrew has no case).
  * Returns at most `limit` results (default 50) so the list stays snappy with
  * 5k rows. An empty query returns [] — the dropdown shows nothing until they
  * type. See CITY_ALIASES above for the covered cities.
@@ -177,7 +177,7 @@ export function searchSchools(query: string, limit = 50): IsraelSchool[] {
   const out: IsraelSchool[] = [];
   for (const s of ISRAEL_SCHOOLS) {
     // Hebrew has no letter case, so toLowerCase() on those strings is a
-    // safe no-op; it's essential for the Latin/Arabic alias comparison.
+    // safe no-op; it's essential for the Latin alias comparison.
     if (
       s.name.toLowerCase().includes(q) ||
       s.city.toLowerCase().includes(q) ||
