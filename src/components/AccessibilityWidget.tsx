@@ -560,7 +560,28 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
           un-dismisses it AND opens the panel, so one tap brings
           everything back without the user having to remember Alt+0
           or hunt for the footer link. */}
-      {showTrigger && (
+      {showTrigger && !dismissed && (
+        <button
+          ref={triggerRef}
+          data-a11y-widget
+          aria-label={t.trigger}
+          aria-haspopup="dialog"
+          aria-expanded={isOpen}
+          aria-controls="a11y-panel"
+          onClick={() => setIsOpen(!isOpen)}
+          className="fixed bottom-6 left-6 z-[110] w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl flex items-center justify-center transition-all focus:outline-none focus:ring-4 focus:ring-blue-300 hover:scale-105"
+          style={{ touchAction: 'manipulation' }}
+        >
+          <Accessibility size={24} strokeWidth={2.2} />
+        </button>
+      )}
+
+      {/* Compact "A" pill shown when the user dismisses the full trigger.
+          Legal note: Israeli IS 5568 / the 2013 Equal Rights amendment
+          requires accessibility controls to remain reachable on every
+          page — the pill is that reachability. Tapping it un-dismisses
+          the widget and opens the panel in one gesture. */}
+      {showTrigger && dismissed && (
         <button
           ref={triggerRef}
           data-a11y-widget
@@ -569,23 +590,14 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
           aria-expanded={isOpen}
           aria-controls="a11y-panel"
           onClick={() => {
-            if (dismissed) {
-              // Ghost-trigger click: un-dismiss + open the panel
-              try { sessionStorage.removeItem(DISMISS_KEY); } catch { /* ignore */ }
-              setDismissed(false);
-              setIsOpen(true);
-            } else {
-              setIsOpen(!isOpen);
-            }
+            try { sessionStorage.removeItem(DISMISS_KEY); } catch { /* ignore */ }
+            setDismissed(false);
+            setIsOpen(true);
           }}
-          className={`fixed bottom-6 left-6 z-[110] w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl flex items-center justify-center transition-all focus:outline-none focus:ring-4 focus:ring-blue-300 ${
-            dismissed
-              ? "opacity-20 hover:opacity-100 hover:scale-110"
-              : "opacity-100 hover:scale-105"
-          }`}
+          className="fixed bottom-4 left-4 z-[110] w-7 h-7 rounded-full bg-blue-600/80 hover:bg-blue-700 text-white text-xs font-black shadow-md flex items-center justify-center transition-all focus:outline-none focus:ring-4 focus:ring-blue-300 hover:scale-110"
           style={{ touchAction: 'manipulation' }}
         >
-          <Accessibility size={24} strokeWidth={2.2} />
+          A
         </button>
       )}
 
