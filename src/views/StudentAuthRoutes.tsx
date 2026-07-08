@@ -21,6 +21,7 @@ import {
 } from './studentJoinChunks';
 
 const StudentAccountLoginView = lazyWithRetry(() => import('./StudentAccountLoginView'));
+const TeacherSignupView = lazyWithRetry(() => import('./TeacherSignupView'));
 
 export interface StudentAuthRoutesDeps {
   view: View;
@@ -107,6 +108,22 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
           studentLoginClassCode={studentLoginClassCode}
           setStudentLoginClassCode={setStudentLoginClassCode}
           onTier2Login={onTier2Login}
+          cookieBannerOverlay={cookieBannerOverlay}
+        />
+      </LazyWrapper>
+    );
+  }
+
+  // Self-serve teacher signup (post-OAuth, non-allowlisted email). Lives in
+  // this auth-route dispatcher because it already carries setView/setUser/
+  // showToast; the authenticated Google session is reused by the signup RPC.
+  if (view === 'teacher-signup') {
+    return (
+      <LazyWrapper loadingMessage="Loading signup...">
+        <TeacherSignupView
+          setView={setView}
+          setUser={setUser}
+          showToast={showToast}
           cookieBannerOverlay={cookieBannerOverlay}
         />
       </LazyWrapper>
