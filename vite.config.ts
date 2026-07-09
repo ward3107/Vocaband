@@ -542,6 +542,32 @@ export default defineConfig(() => {
               options: {
                 cacheName: 'vocaband-assets',
                 expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+                plugins: [
+                  {
+                    // Never store the SPA fallback under a hashed asset URL.
+                    // When a stale client requests an old chunk that no longer
+                    // exists on the new deploy (e.g. TeacherLoginView-<oldhash>.js),
+                    // Cloudflare's not_found_handling:"single-page-application"
+                    // returns index.html — text/html with a 200 status. Plain
+                    // CacheFirst would happily cache that HTML under the .js/.css
+                    // URL for 30 days, so the chunk then resolves to HTML on
+                    // EVERY subsequent load ("Failed to load module script … MIME
+                    // type text/html" / "disallowed MIME type"), and the failure
+                    // survives reloads — cleanupOutdatedCaches only prunes the
+                    // precache, never this runtime cache. Refuse to cache anything
+                    // that isn't a real 2xx script/style so the bad response stays
+                    // transient: the dynamic import surfaces a clean chunk-load
+                    // error that lazyWithRetry/chunkReload can actually recover
+                    // from (fresh index.html → current hashes), instead of a
+                    // permanently poisoned cache entry.
+                    cacheWillUpdate: async ({ response }) => {
+                      if (!response || response.status !== 200) return null;
+                      const contentType = response.headers.get('content-type') || '';
+                      if (/text\/html/i.test(contentType)) return null;
+                      return response;
+                    },
+                  },
+                ],
               },
             },
             {
