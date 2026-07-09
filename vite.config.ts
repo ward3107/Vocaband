@@ -540,7 +540,18 @@ export default defineConfig(() => {
               urlPattern: ({ request }) => request.destination === 'script' || request.destination === 'style',
               handler: 'CacheFirst',
               options: {
-                cacheName: 'vocaband-assets',
+                // Cache name bumped v1 → v2 to remediate devices already
+                // poisoned before the cacheWillUpdate guard below shipped.
+                // A CacheFirst entry is never re-fetched once stored, and
+                // nothing prunes this runtime cache (cleanupOutdatedCaches
+                // only touches the precache), so a device that cached
+                // index.html HTML under a .js URL would keep serving it for
+                // 30 days even after the guard deploys. Renaming the cache
+                // makes the new service worker start from an empty 'v2'
+                // bucket — the poisoned 'vocaband-assets' entries are simply
+                // never read again (they age out on their own), so the next
+                // chunk request goes to the network and gets valid JS.
+                cacheName: 'vocaband-assets-v2',
                 expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
                 plugins: [
                   {
