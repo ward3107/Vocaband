@@ -60,8 +60,8 @@ export function useConsent(params: UseConsentParams) {
           .then(({ data }) => {
             if (data) {
               try { localStorage.setItem('vocaband_consent_version', PRIVACY_POLICY_VERSION); } catch { /* ignore */ }
-              // Consent is fine — but maybe the per-login reminder still applies.
-              maybeShowReminder();
+              // Consent already on file — no recurring per-login reminder
+              // (removed 2026-07-10: redundant once consent is accepted).
             } else {
               setConsentMode('consent');
               setNeedsConsent(true);
@@ -74,18 +74,12 @@ export function useConsent(params: UseConsentParams) {
       return;
     }
 
-    // Legal consent already on file — decide whether to surface the
-    // per-login reminder.
-    maybeShowReminder();
-
-    function maybeShowReminder() {
-      const dismissed = localStorage.getItem(REMINDER_KEY);
-      if (dismissed === '1') return;
-      setConsentMode('reminder');
-      setDontShowAgain(false);
-      setNeedsConsent(true);
-    }
-  }, [setNeedsConsent, setConsentMode, setDontShowAgain]);
+    // Legal consent already on file. The recurring per-login privacy
+    // reminder was removed (2026-07-10): once a user has accepted, re-
+    // surfacing the summary on every login is redundant and just nags.
+    // The reminder is still available on demand from Privacy Settings
+    // (see reopenReminder below), which drives the same modal.
+  }, [setNeedsConsent, setConsentMode]);
 
   const recordConsent = useCallback(async (opts?: { mode: ConsentMode; dontShowAgain: boolean }) => {
     const mode: ConsentMode = opts?.mode ?? 'consent';
