@@ -66,6 +66,92 @@ export function forceFullRecovery(): void {
   clearSwAndCaches().finally(reloadWithCacheBust);
 }
 
+// ── Escalation ladder for the terminal "chunk STILL won't load" state ──────
+//
+// Recovery sequence before this: first import fails → lazyWithRetry retries
+// once → still fails → attemptChunkReload() reloads with a cache-buster.  If
+// the reloaded page ALSO fails within the 3 s guard, attemptChunkReload()
+// returns false and the ErrorBoundary was left on a static "Failed to load
+// component" + Retry button.  A returning user whose device is genuinely
+// wedged (a stale SW serving an old shell that the soft cache-bust reload
+// didn't dislodge) then had to KNOW the /?unregisterSW=1 kill switch existed
+// to escape — most don't.
+//
+// This ladder makes the boundary self-heal: the first time it reaches the
+// terminal state it automatically runs the full nuclear recovery
+// (escalateToKillSwitch — unregister every SW, drop every cache, reload to a
+// CLEAN url, exactly like the kill switch), and only after that ALSO fails
+// does it fall back to a human-readable "reset the app" screen.  A persistent
+// counter (sessionStorage, survives the reload) plus a hard cap stops it from
+// hot-looping when the deploy is genuinely broken or the device is offline.
+const TERMINAL_FAILURE_COUNT_KEY = "vocaband_chunk_terminal_failures";
+// Auto-run the nuclear recovery at most this many times before giving up and
+// showing the manual escape hatch.  One automatic nuke clears virtually every
+// real stale-SW case; a second covers a SW that needed a beat to release the
+// document as controller.  Beyond that, looping won't help.
+const MAX_AUTO_KILL_SWITCH_ATTEMPTS = 2;
+
+export type TerminalRecoveryDecision = "recovering" | "give-up";
+
+/**
+ * Record that an ErrorBoundary reached its terminal chunk-error state (already
+ * reloaded once, still failing) and decide what happens next:
+ *   "recovering" — under the retry cap; the caller should kick off
+ *                  escalateToKillSwitch() and keep a spinner up.
+ *   "give-up"    — cap exhausted; the caller should render the manual reset UI.
+ * Pure aside from the sessionStorage counter, so the navigation side effect
+ * stays in the caller (and out of React's render path).
+ */
+export function recordTerminalChunkFailure(): TerminalRecoveryDecision {
+  let attempts = 0;
+  try {
+    attempts = Number(sessionStorage.getItem(TERMINAL_FAILURE_COUNT_KEY) || "0");
+  } catch { /* sessionStorage unavailable — treat as first attempt */ }
+
+  if (attempts >= MAX_AUTO_KILL_SWITCH_ATTEMPTS) return "give-up";
+
+  try {
+    sessionStorage.setItem(TERMINAL_FAILURE_COUNT_KEY, String(attempts + 1));
+  } catch { /* best-effort */ }
+  return "recovering";
+}
+
+/**
+ * Clear every chunk-recovery bookkeeping key.  Called from lazyWithRetry the
+ * moment ANY dynamic import succeeds — that success proves the recovery worked,
+ * so a later unrelated chunk error in the same tab session starts from a clean
+ * slate instead of inheriting a stale "give up" count.
+ */
+export function resetChunkRecovery(): void {
+  try {
+    sessionStorage.removeItem(TERMINAL_FAILURE_COUNT_KEY);
+    sessionStorage.removeItem(RELOAD_GUARD_KEY);
+  } catch { /* best-effort */ }
+}
+
+/**
+ * Nuclear recovery: unregister every SW, drop every cache, and hard-reload to a
+ * CLEAN url — ALL query params stripped, mirroring the `/?unregisterSW=1` kill
+ * switch in main.tsx.  Broader than forceFullRecovery, which keeps the query
+ * string and only appends a `?_r=` cache-buster: stripping to the bare path
+ * guarantees we escape any bad query-param state and never accumulate a
+ * `?_r=…&_r=…` chain across repeated attempts.
+ */
+export function escalateToKillSwitch(): void {
+  clearSwAndCaches().finally(reloadToCleanUrl);
+}
+
+// Reload to origin + pathname only (no search, no hash).  Same clean landing
+// the kill switch produces; the try/catch falls back to a plain reload if
+// constructing the URL ever throws (it shouldn't).
+function reloadToCleanUrl(): void {
+  try {
+    window.location.replace(window.location.origin + window.location.pathname);
+  } catch {
+    window.location.reload();
+  }
+}
+
 // Tear down every SW registration + every cached response in the Cache API.
 // Clearing caches isn't strictly necessary once the SW is gone (only a SW
 // can serve from them), but any newly-installed SW would otherwise adopt
