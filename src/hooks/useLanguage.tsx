@@ -8,123 +8,42 @@ export type Language = 'en' | 'he' | 'ar' | 'ru';
 
 export const LANGUAGE_KEY = 'vocaband_legal_language';
 
-// Global state singleton — default to English.
+// Global state singleton — the initial UI language is ALWAYS English.
 //
-// Previously defaulted to Hebrew because Israeli schools are the primary
-// audience, but the app teaches ENGLISH vocabulary, and the UI is the
-// learner's main exposure to the target language during a lesson. An
-// English-default surface reinforces the learning context; the user
-// can still switch to Hebrew or Arabic from the language picker. A
-// logged-in user's choice persists across reloads (see
-// getInitialLanguage); logged-out / prospective visitors always start
-// in English so the public landing page is English-first.
+// Deliberately ignores the browser/device language, any previously saved
+// choice, AND the ?lang= deep-link param: every visitor (public or
+// logged-in, on any device, arriving from any link) opens in English.
+// Vocaband teaches ENGLISH, and the UI is the learner's main exposure to
+// the target language during a lesson, so an English-first surface is the
+// product default. Hebrew/Arabic are still fully available, but only as an
+// explicit choice via the in-app language toggle — that selection holds for
+// the current session and resets to English on the next load.
+//
+// SEO note: worker/index.ts still localizes the CRAWLED HTML metadata for
+// ?lang=he|ar|ru so Google snippets stay localized. That is server-side,
+// for crawlers, and independent of this client-side UI default.
 let globalLanguage: Language = 'en';
 const listeners: Set<(lang: Language) => void> = new Set();
 
-const SUPPORTED_LANGS: readonly Language[] = ['en', 'he', 'ar'] as const;
-const isSupported = (v: unknown): v is Language =>
-  typeof v === 'string' && (SUPPORTED_LANGS as readonly string[]).includes(v);
+const getInitialLanguage = (): Language => 'en';
 
-// True when supabase-js has a persisted auth session in localStorage —
-// i.e. the visitor is (or was) logged in on this device. supabase-js v2
-// stores the session under `sb-<project-ref>-auth-token` and no custom
-// storageKey is configured (see core/supabase.ts), so we match that key
-// shape. getInitialLanguage uses this to decide whether a saved
-// UI-language preference is auto-applied: logged-in users keep their
-// chosen language across reloads, logged-out / prospective visitors do
-// not. If supabase ever changes the key format this returns false and
-// everyone defaults to English on a cold load — exactly the desired
-// public behaviour anyway.
-const hasPersistedSession = (): boolean => {
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith('sb-') && k.includes('-auth-token')) return true;
-    }
-  } catch { /* localStorage blocked */ }
-  return false;
-};
-
-const getInitialLanguage = (): Language => {
-  if (typeof window === 'undefined') return 'en';
-  // ?lang=en|he|ar wins over everything else. Google's hreflang
-  // alternates send searchers to /?lang=he and /?lang=ar so a Hebrew
-  // Google result must land directly in Hebrew (even when the visitor
-  // has an English browser, English OS, or a stale saved preference).
-  // Persist to localStorage too so subsequent navigation inside the SPA
-  // keeps the chosen language without the parameter on every link.
-  try {
-    const params = new URLSearchParams(window.location.search);
-    const langParam = params.get('lang');
-    if (isSupported(langParam)) {
-      try { localStorage.setItem(LANGUAGE_KEY, langParam); } catch { /* localStorage may be blocked */ }
-      return langParam;
-    }
-  } catch { /* URLSearchParams unavailable — fall through */ }
-  // A saved HE/AR preference is auto-applied ONLY for logged-in users, so a
-  // teacher who picked Hebrew keeps it across reloads. Logged-out /
-  // prospective visitors always get the English public surface: the landing
-  // page opens in English regardless of any previously saved choice. For the
-  // public, HE/AR stay an explicit, per-visit choice — the on-page language
-  // toggle (which holds for the session) or a ?lang= deep link. Keeps the
-  // marketing landing English-first while the app itself teaches English.
-  if (hasPersistedSession()) {
-    const saved = localStorage.getItem(LANGUAGE_KEY);
-    if (isSupported(saved)) return saved;
-  }
-  // Device-language auto-detect for a brand-new visitor (no ?lang, no
-  // saved choice). An Israeli student on a Hebrew/Arabic device lands in
-  // their own language instead of always defaulting to English. Only
-  // he/ar are matched — anything else (incl. English devices) keeps the
-  // English default. The user can always change it from the picker.
-  try {
-    const navLangs = (navigator.languages && navigator.languages.length)
-      ? navigator.languages
-      : [navigator.language];
-    for (const raw of navLangs) {
-      const base = (raw || '').toLowerCase().split('-')[0];
-      if (base === 'he' || base === 'iw') return 'he'; // 'iw' = legacy Hebrew code
-      if (base === 'ar') return 'ar';
-      if (base === 'en') return 'en';
-    }
-  } catch { /* navigator unavailable — fall through to English */ }
-  return 'en';
-};
-
-// Initialize global state and set initial lang attribute
+// Initialize the document attributes for the English default. The initial
+// language is always English (getInitialLanguage), so the first paint is
+// unconditionally lang="en" / dir="ltr"; a later in-app toggle updates both
+// via setGlobalLanguage.
 if (typeof window !== 'undefined') {
-  globalLanguage = getInitialLanguage();
-  // Set initial lang attribute for accessibility (WCAG 2.0 AA 3.1.1)
   document.documentElement.setAttribute('lang', globalLanguage);
-  // Set initial dir attribute for RTL support
-  const dir = (globalLanguage === 'he' || globalLanguage === 'ar') ? 'rtl' : 'ltr';
-  document.documentElement.setAttribute('dir', dir);
+  document.documentElement.setAttribute('dir', 'ltr');
 }
 
 const setGlobalLanguage = (lang: Language) => {
   globalLanguage = lang;
   if (typeof window !== 'undefined') {
+    // Persist for the session so within-SPA reads (e.g. the Quick Play
+    // bootstrap's localized error toasts) pick up the toggled language.
+    // NOT read back by getInitialLanguage — the initial language is always
+    // English, so this choice deliberately does not survive a reload.
     localStorage.setItem(LANGUAGE_KEY, lang);
-    // An explicit click must outrank a ?lang= deep link. Google's HE/AR
-    // hreflang alternates land searchers on /?lang=he|ar, which
-    // getInitialLanguage reads on EVERY load — and the SW auto-update
-    // reload (main.tsx) deliberately preserves the full URL. So if the
-    // param stays after the user toggles, the next reload/re-init snaps
-    // the UI back to the deep-linked language and even overwrites the
-    // saved choice. Drop the param here so the toggle sticks; the deep
-    // link still works for the first paint of an inbound SEO visit.
-    try {
-      const url = new URL(window.location.href);
-      if (url.searchParams.has('lang')) {
-        url.searchParams.delete('lang');
-        const qs = url.searchParams.toString();
-        window.history.replaceState(
-          window.history.state,
-          '',
-          url.pathname + (qs ? `?${qs}` : '') + url.hash,
-        );
-      }
-    } catch { /* URL / history unavailable — non-fatal */ }
     // Set lang attribute for accessibility (WCAG 2.0 AA 3.1.1)
     document.documentElement.setAttribute('lang', lang);
     // Set dir attribute for RTL support (Hebrew/Arabic)
