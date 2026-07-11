@@ -30,7 +30,7 @@
 //  4. Non-chunk errors fall through unchanged so real bugs still surface.
 
 import { lazy, type ComponentType, type LazyExoticComponent } from "react";
-import { isChunkLoadError, attemptChunkReload } from "./chunkReload";
+import { isChunkLoadError, attemptChunkReload, resetChunkRecovery } from "./chunkReload";
 
 const RETRY_DELAY_MS = 400;
 
@@ -47,13 +47,20 @@ export function lazyWithRetry<T extends ComponentType<any>>(
 ): LazyExoticComponent<T> {
   return lazy(async () => {
     try {
-      return await factory();
+      const mod = await factory();
+      // A clean import means any prior stale-deploy recovery has taken hold —
+      // wipe the escalation counter so a later, unrelated chunk error doesn't
+      // inherit a stale "give up" count from earlier in this tab session.
+      resetChunkRecovery();
+      return mod;
     } catch (err) {
       if (!isChunkLoadError(err)) throw err;
 
       await delay(RETRY_DELAY_MS);
       try {
-        return await factory();
+        const mod = await factory();
+        resetChunkRecovery();
+        return mod;
       } catch (err2) {
         if (!isChunkLoadError(err2)) throw err2;
 
