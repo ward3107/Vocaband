@@ -53,6 +53,8 @@ const T: Record<
   {
     title: string;
     subtitle: string;
+    panelTitle: string;
+    panelSubtitle: string;
     benefits: readonly [string, string, string];
     nameLabel: string;
     namePlaceholder: string;
@@ -74,6 +76,9 @@ const T: Record<
   en: {
     title: 'Sign up as a teacher',
     subtitle: "Confirm you're a teacher and find your school to get started.",
+    panelTitle: 'Where words become a game',
+    panelSubtitle:
+      'Join the teachers turning vocabulary practice into XP, streaks and friendly competition.',
     benefits: ['🎮 15 game modes', '💬 Hebrew & Arabic', '✨ Free for teachers'],
     nameLabel: 'Your name',
     namePlaceholder: 'e.g. Sarah Cohen',
@@ -95,6 +100,8 @@ const T: Record<
   he: {
     title: 'הרשמה כמורה',
     subtitle: 'אשרו שאתם מורים ובחרו את בית הספר שלכם כדי להתחיל.',
+    panelTitle: 'כאן מילים הופכות למשחק',
+    panelSubtitle: 'הצטרפו למורים שהופכים תרגול אוצר מילים ל־XP, רצפים ותחרות ידידותית.',
     benefits: ['🎮 15 מצבי משחק', '💬 עברית וערבית', '✨ חינם למורים'],
     nameLabel: 'השם שלכם',
     namePlaceholder: 'לדוגמה: שרה כהן',
@@ -115,6 +122,9 @@ const T: Record<
   ru: {
     title: 'Регистрация учителя',
     subtitle: 'Подтвердите, что вы учитель, и найдите свою школу, чтобы начать.',
+    panelTitle: 'Где слова становятся игрой',
+    panelSubtitle:
+      'Присоединяйтесь к учителям, которые превращают практику лексики в XP, серии и дружеские соревнования.',
     benefits: ['🎮 15 режимов игры', '💬 иврит и арабский', '✨ бесплатно для учителей'],
     nameLabel: 'Ваше имя',
     namePlaceholder: 'например, Сара Коэн',
@@ -135,6 +145,8 @@ const T: Record<
   ar: {
     title: 'التسجيل كمعلّم',
     subtitle: 'أكّد أنك معلّم واختر مدرستك للبدء.',
+    panelTitle: 'حيث تتحوّل الكلمات إلى لعبة',
+    panelSubtitle: 'انضمّ إلى المعلّمين الذين يحوّلون تدرّب المفردات إلى نقاط خبرة وسلاسل ومنافسة ودّية.',
     benefits: ['🎮 15 نمط لعب', '💬 العبرية والعربية', '✨ مجاني للمعلّمين'],
     nameLabel: 'اسمك',
     namePlaceholder: 'مثال: سارة كوهين',
@@ -254,70 +266,81 @@ export default function TeacherSignupView({
       dir={dir}
       className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-violet-50 to-fuchsia-50 p-4"
     >
+      <div
+        className={`w-full max-w-4xl flex flex-col items-center justify-center gap-6 lg:gap-10 ${
+          isRTL ? 'lg:flex-row-reverse' : 'lg:flex-row'
+        }`}
+      >
+        {/* Marketing panel — sits BESIDE the signup card on wide screens
+            (empty space that was previously blank) and gives a hesitant
+            teacher a reason to finish: an animated, on-brand illustration of
+            what Vocaband actually is — a game. Floating tokens (⭐🎮🔥🏆)
+            drift behind a breathing medallion, over a value pitch + benefit
+            pills. Hidden on mobile, where the card already fills the screen. */}
+        <motion.aside
+          initial={{ opacity: 0, x: isRTL ? 28 : -28 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="relative hidden lg:flex w-80 shrink-0 flex-col justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 p-8 text-white shadow-xl shadow-violet-500/20 self-stretch"
+        >
+          {/* Ambient floating tokens — decorative, low-opacity backdrop. */}
+          {FLOATERS.map((f, i) => (
+            <motion.span
+              key={f.emoji}
+              aria-hidden
+              className="pointer-events-none absolute text-3xl opacity-25 select-none"
+              style={{ left: f.left, top: f.top }}
+              animate={reduceMotion ? undefined : { y: [0, -10, 0], rotate: [0, f.rot, 0] }}
+              transition={{
+                duration: 3 + i * 0.5,
+                repeat: Infinity,
+                ease: 'easeInOut',
+                delay: i * 0.35,
+              }}
+            >
+              {f.emoji}
+            </motion.span>
+          ))}
+
+          <div className="relative flex flex-col">
+            {/* Breathing medallion */}
+            <motion.div
+              className="mb-5 w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg"
+              animate={reduceMotion ? undefined : { y: [0, -5, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <GraduationCap className="w-8 h-8 text-white" />
+            </motion.div>
+
+            <h2 className={`text-2xl font-bold leading-snug ${textAlign}`}>{t.panelTitle}</h2>
+            <p className={`mt-2 text-sm text-white/85 ${textAlign}`}>{t.panelSubtitle}</p>
+
+            <div className="mt-6 flex flex-col gap-2">
+              {t.benefits.map((b, i) => (
+                <motion.div
+                  key={b}
+                  initial={{ opacity: 0, x: isRTL ? 12 : -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.25 + i * 0.12 }}
+                  className={`rounded-xl bg-white/15 px-3 py-2 text-sm font-medium backdrop-blur-sm ${textAlign}`}
+                >
+                  {b}
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </motion.aside>
+
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md rounded-3xl bg-white shadow-xl shadow-indigo-500/10 p-6 sm:p-8"
       >
         <div className="flex flex-col items-center text-center mb-6">
-          {/* Animated gamified hero — Vocaband is a game, so its front door
-              moves: a gently breathing medallion, a soft pulsing glow, and
-              four floating tokens (⭐🎮🔥🏆) hinting at the rewards past
-              signup. Keeps a hesitant teacher engaged through the form. */}
-          <div className="relative w-28 h-20 flex items-center justify-center">
-            <motion.div
-              aria-hidden
-              className="absolute w-20 h-20 rounded-full bg-gradient-to-br from-indigo-400 via-violet-400 to-fuchsia-400 blur-xl"
-              initial={{ opacity: 0.4 }}
-              animate={reduceMotion ? { opacity: 0.4 } : { scale: [1, 1.15, 1], opacity: [0.35, 0.55, 0.35] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            />
-            {FLOATERS.map((f, i) => (
-              <motion.span
-                key={f.emoji}
-                aria-hidden
-                className="absolute text-lg select-none"
-                style={{ left: f.left, top: f.top }}
-                animate={reduceMotion ? undefined : { y: [0, -6, 0], rotate: [0, f.rot, 0] }}
-                transition={{
-                  duration: 2.4 + i * 0.4,
-                  repeat: Infinity,
-                  ease: 'easeInOut',
-                  delay: i * 0.3,
-                }}
-              >
-                {f.emoji}
-              </motion.span>
-            ))}
-            <motion.div
-              className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/30"
-              animate={reduceMotion ? undefined : { y: [0, -4, 0] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <GraduationCap className="w-8 h-8 text-white" />
-            </motion.div>
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/30">
+            <GraduationCap className="w-8 h-8 text-white" />
           </div>
           <h1 className="mt-4 text-2xl font-bold text-gray-900">{t.title}</h1>
           <p className="mt-1 text-sm text-gray-500">{t.subtitle}</p>
-
-          {/* Value chips — three quick reasons to finish signing up. */}
-          <div
-            className={`mt-3 flex flex-wrap items-center justify-center gap-1.5 ${
-              isRTL ? 'flex-row-reverse' : ''
-            }`}
-          >
-            {t.benefits.map((b, i) => (
-              <motion.span
-                key={b}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 + i * 0.12 }}
-                className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700 ring-1 ring-violet-100"
-              >
-                {b}
-              </motion.span>
-            ))}
-          </div>
           {email && (
             <p className="mt-2 text-xs text-gray-400">
               {t.signedInAs} <span className="font-medium text-gray-600">{email}</span>
@@ -462,6 +485,7 @@ export default function TeacherSignupView({
           {t.cancel}
         </button>
       </motion.div>
+      </div>
       {cookieBannerOverlay}
     </div>
   );
