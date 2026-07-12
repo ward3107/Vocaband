@@ -22,13 +22,24 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { GraduationCap, School, Search, Check } from 'lucide-react';
 import { supabase, fetchUserProfile, type AppUser } from '../core/supabase';
 import { useLanguage, type Language } from '../hooks/useLanguage';
 import { useSchoolsLazy } from '../hooks/useSchoolsLazy';
 import type { IsraelSchool } from '../data/israel-schools';
 import type { View } from '../core/views';
+
+// Floating gamification tokens that orbit the hero medallion — a small,
+// living reminder of the 15 game modes, XP, streaks and trophies waiting on
+// the other side of signup. Purely decorative (aria-hidden); the left/top
+// values are positions inside the relative hero box.
+const FLOATERS = [
+  { emoji: '⭐', left: '2%', top: '8%', rot: -12 },
+  { emoji: '🎮', left: '84%', top: '2%', rot: 12 },
+  { emoji: '🔥', left: '90%', top: '60%', rot: 10 },
+  { emoji: '🏆', left: '0%', top: '58%', rot: -10 },
+] as const;
 
 interface TeacherSignupViewProps {
   setView: Dispatch<SetStateAction<View>>;
@@ -42,6 +53,7 @@ const T: Record<
   {
     title: string;
     subtitle: string;
+    benefits: readonly [string, string, string];
     nameLabel: string;
     namePlaceholder: string;
     schoolLabel: string;
@@ -62,6 +74,7 @@ const T: Record<
   en: {
     title: 'Sign up as a teacher',
     subtitle: "Confirm you're a teacher and find your school to get started.",
+    benefits: ['🎮 15 game modes', '💬 Hebrew & Arabic', '✨ Free for teachers'],
     nameLabel: 'Your name',
     namePlaceholder: 'e.g. Sarah Cohen',
     schoolLabel: 'Your school',
@@ -82,6 +95,7 @@ const T: Record<
   he: {
     title: 'הרשמה כמורה',
     subtitle: 'אשרו שאתם מורים ובחרו את בית הספר שלכם כדי להתחיל.',
+    benefits: ['🎮 15 מצבי משחק', '💬 עברית וערבית', '✨ חינם למורים'],
     nameLabel: 'השם שלכם',
     namePlaceholder: 'לדוגמה: שרה כהן',
     schoolLabel: 'בית הספר שלכם',
@@ -101,6 +115,7 @@ const T: Record<
   ru: {
     title: 'Регистрация учителя',
     subtitle: 'Подтвердите, что вы учитель, и найдите свою школу, чтобы начать.',
+    benefits: ['🎮 15 режимов игры', '💬 иврит и арабский', '✨ бесплатно для учителей'],
     nameLabel: 'Ваше имя',
     namePlaceholder: 'например, Сара Коэн',
     schoolLabel: 'Ваша школа',
@@ -120,6 +135,7 @@ const T: Record<
   ar: {
     title: 'التسجيل كمعلّم',
     subtitle: 'أكّد أنك معلّم واختر مدرستك للبدء.',
+    benefits: ['🎮 15 نمط لعب', '💬 العبرية والعربية', '✨ مجاني للمعلّمين'],
     nameLabel: 'اسمك',
     namePlaceholder: 'مثال: سارة كوهين',
     schoolLabel: 'مدرستك',
@@ -147,6 +163,9 @@ export default function TeacherSignupView({
   const { language, dir, isRTL, textAlign } = useLanguage();
   const t = T[language];
   const schools = useSchoolsLazy(true);
+  // Respect the OS "reduce motion" setting — the looping hero animations are
+  // delight, not information, so we drop them entirely for those users.
+  const reduceMotion = useReducedMotion();
 
   const [email, setEmail] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState('');
@@ -241,11 +260,64 @@ export default function TeacherSignupView({
         className="w-full max-w-md rounded-3xl bg-white shadow-xl shadow-indigo-500/10 p-6 sm:p-8"
       >
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/30">
-            <GraduationCap className="w-8 h-8 text-white" />
+          {/* Animated gamified hero — Vocaband is a game, so its front door
+              moves: a gently breathing medallion, a soft pulsing glow, and
+              four floating tokens (⭐🎮🔥🏆) hinting at the rewards past
+              signup. Keeps a hesitant teacher engaged through the form. */}
+          <div className="relative w-28 h-20 flex items-center justify-center">
+            <motion.div
+              aria-hidden
+              className="absolute w-20 h-20 rounded-full bg-gradient-to-br from-indigo-400 via-violet-400 to-fuchsia-400 blur-xl"
+              initial={{ opacity: 0.4 }}
+              animate={reduceMotion ? { opacity: 0.4 } : { scale: [1, 1.15, 1], opacity: [0.35, 0.55, 0.35] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            />
+            {FLOATERS.map((f, i) => (
+              <motion.span
+                key={f.emoji}
+                aria-hidden
+                className="absolute text-lg select-none"
+                style={{ left: f.left, top: f.top }}
+                animate={reduceMotion ? undefined : { y: [0, -6, 0], rotate: [0, f.rot, 0] }}
+                transition={{
+                  duration: 2.4 + i * 0.4,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                  delay: i * 0.3,
+                }}
+              >
+                {f.emoji}
+              </motion.span>
+            ))}
+            <motion.div
+              className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/30"
+              animate={reduceMotion ? undefined : { y: [0, -4, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <GraduationCap className="w-8 h-8 text-white" />
+            </motion.div>
           </div>
           <h1 className="mt-4 text-2xl font-bold text-gray-900">{t.title}</h1>
           <p className="mt-1 text-sm text-gray-500">{t.subtitle}</p>
+
+          {/* Value chips — three quick reasons to finish signing up. */}
+          <div
+            className={`mt-3 flex flex-wrap items-center justify-center gap-1.5 ${
+              isRTL ? 'flex-row-reverse' : ''
+            }`}
+          >
+            {t.benefits.map((b, i) => (
+              <motion.span
+                key={b}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 + i * 0.12 }}
+                className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700 ring-1 ring-violet-100"
+              >
+                {b}
+              </motion.span>
+            ))}
+          </div>
           {email && (
             <p className="mt-2 text-xs text-gray-400">
               {t.signedInAs} <span className="font-medium text-gray-600">{email}</span>
