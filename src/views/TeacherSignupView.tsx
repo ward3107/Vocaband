@@ -22,13 +22,24 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { GraduationCap, School, Search, Check } from 'lucide-react';
 import { supabase, fetchUserProfile, type AppUser } from '../core/supabase';
 import { useLanguage, type Language } from '../hooks/useLanguage';
 import { useSchoolsLazy } from '../hooks/useSchoolsLazy';
 import type { IsraelSchool } from '../data/israel-schools';
 import type { View } from '../core/views';
+
+// Floating gamification tokens that orbit the hero medallion — a small,
+// living reminder of the 15 game modes, XP, streaks and trophies waiting on
+// the other side of signup. Purely decorative (aria-hidden); the left/top
+// values are positions inside the relative hero box.
+const FLOATERS = [
+  { emoji: '⭐', left: '2%', top: '8%', rot: -12 },
+  { emoji: '🎮', left: '84%', top: '2%', rot: 12 },
+  { emoji: '🔥', left: '90%', top: '60%', rot: 10 },
+  { emoji: '🏆', left: '0%', top: '58%', rot: -10 },
+] as const;
 
 interface TeacherSignupViewProps {
   setView: Dispatch<SetStateAction<View>>;
@@ -42,6 +53,9 @@ const T: Record<
   {
     title: string;
     subtitle: string;
+    panelTitle: string;
+    panelSubtitle: string;
+    benefits: readonly [string, string, string];
     nameLabel: string;
     namePlaceholder: string;
     schoolLabel: string;
@@ -62,6 +76,10 @@ const T: Record<
   en: {
     title: 'Sign up as a teacher',
     subtitle: "Confirm you're a teacher and find your school to get started.",
+    panelTitle: 'Where words become a game',
+    panelSubtitle:
+      'Join the teachers turning vocabulary practice into XP, streaks and friendly competition.',
+    benefits: ['🎮 15 game modes', '💬 Hebrew & Arabic', '✨ Free for teachers'],
     nameLabel: 'Your name',
     namePlaceholder: 'e.g. Sarah Cohen',
     schoolLabel: 'Your school',
@@ -82,6 +100,9 @@ const T: Record<
   he: {
     title: 'הרשמה כמורה',
     subtitle: 'אשרו שאתם מורים ובחרו את בית הספר שלכם כדי להתחיל.',
+    panelTitle: 'כאן מילים הופכות למשחק',
+    panelSubtitle: 'הצטרפו למורים שהופכים תרגול אוצר מילים ל־XP, רצפים ותחרות ידידותית.',
+    benefits: ['🎮 15 מצבי משחק', '💬 עברית וערבית', '✨ חינם למורים'],
     nameLabel: 'השם שלכם',
     namePlaceholder: 'לדוגמה: שרה כהן',
     schoolLabel: 'בית הספר שלכם',
@@ -101,6 +122,10 @@ const T: Record<
   ru: {
     title: 'Регистрация учителя',
     subtitle: 'Подтвердите, что вы учитель, и найдите свою школу, чтобы начать.',
+    panelTitle: 'Где слова становятся игрой',
+    panelSubtitle:
+      'Присоединяйтесь к учителям, которые превращают практику лексики в XP, серии и дружеские соревнования.',
+    benefits: ['🎮 15 режимов игры', '💬 иврит и арабский', '✨ бесплатно для учителей'],
     nameLabel: 'Ваше имя',
     namePlaceholder: 'например, Сара Коэн',
     schoolLabel: 'Ваша школа',
@@ -120,6 +145,9 @@ const T: Record<
   ar: {
     title: 'التسجيل كمعلّم',
     subtitle: 'أكّد أنك معلّم واختر مدرستك للبدء.',
+    panelTitle: 'حيث تتحوّل الكلمات إلى لعبة',
+    panelSubtitle: 'انضمّ إلى المعلّمين الذين يحوّلون تدرّب المفردات إلى نقاط خبرة وسلاسل ومنافسة ودّية.',
+    benefits: ['🎮 15 نمط لعب', '💬 العبرية والعربية', '✨ مجاني للمعلّمين'],
     nameLabel: 'اسمك',
     namePlaceholder: 'مثال: سارة كوهين',
     schoolLabel: 'مدرستك',
@@ -147,6 +175,9 @@ export default function TeacherSignupView({
   const { language, dir, isRTL, textAlign } = useLanguage();
   const t = T[language];
   const schools = useSchoolsLazy(true);
+  // Respect the OS "reduce motion" setting — the looping hero animations are
+  // delight, not information, so we drop them entirely for those users.
+  const reduceMotion = useReducedMotion();
 
   const [email, setEmail] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState('');
@@ -235,6 +266,70 @@ export default function TeacherSignupView({
       dir={dir}
       className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-violet-50 to-fuchsia-50 p-4"
     >
+      <div
+        className={`w-full max-w-4xl flex flex-col items-center justify-center gap-6 lg:gap-10 ${
+          isRTL ? 'lg:flex-row-reverse' : 'lg:flex-row'
+        }`}
+      >
+        {/* Marketing panel — sits BESIDE the signup card on wide screens
+            (empty space that was previously blank) and gives a hesitant
+            teacher a reason to finish: an animated, on-brand illustration of
+            what Vocaband actually is — a game. Floating tokens (⭐🎮🔥🏆)
+            drift behind a breathing medallion, over a value pitch + benefit
+            pills. Hidden on mobile, where the card already fills the screen. */}
+        <motion.aside
+          initial={{ opacity: 0, x: isRTL ? 28 : -28 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="relative hidden lg:flex w-80 shrink-0 flex-col justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 p-8 text-white shadow-xl shadow-violet-500/20 self-stretch"
+        >
+          {/* Ambient floating tokens — decorative, low-opacity backdrop. */}
+          {FLOATERS.map((f, i) => (
+            <motion.span
+              key={f.emoji}
+              aria-hidden
+              className="pointer-events-none absolute text-3xl opacity-25 select-none"
+              style={{ left: f.left, top: f.top }}
+              animate={reduceMotion ? undefined : { y: [0, -10, 0], rotate: [0, f.rot, 0] }}
+              transition={{
+                duration: 3 + i * 0.5,
+                repeat: Infinity,
+                ease: 'easeInOut',
+                delay: i * 0.35,
+              }}
+            >
+              {f.emoji}
+            </motion.span>
+          ))}
+
+          <div className="relative flex flex-col">
+            {/* Breathing medallion */}
+            <motion.div
+              className="mb-5 w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg"
+              animate={reduceMotion ? undefined : { y: [0, -5, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <GraduationCap className="w-8 h-8 text-white" />
+            </motion.div>
+
+            <h2 className={`text-2xl font-bold leading-snug ${textAlign}`}>{t.panelTitle}</h2>
+            <p className={`mt-2 text-sm text-white/85 ${textAlign}`}>{t.panelSubtitle}</p>
+
+            <div className="mt-6 flex flex-col gap-2">
+              {t.benefits.map((b, i) => (
+                <motion.div
+                  key={b}
+                  initial={{ opacity: 0, x: isRTL ? 12 : -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.25 + i * 0.12 }}
+                  className={`rounded-xl bg-white/15 px-3 py-2 text-sm font-medium backdrop-blur-sm ${textAlign}`}
+                >
+                  {b}
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </motion.aside>
+
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -390,6 +485,7 @@ export default function TeacherSignupView({
           {t.cancel}
         </button>
       </motion.div>
+      </div>
       {cookieBannerOverlay}
     </div>
   );
