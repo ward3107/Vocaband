@@ -3,7 +3,7 @@
 > Vocaband is a gamified English vocabulary platform for ESL classrooms.
 > 9,000+ words aligned with CEFR A1–B2, 10 game modes, live class leaderboards.
 > Designed for teachers running real classes — students join with a class code,
-> no email or sign-up required. Free for teachers to create a class.
+> no email or sign-up required.
 
 ## What Vocaband does
 
@@ -12,7 +12,7 @@
 - Real-time class leaderboard during live challenges.
 - Per-word mastery tracking — teachers see exactly which words each student struggles with.
 - Built-in Hebrew and Arabic translation support; English is the target language.
-- Free for teachers to create a class. No ads on student devices. No per-student fees.
+- Students join with a class code — no sign-up. No ads on student devices.
 
 ## Vocabulary scope
 

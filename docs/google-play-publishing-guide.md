@@ -243,8 +243,8 @@ Get these ready before you start the listing — Play won't let you save partial
 | **Feature graphic** | 1024×500 PNG/JPG, no alpha | The hero banner on your Play listing. Make a branded one (indigo→violet gradient + "Vocaband" + tagline). |
 | **Phone screenshots** | 2–8 PNGs, 16:9 or 9:16, min 320px, max 3840px | Use real screens. Best with light marketing copy overlay ("Live class challenges!"). |
 | **Tablet screenshots** | 2–8 PNGs (7" and 10") | Optional but boosts ranking on tablet searches. Use a tablet emulator or resize. |
-| **Short description** | ≤ 80 chars | "Gamified English vocabulary for schools — CEFR A1–B2, 15 game modes, free for teachers." |
-| **Full description** | ≤ 4000 chars | Pull from the meta description in `index.html` + expand. Cover: who it's for, what it does, language coverage, free-for-teachers angle. |
+| **Short description** | ≤ 80 chars | "Gamified English vocabulary for schools — CEFR A1–B2, 15 game modes, no student sign-ups." |
+| **Full description** | ≤ 4000 chars | Pull from the meta description in `index.html` + expand. Cover: who it's for, what it does, language coverage, no-student-sign-ups angle. |
 | **App category** | Education | Primary. Add "Educational" as a tag. |
 | **Content rating** | IARC questionnaire | Walk through the form. Vocaband should land at **Everyone** / **PEGI 3**. |
 | **Privacy policy URL** | https://www.vocaband.com/privacy.html | Already exists. |
