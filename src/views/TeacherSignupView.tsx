@@ -51,6 +51,7 @@ const T: Record<
     confirm: string;
     submit: string;
     submitting: string;
+    cancel: string;
     signedInAs: string;
     mustConfirm: string;
     success: string;
@@ -70,6 +71,7 @@ const T: Record<
     confirm: 'I confirm I am a teacher / educator',
     submit: 'Create my teacher account',
     submitting: 'Creating your account…',
+    cancel: 'Cancel and return home',
     signedInAs: 'Signed in as',
     mustConfirm: 'Please confirm you are a teacher first.',
     success: 'Welcome! Your teacher account is ready.',
@@ -89,6 +91,7 @@ const T: Record<
     confirm: 'אני מאשר/ת שאני מורה / איש חינוך',
     submit: 'צרו לי חשבון מורה',
     submitting: 'יוצרים את החשבון שלכם…',
+    cancel: 'ביטול וחזרה לדף הבית',
     signedInAs: 'מחוברים כ',
     mustConfirm: 'אנא אשרו תחילה שאתם מורים.',
     success: 'ברוכים הבאים! חשבון המורה שלכם מוכן.',
@@ -107,6 +110,7 @@ const T: Record<
     confirm: 'Подтверждаю, что я учитель / педагог',
     submit: 'Создать аккаунт учителя',
     submitting: 'Создаём ваш аккаунт…',
+    cancel: 'Отменить и вернуться на главную',
     signedInAs: 'Вы вошли как',
     mustConfirm: 'Сначала подтвердите, что вы учитель.',
     success: 'Добро пожаловать! Ваш аккаунт учителя готов.',
@@ -125,6 +129,7 @@ const T: Record<
     confirm: 'أؤكّد أنني معلّم / تربوي',
     submit: 'أنشئ حساب المعلّم',
     submitting: 'جارٍ إنشاء حسابك…',
+    cancel: 'إلغاء والعودة إلى الصفحة الرئيسية',
     signedInAs: 'مسجّل الدخول باسم',
     mustConfirm: 'يرجى تأكيد أنك معلّم أولاً.',
     success: 'أهلاً بك! حساب المعلّم جاهز.',
@@ -172,6 +177,20 @@ export default function TeacherSignupView({
     if (picked || notListed || !schools) return [];
     return schools.searchSchools(query, 30);
   }, [picked, notListed, schools, query]);
+
+  // Cancelling a signup means abandoning the half-completed Google session:
+  // sign out first, otherwise the useAuthRestore OAuth gate re-routes a
+  // still-authenticated non-allowlisted email straight back to teacher-signup.
+  async function handleCancel() {
+    if (submitting) return;
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      /* best-effort — we're leaving either way */
+    }
+    setUser(null);
+    setView('public-landing');
+  }
 
   async function handleSubmit() {
     if (!confirmed) {
@@ -359,6 +378,17 @@ export default function TeacherSignupView({
         >
           {submitting ? t.submitting : t.submit}
         </motion.button>
+
+        {/* Cancel — sign out of the half-completed OAuth session and go home */}
+        <button
+          type="button"
+          onClick={handleCancel}
+          disabled={submitting}
+          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+          className="mt-3 w-full rounded-xl px-4 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        >
+          {t.cancel}
+        </button>
       </motion.div>
       {cookieBannerOverlay}
     </div>
