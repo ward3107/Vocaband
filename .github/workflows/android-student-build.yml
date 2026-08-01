@@ -66,7 +66,7 @@ jobs:
           key. Then DELETE this workflow-run's artifact once the secrets are set.
           EOF
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: vocaband-upload-keystore-KEEP-PRIVATE
           path: |
@@ -132,7 +132,7 @@ jobs:
             -Pandroid.injected.signing.key.password="$KEY_PASSWORD" \
             -PVERSION_CODE=${{ github.run_number }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: vocaband-student-aab
           path: android/app/build/outputs/bundle/release/app-release.aab
