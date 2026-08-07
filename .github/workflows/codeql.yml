@@ -1,0 +1,64 @@
+# CodeQL — advanced setup that supersedes the repo-level Default Setup.
+#
+# Why this file exists: Default Setup auto-detected Swift because of the
+# Capacitor iOS wrapper under ios/, then failed on every scan with
+# "Detected build command failed" (no Xcode/SPM on the runner).  A red
+# language config drowned real alerts.  Advanced setup lets us list only
+# the languages that matter for security: the JS/TS SPA + Node server.
+# The iOS wrapper is a thin Capacitor shell — its attack surface is the
+# web bundle we already analyse.
+#
+# actions/python are covered too (workflows scan themselves; a few
+# scripts/ tooling files).  Java/Kotlin would come from any Android
+# host project; there's none in-repo (the Android build lives in a
+# separate workflow generating a Capacitor bundle at CI time).
+
+name: CodeQL
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly rescan catches newly-published queries against unchanged code.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, python, actions]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-extended
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}
