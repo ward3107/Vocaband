@@ -179,3 +179,6 @@ Never commit `.env.local`.
 | April 2026 session history | `docs/session-history-2026-04.md` |
 | Security overview + pen-test | `docs/SECURITY-OVERVIEW.md` |
 | i18n migration pattern | `docs/I18N-MIGRATION.md` |
+
+
+<!-- branch-protection test — will be closed without merging -->
