@@ -370,6 +370,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                     </button>
                   </>
                 )}
+
+                {/* Student escape hatch — students on shared school
+                    computers or family desktops have no phone to run the
+                    QR-join flow. Low-contrast link (not a competing CTA)
+                    lets them find the class-code screen without pushing
+                    against the teacher-first hero pitch. */}
+                <button
+                  type="button"
+                  onClick={onGetStarted}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                  aria-label={`${t.heroV2.studentCta} — ${t.heroV2.studentNote}`}
+                  className="mt-4 w-full text-center text-sm text-white/60 hover:text-white/90 underline underline-offset-4 decoration-white/30 hover:decoration-white/70 transition-colors"
+                >
+                  {t.heroV2.studentDesc} <span className="font-bold">{t.heroV2.studentCta} {isRTL ? "←" : "→"}</span>
+                </button>
               </div>
             </div>
 
