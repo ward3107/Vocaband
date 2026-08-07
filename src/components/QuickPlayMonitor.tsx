@@ -26,6 +26,36 @@ import { teacherGuidesT } from '../locales/teacher/guides';
 // updates instead of subscribing to progress-table realtime, and
 // kicks students via TEACHER_KICK instead of a Supabase delete.
 
+// ─── In-game 🆘 help button — teacher-side badge + counter ─────────────
+// Pure helpers exported for `src/__tests__/QuickPlayMonitor.raiseHand.test.tsx`
+// so this behavior is unit-testable without booting the whole 2363-line
+// monitor. Actual socket wiring + Student-type extension land during the
+// full Task 8 integration — see `docs/superpowers/plans/2026-08-07-quick
+// -play-help-button.md` Task 8.
+
+export function handRaisedCount(students: Array<{ handRaisedAt: number | null }>): number {
+  return students.filter((s) => typeof s.handRaisedAt === 'number').length;
+}
+
+interface RaisedHandBadgeProps {
+  count: number;
+  onClear: () => void;
+}
+
+export function RaisedHandBadge({ count, onClear }: RaisedHandBadgeProps) {
+  if (count <= 0) return null;
+  return (
+    <button
+      type="button"
+      onClick={onClear}
+      className="rounded-full bg-pink-100 px-3 py-1 text-xs font-bold text-pink-900"
+      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+    >
+      🙋 {count} need help
+    </button>
+  );
+}
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 interface Student {
   name: string;
@@ -39,6 +69,9 @@ interface Student {
   streak?: number;
   roundProgress?: { done: number; total: number };
   perfectRound?: boolean;
+  /** In-game 🆘 help button — timestamp when the student raised their
+   *  hand, or null when not raised / cleared by teacher / auto-expired. */
+  handRaisedAt: number | null;
 }
 
 interface QuickPlaySession {
@@ -841,6 +874,46 @@ export default function QuickPlayMonitor({
   // component already understands. Wrapping in useMemo keeps prop-like
   // referential stability so downstream useEffects don't re-run on
   // every render.
+  // In-game 🆘 help button — teacher-side state. Map<studentUid, raisedAt>
+  // kept independent of socket.leaderboard so a leaderboard update doesn't
+  // clobber the raised-hand flag. Cleared on ack (via socket.ackHelp) or
+  // 60s auto-expire (the student self-clears on their own client too).
+  const [raisedHands, setRaisedHands] = useState<Map<string, number>>(new Map());
+
+  useEffect(() => {
+    const off = socket.onHandRaised((p) => {
+      setRaisedHands((prev) => {
+        const next = new Map(prev);
+        next.set(p.studentUid, p.raisedAt);
+        return next;
+      });
+      // Auto-expire the local badge after 60s (server has no retention;
+      // the student's own hook clears at the same interval).
+      setTimeout(() => {
+        setRaisedHands((prev) => {
+          const next = new Map(prev);
+          next.delete(p.studentUid);
+          return next;
+        });
+      }, 60_000);
+    });
+    return off;
+  }, [socket]);
+
+  const clearOneHand = useCallback((studentUid: string) => {
+    socket.ackHelp(studentUid);
+    setRaisedHands((prev) => {
+      const next = new Map(prev);
+      next.delete(studentUid);
+      return next;
+    });
+  }, [socket]);
+
+  const clearAllHands = useCallback(() => {
+    socket.ackHelp('all');
+    setRaisedHands(new Map());
+  }, [socket]);
+
   const socketStudents = useMemo<Student[]>(() => {
     return socket.leaderboard.map(s => ({
       name: s.nickname,
@@ -852,8 +925,9 @@ export default function QuickPlayMonitor({
       streak: s.streak,
       roundProgress: s.roundProgress,
       perfectRound: s.perfectRound,
+      handRaisedAt: raisedHands.get(s.clientId) ?? null,
     }));
-  }, [socket.leaderboard]);
+  }, [socket.leaderboard, raisedHands]);
 
   // Socket is the source of truth for the live leaderboard.
   const effectiveStudents = socketStudents;
@@ -1341,6 +1415,17 @@ export default function QuickPlayMonitor({
             </motion.div>
           ))}
         </AnimatePresence>
+      </div>
+
+      {/* ─── In-game 🆘 help-button counter ────────────────────────────────
+          Persistent fixed pill in the top-left showing how many students
+          have raised their hand right now. Tapping clears all. Individual
+          🙋 badges appear on each raised student's leaderboard card too. */}
+      <div className="fixed top-16 sm:top-20 left-3 sm:left-6 z-[60]">
+        <RaisedHandBadge
+          count={handRaisedCount(effectiveStudents)}
+          onClear={clearAllHands}
+        />
       </div>
 
       {/* ─── Achievement toasts (Tier B) ─────────────────────────────────────
@@ -2010,6 +2095,21 @@ export default function QuickPlayMonitor({
                         justJoined ? 'ring-4 ring-emerald-400/60 ring-offset-2 ring-offset-transparent' : ''
                       }`}
                     >
+                      {/* In-game 🆘 help — student raised their hand.
+                          Persistent badge (not hover-only) so the teacher
+                          can spot it on a busy projector. Tap to acknowledge. */}
+                      {student.handRaisedAt !== null && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); clearOneHand(student.studentUid); }}
+                          className="absolute -top-1 -right-1 text-2xl z-20 animate-bounce"
+                          aria-label="Clear raised hand"
+                          title="Tap to acknowledge"
+                          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                        >
+                          🙋
+                        </button>
+                      )}
                       {/* Bonus on hover — opposite the kick button so the
                           "good job" and "remove" actions don't crowd each
                           other. Default +5 per tap; tap multiple times for

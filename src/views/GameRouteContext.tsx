@@ -20,6 +20,7 @@ import type { GameMode } from '../constants/game';
 import type { LeaderboardEntry } from '../core/types';
 import type { QpStudentEntry } from '../core/quickPlayProtocol';
 import type { Language } from '../hooks/useLanguage';
+import type { Socket } from 'socket.io-client';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Anyish = any;
@@ -76,6 +77,12 @@ export interface GameRoutesDeps {
   /** Live Quick Play session leaderboard (merged across VMs) — lets the
    *  finish screen show "3rd of 24 students" without a network call. */
   qpLeaderboard: QpStudentEntry[];
+  /** In-game 🆘 help button — feeds the QuickPlayHelpButton mount inside
+   *  GameActiveView. Null when not in Quick Play. */
+  quickPlaySocket: Socket | null;
+  quickPlayStudentUid: string | null;
+  showTranslation: boolean;
+  setShowTranslation: React.Dispatch<React.SetStateAction<boolean>>;
   isSaving: boolean;
   saveError: string | null;
   toasts: Anyish[];

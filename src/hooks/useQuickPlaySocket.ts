@@ -36,6 +36,8 @@ import {
   type QpTeamModePayload,
   type QpKickedPayload,
   type QpSessionEndedPayload,
+  type HandRaisedPayload,
+  type TeacherAckHelpPayload,
   type QpReactionPayload,
   type QpErrorPayload,
   type QpErrorCode,
@@ -248,6 +250,12 @@ export interface QuickPlaySocketApi {
   /** Fires once when the server signals "you were kicked". Replaces
    *  itself if called multiple times (no accumulation). Return cleanup. */
   onKicked: (cb: (p: QpKickedPayload) => void) => () => void;
+  /** Teacher-side: fires when the server broadcasts HAND_RAISED for any
+   *  student in the observed session (in-game 🆘 help button). Return cleanup. */
+  onHandRaised: (cb: (p: HandRaisedPayload) => void) => () => void;
+  /** Teacher action: acknowledge (clear) a raised hand. Pass a specific
+   *  studentUid, or "all" to clear every raised hand in the session. */
+  ackHelp: (studentUid: string | "all") => void;
   /** Fires when the teacher ends the session (sent to everyone in the
    *  room, including the teacher themselves). */
   onSessionEnded: (cb: (p: QpSessionEndedPayload) => void) => () => void;
@@ -486,6 +494,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   // Callback refs for one-shot events — set via the `on*` helpers.
   const kickedRef = useRef<((p: QpKickedPayload) => void) | null>(null);
   const sessionEndedRef = useRef<((p: QpSessionEndedPayload) => void) | null>(null);
+  const handRaisedRef = useRef<((p: HandRaisedPayload) => void) | null>(null);
   const raceResultRef = useRef<((p: QpRaceResultPayload) => void) | null>(null);
   const raceEndedRef = useRef<((p: QpRaceEndedPayload) => void) | null>(null);
   const speedResultRef = useRef<((p: QpSpeedResultPayload) => void) | null>(null);
@@ -590,6 +599,9 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       };
       const onTeamMode = (p: QpTeamModePayload) => {
         if (p?.sessionCode === sessionCode) setTeamModeState(!!p.enabled);
+      };
+      const onHandRaised = (p: HandRaisedPayload) => {
+        handRaisedRef.current?.(p);
       };
       const onSessionEnded = (p: QpSessionEndedPayload) => {
         setJoinedSessionCode(null);
@@ -742,6 +754,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       socket.on(QP_SERVER_EVENTS.JOINED,        onJoined);
       socket.on(QP_SERVER_EVENTS.LEADERBOARD,   onLeaderboard);
       socket.on(QP_SERVER_EVENTS.KICKED,        onKicked);
+      socket.on(QP_SERVER_EVENTS.HAND_RAISED,   onHandRaised);
       socket.on(QP_SERVER_EVENTS.SESSION_ENDED, onSessionEnded);
       socket.on(QP_SERVER_EVENTS.TEAM_MODE,     onTeamMode);
       socket.on(QP_SERVER_EVENTS.REACTION,      onReaction);
@@ -774,6 +787,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         socket.off(QP_SERVER_EVENTS.JOINED,        onJoined);
         socket.off(QP_SERVER_EVENTS.LEADERBOARD,   onLeaderboard);
         socket.off(QP_SERVER_EVENTS.KICKED,        onKicked);
+        socket.off(QP_SERVER_EVENTS.HAND_RAISED,   onHandRaised);
         socket.off(QP_SERVER_EVENTS.SESSION_ENDED, onSessionEnded);
         socket.off(QP_SERVER_EVENTS.TEAM_MODE,     onTeamMode);
         socket.off(QP_SERVER_EVENTS.REACTION,      onReaction);
@@ -985,6 +999,18 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     return () => { sessionEndedRef.current = null; };
   }, []);
 
+  // In-game 🆘 help button (teacher-side subscribe + acknowledge)
+  const onHandRaised = useCallback((cb: (p: HandRaisedPayload) => void) => {
+    handRaisedRef.current = cb;
+    return () => { handRaisedRef.current = null; };
+  }, []);
+
+  const ackHelp = useCallback((studentUid: string | "all") => {
+    if (!sessionCode || !socketRef.current) return;
+    const payload: TeacherAckHelpPayload = { sessionCode, studentUid };
+    socketRef.current.emit(QP_EVENTS.TEACHER_ACK_HELP, payload);
+  }, [sessionCode]);
+
   // ─── Category Race ───────────────────────────────────────────────────
 
   const startRaceRound = useCallback((categories: string[], roundSeconds: number, token: string, untimed?: boolean) => {
@@ -1186,6 +1212,8 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     switchTeam,
     onKicked,
     onSessionEnded,
+    onHandRaised,
+    ackHelp,
     currentRace,
     startRaceRound,
     endRaceRound,

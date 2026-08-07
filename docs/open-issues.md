@@ -81,18 +81,28 @@ access". Never use `role='admin'` as a shortcut — admin reads every school.
 
 Items marked **(top-5)** are landing on `claude/quick-play-game-flow-2rpPk`. Everything else is a backlog candidate.
 
+> **🔍 2026-08-07 audit against production code — READ THIS BEFORE PICKING UP ANY ITEM BELOW.**
+> Reconciled this section against `src/`. Grep + file-inspection findings:
+>
+> - **✅ 11 items already shipped** (with file evidence): A1 dead-session screens (`src/views/QuickPlayExitScreens.tsx`), A3 in-app browser warning (`src/components/InAppBrowserWarning.tsx`), A5 Android keyboard `scrollIntoView` (`QuickPlayStudentView.tsx:711-713`), A6 autocorrect (`QuickPlayStudentView.tsx:696-697`), B1 Get Ready screen (`src/components/QuickPlayGetReady.tsx`), B2 iOS audio unlock (`src/utils/primeAudio.ts`), C5 progress bar (`src/components/game/GameProgress.tsx`), C6 streak indicator (`src/components/game/AnswerStreakBadge.tsx` + `src/hooks/useAnswerStreak.ts`), D1 endgame card (`src/components/QuickPlayEndgameCard.tsx`), E1 kid-speak error toasts (all `showToast(...)` calls in `QuickPlayStudentView.tsx` route through localized keys with emoji), E2 complete locale coverage (`src/locales/student/quick-play.ts` has EN + HE + AR + RU).
+> - **❌ 3 items confirmed truly open** (tagged `**❌ OPEN**` inline below): A4 teacher/class info on join screen, A10 edit-name link on later steps, C1 🆘 in-game help button.
+> - **🟡 2 items explicitly deferred by an earlier decision:** B5 real waiting room, C2 better right/wrong feedback.
+> - Remaining unmarked items (A2, A7, A8, A9, B3, B4, C3, C4, C7, C8, C9, D2, D3, E3, E4, all of section F) were **not** audited — assume "unknown" until re-verified against code.
+>
+> Session-tracking page: [Vocaband — Session Missions (Aug 2026)](https://app.notion.com/p/3b52ae12235a8115bec7cb6d9be15c6d).
+
 ### A. Before the student is in the game
 
 - **Friendly error screens for dead sessions** **(top-5)** — `session_not_found` / `session_inactive` today surface as a toast over an empty join form; students see the toast briefly and then a blank page. Need a full-page friendly screen: "🎮 This game already ended. Ask your teacher for a new code." + back button. Path: `src/views/QuickPlayStudentView.tsx:120-139`.
 - **Camera permission denied flow** — Browser default error after they decline. Need a screen showing how to re-grant camera permission, per OS (iOS Safari vs Android Chrome).
 - **In-app browser detection (Facebook/Instagram/TikTok WebView)** — Already exists for the main app via `InAppBrowserWarning.tsx`. Verify it fires on Quick Play join URL too; localStorage isolation in those browsers silently breaks resume + clientId persistence.
-- **Two QR codes on the board** — A student scanning the wrong one joins the wrong leaderboard with no indication. The join screen should show the **class name + teacher avatar**, not just the session code.
+- **❌ OPEN — Two QR codes on the board** — A student scanning the wrong one joins the wrong leaderboard with no indication. The join screen should show the **class name + teacher avatar**, not just the session code.
 - **Keyboard covers the input on small Android screens** — `quick-play-name-input` should `scrollIntoView` on focus + the Continue button should be sticky.
 - **Autocorrect changes their name** — Add `autoCorrect="off" spellCheck="false"` to the input. `autoCapitalize="words"` is already set.
 - **Same-name collision** — Today's check is server-confirm-after-tap. Add a live "✅ Available / ⚠️ Taken" check while typing. Tradeoff: extra socket roundtrips; could debounce.
 - **Avatar grid has no "more below" indicator** — Kids think there are only 6 avatars because the grid scrolls inside the card.
 - **Avatar selected-state is too subtle** — Add a thicker ring + checkmark + small bounce so they know which one is picked.
-- **No "edit name" link on later steps** — Once they tap Continue from the name form, they can't go back to fix a typo without losing avatar/language selection.
+- **❌ OPEN — No "edit name" link on later steps** — Once they tap Continue from the name form, they can't go back to fix a typo without losing avatar/language selection.
 
 ### B. The "join → game" gap
 
@@ -104,7 +114,7 @@ Items marked **(top-5)** are landing on `claude/quick-play-game-flow-2rpPk`. Eve
 
 ### C. During gameplay
 
-- **No in-game help button** **(top-5)** — Many kids freeze when stuck and don't know how to ask. Add a floating 🆘 button bottom-right that opens: "I can't hear the word" (replays audio + volume tip), "The game looks frozen" (forces reconnect), "I can't read this" (toggles translation), "Show my teacher" (raises flag on teacher dashboard).
+- **❌ OPEN — No in-game help button** **(top-5)** — Many kids freeze when stuck and don't know how to ask. Add a floating 🆘 button bottom-right that opens: "I can't hear the word" (replays audio + volume tip), "The game looks frozen" (forces reconnect), "I can't read this" (toggles translation), "Show my teacher" (raises flag on teacher dashboard). **Note (2026-08-07 audit):** the only top-5 item that did NOT actually ship on `claude/quick-play-game-flow-2rpPk` — every other top-5 landed.
 - **Visible correct/wrong feedback boost** — Today's feedback in `GameActiveView.tsx` is a border colour change + framer animation. For 9–13yo, kids need bigger payoff: confetti on correct + a floating "+10 XP!" particle. On wrong: red shake + correct answer highlighted + word re-spoken. Touches every game mode component, so it's a multi-day sweep — not for this session.
 - **Drag-and-drop fights with page scroll** — Sentence Builder + matching modes on mobile. Add `touch-action: none` to draggables + lock body scroll during gameplay.
 - **Double-tap zoom + long-press context menu** — Disable for game surfaces via `touch-action: manipulation` + `user-select: none` + `-webkit-touch-callout: none`. Already partially done; audit every game mode.
@@ -139,13 +149,13 @@ Items marked **(top-5)** are landing on `claude/quick-play-game-flow-2rpPk`. Eve
 - **Late joiners** — Today they get the same shuffled word list. Decide: do they start from the beginning (everyone ahead of them) or jump to the current word? Make it a teacher option.
 - **Teacher leaves device unattended** — After 15 min of no teacher activity, students see "Your teacher seems to be away. The game will pause until they come back."
 
-### Engineering top-5 shipping in this branch
+### Engineering top-5 shipping in this branch — 2026-08-07 status
 
-1. **Friendly full-page error screens** for dead sessions.
-2. **iOS audio unlock + "Get Ready" intro screen** between language pick and game.
-3. **Floating "🆘 Help" button** during Quick Play (join flow + during gameplay).
-4. **Better "right/wrong" feedback + score animation** — deferred (touches every game mode component; multi-day).
-5. **Real waiting room** — deferred (current Quick Play has no teacher-start gate; would land alongside that feature).
+1. ✅ **SHIPPED** — Friendly full-page error screens for dead sessions (`src/views/QuickPlayExitScreens.tsx`).
+2. ✅ **SHIPPED** — iOS audio unlock + "Get Ready" intro screen (`src/utils/primeAudio.ts` + `src/components/QuickPlayGetReady.tsx`).
+3. ❌ **STILL OPEN** — Floating "🆘 Help" button during Quick Play. Not found in code. **The only top-5 that didn't land** — best next candidate for a new-component mission.
+4. 🟡 **DEFERRED** (original decision stands) — Better "right/wrong" feedback + score animation (touches every game mode component; multi-day).
+5. 🟡 **DEFERRED** (original decision stands) — Real waiting room (needs teacher-start gate first).
 
 ---
 
