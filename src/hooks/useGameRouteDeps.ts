@@ -26,6 +26,7 @@
  * the inline version.  Memoizing would change re-render timing.
  */
 import type React from 'react';
+import { useState } from 'react';
 import type { GameRoutesDeps } from '../views/GameRouteContext';
 import { useGameRoundOptions } from './useGameRoundOptions';
 import { useFeedbackTracking } from './useFeedbackTracking';
@@ -67,6 +68,9 @@ export type UseGameRouteDepsArgs = Omit<
   | 'cleanupQuickPlayGuest'
   | 'petDisplayName' | 'petXp' | 'petCurrentStage' | 'petNextStage'
   | 'petClaimableMilestone' | 'onClaimPetMilestone'
+  // In-game 🆘 help button — derived from `socket` arg + owned via useState.
+  | 'quickPlaySocket' | 'quickPlayStudentUid'
+  | 'showTranslation' | 'setShowTranslation'
 > & {
   // saveScore progression writes
   setXp: FinishParams['setXp'];
@@ -138,6 +142,12 @@ export function useGameRouteDeps(args: UseGameRouteDepsArgs): GameRoutesDeps {
   } = args;
 
   const gameDebug = getGameDebugger();
+
+  // In-game 🆘 help button — "I can't read this" toggles translation overlay
+  // for the current word. Local state (per Quick Play gameplay session) —
+  // resets when the game view unmounts. Exposed via context so GameActiveView
+  // renders the overlay and the button can flip it.
+  const [qpShowTranslation, setQpShowTranslation] = useState(false);
 
   // Per-round derived data: 4-way options, T/F option, scrambled letters.
   const { options, tfOption, scrambledWord } = useGameRoundOptions({
@@ -291,5 +301,10 @@ export function useGameRouteDeps(args: UseGameRouteDepsArgs): GameRoutesDeps {
     saveScore, handleAnswer, handleMatchClick, handleTFAnswer,
     handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap, handleSentenceCheck,
     speakWord, speak, shuffle,
+    // In-game 🆘 help button — feeds QuickPlayHelpButton mounted inside GameActiveView.
+    quickPlaySocket: socket,
+    quickPlayStudentUid: socket?.id ?? null,
+    showTranslation: qpShowTranslation,
+    setShowTranslation: setQpShowTranslation,
   };
 }

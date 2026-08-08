@@ -10,6 +10,8 @@ import CombosOverlay from "../components/arcade/CombosOverlay";
 import InGamePetReactor from "../components/arcade/InGamePetReactor";
 import { gameActiveT } from "../locales/student/game-active";
 import { getThemeColors, type GameThemeColor } from "../components/game/GameShell";
+import { QuickPlayHelpButton } from "../components/QuickPlayHelpButton";
+import { useQuickPlayHelp } from "../hooks/useQuickPlayHelp";
 
 /** Phase-3 redesign: each mode picks a theme colour from the palette
  *  defined in `src/components/game/GameShell.tsx` (and indirectly the
@@ -105,7 +107,20 @@ export default function GameActiveView() {
     handleAnswer, handleMatchClick, handleTFAnswer,
     handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap,
     handleSentenceCheck, speakWord, speak, shuffle,
+    // In-game 🆘 help button (mid-gameplay) — Quick Play only.
+    // `showTranslation` isn't read here yet (setter-only wiring for now —
+    // a follow-up will add the translation overlay); destructure the
+    // setter only to avoid TS unused-var flagging.
+    quickPlaySocket, quickPlayStudentUid, setShowTranslation,
   } = useGameRoute();
+
+  // Wire the raise-hand hook only when we're actually in a Quick Play
+  // session (guest students hitting live sessions). For regular assignments
+  // + demo modes, quickPlayActiveSession is null and the hook is inert.
+  const qpHelpSession = quickPlayActiveSession && quickPlayStudentUid
+    ? { sessionCode: quickPlayActiveSession.sessionCode, studentUid: quickPlayStudentUid }
+    : null;
+  const { handRaised, onRaiseHand } = useQuickPlayHelp(quickPlaySocket, qpHelpSession);
   // Self-contained modes (Idiom, Speed Round) don't go through the
   // per-question scoring path that Classic / Listening / etc. use to
   // trigger saveScore on the last correct answer.  Each mode emits
@@ -718,6 +733,21 @@ export default function GameActiveView() {
           </div>
         )}
       </div>
+
+      {/* In-game 🆘 help button — Quick Play only, gameplay phase only.
+          Uses position: fixed so it floats above the game surface without
+          affecting layout. See docs/superpowers/specs/2026-08-07-quick-play
+          -help-button-design.md. */}
+      {quickPlayActiveSession && !isFinished && (
+        <QuickPlayHelpButton
+          language={language}
+          handRaised={handRaised}
+          onRaiseHand={onRaiseHand}
+          onReplayAudio={() => currentWord && speakWord(currentWord.id, currentWord.english)}
+          onForceReconnect={() => { quickPlaySocket?.disconnect(); quickPlaySocket?.connect(); }}
+          onToggleTranslation={() => setShowTranslation((v) => !v)}
+        />
+      )}
     </div>
   );
 }

@@ -132,6 +132,14 @@ export const QP_EVENTS = {
   // The picked student's chosen option index, relayed back to the
   // teacher's observer sockets so the host can score + drive the wheel.
   WHEEL_ANSWER:    "qp:student:wheel:answer",
+
+  // ─── In-game 🆘 help button (mid-gameplay) ────────────────────────
+  // A student tapping "🙋 Show my teacher" from the in-game help menu.
+  // Server rate-limits (5/60s per student) and broadcasts to teacher only.
+  STUDENT_RAISE_HAND: "qp:student:raise-hand",
+  // A teacher acknowledging (clearing) a raised hand — either for a
+  // specific student uid, or "all" to clear every raised hand at once.
+  TEACHER_ACK_HELP:   "qp:teacher:ack-help",
 } as const;
 
 /** Server → client events. */
@@ -222,6 +230,14 @@ export const QP_SERVER_EVENTS = {
   WHEEL_QUESTION:     "qp:wheel:question",
   // Relayed to the teacher's observer sockets: the picked student's reply.
   WHEEL_ANSWER:       "qp:wheel:answer",
+
+  // ─── In-game 🆘 help button (mid-gameplay) ────────────────────────
+  // Sent to the teacher socket only: a student has raised their hand.
+  // Server-broadcast, teacher-scoped (never sent to peer students).
+  HAND_RAISED:        "qp:hand:raised",
+  // Sent to the affected student socket(s): teacher acknowledged your
+  // raised hand — the 🆘 button unfreezes back from ✓ state.
+  HAND_CLEARED:       "qp:hand:cleared",
 } as const;
 
 /** Teacher → server: push the wheel question to one student. The correct
@@ -1303,4 +1319,38 @@ export const QP_ARENA_TACKLE_STUN_MS = 2000;
 
 export function isValidArenaPickupKind(v: unknown): v is QpArenaPickupKind {
   return typeof v === "string" && (QP_ARENA_PICKUP_KINDS as readonly string[]).includes(v);
+}
+
+// ─── In-game 🆘 help button (mid-gameplay) — payload types ─────────────
+// Companion to QP_EVENTS.STUDENT_RAISE_HAND / TEACHER_ACK_HELP and
+// QP_SERVER_EVENTS.HAND_RAISED / HAND_CLEARED. See docs/superpowers/specs/
+// 2026-08-07-quick-play-help-button-design.md for the full flow.
+
+/** Student → server: "I raised my hand for teacher help." Server
+ *  rate-limits (5/60s per studentUid, excess silently dropped) and
+ *  broadcasts HAND_RAISED to the session's teacher socket only. */
+export interface StudentRaiseHandPayload {
+  sessionCode: string;
+  studentUid: string;
+}
+
+/** Server → teacher socket only: a student in the session has raised
+ *  their hand. Never broadcast to peer students. */
+export interface HandRaisedPayload {
+  studentUid: string;
+  name: string;
+  raisedAt: number;
+}
+
+/** Teacher → server: clear a specific student's raised hand, OR "all"
+ *  to clear every raised hand in the session at once. */
+export interface TeacherAckHelpPayload {
+  sessionCode: string;
+  studentUid: string | "all";
+}
+
+/** Server → affected student socket(s): the raised hand was cleared;
+ *  student's 🆘 button unfreezes from its ✓ state. */
+export interface HandClearedPayload {
+  studentUid: string;
 }

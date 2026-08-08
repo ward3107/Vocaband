@@ -69,6 +69,18 @@ export interface QuickPlayStrings {
   toastConnectionLost: string;
   toastCantJoinLeaderboard: string;
 
+  // In-game 🆘 help button + menu (mid-gameplay)
+  helpButtonAria: string;
+  helpMenuTitle: string;
+  helpCantHearWord: string;
+  helpCantHearTip: string;
+  helpGameFrozen: string;
+  helpReconnecting: string;
+  helpCantRead: string;
+  helpShowTeacher: string;
+  helpHandRaisedToast: string;
+  helpHandRaisedStatePill: string;
+
   // QuickPlayKickedScreen
   kickedTitle: string;
   kickedBody: string;
@@ -129,6 +141,16 @@ export const quickPlayT: Record<Language, QuickPlayStrings> = {
     toastTeacherEnded: "🎉 Your teacher ended the game. Nice playing!",
     toastConnectionLost: "📡 Can't reach the game. Refresh the page and try again.",
     toastCantJoinLeaderboard: "🤔 Couldn't join the scoreboard. Tap to try again.",
+    helpButtonAria: "Get help",
+    helpMenuTitle: "How can I help? 🤔",
+    helpCantHearWord: "🔊  I can't hear the word",
+    helpCantHearTip: "Turn off silent mode if you still can't hear!",
+    helpGameFrozen: "⏳  The game looks frozen",
+    helpReconnecting: "Reconnecting…",
+    helpCantRead: "🌍  I can't read this",
+    helpShowTeacher: "🙋  Show my teacher",
+    helpHandRaisedToast: "Your teacher will see this soon!",
+    helpHandRaisedStatePill: "✓ Waiting for teacher",
     kickedTitle: "You've been removed",
     kickedBody: "Your teacher removed you from this Quick Play session.",
     kickedRejoinHint: " If this was a mistake, you can rejoin with a different name.",
@@ -179,6 +201,16 @@ export const quickPlayT: Record<Language, QuickPlayStrings> = {
     toastTeacherEnded: "🎉 המורה סיים את המשחק. כל הכבוד!",
     toastConnectionLost: "📡 אין חיבור למשחק. רעננו את הדף ונסו שוב.",
     toastCantJoinLeaderboard: "🤔 לא הצלחנו להוסיף ללוח המובילים. נסו שוב.",
+    helpButtonAria: "קבל עזרה",
+    helpMenuTitle: "איך אפשר לעזור? 🤔",
+    helpCantHearWord: "🔊  אני לא שומע/ת את המילה",
+    helpCantHearTip: "כבו את מצב השקט אם עדיין לא שומעים!",
+    helpGameFrozen: "⏳  המשחק נראה תקוע",
+    helpReconnecting: "מתחבר מחדש…",
+    helpCantRead: "🌍  אני לא מבין/ה מה כתוב",
+    helpShowTeacher: "🙋  הראה למורה",
+    helpHandRaisedToast: "המורה תראה את זה בקרוב!",
+    helpHandRaisedStatePill: "✓ מחכה למורה",
     kickedTitle: "הוסרת מהמשחק",
     kickedBody: "המורה הסיר אותך ממשחק המהיר הזה.",
     kickedRejoinHint: " אם זו הייתה טעות, אפשר להצטרף מחדש עם שם אחר.",
@@ -229,6 +261,16 @@ export const quickPlayT: Record<Language, QuickPlayStrings> = {
     toastTeacherEnded: "🎉 أنهى معلّمك اللعبة. أحسنت!",
     toastConnectionLost: "📡 تعذّر الوصول إلى اللعبة. حدّث الصفحة وحاول مجددًا.",
     toastCantJoinLeaderboard: "🤔 تعذّر الانضمام إلى لوحة النتائج. حاول مجددًا.",
+    helpButtonAria: "اطلب المساعدة",
+    helpMenuTitle: "كيف يمكنني المساعدة؟ 🤔",
+    helpCantHearWord: "🔊  لا أسمع الكلمة",
+    helpCantHearTip: "أوقف الوضع الصامت إذا كنت لا تسمع بعد!",
+    helpGameFrozen: "⏳  اللعبة تبدو متجمدة",
+    helpReconnecting: "إعادة الاتصال…",
+    helpCantRead: "🌍  لا أستطيع القراءة",
+    helpShowTeacher: "🙋  أظهر لمعلّمي",
+    helpHandRaisedToast: "سيرى معلّمك ذلك قريباً!",
+    helpHandRaisedStatePill: "✓ في انتظار المعلّم",
     kickedTitle: "تمت إزالتك",
     kickedBody: "أزالك معلّمك من جلسة اللعب السريع هذه.",
     kickedRejoinHint: " إذا كان ذلك خطأً، يمكنك الانضمام مجددًا باسم مختلف.",
@@ -279,6 +321,16 @@ export const quickPlayT: Record<Language, QuickPlayStrings> = {
     toastTeacherEnded: "🎉 Учитель завершил игру. Молодец!",
     toastConnectionLost: "📡 Нет связи с игрой. Обнови страницу и попробуй снова.",
     toastCantJoinLeaderboard: "🤔 Не удалось присоединиться к таблице. Попробуй ещё раз.",
+    helpButtonAria: "Получить помощь",
+    helpMenuTitle: "Чем помочь? 🤔",
+    helpCantHearWord: "🔊  Я не слышу слово",
+    helpCantHearTip: "Выключи беззвучный режим, если всё ещё не слышишь!",
+    helpGameFrozen: "⏳  Игра зависла",
+    helpReconnecting: "Переподключение…",
+    helpCantRead: "🌍  Не могу прочитать",
+    helpShowTeacher: "🙋  Показать учителю",
+    helpHandRaisedToast: "Учитель скоро это увидит!",
+    helpHandRaisedStatePill: "✓ Ждём учителя",
     kickedTitle: "You've been removed",
     kickedBody: "Your teacher removed you from this Quick Play session.",
     kickedRejoinHint: " If this was a mistake, you can rejoin with a different name.",
