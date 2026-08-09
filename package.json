@@ -104,7 +104,8 @@
     "dompurify": "^3.4.11",
     "undici": "^7.28.0",
     "@opentelemetry/core": "^2.8.0",
-    "@babel/core": "^7.29.7"
+    "@babel/core": "^7.29.7",
+    "image-size": "^2.0.2"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.4.1",
