@@ -51,3 +51,6 @@ temp-audio/
 .cache/hebrew-lemmas/
 src/data/vocabulary-hebrew.generated.ts
 docs/mockups/shots/
+
+# Ad-hoc preview screenshots (Claude Code writes throwaway shot scripts here)
+scripts/preview-*.mjs
