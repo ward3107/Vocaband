@@ -21,6 +21,7 @@ import {
   LogIn,
   PlayCircle,
   Sparkles,
+  Backpack,
 } from "lucide-react";
 import PublicNav from "./PublicNav";
 import FloatingButtons from "./FloatingButtons";
@@ -381,9 +382,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   onClick={onGetStarted}
                   style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                   aria-label={`${t.heroV2.studentCta} — ${t.heroV2.studentNote}`}
-                  className="mt-4 w-full text-center text-sm text-white/60 hover:text-white/90 underline underline-offset-4 decoration-white/30 hover:decoration-white/70 transition-colors"
+                  className="mt-4 w-full flex items-center justify-center gap-2 text-center text-sm text-white/70 hover:text-white/95 transition-colors"
                 >
-                  {t.heroV2.studentDesc} <span className="font-bold">{t.heroV2.studentCta} {isRTL ? "←" : "→"}</span>
+                  {/* Backpack icon: instantly reads as "for students" and doesn't
+                      collide with the GraduationCap on the staff card above. */}
+                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-amber-400/30 to-orange-500/30 border border-amber-300/40">
+                    <Backpack size={15} strokeWidth={2.5} className="text-amber-100" aria-hidden="true" />
+                  </span>
+                  <span className="underline underline-offset-4 decoration-white/30 hover:decoration-white/70">
+                    {t.heroV2.studentDesc} <span className="font-bold">{t.heroV2.studentCta} {isRTL ? "←" : "→"}</span>
+                  </span>
                 </button>
               </div>
             </div>
