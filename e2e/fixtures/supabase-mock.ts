@@ -102,6 +102,15 @@ export async function mockSupabase(page: Page, scenario: MockScenario = 'public'
           },
         });
         break;
+      case 'get_assignments_for_class':
+        // The student dashboard loads its task list through this RPC
+        // (useDashboardPolling → supabase.rpc('get_assignments_for_class')),
+        // NOT through a REST select on /assignments. Without a case here it
+        // fell through to `default: null`, so the Tasks sheet always
+        // rendered "No assignments yet" and the seeded-assignment test
+        // failed even though the UI was working correctly.
+        route.fulfill({ json: [TEST_ASSIGNMENT] });
+        break;
       case 'end_quick_play_session':
         route.fulfill({ json: null });
         break;
