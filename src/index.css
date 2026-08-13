@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* iOS design layer — primitives (materials, hairlines, SF type ramp, safe
+   areas) plus re-points of the --vb-* tokens below onto iOS system values.
+   Parsed first because @import must lead the file; it compensates with
+   selector specificity. Remove this one line to revert the restyle. */
+@import "./styles/ios.css";
+
 /* `tall:` — viewport-HEIGHT variant for above-the-fold layouts (landing hero).
    Width breakpoints alone can't tell a 1280×720 laptop from a 1280×1024
    desktop, so full-scale hero sizing is gated behind `tall:` and short
