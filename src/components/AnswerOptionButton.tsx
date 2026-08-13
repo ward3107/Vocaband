@@ -92,7 +92,7 @@ const AnswerOptionButton = React.memo(({ option, currentWordId, feedback, gameMo
           : feedback === "wrong" && !isCorrect
           ? "bg-rose-100 text-rose-500 opacity-50"
           : showAnswer
-          ? "bg-amber-500 text-white motion-safe:scale-105 shadow-xl ring-4 ring-amber-300"
+          ? "bg-amber-500 text-amber-950 motion-safe:scale-105 shadow-xl ring-4 ring-amber-300"
           : feedback === "show-answer"
           ? "bg-stone-50 text-stone-400 opacity-40 cursor-not-allowed"
           : feedback === "wrong"

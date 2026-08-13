@@ -152,7 +152,7 @@ export default function FlashcardsGame({
 
           {/* BACK — target-language translation */}
           <div
-            className="absolute inset-0 rounded-2xl shadow-2xl border-2 bg-gradient-to-br from-teal-50 to-cyan-100 border-teal-200 flex flex-col items-center justify-center p-6 sm:p-8"
+            className="absolute inset-0 rounded-2xl shadow-2xl border-2 bg-teal-50 border-teal-200 flex flex-col items-center justify-center p-6 sm:p-8"
             style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
           >
             <h2
@@ -161,7 +161,7 @@ export default function FlashcardsGame({
             >
               {translationText}
             </h2>
-            <p className="absolute bottom-4 left-0 right-0 text-center text-[11px] sm:text-xs font-bold text-stone-400 uppercase tracking-widest">
+            <p className="absolute bottom-4 left-0 right-0 text-center text-[11px] sm:text-xs font-bold text-stone-500 uppercase tracking-widest">
               {t.showEnglish} ↻
             </p>
           </div>
