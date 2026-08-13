@@ -16,14 +16,12 @@
  */
 
 import type { AppUser } from "./supabase";
-import { isDevEmail } from "./dev-allowlist";
 
 export type EffectivePlan = "free" | "pro" | "school";
 
 /**
  * What plan should this teacher experience RIGHT NOW?
  *
- * - `pro` if their email is in the developer allowlist (DEV_EMAILS)
  * - `pro` if they have the `admin` role (developer / operator)
  * - `school` if their own plan is a school license, OR they belong to a school
  *   whose license is active (a paid school or an unexpired school-wide trial) —
@@ -40,7 +38,14 @@ export type EffectivePlan = "free" | "pro" | "school";
  */
 export function getEffectivePlan(user: AppUser | null | undefined): EffectivePlan {
   if (!user) return "free";
-  if (isDevEmail(user.email)) return "pro";
+  // NOTE: the developer-email bypass deliberately does NOT run here.
+  // Importing the allowlist shipped the operator's address inside every
+  // JS bundle (it is plain text in the client chunk). The bypass still
+  // exists where it is actually enforced — requireProTeacher in server.ts
+  // and is_pro_or_trialing() in SQL — and the operator account carries
+  // role=admin, which the very next line already resolves to Pro. So
+  // dropping the client-side check costs nothing and stops publishing a
+  // personal email to every visitor.
   if (user.role === "admin") return "pro";
   if (user.role !== "teacher") return "free";
   if (user.plan === "school") return "school";
@@ -70,11 +75,12 @@ export function isPro(user: AppUser | null | undefined): boolean {
 /** Is the teacher inside their 14-day trial window? (Used for the "X
  *  days of Pro left" banner.  Returns false for paid Pro/School users
  *  even though they have Pro features — the banner only makes sense
- *  for trialing free users.  Also false for admins and developer
- *  allowlist emails so they never see the trial countdown banner.) */
+ *  for trialing free users.  Also false for admins so they never see
+ *  the trial countdown banner.) */
 export function isTrialing(user: AppUser | null | undefined): boolean {
   if (!user) return false;
-  if (isDevEmail(user.email)) return false;
+  // Dev-email check intentionally omitted — see getEffectivePlan. The
+  // operator account is role=admin, which the next line already covers.
   if (user.role === "admin") return false;
   if (user.role !== "teacher") return false;
   if (user.plan !== "free") return false;
