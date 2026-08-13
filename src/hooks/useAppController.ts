@@ -853,7 +853,26 @@ export function useAppController(initialView?: View): AppViewRouterProps {
   // "QUESTION 1 OF 809" marathon. Cap the fallback so it can never become a
   // giant game; the real assignment replaces it the instant its words load.
   const GAME_FALLBACK_WORDS = SET_2_WORDS.slice(0, 12);
-  const gameWords = view === "game" && assignmentWords.length > 0 ? assignmentWords : GAME_FALLBACK_WORDS;
+  // The teacher's REAL word list also lives on the active Quick Play session
+  // and the active assignment. If `assignmentWords` is momentarily empty when
+  // the game view mounts — a load race, or a resume / "Continue playing" path
+  // that flips view to "game" without re-seeding words — recover the real
+  // words from those sources BEFORE ever showing GAME_FALLBACK_WORDS.
+  // Without this, a returning student is silently dropped onto 12 generic
+  // Set-2 words the teacher never assigned, which reads as "demo words"
+  // instead of the test the teacher handed out (student-qr-scan bug).
+  const recoveredSessionWords =
+    quickPlayActiveSession?.words && quickPlayActiveSession.words.length > 0
+      ? quickPlayActiveSession.words
+      : activeAssignment?.words && activeAssignment.words.length > 0
+        ? activeAssignment.words
+        : null;
+  const gameWords =
+    view === "game"
+      ? assignmentWords.length > 0
+        ? assignmentWords
+        : recoveredSessionWords ?? GAME_FALLBACK_WORDS
+      : GAME_FALLBACK_WORDS;
   const currentWord = gameWords[currentIndex];
 
   // Bundle of small side-effects (userRef sync, Sentry pipe, feedback

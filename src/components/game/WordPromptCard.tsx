@@ -145,7 +145,7 @@ export default function WordPromptCard({
             >
               <Volume2 size={24} className={themed ? themed.pillText : "text-stone-600"} />
             </button>
-            <p className={`text-xs font-semibold ${themed?.pillText ?? "text-stone-400"}`}>
+            <p className={`text-xs font-semibold ${themed?.pillText ?? "text-stone-500"}`}>
               {t.tapToHear}
             </p>
           </div>

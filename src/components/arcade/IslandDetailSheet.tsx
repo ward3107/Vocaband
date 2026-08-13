@@ -92,7 +92,7 @@ export default function IslandDetailSheet({ open, mode, onClose, onPlay, reduced
 
             <button
               type="button" onClick={onPlay}
-              className={`${ARCADE_BUTTON_TOUCH} mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-lg font-black text-indigo-950 shadow`}
+              className={`${ARCADE_BUTTON_TOUCH} mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ffffff] py-4 text-lg font-black text-indigo-950 shadow`}
             >
               <Play size={20} className="fill-indigo-950" /> {s.play}
             </button>

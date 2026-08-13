@@ -132,7 +132,7 @@ export default function QuickPlayGetReady({ name, avatar, joining, onStart, join
         disabled={joining}
         onClick={handleStart}
         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
-        className="w-full py-4 sm:py-5 bg-gradient-to-r from-indigo-500 via-purple-600 to-fuchsia-600 text-white rounded-2xl font-black text-lg sm:text-xl shadow-xl shadow-purple-500/30 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        className="w-full py-4 sm:py-5 bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 text-white rounded-2xl font-black text-lg sm:text-xl shadow-xl shadow-purple-500/30 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
       >
         {joining ? (
           <>

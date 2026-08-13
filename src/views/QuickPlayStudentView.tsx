@@ -563,6 +563,21 @@ export default function QuickPlayStudentView({
                       // game screen before the server knows we're back.
                       const advance = () => {
                         setResuming(false);
+                        // Re-seed the word list before re-entering the game.
+                        // The back-button / resume path can land here after
+                        // assignmentWords was cleared (e.g. an auth event), and
+                        // setView("game") with an empty list drops the student
+                        // onto the generic fallback words instead of the
+                        // teacher's. Rebuild from the live session's words.
+                        if (quickPlayActiveSession?.words?.length) {
+                          setAssignmentWords(
+                            shuffle(quickPlayActiveSession.words).map(w => ({
+                              ...w,
+                              hebrew: w.hebrew || "",
+                              arabic: w.arabic || "",
+                            })),
+                          );
+                        }
                         setShowModeSelection(true);
                         setView("game");
                       };
@@ -639,7 +654,7 @@ export default function QuickPlayStudentView({
                         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
                         className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-black transition-colors ${
                           active
-                            ? "bg-primary text-on-primary shadow-md"
+                            ? "bg-primary-dim text-on-primary shadow-md"
                             : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
                         }`}
                       >
@@ -712,7 +727,7 @@ export default function QuickPlayStudentView({
                           const el = e.currentTarget;
                           setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
                         }}
-                        className="w-full px-4 py-3 sm:py-4 bg-transparent border-4 border-stone-200 rounded-xl text-base sm:text-lg font-black text-on-surface placeholder:text-on-surface-variant/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                        className="w-full px-4 py-3 sm:py-4 bg-transparent border-4 border-stone-200 rounded-xl text-base sm:text-lg font-black text-on-surface placeholder:text-on-surface-variant/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                         autoFocus
                       />
                     );
@@ -767,7 +782,7 @@ export default function QuickPlayStudentView({
                     setJoining(true);
                     runJoin(trimmedName);
                   }}
-                  className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-indigo-500 via-purple-600 to-fuchsia-600 text-white rounded-xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 text-white rounded-xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {joining ? (
                     <>
