@@ -38,8 +38,11 @@ test.describe('Slow network', () => {
     });
 
     await goToLanding(page);
-    await expect(page.getByText('Level Up Your Vocabulary')).toBeVisible({
-      timeout: 30_000,
-    });
+    // Same fix as public-pages.spec.ts: the hero H1 renders as
+    // "Level Up\nYour Vocabulary", so an exact-string getByText never
+    // matches. Assert the heading, then compare whitespace-normalized.
+    const hero = page.getByRole('heading', { level: 1 }).first();
+    await expect(hero).toBeVisible({ timeout: 30_000 });
+    expect((await hero.innerText()).replace(/\s+/g, ' ').trim()).toMatch(/level up your vocabulary/i);
   });
 });
