@@ -81,6 +81,14 @@
   --ios-separator: rgba(60, 60, 67, 0.29);
   --ios-separator-opaque: #c6c6c8;
 
+  /* ── Brand gradient ───────────────────────────────────────────────────
+     The one primary-action gradient.  It had been retyped inline in five
+     mutually incompatible spellings (to-r vs to-br, 500- vs 600-weight
+     stops, a 50% vs 60% midpoint), so screens that were meant to match
+     visibly didn't.  `.signature-gradient` in index.css now reads this,
+     which makes this declaration the only place the recipe exists. */
+  --vb-gradient-brand: linear-gradient(135deg, #6366f1 0%, #7c3aed 50%, #d946ef 100%);
+
   /* ── Radii ────────────────────────────────────────────────────────────
      Apple uses continuous ("squircle") corners.  Browsers can't do that
      natively, but the perceptual gap closes at these radii, which are the

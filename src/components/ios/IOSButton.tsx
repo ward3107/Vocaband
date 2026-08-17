@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from "react";
 
 /**
  * iOS button styles.
@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
  * most of what makes a screen read as native rather than as a web page.
  */
 
-type Variant = "filled" | "tinted" | "plain" | "destructive";
+type Variant = "brand" | "filled" | "tinted" | "plain" | "destructive";
 type Size = "sm" | "md" | "lg";
 
 const SIZES: Record<Size, string> = {
@@ -19,8 +19,17 @@ const SIZES: Record<Size, string> = {
   lg: "px-5 py-[13px] text-[17px] rounded-[12px] w-full",
 };
 
-function variantStyle(variant: Variant, tint: string) {
+function variantStyle(variant: Variant, tint: string): CSSProperties {
   switch (variant) {
+    // The one hero CTA per screen. Kept distinct from `filled` so the
+    // gradient stays scarce — the moment two of these share a screen it
+    // stops reading as "the action" and starts reading as decoration.
+    case "brand":
+      return {
+        background: "var(--vb-gradient-brand)",
+        color: "#fff",
+        fontWeight: 600,
+      };
     case "filled":
       return { backgroundColor: tint, color: "#fff", fontWeight: 600 };
     case "tinted":
@@ -49,6 +58,7 @@ export function IOSButton({
   type = "button",
   className = "",
   ariaLabel,
+  ...rest
 }: {
   children: ReactNode;
   onClick?: () => void;
@@ -59,9 +69,15 @@ export function IOSButton({
   type?: "button" | "submit";
   className?: string;
   ariaLabel?: string;
-}) {
+  // Remaining button attributes are forwarded so callers keep their
+  // `data-*` test hooks and ARIA wiring when they move off a raw <button>.
+} & Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  "onClick" | "type" | "disabled" | "className" | "style" | "children"
+>) {
   return (
     <button
+      {...rest}
       type={type}
       onClick={onClick}
       disabled={disabled}
