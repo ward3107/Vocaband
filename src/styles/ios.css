@@ -1,0 +1,369 @@
+/* =============================================================================
+   iOS design layer — shared by the teacher and student sides.
+
+   Vocaband already has a token system (`--vb-*` in index.css) that ~300
+   surfaces consume.  This file does NOT replace it.  It adds the primitives
+   iOS has and Material doesn't — materials/blur, hairline separators, the
+   SF type ramp, squircle radii, safe-area insets, and the spring curves —
+   and then re-points a handful of `--vb-*` tokens at iOS system values so
+   existing surfaces inherit the new look without being rewritten one by one.
+
+   Why a separate file: index.css is already ~600 lines of token + a11y +
+   dark-mode logic.  Keeping the iOS layer separate means the restyle can be
+   reverted with a single import line if it regresses in classrooms.
+
+   Load order matters — this must come AFTER the `--vb-*` defaults so the
+   re-points win, and BEFORE the dark-mode block so dark still overrides.
+   ============================================================================= */
+
+:root {
+  /* ── Type ─────────────────────────────────────────────────────────────
+     San Francisco is not a webfont — it ships with iOS/macOS and is only
+     reachable through `-apple-system` / `BlinkMacSystemFont`.  On Android
+     and Windows this falls through to the existing Plus Jakarta Sans, so
+     non-Apple devices keep the current (good) typography rather than
+     landing on a generic sans.  That fallback is deliberate: matching iOS
+     exactly on Android would mean shipping a lookalike webfont, which
+     costs bytes on the school Chromebooks and low-end Androids that make
+     up most of the student install base. */
+  --ios-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Plus Jakarta Sans", system-ui, sans-serif;
+
+  /* Apple's type ramp (Human Interface Guidelines, iOS 17 "Large" default).
+     Sizes are rem-based so the a11y font-size control and the OS text-size
+     setting both still work — a hard px ramp would break Dynamic Type,
+     which is exactly the accessibility promise iOS users expect. */
+  --ios-text-large-title: 2.125rem; /* 34px */
+  --ios-text-title1: 1.75rem;       /* 28px */
+  --ios-text-title2: 1.375rem;      /* 22px */
+  --ios-text-title3: 1.25rem;       /* 20px */
+  --ios-text-headline: 1.0625rem;   /* 17px, semibold */
+  --ios-text-body: 1.0625rem;       /* 17px */
+  --ios-text-callout: 1rem;         /* 16px */
+  --ios-text-subhead: 0.9375rem;    /* 15px */
+  --ios-text-footnote: 0.8125rem;   /* 13px */
+  --ios-text-caption: 0.75rem;      /* 12px */
+
+  /* iOS runs tighter tracking on display sizes than the web default. */
+  --ios-tracking-large-title: -0.024em;
+  --ios-tracking-title: -0.019em;
+  --ios-tracking-body: -0.011em;
+
+  /* ── System colors (iOS 17 light) ─────────────────────────────────────
+     Kept as raw system values so an iOS-native control (a Switch, a
+     destructive action) reads exactly right.  Brand surfaces still use
+     --vb-accent; these are for chrome, not identity. */
+  --ios-blue: #007aff;
+  --ios-green: #34c759;
+  --ios-indigo: #5856d6;
+  --ios-orange: #ff9500;
+  --ios-pink: #ff2d55;
+  --ios-purple: #af52de;
+  --ios-red: #ff3b30;
+  --ios-teal: #30b0c7;
+  --ios-yellow: #ffcc00;
+
+  /* Greys — the grouped-list background/foreground pair is the single most
+     recognisable thing about an iOS screen. */
+  --ios-grouped-bg: #f2f2f7;      /* behind inset list cards */
+  --ios-grouped-card: #ffffff;    /* the cards themselves */
+  --ios-fill-quaternary: rgba(116, 116, 128, 0.08);
+  --ios-fill-tertiary: rgba(118, 118, 128, 0.12);
+  --ios-fill-secondary: rgba(120, 120, 128, 0.16);
+
+  --ios-label: #000000;
+  --ios-label-secondary: rgba(60, 60, 67, 0.6);
+  --ios-label-tertiary: rgba(60, 60, 67, 0.3);
+
+  /* The iOS separator is a true hairline — 0.5px on 2x/3x screens.  A 1px
+     border is the tell that a web app is imitating iOS rather than being
+     it, so this is drawn with a scaled pseudo-element (see .ios-hairline). */
+  --ios-separator: rgba(60, 60, 67, 0.29);
+  --ios-separator-opaque: #c6c6c8;
+
+  /* ── Radii ────────────────────────────────────────────────────────────
+     Apple uses continuous ("squircle") corners.  Browsers can't do that
+     natively, but the perceptual gap closes at these radii, which are the
+     measured values from iOS 17 rather than round numbers. */
+  --ios-radius-card: 10px;   /* inset grouped list cards */
+  --ios-radius-sheet: 12px;  /* modal sheets */
+  --ios-radius-button: 12px; /* filled buttons */
+  --ios-radius-alert: 14px;  /* alerts */
+  --ios-radius-tile: 18px;   /* large tappable tiles (student dashboard) */
+
+  /* ── Materials ────────────────────────────────────────────────────────
+     iOS chrome is translucent and *saturates* what's behind it — the
+     saturate() is what makes it read as glass instead of frosted plastic.
+     Falls back to an opaque surface where backdrop-filter is unsupported
+     (see @supports below), because a semi-transparent bar with no blur is
+     unreadable over content. */
+  --ios-material-thick: rgba(255, 255, 255, 0.94);
+  --ios-material-regular: rgba(255, 255, 255, 0.82);
+  --ios-material-thin: rgba(255, 255, 255, 0.68);
+  --ios-material-blur: saturate(180%) blur(20px);
+
+  /* ── Motion ───────────────────────────────────────────────────────────
+     iOS transitions are springs, not eases.  These two curves approximate
+     the system's default and its snappier "button press" response. */
+  --ios-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --ios-spring-snappy: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ios-duration: 350ms;
+  --ios-duration-fast: 200ms;
+
+  /* ── Safe areas ───────────────────────────────────────────────────────
+     Vocaband is installed as a PWA on student phones, where it runs
+     fullscreen with no browser chrome — so the notch and the home
+     indicator are ours to avoid.  These resolve to 0 in a normal tab. */
+  --ios-safe-top: env(safe-area-inset-top, 0px);
+  --ios-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --ios-safe-left: env(safe-area-inset-left, 0px);
+  --ios-safe-right: env(safe-area-inset-right, 0px);
+
+  /* Standard chrome heights, used to pad scroll containers so content
+     clears the bars instead of hiding under them. */
+  --ios-navbar-height: 44px;
+  --ios-tabbar-height: 49px;
+}
+
+/* =============================================================================
+   Re-point the existing --vb-* tokens at iOS values.
+
+   This is the leverage: every surface already written against --vb-* moves
+   to the iOS palette without being touched.  Only tokens whose iOS
+   equivalent is genuinely different are overridden — status colors keep
+   their semantic meaning, and --vb-accent stays brand indigo rather than
+   becoming systemBlue, so Vocaband still looks like Vocaband.
+   `:root:root` is deliberate, not a typo.  A CSS `@import` must sit at the
+   top of the file, so this stylesheet is parsed BEFORE index.css's own
+   `:root` defaults — at equal specificity index.css would win and these
+   re-points would silently do nothing.  Doubling the selector raises
+   specificity to (0,2,0) so they land regardless of source order, while
+   still yielding to the dark-mode rules below and to the teacher palettes,
+   which are applied inline at runtime.
+   ============================================================================= */
+:root:root {
+  --vb-surface: var(--ios-grouped-card);
+  --vb-surface-alt: var(--ios-grouped-bg);
+  --vb-surface-elevated: #ffffff;
+  --vb-bg-primary: var(--ios-grouped-bg);
+  --vb-bg-secondary: var(--ios-grouped-card);
+
+  --vb-text-primary: var(--ios-label);
+  --vb-text-secondary: var(--ios-label-secondary);
+  --vb-text-muted: var(--ios-label-tertiary);
+
+  --vb-border: var(--ios-separator);
+  --vb-border-strong: var(--ios-separator-opaque);
+
+  /* iOS shadows are far softer than Material's — elevation is carried by
+     the grouped-card background, not by a drop shadow. */
+  --vb-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --vb-shadow-elevated: 0 8px 30px rgba(0, 0, 0, 0.12);
+
+  --vb-focus-ring: var(--ios-blue);
+}
+
+/* =============================================================================
+   Dark mode.
+
+   index.css already flips --vb-* under its own dark rules; this block flips
+   the --ios-* primitives so the material/hairline/label layer follows.
+
+   The selector is copied verbatim from index.css rather than written fresh,
+   because dark mode here is NOT `prefers-color-scheme` — it is driven by two
+   explicit signals:
+     • `html.a11y-dark:not([data-theme-dark])` — the global accessibility
+       dark toggle, which yields to a teacher palette
+     • `html[data-theme-dark="true"]` — a teacher's dark dashboard palette
+   Using the media query instead would have flipped the iOS primitives on any
+   phone set to dark at OS level while the --vb-* tokens stayed light, tearing
+   the two halves of the palette apart.
+
+   Specificity is (0,2,1) — above the `:root:root` re-points, so dark wins
+   regardless of source order.
+   ============================================================================= */
+:is(html.a11y-dark:not([data-theme-dark]), html[data-theme-dark="true"]) {
+  --ios-grouped-bg: #000000;
+  --ios-grouped-card: #1c1c1e;
+
+  --ios-label: #ffffff;
+  --ios-label-secondary: rgba(235, 235, 245, 0.6);
+  --ios-label-tertiary: rgba(235, 235, 245, 0.3);
+
+  --ios-separator: rgba(84, 84, 88, 0.65);
+  --ios-separator-opaque: #38383a;
+
+  --ios-fill-quaternary: rgba(118, 118, 128, 0.12);
+  --ios-fill-tertiary: rgba(118, 118, 128, 0.24);
+  --ios-fill-secondary: rgba(120, 120, 128, 0.32);
+
+  --ios-material-thick: rgba(30, 30, 32, 0.94);
+  --ios-material-regular: rgba(30, 30, 32, 0.82);
+  --ios-material-thin: rgba(30, 30, 32, 0.68);
+
+  /* systemBlue shifts brighter in dark mode so it stays legible on black. */
+  --ios-blue: #0a84ff;
+  --ios-green: #30d158;
+  --ios-red: #ff453a;
+  --ios-orange: #ff9f0a;
+}
+
+/* =============================================================================
+   Primitives
+   ============================================================================= */
+
+/* Hairline separator.  Drawn as a scaled pseudo-element rather than a
+   border because `border: 0.5px` rounds up to 1px in most browsers, and
+   1px is visibly heavier than what iOS draws.  `transform: scaleY(0.5)`
+   gets a true half-pixel on 2x/3x displays.
+
+   RTL-safe: uses inset-inline so the indent flips with `dir`. */
+.ios-hairline {
+  position: relative;
+}
+.ios-hairline::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--ios-separator);
+  transform: scaleY(0.5);
+  transform-origin: bottom;
+  pointer-events: none;
+}
+/* Indented variant — iOS insets the separator to align with the row's text,
+   not its icon.  The inset is logical, so it lands on the correct side in
+   Hebrew and Arabic. */
+.ios-hairline-inset::after {
+  inset-inline-start: 1rem;
+}
+
+/* Translucent chrome.  The @supports guard matters: without backdrop-filter
+   a 0.82-alpha bar over scrolling content is unreadable, so unsupported
+   browsers get a fully opaque bar instead of a broken translucent one. */
+.ios-material {
+  background: var(--ios-material-regular);
+}
+.ios-material-thick {
+  background: var(--ios-material-thick);
+}
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .ios-material,
+  .ios-material-thick {
+    -webkit-backdrop-filter: var(--ios-material-blur);
+    backdrop-filter: var(--ios-material-blur);
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ios-material,
+  .ios-material-thick {
+    background: var(--ios-grouped-card);
+  }
+}
+
+/* Inset grouped list — the iOS Settings pattern.  Cards float on the
+   grouped background with the first/last rows carrying the rounding. */
+.ios-list {
+  background: var(--ios-grouped-card);
+  border-radius: var(--ios-radius-card);
+  overflow: hidden;
+}
+
+/* Row press state.  iOS highlights the whole row on touch-down and clears
+   it instantly on release — no hover, because there is no cursor. */
+.ios-row {
+  min-height: 44px; /* Apple's minimum tap target */
+  transition: background-color var(--ios-duration-fast) var(--ios-spring-snappy);
+}
+@media (hover: none) {
+  .ios-row:active {
+    background: var(--ios-fill-quaternary);
+  }
+}
+@media (hover: hover) {
+  .ios-row:hover {
+    background: var(--ios-fill-quaternary);
+  }
+}
+
+/* Button press — iOS scales down slightly and dims, fast in and slow out. */
+.ios-pressable {
+  transition:
+    transform var(--ios-duration-fast) var(--ios-spring),
+    opacity var(--ios-duration-fast) var(--ios-spring);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.ios-pressable:active {
+  transform: scale(0.96);
+  opacity: 0.75;
+}
+
+/* Type ramp helpers.  Applied by the React primitives; also available to
+   any view being converted by hand. */
+.ios-large-title {
+  font-size: var(--ios-text-large-title);
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: var(--ios-tracking-large-title);
+}
+.ios-title2 {
+  font-size: var(--ios-text-title2);
+  line-height: 1.27;
+  font-weight: 700;
+  letter-spacing: var(--ios-tracking-title);
+}
+.ios-headline {
+  font-size: var(--ios-text-headline);
+  line-height: 1.29;
+  font-weight: 600;
+  letter-spacing: var(--ios-tracking-body);
+}
+.ios-body {
+  font-size: var(--ios-text-body);
+  line-height: 1.29;
+  font-weight: 400;
+  letter-spacing: var(--ios-tracking-body);
+}
+.ios-footnote {
+  font-size: var(--ios-text-footnote);
+  line-height: 1.38;
+  font-weight: 400;
+}
+/* Grouped-list section headers are uppercase, tertiary, and tracked out. */
+.ios-section-header {
+  font-size: var(--ios-text-footnote);
+  line-height: 1.38;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ios-label-secondary);
+}
+
+/* Safe-area helpers for the PWA fullscreen case. */
+.ios-safe-top {
+  padding-top: var(--ios-safe-top);
+}
+.ios-safe-bottom {
+  padding-bottom: var(--ios-safe-bottom);
+}
+
+/* Momentum scrolling inside sheets and scroll containers. */
+.ios-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Respect the user's motion setting — low-power mode on iOS also trips
+   prefers-reduced-motion, so this covers the throttled-animation case in
+   docs/open-issues.md section F as well. */
+@media (prefers-reduced-motion: reduce) {
+  .ios-pressable,
+  .ios-row {
+    transition: none;
+  }
+  .ios-pressable:active {
+    transform: none;
+  }
+}

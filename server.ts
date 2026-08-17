@@ -6116,6 +6116,18 @@ Quality rules:
     });
   });
 
+  // Columns the UNAUTHENTICATED Quick Play endpoints may return.
+  //
+  // Both the session lookup and the Tier-2 join used `select("*")`, which
+  // handed an anonymous caller the whole row — including `teacher_uid`.
+  // Nothing in the join flow needs it (see QpSessionRow in
+  // src/hooks/useQuickPlayUrlBootstrap.ts), and a teacher's auth UUID has
+  // no business reaching a caller who only proved they know a 6-char code.
+  // Project explicitly instead, so a column added to the table later isn't
+  // published to anonymous callers by default.
+  const QP_PUBLIC_SESSION_COLUMNS =
+    "id, session_code, word_ids, allowed_modes, ai_sentences, custom_words, subject, is_active";
+
   // ─── Quick Play session lookup (public, service-role) ─────────────
   // Frontend bootstrap calls this as a fallback when the direct
   // Supabase REST query fails — typically because:
@@ -6193,7 +6205,7 @@ Quality rules:
     try {
       const { data, error } = await supabaseAdmin
         .from("quick_play_sessions")
-        .select("*")
+        .select(QP_PUBLIC_SESSION_COLUMNS)
         .eq("session_code", code.toUpperCase())
         .eq("is_active", true)
         .maybeSingle();
@@ -6251,7 +6263,7 @@ Quality rules:
       const [lookup, signIn] = await Promise.all([
         supabaseAdmin
           .from("quick_play_sessions")
-          .select("*")
+          .select(QP_PUBLIC_SESSION_COLUMNS)
           .eq("session_code", sessionCode)
           .eq("is_active", true)
           .maybeSingle(),

@@ -8,12 +8,18 @@
 #   - When e2e is flaky on a network hiccup we don't want to block
 #     the typecheck / unit gate
 #
-# Scope: only the smoke spec (3 tests in e2e/tests/smoke.spec.ts).
-# The full e2e suite (~23 tests across navigation/public-pages/
-# schema-validation) is too long for every PR — those run via
-# `npm run test:e2e` locally or on demand via workflow_dispatch.
+# Scope: the FULL public suite (99 tests across Desktop Chrome + Pixel 7 +
+# Galaxy S9+) plus the authenticated suite (44 tests) in a parallel job.
+#
+# This used to run only smoke.spec.ts + auth-flow.spec.ts because the wider
+# suite "was timing out at 10 min on a single worker". That is no longer the
+# constraint — the whole public suite now completes in ~2 min and the auth
+# suite in ~1.5 min. The narrow scope had a real cost: 6 specs rotted
+# undetected (stale copy assertions, a CTA that no longer exists, a missing
+# RPC in the Supabase mock) because nothing ever ran them. Widening here is
+# what keeps that from happening again.
 
-name: CI — e2e smoke
+name: CI — e2e
 
 # Least-privilege — read code + write artifacts on failure.  CodeQL
 # flags missing top-level permissions; this is the recommended fix.
@@ -33,11 +39,17 @@ concurrency:
 
 jobs:
   e2e:
+    # NOTE: the display name is deliberately left as "Playwright smoke"
+    # even though this job now runs the full public suite. Status checks
+    # are keyed by job name, so renaming it would make any branch-protection
+    # rule that requires "Playwright smoke" wait forever on a check that no
+    # longer reports. Rename here only together with the branch-protection
+    # setting on main.
     name: Playwright smoke
     runs-on: ubuntu-latest
-    # Bumped from 10 → 20 min after the first run was canceled at the
-    # 10-min mark while still installing browsers + running tests.
-    # Browser install + 3 smoke tests serially fit comfortably in 20.
+    # 20 min covers browser install + a full-suite run. The public suite is
+    # ~99 tests over 3 viewports and finishes in ~2 min locally; CI runs it
+    # on a single worker, so the real budget is a few minutes plus the build.
     timeout-minutes: 20
 
     steps:
@@ -79,18 +91,73 @@ jobs:
         # `--with-deps` reinstalls only the apt packages.
         run: npx playwright install-deps chromium
 
-      # Scope to smoke.spec.ts + auth-flow.spec.ts — the rest of the
-      # e2e suite (navigation / public-pages / schema-validation) was
-      # timing out at 10 min on a single worker.  Smoke is the "does
-      # it boot" gate; auth-flow.spec.ts is the security-regression
-      # gate added per docs/security-audit-framework/01-AUTH-IDENTITY.md.
-      - name: Run Playwright smoke + auth-flow
-        run: npx playwright test --config e2e/playwright.config.ts e2e/tests/smoke.spec.ts e2e/tests/auth-flow.spec.ts
+      # Full public suite — every spec, every viewport. Includes the
+      # "does it boot" smoke gate and the auth-flow security-regression
+      # gate (docs/security-audit-framework/01-AUTH-IDENTITY.md), plus
+      # the navigation / public-pages / url-routing / slow-network specs
+      # that previously never ran in CI.
+      - name: Run Playwright public suite
+        run: npx playwright test --config e2e/playwright.config.ts
 
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+  # ── Authenticated suite ────────────────────────────────────────────────
+  # Separate job so it runs in PARALLEL with the public suite (each ~2 min)
+  # instead of serially, and so a failure points straight at which surface
+  # broke. Uses playwright.auth.config.ts, whose build points
+  # VITE_SUPABASE_URL at the Supabase mock so the seeded teacher/student
+  # sessions restore. These specs cover the logged-in shells (dashboards,
+  # deep links, back-button traps) that no CI job exercised before.
+  e2e-auth:
+    name: Playwright auth suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system deps (when cached)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Run Playwright auth suite
+        run: npx playwright test --config e2e/playwright.auth.config.ts
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-auth
           path: playwright-report/
           retention-days: 14
