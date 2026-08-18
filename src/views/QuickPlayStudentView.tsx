@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, QrCode, Globe } from "lucide-react";
+import { IOSButton, IOSCard, IOSEmptyState, IOSTextField } from "../components/ios";
 import AvatarPicker from "../components/QPAvatarPicker";
 import QuickPlayErrorScreen, { type QuickPlayErrorKind } from "../components/QuickPlayErrorScreen";
 import { shuffle } from "../utils";
@@ -415,27 +416,31 @@ export default function QuickPlayStudentView({
   }, [quickPlaySocket, cleanupSessionData, setQuickPlayActiveSession, setView, showToast, setQuickPlayKicked]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-surface">
-      <header className="w-full sticky top-0 bg-surface flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 z-50">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ background: "var(--ios-grouped-bg)" }}
+    >
+      <header className="ios-material ios-safe-top ios-hairline w-full sticky top-0 flex items-center justify-between px-3 sm:px-6 py-2.5 z-50">
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg signature-gradient flex items-center justify-center shadow-lg shadow-primary/20">
-            <span className="text-white text-xl sm:text-2xl font-black font-headline italic">V</span>
+          <div className="w-9 h-9 rounded-[10px] signature-gradient flex items-center justify-center">
+            <span className="text-white text-xl font-black font-headline italic">V</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-xl sm:text-2xl font-black tracking-tight font-headline signature-gradient-text">Vocaband</span>
-            <span className="text-[9px] sm:text-[10px] font-bold text-on-surface-variant uppercase tracking-widest leading-none hidden sm:block">Quick Play</span>
+            <span className="text-xl font-black tracking-tight font-headline signature-gradient-text">Vocaband</span>
+            <span className="ios-footnote uppercase tracking-widest leading-none hidden sm:block" style={{ color: "var(--ios-label-secondary)" }}>Quick Play</span>
           </div>
         </div>
-        <button
+        <IOSButton
+          variant="plain"
+          size="sm"
           onClick={() => {
             cleanupSessionData(); // Clear save queue and timers
             setView("public-landing");
             setQuickPlayActiveSession(null);
           }}
-          className="text-on-surface-variant font-bold text-sm hover:text-on-surface flex items-center gap-1"
         >
           {qpIsRTL ? '→' : '←'} {qpT.back}
-        </button>
+        </IOSButton>
       </header>
 
       {/* Reconnecting banner — shown when the socket drops mid-session
@@ -446,9 +451,14 @@ export default function QuickPlayStudentView({
         <div
           role="status"
           aria-live="polite"
-          className="fixed top-16 left-1/2 -translate-x-1/2 z-50 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500 text-amber-950 font-bold text-sm shadow-lg animate-pulse"
+          className="ios-footnote fixed top-16 left-1/2 -translate-x-1/2 z-50 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full font-semibold animate-pulse"
+          style={{
+            background: "var(--ios-orange)",
+            color: "#fff",
+            boxShadow: "var(--vb-shadow-elevated)",
+          }}
         >
-          <span className="w-2 h-2 rounded-full bg-amber-900" />
+          <span className="w-1.5 h-1.5 rounded-full bg-white/80" />
           {qpT.reconnecting}
         </div>
       )}
@@ -472,30 +482,36 @@ export default function QuickPlayStudentView({
               }}
             />
           ) : !quickPlayActiveSession ? (
-            <div className="text-center py-12 sm:py-20">
-              <Loader2 className="mx-auto animate-spin text-primary mb-4 w-9 h-9 sm:w-12 sm:h-12" />
-              <p className="text-on-surface-variant font-bold text-sm sm:text-base">{qpT.loadingSession}</p>
-              {/* Manual escape — the bootstrap has a 15s timeout that
-                  auto-bounces to landing, but on a phone holding the
-                  loader for 15s feels broken.  A visible escape link
-                  reassures the student they can recover even before
-                  the timeout fires. */}
-              <button
-                type="button"
-                onClick={() => {
-                  cleanupSessionData();
-                  try { localStorage.removeItem('vocaband_qp_guest'); } catch { /* storage unavailable */ }
-                  setQuickPlayActiveSession(null);
-                  setQuickPlayStudentName('');
-                  setUser(null);
-                  window.history.replaceState({}, '', window.location.pathname);
-                  setView('public-landing');
-                }}
-                className="mt-6 text-sm font-bold text-on-surface-variant underline hover:text-on-surface"
-              >
-                {qpT.cancelAndGoBack}
-              </button>
-            </div>
+            // Manual escape — the bootstrap has a 15s timeout that
+            // auto-bounces to landing, but on a phone holding the loader for
+            // 15s feels broken.  A visible escape action reassures the
+            // student they can recover even before the timeout fires.
+            <IOSEmptyState
+              glyph={
+                <Loader2
+                  className="animate-spin mx-auto w-9 h-9"
+                  style={{ color: "var(--vb-accent)" }}
+                />
+              }
+              title={qpT.loadingSession}
+              action={
+                <IOSButton
+                  variant="plain"
+                  size="md"
+                  onClick={() => {
+                    cleanupSessionData();
+                    try { localStorage.removeItem('vocaband_qp_guest'); } catch { /* storage unavailable */ }
+                    setQuickPlayActiveSession(null);
+                    setQuickPlayStudentName('');
+                    setUser(null);
+                    window.history.replaceState({}, '', window.location.pathname);
+                    setView('public-landing');
+                  }}
+                >
+                  {qpT.cancelAndGoBack}
+                </IOSButton>
+              }
+            />
           ) : userIsActiveGuest && quickPlayStudentName ? (
             // Resume card: reached when the mobile back button pops the
             // in-game history entry and lands the student back on
@@ -513,13 +529,15 @@ export default function QuickPlayStudentView({
               <div className="text-6xl mb-4">{quickPlayAvatar}</div>
               {resumeFailed ? (
                 <>
-                  <h1 className="text-2xl sm:text-3xl font-black text-on-surface mb-2">
+                  <h1 className="ios-large-title mb-2" style={{ color: "var(--ios-label)" }}>
                     {qpT.resumeFailedTitle}
                   </h1>
-                  <p className="text-sm sm:text-base text-on-surface-variant font-bold mb-6">
+                  <p className="ios-body mb-6" style={{ color: "var(--ios-label-secondary)" }}>
                     {qpT.resumeFailedBody}
                   </p>
-                  <button
+                  <IOSButton
+                    variant="brand"
+                    size="lg"
                     onClick={() => {
                       cleanupSessionData();
                       try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
@@ -530,23 +548,24 @@ export default function QuickPlayStudentView({
                       setResumeFailed(false);
                       setView("public-landing");
                     }}
-                    className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg"
                   >
                     {qpT.scanNewQr}
-                  </button>
+                  </IOSButton>
                 </>
               ) : (
                 <>
-                  <h1 className="text-2xl sm:text-3xl font-black text-on-surface mb-2">
+                  <h1 className="ios-large-title mb-2" style={{ color: "var(--ios-label)" }}>
                     {/* <bdi> isolates the LTR nickname inside the RTL
                         layout so the trailing "!" lands at the visual end
                         of the name, not the start. */}
                     {qpT.welcomeBackPrefix}<bdi>{quickPlayStudentName}</bdi>!
                   </h1>
-                  <p className="text-sm sm:text-base text-on-surface-variant font-bold mb-6">
+                  <p className="ios-body mb-6" style={{ color: "var(--ios-label-secondary)" }}>
                     {qpT.sessionStillActive}
                   </p>
-                  <button
+                  <IOSButton
+                    variant="brand"
+                    size="lg"
                     disabled={resuming}
                     onClick={() => {
                       // Resume = re-emit STUDENT_JOIN with the same nickname
@@ -590,7 +609,6 @@ export default function QuickPlayStudentView({
                         advance();
                       }
                     }}
-                    className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {resuming ? (
                       <>
@@ -600,10 +618,13 @@ export default function QuickPlayStudentView({
                     ) : (
                       <>{qpT.continuePlaying} {qpIsRTL ? '←' : '→'}</>
                     )}
-                  </button>
+                  </IOSButton>
                 </>
               )}
-              <button
+              <IOSButton
+                variant="plain"
+                size="md"
+                className="mt-3"
                 onClick={() => {
                   cleanupSessionData();
                   try { localStorage.removeItem('vocaband_qp_guest'); } catch {}
@@ -612,19 +633,18 @@ export default function QuickPlayStudentView({
                   setUser(null);
                   setView("public-landing");
                 }}
-                className="mt-3 text-sm text-on-surface-variant font-bold hover:text-on-surface"
               >
                 {qpT.leaveQuickPlay}
-              </button>
+              </IOSButton>
             </div>
           ) : !quickPlayStudentName ? (
             <div className="w-full max-w-md">
-              <div className="text-center mb-6 sm:mb-8">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 sm:mb-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
-                  <QrCode className="text-white w-8 h-8 sm:w-10 sm:h-10" />
+              <div className="text-center mb-6">
+                <div className="signature-gradient w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center">
+                  <QrCode className="text-white w-8 h-8" />
                 </div>
-                <h1 className="text-2xl sm:text-4xl font-black text-on-surface mb-2">{qpT.headline}</h1>
-                <p className="text-sm sm:text-base text-on-surface-variant font-bold">
+                <h1 className="ios-large-title mb-1" style={{ color: "var(--ios-label)" }}>{qpT.headline}</h1>
+                <p className="ios-body" style={{ color: "var(--ios-label-secondary)" }}>
                   {qpT.subheadWords(quickPlayActiveSession.words.length)}
                 </p>
               </div>
@@ -651,12 +671,15 @@ export default function QuickPlayStudentView({
                         key={lang}
                         type="button"
                         onClick={() => { setSelectedLang(lang); setAppLanguage(lang); }}
-                        style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
-                        className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-black transition-colors ${
-                          active
-                            ? "bg-primary-dim text-on-primary shadow-md"
-                            : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
-                        }`}
+                        style={{
+                          touchAction: "manipulation",
+                          WebkitTapHighlightColor: "transparent" as any,
+                          background: active
+                            ? "var(--vb-accent)"
+                            : "var(--ios-fill-tertiary)",
+                          color: active ? "#fff" : "var(--ios-label-secondary)",
+                        }}
+                        className="ios-pressable ios-footnote flex items-center gap-1.5 px-4 py-2 rounded-full font-semibold"
                       >
                         <Globe size={15} aria-hidden /> {languageNames[lang]}
                       </button>
@@ -664,10 +687,7 @@ export default function QuickPlayStudentView({
                   })}
                 </div>
 
-                <div className="relative">
-                  <label className="absolute -top-2.5 start-4 px-2 bg-surface text-primary font-black text-xs z-10">
-                    {qpT.yourNameLabel}
-                  </label>
+                <IOSCard header={qpT.yourNameLabel} padded={false}>
                   {(() => {
                     // Check if student already joined this session — lock their name
                     let lockedName = '';
@@ -681,23 +701,24 @@ export default function QuickPlayStudentView({
                       }
                     } catch {}
                     return lockedName ? (
-                      <>
-                        <input
-                          id="quick-play-name-input"
-                          name="nickname"
-                          type="text"
-                          value={lockedName}
-                          readOnly
-                          className="w-full px-4 py-3 sm:py-4 bg-surface-container border-4 border-stone-200 rounded-xl text-base sm:text-lg font-black text-on-surface cursor-not-allowed opacity-70"
-                        />
-                        <p className="text-xs text-on-surface-variant mt-1 text-center">
-                          {/* <bdi> isolates the LTR nickname so it doesn't
-                              bidi-flip the surrounding HE/AR sentence. */}
-                          {qpT.alreadyJoinedAsPrefix}<strong><bdi>{lockedName}</bdi></strong>
-                        </p>
-                      </>
+                      <IOSTextField
+                        id="quick-play-name-input"
+                        name="nickname"
+                        type="text"
+                        value={lockedName}
+                        readOnly
+                        className="cursor-not-allowed opacity-70"
+                        hint={
+                          // <bdi> isolates the LTR nickname so it doesn't
+                          // bidi-flip the surrounding HE/AR sentence.
+                          <>
+                            {qpT.alreadyJoinedAsPrefix}
+                            <strong><bdi>{lockedName}</bdi></strong>
+                          </>
+                        }
+                      />
                     ) : (
-                      <input
+                      <IOSTextField
                         id="quick-play-name-input"
                         name="nickname"
                         type="text"
@@ -727,14 +748,15 @@ export default function QuickPlayStudentView({
                           const el = e.currentTarget;
                           setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
                         }}
-                        className="w-full px-4 py-3 sm:py-4 bg-transparent border-4 border-stone-200 rounded-xl text-base sm:text-lg font-black text-on-surface placeholder:text-on-surface-variant/70 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                         autoFocus
                       />
                     );
                   })()}
-                </div>
+                </IOSCard>
 
-                <button
+                <IOSButton
+                  variant="brand"
+                  size="lg"
                   data-quick-play-join
                   disabled={joining}
                   onClick={() => {
@@ -782,7 +804,6 @@ export default function QuickPlayStudentView({
                     setJoining(true);
                     runJoin(trimmedName);
                   }}
-                  className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-fuchsia-600 text-white rounded-xl font-black text-base sm:text-lg hover:opacity-90 transition-all shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {joining ? (
                     <>
@@ -794,14 +815,15 @@ export default function QuickPlayStudentView({
                       🎮 {qpT.startPlaying} {qpIsRTL ? '←' : '→'}
                     </>
                   )}
-                </button>
+                </IOSButton>
               </div>
 
-              <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-surface-container-low rounded-xl border-2 border-surface-container-highest">
-                <p className="text-xs sm:text-sm text-on-surface-variant text-center">
-                  {qpT.guestModeNote}
-                </p>
-              </div>
+              <p
+                className="ios-footnote mt-6 px-4 text-center"
+                style={{ color: "var(--ios-label-secondary)" }}
+              >
+                {qpT.guestModeNote}
+              </p>
             </div>
           ) : null}
       </main>

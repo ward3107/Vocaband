@@ -973,12 +973,12 @@ html[dir="rtl"] .rtl-flip {
    complements) so the brand mark feels of-a-piece with the rest of the
    student app instead of leaning on the older blue/purple/pink mix. */
 .signature-gradient {
-  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 50%, #d946ef 100%);
+  background: var(--vb-gradient-brand);
 }
 
 /* Signature gradient text */
 .signature-gradient-text {
-  background: linear-gradient(135deg, #6366f1 0%, #7c3aed 50%, #d946ef 100%);
+  background: var(--vb-gradient-brand);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
