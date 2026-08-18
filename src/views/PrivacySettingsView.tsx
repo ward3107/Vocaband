@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { IOSCard, IOSButton } from "../components/ios";
 import { supabase, hasTeacherAccess, type AppUser } from "../core/supabase";
 import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY, RETENTION_PERIODS } from "../config/privacy-config";
 import type { View } from "../core/views";
@@ -43,8 +44,10 @@ export default function PrivacySettingsView({
   user, consentModal, exitConfirmModal, setView, setUser, setConfirmDialog, showToast,
   setNeedsConsent, onReopenPrivacyReminder,
 }: PrivacySettingsViewProps) {
-  const { language, dir, isRTL } = useLanguage();
+  const { language, dir, isRTL, textAlign } = useLanguage();
   const t = privacySettingsT[language];
+  // Back chevron points backwards in the reading direction (flips in RTL).
+  const BackChevron = isRTL ? ChevronRight : ChevronLeft;
   const [editingName, setEditingName] = useState(false);
   const [newDisplayName, setNewDisplayName] = useState("");
 
@@ -126,60 +129,47 @@ export default function PrivacySettingsView({
     }
   };
 
+  // iOS grouped-list settings screen. Every section is an IOSCard on the
+  // grouped background; colors come from the --ios-* tokens so the page
+  // follows light/dark with the rest of the app instead of the old
+  // hard-coded violet chrome.
+  const consentVersion = localStorage.getItem('vocaband_consent_version');
+
   return (
     <div
       dir={dir}
       className="min-h-screen p-4 sm:p-6"
-      style={{
-        // Settings v1 page chrome — soft violet radial-from-top
-        // gradient matches the rest of the redesigned teacher
-        // surfaces (dashboard, classroom, roster, library).
-        background:
-          "radial-gradient(140% 100% at 100% 0%, #F3EBFF 0%, #F6F4FF 40%, #FAF7FF 100%)",
-      }}
+      style={{ background: "var(--ios-grouped-bg)" }}
     >
       {consentModal}
       {exitConfirmModal}
       <div className="max-w-2xl mx-auto">
-        <div className="flex items-center gap-3 mb-2">
-          <button
+        <div className="mb-1 flex items-center gap-3">
+          <IOSButton
+            variant="plain"
+            size="sm"
             onClick={() => setView(hasTeacherAccess(user) ? "teacher-dashboard" : "student-dashboard")}
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
-            className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/[0.10] bg-white/70 px-3.5 py-2 text-[13px] font-semibold text-[#4A3B7A] backdrop-blur-sm hover:text-[#8B5CF6]"
           >
-            <ChevronRight className={isRTL ? "" : "rotate-180"} size={14} /> {t.back}
-          </button>
+            <BackChevron size={18} strokeWidth={2.5} aria-hidden /> {t.back}
+          </IOSButton>
         </div>
-        <div className="mb-6 mt-3">
-          <div className="mb-2 flex items-center gap-2.5 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#8B5CF6]">
-            <span
-              className="inline-block h-1.5 w-1.5 rounded-full"
-              style={{ background: "linear-gradient(135deg,#8B5CF6,#D946EF)" }}
-            />
-            {t.pageTitle}
-          </div>
-          <h1 className="m-0 text-[28px] sm:text-[32px] font-extrabold leading-none tracking-[-0.025em] text-[#1F1147]">
-            {t.pageTitle}
-          </h1>
-        </div>
+        <h1
+          className={`ios-large-title mb-6 mt-3 ${textAlign}`}
+          style={{ color: "var(--ios-label)" }}
+        >
+          {t.pageTitle}
+        </h1>
 
         {/* Push-notification on/off (self-hides unless enabled for the
             class + supported by the browser) */}
         <PushSettingsToggle user={user} />
 
         {/* Profile Info (editable name) */}
-        <div
-          className="bg-white rounded-2xl p-5 mb-4 border border-indigo-500/[0.10]"
-          style={{
-            boxShadow:
-              "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
-          }}
-        >
-          <h2 className="text-[15px] font-extrabold tracking-[-0.005em] text-[#1F1147] mb-3 pb-2 border-b border-indigo-500/[0.10]">{t.profileTitle}</h2>
-          <div className="space-y-2 text-sm text-stone-600">
-            <p><strong>{t.role}</strong> {user.role}</p>
+        <IOSCard header={t.profileTitle} className="mb-6">
+          <div className="space-y-2 text-sm" style={{ color: "var(--ios-label-secondary)" }}>
+            <p><strong style={{ color: "var(--ios-label)" }}>{t.role}</strong> {user.role}</p>
             <div className="flex items-center gap-2">
-              <strong>{t.name}</strong>
+              <strong style={{ color: "var(--ios-label)" }}>{t.name}</strong>
               {editingName ? (
                 <div className="flex items-center gap-2 flex-1">
                   <input
@@ -190,172 +180,152 @@ export default function PrivacySettingsView({
                     value={newDisplayName}
                     onChange={(e) => setNewDisplayName(e.target.value)}
                     maxLength={30}
-                    className="border rounded-lg px-2 py-1 text-sm flex-1"
+                    className="flex-1 rounded-[8px] px-2.5 py-1.5 text-sm outline-none"
+                    style={{
+                      background: "var(--ios-fill-tertiary)",
+                      color: "var(--ios-label)",
+                      fontSize: "16px",
+                    }}
                     autoFocus
                   />
-                  <button onClick={handleSaveName} className="text-blue-600 font-bold text-xs">{t.save}</button>
-                  <button onClick={() => setEditingName(false)} className="signature-gradient text-white px-4 py-2 rounded-lg font-bold text-xs hover:scale-105 active:scale-95 transition-all shadow-lg">{t.cancel}</button>
+                  <IOSButton variant="plain" size="sm" onClick={handleSaveName}>{t.save}</IOSButton>
+                  <IOSButton variant="plain" size="sm" onClick={() => setEditingName(false)}>{t.cancel}</IOSButton>
                 </div>
               ) : (
                 <>
-                  {user.displayName}
-                  <button onClick={() => { setNewDisplayName(user.displayName); setEditingName(true); }} className="text-blue-600 text-xs font-bold ml-2">{t.edit}</button>
+                  <span style={{ color: "var(--ios-label)" }}>{user.displayName}</span>
+                  <IOSButton variant="plain" size="sm" onClick={() => { setNewDisplayName(user.displayName); setEditingName(true); }}>{t.edit}</IOSButton>
                 </>
               )}
             </div>
-            {user.email && <p><strong>{t.email}</strong> {user.email}</p>}
-            {user.classCode && <p><strong>{t.classCode}</strong> {user.classCode}</p>}
+            {user.email && <p><strong style={{ color: "var(--ios-label)" }}>{t.email}</strong> {user.email}</p>}
+            {user.classCode && <p><strong style={{ color: "var(--ios-label)" }}>{t.classCode}</strong> {user.classCode}</p>}
           </div>
-        </div>
+        </IOSCard>
 
         {/* What data we store */}
-        <div
-          className="bg-white rounded-2xl p-5 mb-4 border border-indigo-500/[0.10]"
-          style={{
-            boxShadow:
-              "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
-          }}
-        >
-          <h2 className="text-[15px] font-extrabold tracking-[-0.005em] text-[#1F1147] mb-3 pb-2 border-b border-indigo-500/[0.10]">{t.whatDataTitle}</h2>
+        <IOSCard header={t.whatDataTitle} className="mb-6">
           <div className="space-y-3">
             {DATA_COLLECTION_POINTS
               .filter(p => p.role === user.role || p.role === "both")
-              .map((point, i) => (
-              <div key={i} className="text-sm border-b border-stone-100 pb-2 last:border-0">
-                <p className="font-bold text-stone-700">{point.location}</p>
-                <p className="text-stone-500">{t.fieldsPrefix}{point.fields.join(", ")}</p>
-                <p className="text-stone-500">{t.purposePrefix}{point.purpose}</p>
-                <p className="text-stone-400 text-xs">{point.mandatory ? t.required : t.optional}</p>
+              .map((point, i, arr) => (
+              <div
+                key={i}
+                className={`text-sm pb-2 ${i < arr.length - 1 ? "ios-hairline" : ""}`}
+              >
+                <p className="font-bold" style={{ color: "var(--ios-label)" }}>{point.location}</p>
+                <p style={{ color: "var(--ios-label-secondary)" }}>{t.fieldsPrefix}{point.fields.join(", ")}</p>
+                <p style={{ color: "var(--ios-label-secondary)" }}>{t.purposePrefix}{point.purpose}</p>
+                <p className="text-xs" style={{ color: "var(--ios-label-tertiary)" }}>{point.mandatory ? t.required : t.optional}</p>
               </div>
             ))}
           </div>
-        </div>
+        </IOSCard>
 
         {/* Third-party services */}
-        <div
-          className="bg-white rounded-2xl p-5 mb-4 border border-indigo-500/[0.10]"
-          style={{
-            boxShadow:
-              "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
-          }}
-        >
-          <h2 className="text-[15px] font-extrabold tracking-[-0.005em] text-[#1F1147] mb-3 pb-2 border-b border-indigo-500/[0.10]">{t.thirdPartyTitle}</h2>
+        <IOSCard header={t.thirdPartyTitle} className="mb-6">
           <div className="space-y-3">
-            {THIRD_PARTY_REGISTRY.map((tp, i) => (
-              <div key={i} className="text-sm border-b border-stone-100 pb-2 last:border-0">
-                <p className="font-bold text-stone-700">{tp.name} <span className="text-stone-400 font-normal">({tp.hostingRegion})</span></p>
-                <p className="text-stone-500">{tp.purpose}</p>
-                <p className="text-stone-400 text-xs">{t.dataPrefix}{tp.dataCategories.join(", ")}</p>
+            {THIRD_PARTY_REGISTRY.map((tp, i, arr) => (
+              <div
+                key={i}
+                className={`text-sm pb-2 ${i < arr.length - 1 ? "ios-hairline" : ""}`}
+              >
+                <p className="font-bold" style={{ color: "var(--ios-label)" }}>{tp.name} <span className="font-normal" style={{ color: "var(--ios-label-tertiary)" }}>({tp.hostingRegion})</span></p>
+                <p style={{ color: "var(--ios-label-secondary)" }}>{tp.purpose}</p>
+                <p className="text-xs" style={{ color: "var(--ios-label-tertiary)" }}>{t.dataPrefix}{tp.dataCategories.join(", ")}</p>
               </div>
             ))}
           </div>
-        </div>
+        </IOSCard>
 
         {/* Consent status */}
-        <div
-          className="bg-white rounded-2xl p-5 mb-4 border border-indigo-500/[0.10]"
-          style={{
-            boxShadow:
-              "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
-          }}
-        >
-          <h2 className="text-[15px] font-extrabold tracking-[-0.005em] text-[#1F1147] mb-3 pb-2 border-b border-indigo-500/[0.10]">{t.consentStatusTitle}</h2>
-          <div className="text-sm text-stone-600 space-y-1">
-            <p><strong>{t.currentPolicyVersion}</strong> {PRIVACY_POLICY_VERSION}</p>
-            <p><strong>{t.yourAcceptedVersion}</strong> {localStorage.getItem('vocaband_consent_version') || t.notYetAccepted}</p>
+        <IOSCard header={t.consentStatusTitle} className="mb-6">
+          <div className="text-sm space-y-1" style={{ color: "var(--ios-label-secondary)" }}>
+            <p><strong style={{ color: "var(--ios-label)" }}>{t.currentPolicyVersion}</strong> {PRIVACY_POLICY_VERSION}</p>
+            <p><strong style={{ color: "var(--ios-label)" }}>{t.yourAcceptedVersion}</strong> {consentVersion || t.notYetAccepted}</p>
           </div>
-          <div className="flex gap-3 mt-4">
-            <button type="button" onClick={() => setView('public-privacy')} className="text-blue-600 text-sm font-bold hover:underline">{t.fullPrivacyPolicy}</button>
-            <button type="button" onClick={() => setView('public-terms')} className="text-blue-600 text-sm font-bold hover:underline">{t.termsOfService}</button>
+          <div className="flex flex-wrap gap-1 mt-3">
+            <IOSButton type="button" variant="plain" size="sm" onClick={() => setView('public-privacy')}>{t.fullPrivacyPolicy}</IOSButton>
+            <IOSButton type="button" variant="plain" size="sm" onClick={() => setView('public-terms')}>{t.termsOfService}</IOSButton>
           </div>
           {/* Two complementary affordances:
-              - "Show privacy summary" (primary, blue chip) — reopens the
-                informational reminder modal in reminder mode (no required
-                tick).  Source: useConsent.reopenReminder() — clears the
-                "don't show again" dismissal flag.
-              - "Review consent again" (text link) — hard reset of legal
-                consent: wipes localStorage acceptance + flips
-                needsConsent so the gate appears in place.  Useful for QA
-                and for users who want to formally re-accept without
-                signing out.  No DB write until they re-accept.  */}
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <button
+              - "Show privacy summary" (tinted) — reopens the informational
+                reminder modal in reminder mode (no required tick).  Source:
+                useConsent.reopenReminder() — clears the "don't show again"
+                dismissal flag.
+              - "Review consent again" (plain) — hard reset of legal consent:
+                wipes localStorage acceptance + flips needsConsent so the gate
+                appears in place.  Useful for QA and for users who want to
+                formally re-accept without signing out.  No DB write until
+                they re-accept.  */}
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <IOSButton
               type="button"
+              variant="tinted"
+              size="sm"
               onClick={onReopenPrivacyReminder}
-              className="px-3 py-1.5 bg-blue-50 text-blue-700 font-bold rounded-lg text-sm hover:bg-blue-100 transition-all"
             >
               {t.showPrivacySummary}
-            </button>
-            <button
+            </IOSButton>
+            <IOSButton
               type="button"
+              variant="plain"
+              size="sm"
               onClick={() => {
                 localStorage.removeItem('vocaband_consent_version');
                 setNeedsConsent(true);
                 showToast(t.toastConsentReset, "info");
               }}
-              className="text-blue-600 text-sm font-bold hover:underline"
             >
               {t.reviewConsentAgain}
-            </button>
+            </IOSButton>
           </div>
-          {localStorage.getItem('vocaband_consent_version') && (
-            <button
-              onClick={() => {
-                setConfirmDialog({
-                  show: true,
-                  message: t.withdrawConfirm,
-                  onConfirm: async () => {
-                    localStorage.removeItem('vocaband_consent_version');
-                    if (user?.uid) {
-                      try {
-                        await supabase.from('consent_log').insert({
-                          uid: user.uid,
-                          policy_version: PRIVACY_POLICY_VERSION,
-                          terms_version: PRIVACY_POLICY_VERSION,
-                          action: 'withdraw',
-                        });
-                      } catch { /* non-critical — sign out regardless */ }
-                    }
-                    await supabase.auth.signOut();
-                    setConfirmDialog({ show: false, message: '', onConfirm: () => {} });
-                  },
-                });
-              }}
-              className="mt-3 text-red-500 text-sm font-bold hover:underline"
-            >
-              {t.withdrawConsent}
-            </button>
+          {consentVersion && (
+            <div className="mt-2">
+              <IOSButton
+                variant="plain"
+                size="sm"
+                tint="var(--ios-red)"
+                onClick={() => {
+                  setConfirmDialog({
+                    show: true,
+                    message: t.withdrawConfirm,
+                    onConfirm: async () => {
+                      localStorage.removeItem('vocaband_consent_version');
+                      if (user?.uid) {
+                        try {
+                          await supabase.from('consent_log').insert({
+                            uid: user.uid,
+                            policy_version: PRIVACY_POLICY_VERSION,
+                            terms_version: PRIVACY_POLICY_VERSION,
+                            action: 'withdraw',
+                          });
+                        } catch { /* non-critical — sign out regardless */ }
+                      }
+                      await supabase.auth.signOut();
+                      setConfirmDialog({ show: false, message: '', onConfirm: () => {} });
+                    },
+                  });
+                }}
+              >
+                {t.withdrawConsent}
+              </IOSButton>
+            </div>
           )}
-        </div>
+        </IOSCard>
 
         {/* Data export & deletion */}
-        <div
-          className="bg-white rounded-2xl p-5 mb-4 border border-indigo-500/[0.10]"
-          style={{
-            boxShadow:
-              "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
-          }}
-        >
-          <h2 className="text-[15px] font-extrabold tracking-[-0.005em] text-[#1F1147] mb-3 pb-2 border-b border-indigo-500/[0.10]">{t.rightsTitle}</h2>
-          <p className="text-sm text-stone-500 mb-4">{t.rightsIntro}</p>
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={handleExportData}
-              className="px-4 py-2 bg-blue-100 text-blue-700 font-bold rounded-lg text-sm hover:bg-blue-200 transition-all"
-            >
+        <IOSCard header={t.rightsTitle} footer={t.retentionNote(DATA_CONTROLLER.contactEmail, RETENTION_PERIODS.backupSupabasePlatformDays, RETENTION_PERIODS.backupOffsiteR2Days)} className="mb-6">
+          <p className="text-sm mb-4" style={{ color: "var(--ios-label-secondary)" }}>{t.rightsIntro}</p>
+          <div className="flex flex-wrap gap-2">
+            <IOSButton variant="tinted" size="sm" onClick={handleExportData}>
               {t.downloadMyData}
-            </button>
-            <button
-              onClick={handleDeleteAccount}
-              className="px-4 py-2 bg-red-100 text-red-700 font-bold rounded-lg text-sm hover:bg-red-200 transition-all"
-            >
+            </IOSButton>
+            <IOSButton variant="tinted" size="sm" tint="var(--ios-red)" onClick={handleDeleteAccount}>
               {t.deleteMyAccount}
-            </button>
+            </IOSButton>
           </div>
-          <p className="text-xs text-stone-400 mt-3">
-            {t.retentionNote(DATA_CONTROLLER.contactEmail, RETENTION_PERIODS.backupSupabasePlatformDays, RETENTION_PERIODS.backupOffsiteR2Days)}
-          </p>
-        </div>
+        </IOSCard>
       </div>
     </div>
   );
