@@ -1,8 +1,7 @@
-# CI — Playwright end-to-end smoke test.
+# CI — Playwright end-to-end suite.
 #
 # Separate from ci.yml because:
-#   - Browser install + run takes 5+ min, slower than the typecheck/
-#     tests/build gate
+#   - The browser run is slower than the typecheck/tests/build gate
 #   - We want PR feedback in <2 min from ci.yml; e2e runs in parallel
 #     and reports its own status check
 #   - When e2e is flaky on a network hiccup we don't want to block
@@ -11,13 +10,20 @@
 # Scope: the FULL public suite (99 tests across Desktop Chrome + Pixel 7 +
 # Galaxy S9+) plus the authenticated suite (44 tests) in a parallel job.
 #
-# This used to run only smoke.spec.ts + auth-flow.spec.ts because the wider
-# suite "was timing out at 10 min on a single worker". That is no longer the
-# constraint — the whole public suite now completes in ~2 min and the auth
-# suite in ~1.5 min. The narrow scope had a real cost: 6 specs rotted
-# undetected (stale copy assertions, a CTA that no longer exists, a missing
-# RPC in the Supabase mock) because nothing ever ran them. Widening here is
-# what keeps that from happening again.
+# Both jobs run INSIDE the official Playwright container image, which ships
+# the browsers AND their OS-level libraries (libnss3, etc.) pre-installed.
+# This replaces the old `npx playwright install --with-deps` /
+# `install-deps` steps, whose apt-get calls periodically hung for ~20 min
+# on a slow Azure package mirror and tripped the job timeout (see the
+# cancelled "Playwright auth suite" runs after the #1338 Playwright bump).
+# With the container there is no apt step to hang on.
+#
+# ⚠️ The image tag is pinned to the @playwright/test version in
+# package.json. Playwright refuses to run when the driver version and the
+# baked-in browsers disagree, so a Playwright bump MUST bump the two
+# `image:` tags below in the same PR (grep for `playwright:v`). CI cannot
+# read the version from package.json into `container.image` because the
+# image is resolved before any step runs.
 
 name: CI — e2e
 
@@ -47,10 +53,12 @@ jobs:
     # setting on main.
     name: Playwright smoke
     runs-on: ubuntu-latest
-    # 20 min covers browser install + a full-suite run. The public suite is
-    # ~99 tests over 3 viewports and finishes in ~2 min locally; CI runs it
-    # on a single worker, so the real budget is a few minutes plus the build.
+    # Browsers + OS deps are baked into the image, so this covers npm ci +
+    # a full-suite run only. The public suite is ~99 tests over 3 viewports
+    # and finishes in ~2 min.
     timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
 
     steps:
       - name: Checkout
@@ -65,37 +73,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Cache Playwright browsers so subsequent runs skip the ~2.5 min
-      # download.  Cache key includes the @playwright/test version
-      # from package.json so a Playwright bump invalidates the cache
-      # automatically (no stale browser binaries surviving an upgrade).
-      - name: Get Playwright version
-        id: playwright-version
-        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> $GITHUB_OUTPUT
-
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
-
-      - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-
-      - name: Install Playwright system deps (when cached)
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        # When the browsers cache hits we still need the OS-level
-        # libraries (libnss3, etc.) — those aren't part of the cache.
-        # `--with-deps` reinstalls only the apt packages.
-        run: npx playwright install-deps chromium
-
       # Full public suite — every spec, every viewport. Includes the
       # "does it boot" smoke gate and the auth-flow security-regression
       # gate (docs/security-audit-framework/01-AUTH-IDENTITY.md), plus
-      # the navigation / public-pages / url-routing / slow-network specs
-      # that previously never ran in CI.
+      # the navigation / public-pages / url-routing / slow-network specs.
+      # No browser-install step: the container already carries them.
       - name: Run Playwright public suite
         run: npx playwright test --config e2e/playwright.config.ts
 
@@ -113,11 +95,13 @@ jobs:
   # broke. Uses playwright.auth.config.ts, whose build points
   # VITE_SUPABASE_URL at the Supabase mock so the seeded teacher/student
   # sessions restore. These specs cover the logged-in shells (dashboards,
-  # deep links, back-button traps) that no CI job exercised before.
+  # deep links, back-button traps).
   e2e-auth:
     name: Playwright auth suite
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
 
     steps:
       - name: Checkout
@@ -131,25 +115,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Get Playwright version
-        id: playwright-version
-        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> $GITHUB_OUTPUT
-
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
-
-      - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-
-      - name: Install Playwright system deps (when cached)
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
 
       - name: Run Playwright auth suite
         run: npx playwright test --config e2e/playwright.auth.config.ts
