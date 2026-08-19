@@ -30,12 +30,24 @@
     //      broke after the 2026-04-25 Render→Fly migration moved
     //      socket.io off api.vocaband.com onto same-origin
     //      /socket.io/. The Worker code was correct; it just never ran.
+    //   3. Hashed assets (/assets/*) — the Worker turns a MISSING chunk
+    //      into a real 404 instead of the SPA index.html fallback. Without
+    //      this, a missing /assets/*.js returned index.html (200 text/html)
+    //      carrying the /assets/* `immutable` Cache-Control from
+    //      public/_headers, and Cloudflare's edge cached that HTML under the
+    //      .js URL for a YEAR — poisoning every user on that edge with
+    //      "Failed to load module script (MIME text/html)", which hung the
+    //      lazy-loaded views (the Aug-2026 Speed Round / Word Hunt Arena
+    //      outage). Existing assets pass through untouched; see the
+    //      /assets/ guard in worker/index.ts. Cost: the Worker now runs on
+    //      asset requests too — a cheap ASSETS.fetch + content-type check.
     "run_worker_first": [
       "/",
       "/student",
       "/accessibility-statement",
       "/api/*",
-      "/socket.io/*"
+      "/socket.io/*",
+      "/assets/*"
     ]
   },
   "compatibility_flags": [

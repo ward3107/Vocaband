@@ -576,6 +576,38 @@ export default {
       return response;
     }
 
+    // Hashed bundles (/assets/*.js, *.css, *.woff2, …).  A MISSING chunk
+    // must 404 loudly, NOT fall through to the SPA index.html shell.
+    // `not_found_handling: "single-page-application"` otherwise returns
+    // index.html (200 text/html) for a missing chunk, and the /assets/*
+    // `immutable` Cache-Control in public/_headers makes Cloudflare's edge
+    // cache that HTML under the .js URL for a YEAR.  A user on that poisoned
+    // edge then receives HTML for a JS-module request — "Failed to load
+    // module script (MIME text/html)" — and the lazy view hangs on its
+    // spinner forever (the Aug-2026 Speed Round / Word Hunt Arena outage:
+    // the two chunks got HTML-poisoned at the Tel-Aviv edge while every
+    // other edge served valid JS).  A real 404 with no-store keeps the
+    // poison out of the edge cache AND hands the browser a clean failure the
+    // client's chunk-reload recovery (src/utils/chunkReload.ts) can detect
+    // and self-heal from — instead of HTML masquerading as a module, which
+    // it can't.  Requires /assets/* in wrangler.jsonc run_worker_first so
+    // this Worker runs for asset paths at all; real assets return unchanged
+    // (keeping their immutable header), only a genuine miss becomes a 404.
+    if (url.pathname.startsWith("/assets/")) {
+      const response = await env.ASSETS.fetch(request);
+      const contentType = response.headers.get("content-type") ?? "";
+      if (contentType.toLowerCase().includes("text/html")) {
+        return new Response("Asset not found", {
+          status: 404,
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-store, must-revalidate",
+          },
+        });
+      }
+      return response;
+    }
+
     // SPA landing routes with a ?lang=he|ar|ru hint get their metadata
     // rewritten at the edge so Googlebot indexes a localized page (not
     // the English default) when it crawls the hreflang alternates
