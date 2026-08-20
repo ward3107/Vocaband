@@ -166,7 +166,6 @@ export default function HelpAskBox({
       answer: t.aGamesDiff,
       actions: [
         { label: t.playLiveBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.liveGames), primary: true },
-        { label: t.playRoomBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.classroomTools) },
       ],
     },
     { id: "login", question: t.qLogin, answer: t.aLogin, actions: hasClasses ? [toClasses] : [createClass] },
@@ -192,7 +191,6 @@ export default function HelpAskBox({
       answer: t.playExplainer,
       actions: [
         { label: t.playLiveBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.liveGames), primary: true },
-        { label: t.playRoomBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.classroomTools) },
       ],
     },
   ];
@@ -214,7 +212,9 @@ export default function HelpAskBox({
       case "live_games":
         return { label: t.playLiveBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.liveGames), primary: true };
       case "classroom_tools":
-        return { label: t.playRoomBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.classroomTools), primary: true };
+        // The in-room tools moved into the New Activity wizard's tab
+        // strip; on the dashboard the Live games hub is the games target.
+        return { label: t.playLiveBtn, run: () => scrollToDashboardSection(DASHBOARD_SECTION.liveGames), primary: true };
       case "create_class":
         return { label: t.setupCreateBtn, run: onNewClass, primary: true };
       case "my_classes":

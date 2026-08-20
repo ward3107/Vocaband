@@ -12,7 +12,6 @@
  */
 export const DASHBOARD_SECTION = {
   liveGames: "db-live-games",
-  classroomTools: "db-classroom-tools",
   management: "db-management",
   myClasses: "db-my-classes",
 } as const;
