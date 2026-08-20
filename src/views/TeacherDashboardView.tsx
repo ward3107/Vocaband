@@ -29,7 +29,6 @@ import DeleteAssignmentModal from "../components/dashboard/DeleteAssignmentModal
 import RejectStudentModal from "../components/dashboard/RejectStudentModal";
 import ToastList, { type Toast } from "../components/dashboard/ToastList";
 import ConfirmDialog, { type ConfirmDialogState } from "../components/dashboard/ConfirmDialog";
-import { useLanguage } from "../hooks/useLanguage";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
 import { useFirstTimeGuide } from "../hooks/useFirstTimeGuide";
 import FirstTimeGuide from "../components/onboarding/FirstTimeGuide";
@@ -189,14 +188,14 @@ export default function TeacherDashboardView({
   subject = "english",
   headerExtra,
 }: TeacherDashboardViewProps) {
-  const { language, dir: uiDir } = useLanguage();
-  // VocaHebrew is intrinsically a Hebrew-language product surface — its
-  // dashboard renders in Hebrew (and RTL) regardless of which UI language
-  // the teacher chose at the public-nav level.  When subject is 'english'
-  // we honour the teacher's UI language as before.
+  // The teacher dashboard is English-only for the English product — there
+  // is no Hebrew/Arabic UI-language option for teachers, so it always
+  // renders in English (LTR) regardless of any global UI language state.
+  // VocaHebrew is intrinsically a Hebrew-language product surface, so its
+  // teacher dashboard stays Hebrew (and RTL) by design.
   const isHebrew = subject === "hebrew";
-  const effectiveLanguage = isHebrew ? "he" : language;
-  const dir = isHebrew ? "rtl" : uiDir;
+  const effectiveLanguage = isHebrew ? "he" : "en";
+  const dir = isHebrew ? "rtl" : "ltr";
   const t = teacherDashboardT[effectiveLanguage];
 
   // One-time "what's new" intro for the Vocabulary Library. Surfaces
@@ -558,9 +557,9 @@ export default function TeacherDashboardView({
           type="button"
           onClick={adaptiveTheme.togglePresentationMode}
           title={adaptiveTheme.presentationMode
-            ? (language === 'he' ? 'יציאה ממצב הצגה' : language === 'ar' ? 'الخروج من وضع العرض' : 'Exit presentation mode')
-            : (language === 'he' ? 'מצב הצגה (טקסט גדול יותר להקרנה)' : language === 'ar' ? 'وضع العرض (نص أكبر للعرض)' : 'Presentation mode (bigger text for projecting)')}
-          aria-label={language === 'he' ? 'החלף מצב הצגה' : language === 'ar' ? 'تبديل وضع العرض' : 'Toggle presentation mode'}
+            ? (effectiveLanguage === 'he' ? 'יציאה ממצב הצגה' : 'Exit presentation mode')
+            : (effectiveLanguage === 'he' ? 'מצב הצגה (טקסט גדול יותר להקרנה)' : 'Presentation mode (bigger text for projecting)')}
+          aria-label={effectiveLanguage === 'he' ? 'החלף מצב הצגה' : 'Toggle presentation mode'}
           aria-pressed={adaptiveTheme.presentationMode}
           style={{
             touchAction: 'manipulation',

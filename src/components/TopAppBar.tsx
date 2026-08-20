@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronDown, X, Crown, LogOut } from "lucide-react";
 import UiScaleControl from "./dashboard/UiScaleControl";
-import LanguageSwitcher from "./LanguageSwitcher";
 import { useLanguage } from "../hooks/useLanguage";
 
 interface TopAppBarProps {
@@ -191,15 +190,8 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
           </button>
         )}
         {showScaleControl && <UiScaleControl />}
-        {/* Language switcher - compact variant for tight header space */}
-        <div className="hidden md:block">
-          <LanguageSwitcher variant="compact" className="scale-90 origin-right" />
-        </div>
-        {/* Tablet-only LanguageSwitcher (between sm and md). Phones
-            hit the in-dropdown copy below. */}
-        <div className="md:hidden">
-          <LanguageSwitcher variant="compact" className="scale-85 origin-right" />
-        </div>
+        {/* No language switcher: the teacher surfaces this bar serves are
+            English-only (VocaHebrew stays Hebrew by product design). */}
         {userName && (
           <div className="flex flex-col items-end">
             <span className="text-xs text-on-surface-variant font-medium">Welcome back,</span>
@@ -285,15 +277,15 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
               </div>
             )}
             {/* Action wrappers intentionally have NO onClick that closes
-                the menu — LanguageSwitcher renders its own popover and
-                the outer auto-close was eating the toggle (the
-                language popover would unmount the same tick it opened).
-                Each item's own handler navigates away or closes the
-                menu where appropriate. */}
+                the menu — some (e.g. UiScaleControl) render their own
+                popover and the outer auto-close would eat the toggle.
+                Each item's own handler navigates away or closes the menu
+                where appropriate.
+
+                No language switcher here: the teacher surfaces this bar
+                serves are English-only (VocaHebrew stays Hebrew by
+                product design), so teachers have no UI-language toggle. */}
             {extraTrailing && <div className="px-1">{extraTrailing}</div>}
-            <div className="px-1">
-              <LanguageSwitcher variant="compact" />
-            </div>
             {showScaleControl && (
               <div className="px-1">
                 <UiScaleControl />
