@@ -13,7 +13,7 @@
 import { useLanguage } from "../hooks/useLanguage";
 import type { Language } from "../hooks/useLanguage";
 import { useDailyMissions } from "../hooks/useDailyMissions";
-import { ARCADE_BG, ARCADE_BUTTON_TOUCH } from "../components/arcade/theme";
+import { ARCADE_BUTTON_TOUCH } from "../components/arcade/theme";
 import DailyPracticeRow from "../components/dashboard/DailyPracticeRow";
 import DailyMissionsCard from "../components/dashboard/DailyMissionsCard";
 import ActiveBoostersStrip from "../components/dashboard/ActiveBoostersStrip";
@@ -117,7 +117,7 @@ export default function StudentHubSubView({
   const title = (TITLES[language] || TITLES.en)[section];
 
   return (
-    <div dir={dir} className={`min-h-screen ${ARCADE_BG} relative overflow-hidden`}>
+    <div dir={dir} className="min-h-screen bg-[var(--ios-grouped-bg)] relative overflow-hidden">
       <div className="relative z-10 mx-auto max-w-3xl space-y-4 p-4 pb-[calc(env(safe-area-inset-bottom)+4rem)] sm:space-y-6 sm:p-6">
         {/* Page header — back to the orbital hub + section title. */}
         <header className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
@@ -125,11 +125,11 @@ export default function StudentHubSubView({
             type="button"
             onClick={onBack}
             aria-label={BACK_LABEL[language] || BACK_LABEL.en}
-            className={`${ARCADE_BUTTON_TOUCH} flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-xl text-white ring-1 ring-white/20 backdrop-blur-md transition hover:bg-white/20`}
+            className={`${ARCADE_BUTTON_TOUCH} flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--ios-fill-tertiary)] text-xl text-[color:var(--ios-label)] transition hover:bg-[var(--ios-fill-secondary)]`}
           >
             <span aria-hidden>{isRTL ? "→" : "←"}</span>
           </button>
-          <h1 className="flex items-center gap-2 text-2xl font-black text-white">
+          <h1 className="flex items-center gap-2 text-2xl font-black text-[color:var(--ios-label)]">
             <span aria-hidden>{HEAD[section].emoji}</span>
             {title}
           </h1>
@@ -156,20 +156,20 @@ export default function StudentHubSubView({
 
             {/* Today's missions. */}
             <section className="space-y-2">
-              <h2 className="px-1 text-xs font-bold uppercase tracking-widest text-cyan-200">{dl.missions}</h2>
+              <h2 className="px-1 text-xs font-bold uppercase tracking-widest text-[color:var(--ios-label-secondary)]">{dl.missions}</h2>
               <DailyMissionsCard missions={dailyMissions.missions} isLoading={dailyMissions.isLoading} />
             </section>
 
             {/* Active boosts (buy more in the Shop). */}
             <section className="space-y-2">
-              <h2 className="px-1 text-xs font-bold uppercase tracking-widest text-cyan-200">{dl.boosts}</h2>
+              <h2 className="px-1 text-xs font-bold uppercase tracking-widest text-[color:var(--ios-label-secondary)]">{dl.boosts}</h2>
               <ActiveBoostersStrip {...boosters} />
             </section>
 
             {/* Badges earned. */}
             {badges.length > 0 && (
               <section className="space-y-2">
-                <h2 className="px-1 text-xs font-bold uppercase tracking-widest text-cyan-200">{dl.badges}</h2>
+                <h2 className="px-1 text-xs font-bold uppercase tracking-widest text-[color:var(--ios-label-secondary)]">{dl.badges}</h2>
                 <BadgesStrip earned={badges} userUid={user.uid} onClaimBadgeXp={onClaimBadgeXp} />
               </section>
             )}

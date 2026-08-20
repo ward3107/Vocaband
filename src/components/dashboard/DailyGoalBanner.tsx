@@ -3,8 +3,6 @@ import { motion, AnimatePresence } from "motion/react";
 import { Flame, CheckCircle2, Target } from "lucide-react";
 import type { ProgressData } from "../../core/supabase";
 import { useLanguage } from "../../hooks/useLanguage";
-import { useFeatureFlag } from "../../hooks/useFeatureFlag";
-import { ARCADE_CARD, ARCADE_REWARD_GRADIENT } from "../arcade/theme";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
 import { DAILY_GOAL_REWARD_XP } from "../../constants/game";
 
@@ -48,10 +46,6 @@ interface DailyGoalBannerProps {
 export default function DailyGoalBanner({ studentProgress, goal = 1, onPlay, userUid, onGrantXp }: DailyGoalBannerProps) {
   const { language } = useLanguage();
   const t = studentDashboardT[language];
-  // Arcade theme: gold reward banner when the goal is hit, frosted
-  // encouragement card while it's pending. Falls back to the existing
-  // styling when off.
-  const arcade = useFeatureFlag('arcade_hub', false);
   const { playedToday, pct, hit } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -85,20 +79,16 @@ export default function DailyGoalBanner({ studentProgress, goal = 1, onPlay, use
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.96 }}
-          className={
-            arcade
-              ? `relative overflow-hidden rounded-xl mb-6 p-4 sm:p-5 ${ARCADE_REWARD_GRADIENT} ring-2 ring-amber-300/40 shadow-lg shadow-amber-900/40`
-              : "relative overflow-hidden rounded-xl mb-6 bg-gradient-to-r from-emerald-500 to-teal-500 p-4 sm:p-5 shadow-md shadow-emerald-500/20"
-          }
+          className="relative overflow-hidden rounded-xl mb-6 bg-gradient-to-r from-emerald-500 to-teal-500 p-4 sm:p-5 shadow-md shadow-emerald-500/20"
         >
           <div className="pointer-events-none absolute -top-10 -end-10 w-40 h-40 bg-yellow-300/30 rounded-full blur-2xl" />
           <div className="relative flex items-center gap-3 sm:gap-4">
-            <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center shrink-0 ${arcade ? "bg-white/30 backdrop-blur" : "bg-white/20 backdrop-blur-sm border border-white/30"}`}>
-              <CheckCircle2 size={22} className={arcade ? "text-amber-950" : "text-white"} />
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center shrink-0 bg-white/20 backdrop-blur-sm border border-white/30">
+              <CheckCircle2 size={22} className="text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className={`text-xs uppercase tracking-widest ${arcade ? "text-amber-950 font-extrabold" : "font-bold text-white/80"}`}>{t.dailyGoal}</p>
-              <h3 className={`text-base sm:text-lg leading-tight ${arcade ? "text-amber-950 font-extrabold" : "font-black text-white"}`}>
+              <p className="text-xs uppercase tracking-widest font-bold text-white/80">{t.dailyGoal}</p>
+              <h3 className="text-base sm:text-lg leading-tight font-black text-white">
                 {t.youDidIt(DAILY_GOAL_REWARD_XP)}
               </h3>
             </div>
@@ -117,21 +107,13 @@ export default function DailyGoalBanner({ studentProgress, goal = 1, onPlay, use
           tabIndex={onPlay ? 0 : undefined}
           onKeyDown={onPlay ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onPlay(); } } : undefined}
           style={{
-            ...(arcade
-              ? {}
-              : {
-                  boxShadow:
-                    "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
-                }),
+            boxShadow:
+              "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
             touchAction: 'manipulation',
             WebkitTapHighlightColor: 'transparent',
             cursor: onPlay ? 'pointer' : undefined,
           }}
-          className={
-            arcade
-              ? `relative overflow-hidden mb-6 p-4 sm:p-5 ${ARCADE_CARD} transition-shadow hover:shadow-md`
-              : "relative overflow-hidden rounded-2xl mb-6 p-4 sm:p-5 bg-white border border-indigo-500/[0.10] transition-shadow hover:shadow-md"
-          }
+          className="relative overflow-hidden rounded-2xl mb-6 p-4 sm:p-5 bg-white border border-indigo-500/[0.10] transition-shadow hover:shadow-md"
         >
           <div className="flex items-center gap-3 sm:gap-4">
             {/* Flame glows as they approach the goal — v1 amber/coral
@@ -146,25 +128,23 @@ export default function DailyGoalBanner({ studentProgress, goal = 1, onPlay, use
                       background: "linear-gradient(135deg, #F0B96C, #F08D87)",
                       boxShadow: "0 8px 18px -10px rgba(240,141,135,0.55)",
                     }
-                  : arcade
-                    ? { background: "rgba(255,255,255,0.15)" }
-                    : { background: "linear-gradient(135deg, #EEF0FF, #F8E8FF)" }
+                  : { background: "linear-gradient(135deg, #EEF0FF, #F8E8FF)" }
               }
             >
               {pct >= 50 ? (
                 <Flame size={22} className="text-white fill-white" />
               ) : (
-                <Target size={22} className={arcade ? "text-white" : "text-[#8B5CF6]"} />
+                <Target size={22} className="text-[#8B5CF6]" />
               )}
             </motion.div>
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline justify-between gap-2 mb-1.5">
-                <p className={`text-[11px] font-extrabold uppercase tracking-[0.12em] ${arcade ? "text-white/70" : "text-[#6B6388]"}`}>
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#6B6388]">
                   {t.dailyGoal}
                 </p>
                 <span
                   className="text-[11px] font-extrabold tabular-nums"
-                  style={{ color: arcade ? "#fff" : "#4A3B7A", fontFamily: '"JetBrains Mono", ui-monospace, monospace' }}
+                  style={{ color: "#4A3B7A", fontFamily: '"JetBrains Mono", ui-monospace, monospace' }}
                 >
                   {playedToday} / {goal}
                 </span>
@@ -173,7 +153,7 @@ export default function DailyGoalBanner({ studentProgress, goal = 1, onPlay, use
                   by every other v1 progress fill in the redesign. */}
               <div
                 className="w-full h-2.5 rounded-full overflow-hidden"
-                style={{ background: arcade ? "rgba(255,255,255,0.15)" : "rgba(99,102,241,0.10)" }}
+                style={{ background: "rgba(99,102,241,0.10)" }}
               >
                 <motion.div
                   initial={{ scaleX: 0 }}
@@ -188,7 +168,7 @@ export default function DailyGoalBanner({ studentProgress, goal = 1, onPlay, use
                   className="h-full w-full rounded-full"
                 />
               </div>
-              <p className="text-xs sm:text-sm font-semibold mt-1.5" style={{ color: arcade ? "#fff" : "#4A3B7A" }}>
+              <p className="text-xs sm:text-sm font-semibold mt-1.5" style={{ color: "#4A3B7A" }}>
                 {playedToday === 0 ? t.playGameForBonus(DAILY_GOAL_REWARD_XP) : t.almostThere(goal - playedToday)}
               </p>
             </div>
