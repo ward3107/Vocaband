@@ -39,7 +39,7 @@ export default function StudentTopBar({ onRequestLogout }: StudentTopBarProps = 
         }}
         type="button"
         style={{ touchAction: 'manipulation' }}
-        className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/70 ring-1 ring-white/15 backdrop-blur-md transition-all hover:bg-white/20 hover:text-white sm:text-sm"
+        className="inline-flex items-center gap-1.5 rounded-full bg-[var(--ios-fill-tertiary)] px-3 py-1.5 text-xs font-semibold text-[color:var(--ios-label-secondary)] transition-colors hover:bg-[var(--ios-fill-secondary)] hover:text-[color:var(--ios-label)] sm:text-sm"
         title={t.signOut}
       >
         <LogOut size={14} />

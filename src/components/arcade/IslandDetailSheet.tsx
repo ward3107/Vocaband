@@ -55,7 +55,7 @@ export default function IslandDetailSheet({ open, mode, onClose, onPlay, reduced
           />
           <motion.div
             role="dialog" aria-modal="true" aria-label={mode.name} dir={dir}
-            className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-xl rounded-t-3xl bg-gradient-to-b from-indigo-950 to-violet-900 p-6 pb-8 shadow-2xl ring-1 ring-white/10"
+            className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-xl rounded-t-3xl bg-[var(--ios-grouped-bg)] p-6 pb-8 shadow-2xl ring-1 ring-[color:var(--ios-separator)]"
             initial={reduced ? { opacity: 0 } : { y: "100%" }}
             animate={reduced ? { opacity: 1 } : { y: 0 }}
             exit={reduced ? { opacity: 0 } : { y: "100%" }}
@@ -63,7 +63,7 @@ export default function IslandDetailSheet({ open, mode, onClose, onPlay, reduced
           >
             <button
               type="button" onClick={onClose} aria-label={s.close}
-              className={`${ARCADE_BUTTON_TOUCH} absolute end-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white`}
+              className={`${ARCADE_BUTTON_TOUCH} absolute end-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--ios-fill-tertiary)] text-[color:var(--ios-label)]`}
             >
               <X size={18} />
             </button>
@@ -73,28 +73,28 @@ export default function IslandDetailSheet({ open, mode, onClose, onPlay, reduced
                 {mode.emoji}
               </span>
               <div className="min-w-0">
-                <p className="text-2xl font-black text-white">{mode.name}</p>
-                <p className="text-sm font-bold text-amber-300">
+                <p className="text-2xl font-black text-[color:var(--ios-label)]">{mode.name}</p>
+                <p className="text-sm font-bold text-amber-500">
                   {"★".repeat(mode.difficultyStars)}{"☆".repeat(Math.max(0, 3 - mode.difficultyStars))} {mode.difficultyLabel}
                 </p>
               </div>
             </div>
 
-            <p className="mt-4 text-base font-medium text-indigo-100/90">{mode.desc}</p>
+            <p className="mt-4 text-base font-medium text-[color:var(--ios-label-secondary)]">{mode.desc}</p>
 
             <div className="mt-5 grid grid-cols-3 gap-2.5">
-              <div className="rounded-xl bg-white/10 p-3 text-center text-xs font-bold text-cyan-200">🎯 {s.starTarget}</div>
-              <div className="rounded-xl bg-white/10 p-3 text-center text-xs font-bold text-amber-200">
+              <div className="rounded-xl bg-[var(--ios-fill-tertiary)] p-3 text-center text-xs font-bold text-sky-600">🎯 {s.starTarget}</div>
+              <div className="rounded-xl bg-[var(--ios-fill-tertiary)] p-3 text-center text-xs font-bold text-amber-600">
                 ⭐ {s.bestLabel}<br />{mode.best == null ? s.bestNone : `${mode.best}%`}
               </div>
-              <div className="rounded-xl bg-white/10 p-3 text-center text-xs font-bold text-emerald-200">✨ {s.xpOnFinish}</div>
+              <div className="rounded-xl bg-[var(--ios-fill-tertiary)] p-3 text-center text-xs font-bold text-emerald-600">✨ {s.xpOnFinish}</div>
             </div>
 
             <button
               type="button" onClick={onPlay}
-              className={`${ARCADE_BUTTON_TOUCH} mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ffffff] py-4 text-lg font-black text-indigo-950 shadow`}
+              className={`${ARCADE_BUTTON_TOUCH} signature-gradient mt-5 flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-lg font-black text-white shadow-lg`}
             >
-              <Play size={20} className="fill-indigo-950" /> {s.play}
+              <Play size={20} className="fill-white" /> {s.play}
             </button>
           </motion.div>
         </>

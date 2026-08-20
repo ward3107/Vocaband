@@ -72,7 +72,7 @@ export default function IslandMap({
           <path
             d={trail}
             fill="none"
-            stroke="rgba(255,255,255,0.28)"
+            stroke="var(--ios-separator)"
             strokeWidth={3}
             strokeLinecap="round"
             strokeLinejoin="round"
