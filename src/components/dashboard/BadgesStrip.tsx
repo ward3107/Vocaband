@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
-import { motion } from "motion/react";
-import { Trophy, Lock, Zap, CheckCircle2 } from "lucide-react";
+import { Zap, CheckCircle2 } from "lucide-react";
 import { supabase } from "../../core/supabase";
 import { useLanguage } from "../../hooks/useLanguage";
-import { useFeatureFlag } from "../../hooks/useFeatureFlag";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
-import { ARCADE_CARD, ARCADE_REWARD_GRADIENT } from "../arcade/theme";
+import { ARCADE_REWARD_GRADIENT } from "../arcade/theme";
 import { BADGE_CLAIM_XP } from "../../constants/game";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
 
@@ -58,10 +56,8 @@ function normalize(s: string): string {
 export default function BadgesStrip({ earned, userUid, onClaimBadgeXp }: BadgesStripProps) {
   const { language } = useLanguage();
   const t = studentDashboardT[language];
-  // Arcade theme: frosted card with a grid of earned gold tiles the
-  // student taps to collect a one-shot XP reward. Falls back to the
-  // scroll strip when off.
-  const arcade = useFeatureFlag('arcade_hub', false);
+  // Grid of earned gold tiles the student taps to collect a one-shot XP
+  // reward. Renders on the iOS grouped-light surface of the daily page.
   // Strict rule-2 gate: also catches low-memory devices, which the
   // CSS `motion-safe:` prefix (OS reduce-motion only) misses.
   const reduced = useReducedMotion();
@@ -72,7 +68,7 @@ export default function BadgesStrip({ earned, userUid, onClaimBadgeXp }: BadgesS
   const canClaim = !!userUid && !!onClaimBadgeXp;
 
   useEffect(() => {
-    if (!arcade || !userUid) return;
+    if (!userUid) return;
     let cancelled = false;
     (async () => {
       const { data, error } = await supabase
@@ -83,7 +79,7 @@ export default function BadgesStrip({ earned, userUid, onClaimBadgeXp }: BadgesS
       setClaimed(new Set(data.map((r: { badge_id: string }) => r.badge_id)));
     })();
     return () => { cancelled = true; };
-  }, [arcade, userUid]);
+  }, [userUid]);
 
   const handleClaim = async (badgeId: string) => {
     if (!onClaimBadgeXp || claimed.has(badgeId)) return;
@@ -108,157 +104,77 @@ export default function BadgesStrip({ earned, userUid, onClaimBadgeXp }: BadgesS
     });
   };
 
-  if (arcade) {
-    // Hide unearned badges — they "pop in" only once earned through
-    // gameplay. Count of still-claimable tiles drives the header chip.
-    const earnedBadges = ALL_BADGES.filter(isEarned);
-    if (earnedBadges.length === 0) return null;
-    const unclaimedCount = canClaim
-      ? earnedBadges.filter((b) => !claimed.has(b.id)).length
-      : 0;
-    return (
-      <div className={`mb-6 ${ARCADE_CARD} p-4 sm:p-5`}>
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-[11px] font-bold uppercase tracking-widest text-cyan-200">
-            {t.badges}
-          </div>
-          {unclaimedCount > 0 && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-extrabold tabular-nums px-2.5 py-1 rounded-full bg-white/15 text-amber-200">
-              <Zap size={11} className="fill-amber-300 text-amber-300" />
-              +{unclaimedCount * BADGE_CLAIM_XP} XP
-            </span>
-          )}
-        </div>
-        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-          {earnedBadges.map((badge) => {
-            const isClaimed = claimed.has(badge.id);
-            const tileBody = (
-              <>
-                <span className="text-2xl sm:text-3xl leading-none" aria-hidden>{badge.emoji}</span>
-                <span className="text-[9px] sm:text-[10px] font-bold text-amber-950 text-center leading-tight truncate w-full">
-                  {badge.name}
-                </span>
-                {isClaimed ? (
-                  <span className="absolute top-1 end-1 rounded-full bg-white/40 p-0.5">
-                    <CheckCircle2 size={12} className="text-amber-950" />
-                  </span>
-                ) : (
-                  <span className="absolute top-1 end-1 inline-flex items-center gap-0.5 rounded-full bg-amber-950/80 text-amber-100 text-[8px] font-black px-1 py-0.5">
-                    <Zap size={8} className="fill-amber-200 text-amber-200" />
-                    {BADGE_CLAIM_XP}
-                  </span>
-                )}
-              </>
-            );
-            const tileClass = `relative aspect-square rounded-[14px] p-1.5 flex flex-col items-center justify-center gap-1 ${ARCADE_REWARD_GRADIENT} ring-2 ring-white/40 shadow-lg shadow-amber-900/30`;
-            // Reduced motion (incl. low-memory devices) → no idle pulse,
-            // no hover-scale. CSS keyframes/transforms only otherwise, so
-            // there's no RAF at rest.
-            const hoverPop = reduced ? "" : "hover:scale-105 transition-transform";
-            const idlePulse = reduced ? "" : "animate-pulse";
-            // Unclaimed + claimable → a button that collects the XP.
-            // Claimed (or no claim wiring) → a static, calmer tile.
-            return canClaim && !isClaimed ? (
-              <button
-                key={badge.id}
-                type="button"
-                onClick={() => handleClaim(badge.id)}
-                title={`${badge.name} — ${badge.desc} · +${BADGE_CLAIM_XP} XP`}
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                className={`${tileClass} ${hoverPop} ${idlePulse} active:scale-95`}
-              >
-                {tileBody}
-              </button>
-            ) : (
-              <div
-                key={badge.id}
-                title={`${badge.name} — ${badge.desc}`}
-                className={`${tileClass} ${isClaimed ? 'opacity-90' : hoverPop}`}
-              >
-                {tileBody}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
+  // Hide unearned badges — they "pop in" only once earned through
+  // gameplay. Count of still-claimable tiles drives the header chip.
+  const earnedBadges = ALL_BADGES.filter(isEarned);
+  if (earnedBadges.length === 0) return null;
+  const unclaimedCount = canClaim
+    ? earnedBadges.filter((b) => !claimed.has(b.id)).length
+    : 0;
   return (
     <div
-      className="rounded-2xl border border-indigo-500/[0.10] bg-white p-4 sm:p-5 mb-6"
-      style={{
-        boxShadow:
-          "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)",
-      }}
+      className="mb-6 rounded-2xl border border-indigo-500/[0.10] bg-white p-4 sm:p-5"
+      style={{ boxShadow: "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)" }}
     >
       <div className="flex items-center justify-between mb-3">
-        <div>
-          <div className="mb-1 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#8B5CF6]">
-            <span
-              className="inline-block h-1.5 w-1.5 rounded-full"
-              style={{ background: "linear-gradient(135deg,#8B5CF6,#D946EF)" }}
-            />
-            {t.badges}
-          </div>
-          <h3 className="text-sm sm:text-base font-extrabold text-[#1F1147] flex items-center gap-2">
-            <Trophy size={16} className="text-amber-500 fill-amber-200" />
-            {t.badges}
-          </h3>
+        <div className="text-[11px] font-bold uppercase tracking-widest text-[#6B6388]">
+          {t.badges}
         </div>
-        <span
-          className="text-[11px] font-extrabold tabular-nums px-2.5 py-1 rounded-full"
-          style={{
-            background: "rgba(99,102,241,0.10)",
-            color: "#4A3B7A",
-            fontFamily: '"JetBrains Mono", ui-monospace, monospace',
-          }}
-        >
-          {earned.length} / {ALL_BADGES.length}
-        </span>
+        {unclaimedCount > 0 && (
+          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold tabular-nums px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">
+            <Zap size={11} className="fill-amber-500 text-amber-500" />
+            +{unclaimedCount * BADGE_CLAIM_XP} XP
+          </span>
+        )}
       </div>
-      <div
-        className="flex gap-2 overflow-x-auto hide-scrollbar pb-1 -mx-1 px-1"
-        style={{ scrollSnapType: 'x mandatory' }}
-      >
-        {ALL_BADGES.map((badge, i) => {
-          const unlocked = isEarned(badge);
-          return (
-            <motion.div
-              key={badge.id}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.03 }}
-              title={`${badge.name} — ${badge.desc}`}
-              style={{ scrollSnapAlign: 'start' }}
-              className={`shrink-0 w-16 sm:w-20 flex flex-col items-center gap-1.5 ${
-                unlocked ? '' : 'opacity-40'
-              }`}
-            >
-              <div
-                className="w-14 h-14 sm:w-16 sm:h-16 rounded-[14px] flex items-center justify-center text-2xl sm:text-3xl"
-                style={
-                  unlocked
-                    ? {
-                        background: "linear-gradient(135deg, #F5C685, #F0B96C)",
-                        border: "1px solid rgba(240,185,108,0.40)",
-                        boxShadow: "0 6px 16px -8px rgba(240,185,108,0.55)",
-                      }
-                    : {
-                        background: "linear-gradient(135deg, #EEF0FF, #F8E8FF)",
-                        border: "1px solid rgba(99,102,241,0.10)",
-                      }
-                }
-              >
-                {unlocked ? badge.emoji : <Lock size={18} className="text-[#8B85AB]" />}
-              </div>
-              <span
-                className="text-[10px] sm:text-xs font-bold text-center leading-tight truncate w-full"
-                style={{ color: unlocked ? "#4A3B7A" : "#8B85AB" }}
-              >
+      <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+        {earnedBadges.map((badge) => {
+          const isClaimed = claimed.has(badge.id);
+          const tileBody = (
+            <>
+              <span className="text-2xl sm:text-3xl leading-none" aria-hidden>{badge.emoji}</span>
+              <span className="text-[9px] sm:text-[10px] font-bold text-amber-950 text-center leading-tight truncate w-full">
                 {badge.name}
               </span>
-            </motion.div>
+              {isClaimed ? (
+                <span className="absolute top-1 end-1 rounded-full bg-white/40 p-0.5">
+                  <CheckCircle2 size={12} className="text-amber-950" />
+                </span>
+              ) : (
+                <span className="absolute top-1 end-1 inline-flex items-center gap-0.5 rounded-full bg-amber-950/80 text-amber-100 text-[8px] font-black px-1 py-0.5">
+                  <Zap size={8} className="fill-amber-200 text-amber-200" />
+                  {BADGE_CLAIM_XP}
+                </span>
+              )}
+            </>
+          );
+          const tileClass = `relative aspect-square rounded-[14px] p-1.5 flex flex-col items-center justify-center gap-1 ${ARCADE_REWARD_GRADIENT} ring-2 ring-white/40 shadow-lg shadow-amber-900/30`;
+          // Reduced motion (incl. low-memory devices) → no idle pulse,
+          // no hover-scale. CSS keyframes/transforms only otherwise, so
+          // there's no RAF at rest.
+          const hoverPop = reduced ? "" : "hover:scale-105 transition-transform";
+          const idlePulse = reduced ? "" : "animate-pulse";
+          // Unclaimed + claimable → a button that collects the XP.
+          // Claimed (or no claim wiring) → a static, calmer tile.
+          return canClaim && !isClaimed ? (
+            <button
+              key={badge.id}
+              type="button"
+              onClick={() => handleClaim(badge.id)}
+              title={`${badge.name} — ${badge.desc} · +${BADGE_CLAIM_XP} XP`}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+              className={`${tileClass} ${hoverPop} ${idlePulse} active:scale-95`}
+            >
+              {tileBody}
+            </button>
+          ) : (
+            <div
+              key={badge.id}
+              title={`${badge.name} — ${badge.desc}`}
+              className={`${tileClass} ${isClaimed ? 'opacity-90' : hoverPop}`}
+            >
+              {tileBody}
+            </div>
           );
         })}
       </div>

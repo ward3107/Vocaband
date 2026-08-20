@@ -290,7 +290,7 @@ export default function StudentDashboardView({
       <AnimatePresence>
         {tasksOpen && (
           <motion.div
-            className="fixed inset-0 z-50 overflow-y-auto bg-gradient-to-b from-indigo-950 via-violet-950 to-fuchsia-950"
+            className="fixed inset-0 z-50 overflow-y-auto bg-[var(--ios-grouped-bg)]"
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
@@ -305,7 +305,7 @@ export default function StudentDashboardView({
                   onClick={() => setTasksOpen(false)}
                   aria-label="Close"
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20 backdrop-blur transition-transform active:scale-95 hover:bg-white/15"
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ios-fill-tertiary)] text-[color:var(--ios-label)] transition-transform active:scale-95 hover:bg-[var(--ios-fill-secondary)]"
                 >
                   <X size={22} />
                 </button>
