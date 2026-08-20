@@ -89,7 +89,7 @@ export default function OrbitalHub({ center, items }: OrbitalHubProps) {
           line. Pure ornament (pointer-events-none); tap targets never move. */}
       <motion.div
         aria-hidden
-        className="absolute left-1/2 top-1/2 rounded-full border border-dashed border-white/20"
+        className="absolute left-1/2 top-1/2 rounded-full border border-dashed border-[color:var(--ios-separator)]"
         style={{ width: `${R * 2}%`, height: `${R * 2}%`, x: "-50%", y: "-50%" }}
         animate={reduced ? undefined : { rotate: 360 }}
         transition={reduced ? undefined : { duration: 80, repeat: Infinity, ease: "linear" }}
@@ -144,14 +144,14 @@ export default function OrbitalHub({ center, items }: OrbitalHubProps) {
                 whileHover={reduced || item.disabled ? undefined : { scale: 1.08 }}
                 whileTap={reduced || item.disabled ? undefined : { scale: 0.92 }}
                 className={`${gradient} ${ARCADE_BUTTON_TOUCH} relative flex h-16 w-16 items-center justify-center rounded-full text-3xl shadow-lg ring-2 sm:h-20 sm:w-20 sm:text-4xl lg:h-24 lg:w-24 lg:text-5xl ${
-                  isPlay ? "ring-amber-300/80 shadow-cyan-500/40" : "ring-white/30"
+                  isPlay ? "ring-white/70 shadow-lg" : "ring-white/50"
                 } ${item.disabled ? "opacity-40 grayscale" : ""}`}
               >
                 <span aria-hidden className="drop-shadow">{emoji}</span>
                 {/* Soft pulse halo behind the Play circle so the primary
                     action reads as the hero even out on the ring. */}
                 {isPlay && !item.disabled && !reduced && (
-                  <span aria-hidden className="absolute inset-0 -z-10 animate-ping rounded-full bg-cyan-400/30" />
+                  <span aria-hidden className="absolute inset-0 -z-10 animate-ping rounded-full bg-violet-400/30" />
                 )}
                 {typeof item.badge === "number" && item.badge > 0 && (
                   <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-extrabold text-white ring-2 ring-white shadow">
@@ -161,7 +161,7 @@ export default function OrbitalHub({ center, items }: OrbitalHubProps) {
               </motion.button>
               {/* Label floats below the circle without affecting its
                   centring (absolute → zero layout height). */}
-              <span className="pointer-events-none absolute left-1/2 top-full mt-1 w-20 -translate-x-1/2 text-center text-[10px] font-bold leading-tight text-white/90 sm:text-xs lg:mt-1.5 lg:text-sm">
+              <span className="pointer-events-none absolute left-1/2 top-full mt-1 w-20 -translate-x-1/2 text-center text-[10px] font-bold leading-tight text-[color:var(--ios-label)] sm:text-xs lg:mt-1.5 lg:text-sm">
                 {labels[item.key]}
               </span>
             </motion.div>

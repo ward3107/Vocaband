@@ -1,15 +1,18 @@
 /**
- * Arcade theme tokens — Brawl-Stars-flavoured palette used by every
+ * Arcade theme tokens — the student hub's palette, used by every
  * component under `src/components/arcade/`.  Tokens here are plain
  * Tailwind class strings (no new tailwind.config entry) so the rest of
  * the codebase keeps its existing build pipeline unchanged.
  *
- * Rationale: gradients in the legacy dashboard are warm-to-soft
- * (indigo→violet→fuchsia, amber→orange→rose).  The arcade hub leans
- * harder into neon contrast — vivid cyan, magenta, amber against a
- * deep violet base — to feel like a game lobby rather than a study
- * surface.  Keep these consts as the single source of truth so a
- * future palette tweak is one file, not thirty.
+ * NOTE (iOS flatten, in progress): the STUDENT HOME hub (ArcadeHubLayout +
+ * OrbitalHub + the pet centre) has moved to the iOS grouped-light look and
+ * styles that surface directly, NOT through ARCADE_BG/ARCADE_CARD below.
+ * These shared dark tokens are still consumed by the mode picker
+ * (GameModeSelectionView), the shop, StudentHubSubView, and the Tasks
+ * sheet — all still on the dark treatment until their own flatten wave —
+ * so they are DELIBERATELY left dark here. Flipping them would invert those
+ * un-migrated screens too and leave white text on a white card. When the
+ * last consumer migrates, retire these.
  */
 
 /** Deep gradient background for the full-bleed hub canvas. */
