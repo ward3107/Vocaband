@@ -157,8 +157,7 @@ export default function GameModeSelectionView({
       : null;
 
   return (
-    // iOS flatten: light grouped canvas, styled directly (not the shared
-    // dark ARCADE_BG token, which the shop/sub-views still use). Colourful
+    // iOS flatten: light grouped canvas, styled directly. Colourful
     // mode tiles keep their per-mode gradients.
     <div dir={dir} className="min-h-screen relative overflow-hidden bg-[var(--ios-grouped-bg)]">
       <header className={`ios-material ios-hairline sticky top-0 z-30 flex items-center gap-3 px-4 py-3 ${isRTL ? "flex-row-reverse" : ""}`}>

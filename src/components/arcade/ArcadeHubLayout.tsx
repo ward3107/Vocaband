@@ -42,9 +42,7 @@ export default function ArcadeHubLayout({
   return (
     <div
       dir={dir}
-      // iOS flatten: the home hub sits on the grouped-light background
-      // directly (not the shared dark ARCADE_BG token, which the not-yet-
-      // migrated mode picker / shop / sub-views still use). See theme.ts.
+      // iOS flatten: the home hub sits on the grouped-light background.
       className="min-h-screen relative overflow-hidden bg-[var(--ios-grouped-bg)]"
     >
       {/* Bottom padding clears the fixed overlays (FloatingButtons +

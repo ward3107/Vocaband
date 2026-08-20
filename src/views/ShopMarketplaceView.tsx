@@ -15,7 +15,6 @@ import { catalogName, catalogDesc, catalogDisplay } from "../locales/student/sho
 import FloatingButtons from "../components/FloatingButtons";
 import CategoryCarousel from "../components/shop/CategoryCarousel";
 import Spotlight from "../components/shop/Spotlight";
-import { ARCADE_BG } from "../components/arcade/theme";
 import {
   PREMIUM_AVATARS, THEMES, POWER_UP_DEFS, BOOSTERS_DEFS,
   NAME_FRAMES, NAME_TITLES, PET_ACCESSORIES,
@@ -252,7 +251,7 @@ export default function ShopMarketplaceView({
   const isDefault = (user?.activeTheme ?? 'default') === 'default';
   // Default shop now wears the dark arcade backdrop so it matches the hub
   // + sub-pages; a purchased theme still overrides it (the student chose it).
-  const pageBg = isDefault ? ARCADE_BG : activeThemeConfig.colors.bg;
+  const pageBg = isDefault ? "bg-[var(--ios-grouped-bg)]" : activeThemeConfig.colors.bg;
 
   // --- Helpers for card states ---
   const ownsAvatar = (emoji: string) => !!user.unlockedAvatars?.includes(emoji);
@@ -338,7 +337,7 @@ export default function ShopMarketplaceView({
     rarity: Rarity; active?: boolean; width: string; children: ReactNode;
   }) => (
     <div
-      className={`relative ${width} overflow-hidden rounded-2xl bg-white/10 p-3 shadow-lg shadow-violet-900/30 ring-2 backdrop-blur-md ${
+      className={`relative ${width} overflow-hidden rounded-2xl bg-[var(--ios-grouped-card)] p-3 shadow-sm ring-2 ${
         active ? 'ring-cyan-300 shadow-cyan-500/30' : RARITY_DARK[rarity].ring
       }`}
     >
@@ -354,14 +353,14 @@ export default function ShopMarketplaceView({
     const pct = Math.min(100, Math.round((coins / Math.max(1, cost)) * 100));
     return (
       <div className="space-y-1.5">
-        <div className="h-1.5 overflow-hidden rounded-full bg-white/15 ring-1 ring-white/10">
+        <div className="h-1.5 overflow-hidden rounded-full bg-[var(--ios-fill-tertiary)] ring-1 ring-[color:var(--ios-separator)]">
           <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style={{ width: `${pct}%` }} />
         </div>
         <button
           type="button"
           onClick={() => setView('student-dashboard')}
           style={{ touchAction: 'manipulation' }}
-          className="inline-flex w-full items-center justify-center gap-1 rounded-full bg-white/15 py-1.5 text-[10px] font-black text-white ring-1 ring-white/20 hover:bg-white/25"
+          className="inline-flex w-full items-center justify-center gap-1 rounded-full bg-[var(--ios-fill-tertiary)] py-1.5 text-[10px] font-black text-[color:var(--ios-label)] hover:bg-[var(--ios-fill-secondary)]"
         >
           <Lock size={10} /> {t.needed(`${Math.max(0, cost - coins)} 🪙`)} · {t.playToEarn}
         </button>
@@ -382,16 +381,16 @@ export default function ShopMarketplaceView({
         <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
           <span className="text-5xl drop-shadow-lg">🎰</span>
           <div className="min-w-0 flex-1">
-            <h3 className="text-base font-black text-white">{t.luckySpin}</h3>
-            <p className="text-[11px] text-white/70">{t.luckySpinDesc}</p>
+            <h3 className="text-base font-black text-[color:var(--ios-label)]">{t.luckySpin}</h3>
+            <p className="text-[11px] text-[color:var(--ios-label-secondary)]">{t.luckySpinDesc}</p>
           </div>
         </div>
         {/* Transparent prize table — every outcome + its odds. */}
         <div className="mt-3 grid grid-cols-2 gap-1.5">
           {LUCKY_SPIN_PRIZES.map(prize => (
-            <div key={prize.id} className="flex items-center gap-1.5 rounded-lg bg-white/10 px-2 py-1 ring-1 ring-white/10">
+            <div key={prize.id} className="flex items-center gap-1.5 rounded-lg bg-[var(--ios-fill-tertiary)] px-2 py-1 ring-1 ring-[color:var(--ios-separator)]">
               <span className="text-base leading-none">{prize.emoji}</span>
-              <span className="flex-1 truncate text-[10px] font-bold text-white/85">{prize.label}</span>
+              <span className="flex-1 truncate text-[10px] font-bold text-[color:var(--ios-label-secondary)]">{prize.label}</span>
               <span className="text-[10px] font-black tabular-nums text-amber-300">{Math.round((prize.weight / totalSpinWeight) * 100)}%</span>
             </div>
           ))}
@@ -421,14 +420,14 @@ export default function ShopMarketplaceView({
         <div className="my-1 flex justify-center">
           <span className={`text-5xl ${!owned && !canAfford ? 'opacity-50 grayscale' : ''}`}>{acc.emoji}</span>
         </div>
-        <h3 className="truncate text-center text-xs font-black text-white">{acc.name}</h3>
+        <h3 className="truncate text-center text-xs font-black text-[color:var(--ios-label)]">{acc.name}</h3>
         <div className="mt-2">
           {owned ? (
             worn ? (
               <motion.button
                 type="button" whileTap={{ scale: 0.97 }}
                 onClick={removePetAccessory}
-                className="block w-full text-center text-[10px] font-black uppercase tracking-widest text-cyan-300"
+                className="block w-full text-center text-[10px] font-black uppercase tracking-widest text-[color:var(--ios-label-secondary)]"
               ><Check size={11} className="-mt-0.5 me-0.5 inline" /> {t.petWearing}</motion.button>
             ) : (
               <motion.button
@@ -464,13 +463,13 @@ export default function ShopMarketplaceView({
         <div className="my-1 flex justify-center">
           <span className={`text-5xl ${!owned && !canAfford ? 'opacity-50 grayscale' : ''}`}>{a.emoji}</span>
         </div>
-        <h3 className="truncate text-center text-xs font-black text-white">
+        <h3 className="truncate text-center text-xs font-black text-[color:var(--ios-label)]">
           {catalogName('avatars', a.id, language, a.name)}
         </h3>
         <div className="mt-2">
           {owned ? (
             equipped ? (
-              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-cyan-300">
+              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-[color:var(--ios-label-secondary)]">
                 <Check size={11} className="-mt-0.5 me-0.5 inline" /> {t.unlocked}
               </span>
             ) : (
@@ -553,15 +552,15 @@ export default function ShopMarketplaceView({
       <ItemShell rarity={rarity} active={active} width="w-36 sm:w-40">
         {!owned && <PinButton kind="frame" id={f.id} />}
         <div className="my-1 flex justify-center">
-          <div className={`flex h-16 w-16 items-center justify-center rounded-full bg-white/15 text-3xl ${f.border}`}>{f.preview}</div>
+          <div className={`flex h-16 w-16 items-center justify-center rounded-full bg-[var(--ios-fill-tertiary)] text-3xl ${f.border}`}>{f.preview}</div>
         </div>
-        <h3 className="truncate text-center text-xs font-black text-white">
+        <h3 className="truncate text-center text-xs font-black text-[color:var(--ios-label)]">
           {catalogName('frames', f.id, language, f.name)}
         </h3>
         <div className="mt-2">
           {owned ? (
             active ? (
-              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-cyan-300"><Check size={11} className="-mt-0.5 me-0.5 inline" />Equipped</span>
+              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-[color:var(--ios-label-secondary)]"><Check size={11} className="-mt-0.5 me-0.5 inline" />Equipped</span>
             ) : (
               <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => equipFrame(f.id)} className="w-full rounded-full bg-violet-600 py-1.5 text-[11px] font-black text-white">Equip</motion.button>
             )
@@ -579,7 +578,7 @@ export default function ShopMarketplaceView({
     const owned = ownsTitle(ti.id);
     const active = user.activeTitle === ti.id;
     const canAfford = coins >= ti.cost;
-    const style = TITLE_STYLES[ti.id] ?? 'text-white font-black';
+    const style = TITLE_STYLES[ti.id] ?? 'text-[color:var(--ios-label)] font-black';
     const rarity = rarityForCost(ti.cost);
     return (
       <ItemShell rarity={rarity} active={active} width="w-44 sm:w-48">
@@ -590,7 +589,7 @@ export default function ShopMarketplaceView({
         <div className="mt-2">
           {owned ? (
             active ? (
-              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-cyan-300"><Check size={11} className="-mt-0.5 me-0.5 inline" />Equipped</span>
+              <span className="block text-center text-[10px] font-black uppercase tracking-widest text-[color:var(--ios-label-secondary)]"><Check size={11} className="-mt-0.5 me-0.5 inline" />Equipped</span>
             ) : (
               <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => equipTitle(ti.id)} className="w-full rounded-full bg-violet-600 py-1.5 text-[11px] font-black text-white">Equip</motion.button>
             )
@@ -673,23 +672,23 @@ export default function ShopMarketplaceView({
             onClick={() => setView("student-dashboard")}
             type="button"
             style={{ touchAction: 'manipulation' }}
-            className={`inline-flex items-center gap-1 text-sm font-semibold text-white/70 hover:text-white transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
+            className={`inline-flex items-center gap-1 text-sm font-semibold text-[color:var(--ios-label-secondary)] hover:text-[color:var(--ios-label)] transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
           >
             <ChevronLeft size={16} className={isRTL ? 'rotate-180' : ''} />
             Dashboard
           </button>
-          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md rounded-full ps-2 pe-3 py-1.5 ring-1 ring-white/20 shadow-lg shadow-violet-900/30">
+          <div className="flex items-center gap-2 bg-[var(--ios-grouped-card)] rounded-full ps-2 pe-3 py-1.5 ring-1 ring-[color:var(--ios-separator)] shadow-sm">
             <span className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-base leading-none">
               🪙
             </span>
-            <span className="font-black text-white tabular-nums">{coins.toLocaleString()}</span>
+            <span className="font-black text-[color:var(--ios-label)] tabular-nums">{coins.toLocaleString()}</span>
           </div>
         </div>
 
         {/* Sticky category jump-chips — kids tap to leap straight to a
             section instead of long-scrolling. Sticks to the top of the
             viewport with a blurred backdrop as the catalogue scrolls under. */}
-        <div className="sticky top-0 z-20 -mx-4 mb-4 bg-violet-950/60 px-4 py-2 backdrop-blur-md sm:-mx-6 sm:px-6">
+        <div className="sticky top-0 z-20 -mx-4 mb-4 bg-[var(--ios-grouped-bg)]/85 px-4 py-2 backdrop-blur-md sm:-mx-6 sm:px-6">
           <div
             className={`flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${isRTL ? 'flex-row-reverse' : ''}`}
           >
@@ -699,7 +698,7 @@ export default function ShopMarketplaceView({
                 type="button"
                 onClick={() => jumpTo(c.id)}
                 style={{ touchAction: 'manipulation' }}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold text-white/80 ring-1 ring-white/15 backdrop-blur-md transition hover:bg-white/20 hover:text-white"
+                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--ios-fill-tertiary)] px-3 py-1.5 text-xs font-bold text-[color:var(--ios-label)] transition hover:bg-[var(--ios-fill-secondary)]"
               >
                 <span aria-hidden>{c.emoji}</span>
                 {c.label}
@@ -724,10 +723,10 @@ export default function ShopMarketplaceView({
 
         {/* Featured deals — curated hero strip of the priciest items, in a
             glowing frame so it reads as the shop's headline shelf. */}
-        <section className="mt-4 rounded-3xl bg-white/5 p-3 ring-1 ring-white/15 sm:p-4">
+        <section className="mt-4 rounded-3xl bg-[var(--ios-grouped-card)] p-3 ring-1 ring-[color:var(--ios-separator)] sm:p-4">
           <header className={`mb-2.5 flex items-center gap-2 px-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
             <span className="text-2xl leading-none" aria-hidden>⭐</span>
-            <h2 className="text-lg font-black tracking-tight text-white">{featuredLabel}</h2>
+            <h2 className="text-lg font-black tracking-tight text-[color:var(--ios-label)]">{featuredLabel}</h2>
           </header>
           <div className={`flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] ${isRTL ? 'flex-row-reverse' : ''}`}>
             {featuredAvatars.map((a) => (
@@ -751,16 +750,16 @@ export default function ShopMarketplaceView({
                 keyFor={(o) => `${o.kind}-${o.id}`}
                 renderCard={(o) => (
                   <div
-                    className={`relative w-32 rounded-2xl bg-white/10 p-3 ring-2 shadow-lg shadow-violet-900/30 backdrop-blur-md transition-all sm:w-36 ${
+                    className={`relative w-32 rounded-2xl bg-[var(--ios-grouped-card)] p-3 ring-2 shadow-sm transition-all sm:w-36 ${
                       o.equipped
                         ? 'ring-cyan-300 shadow-cyan-500/30'
-                        : 'ring-white/20'
+                        : 'ring-[color:var(--ios-separator)]'
                     }`}
                   >
                     <div className="my-1 flex justify-center">
                       <span className="text-4xl">{o.emoji}</span>
                     </div>
-                    <h3 className="truncate text-center text-xs font-black text-white">
+                    <h3 className="truncate text-center text-xs font-black text-[color:var(--ios-label)]">
                       {o.label}
                     </h3>
                     <div className="mt-2">
@@ -790,7 +789,7 @@ export default function ShopMarketplaceView({
           <section id="section-spin">
             <header className={`mb-2.5 flex items-center gap-2 px-1 ${isRTL ? 'flex-row-reverse' : ''}`}>
               <span className="text-2xl leading-none" aria-hidden>🎰</span>
-              <h2 className="text-lg font-black tracking-tight text-white">{t.luckySpin}</h2>
+              <h2 className="text-lg font-black tracking-tight text-[color:var(--ios-label)]">{t.luckySpin}</h2>
             </header>
             {renderSpin()}
           </section>
