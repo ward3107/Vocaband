@@ -90,7 +90,7 @@ export default function StartHerePanel({
   // narrow phones and get truncated with an ellipsis.
   const chips: { id: ChipId; label: string; run: () => void }[] = [
     { id: "play", label: t.chipPlay, run: () => scrollToDashboardSection(DASHBOARD_SECTION.liveGames) },
-    { id: "gamesDiff", label: t.chipGames, run: () => scrollToDashboardSection(DASHBOARD_SECTION.classroomTools) },
+    { id: "gamesDiff", label: t.chipGames, run: () => scrollToDashboardSection(DASHBOARD_SECTION.liveGames) },
     { id: "setup", label: t.chipSetup, run: goToClassesOrCreate },
     { id: "login", label: t.chipLogin, run: () => scrollToDashboardSection(DASHBOARD_SECTION.myClasses) },
     { id: "homework", label: t.chipHomework, run: goToClassesOrCreate },

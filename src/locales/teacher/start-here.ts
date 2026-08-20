@@ -30,7 +30,6 @@ export interface StartHereStrings {
   playBlurb: string;
   playExplainer: string;
   playLiveBtn: string;
-  playRoomBtn: string;
 
   /** Goal: set up my class & students. */
   setupTitle: string;
@@ -101,7 +100,6 @@ const en: StartHereStrings = {
   playExplainer:
     "There are two kinds of game:\n\n🟣 Live games (Quick Play, Category Race, Speed Round, Word Hunt Arena) — every student plays on their own phone and joins by scanning a QR code. No login. Great for a fun, competitive class activity.\n\n🟢 In-room tools (Class Show, Hot Seat, Vocab Wheel) — you run it on one screen or the projector and the whole class plays together. Best when students don't have phones.\n\nTap a button below and I'll jump you to the right row.",
   playLiveBtn: "Show live games",
-  playRoomBtn: "Show in-room tools",
 
   setupTitle: "Set up my class & students",
   setupBlurb: "Create a class and get students in",
@@ -168,7 +166,6 @@ const he: StartHereStrings = {
   playExplainer:
     "יש שני סוגים של משחק:\n\n🟣 משחקים חיים (משחק מהיר, מרוץ קטגוריות, סבב מהיר, זירת ציד מילים) — כל תלמיד משחק מהטלפון שלו ומצטרף בסריקת קוד QR. בלי התחברות. מצוין לפעילות כיתתית תחרותית וכיפית.\n\n🟢 כלים לכיתה (Class Show, Hot Seat, גלגל המילים) — אתם מריצים על מסך אחד או על המקרן וכל הכיתה משחקת יחד. הכי טוב כשלתלמידים אין טלפונים.\n\nהקישו על כפתור למטה ואקפיץ אתכם לשורה הנכונה.",
   playLiveBtn: "הצג משחקים חיים",
-  playRoomBtn: "הצג כלים לכיתה",
 
   setupTitle: "להקים כיתה ותלמידים",
   setupBlurb: "צרו כיתה והכניסו את התלמידים",
@@ -235,7 +232,6 @@ const ar: StartHereStrings = {
   playExplainer:
     "هناك نوعان من الألعاب:\n\n🟣 ألعاب مباشرة (لعب سريع، سباق الفئات، جولة سريعة، ساحة صيد الكلمات) — يلعب كل طالب على هاتفه وينضم بمسح رمز QR. دون تسجيل دخول. ممتازة لنشاط صفّي تنافسي وممتع.\n\n🟢 أدوات الصف (Class Show، Hot Seat، عجلة الكلمات) — تُشغّلها على شاشة واحدة أو جهاز العرض ويلعب الصف كله معًا. الأفضل عندما لا يملك الطلاب هواتف.\n\nاضغط زرًا بالأسفل وسآخذك إلى الصف المناسب.",
   playLiveBtn: "اعرض الألعاب المباشرة",
-  playRoomBtn: "اعرض أدوات الصف",
 
   setupTitle: "أنشئ صفك وطلابك",
   setupBlurb: "أنشئ صفًا وأدخِل طلابك",

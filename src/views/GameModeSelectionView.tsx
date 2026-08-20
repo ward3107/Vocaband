@@ -12,7 +12,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import type { Language } from "../hooks/useLanguage";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { gameModesT, type GameModeId } from "../locales/student/game-modes";
-import { ARCADE_BG, ARCADE_BUTTON_TOUCH } from "../components/arcade/theme";
+import { ARCADE_BUTTON_TOUCH } from "../components/arcade/theme";
 import IslandMap, { type MapIsland } from "../components/arcade/IslandMap";
 import IslandDetailSheet, { type IslandSheetMode } from "../components/arcade/IslandDetailSheet";
 import type { IslandState } from "../components/arcade/ModeIsland";
@@ -157,33 +157,27 @@ export default function GameModeSelectionView({
       : null;
 
   return (
-    <div dir={dir} className={`min-h-screen ${ARCADE_BG} relative overflow-hidden`}>
-      <div aria-hidden className="pointer-events-none absolute inset-0 opacity-40" style={{
-        backgroundImage: [
-          "radial-gradient(circle at 15% 12%, rgba(255,255,255,0.6) 0 1px, transparent 2px)",
-          "radial-gradient(circle at 78% 22%, rgba(255,255,255,0.5) 0 1px, transparent 2px)",
-          "radial-gradient(circle at 42% 58%, rgba(255,255,255,0.45) 0 1px, transparent 2px)",
-          "radial-gradient(circle at 88% 75%, rgba(255,255,255,0.5) 0 1px, transparent 2px)",
-        ].join(","),
-      }} />
-
-      <header className={`sticky top-0 z-30 flex items-center gap-3 bg-violet-950/40 px-4 py-3 backdrop-blur-md ${isRTL ? "flex-row-reverse" : ""}`}>
+    // iOS flatten: light grouped canvas, styled directly (not the shared
+    // dark ARCADE_BG token, which the shop/sub-views still use). Colourful
+    // mode tiles keep their per-mode gradients.
+    <div dir={dir} className="min-h-screen relative overflow-hidden bg-[var(--ios-grouped-bg)]">
+      <header className={`ios-material ios-hairline sticky top-0 z-30 flex items-center gap-3 px-4 py-3 ${isRTL ? "flex-row-reverse" : ""}`}>
         <button
           type="button" onClick={handleExitGame} aria-label={t.closeAria} title={t.closeAria}
-          className={`${ARCADE_BUTTON_TOUCH} flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20`}
+          className={`${ARCADE_BUTTON_TOUCH} flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--ios-fill-tertiary)] text-[color:var(--ios-label)]`}
         >
           <X size={20} />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-black text-white">{t.chooseYourMode}</h1>
+          <h1 className="truncate text-lg font-black text-[color:var(--ios-label)]">{t.chooseYourMode}</h1>
           {activeAssignment?.title && (
-            <p className="truncate text-xs font-semibold text-white/60">{activeAssignment.title}</p>
+            <p className="truncate text-xs font-semibold text-[color:var(--ios-label-secondary)]">{activeAssignment.title}</p>
           )}
         </div>
         {showRoundPill && (
-          <span className="shrink-0 rounded-full bg-white/10 px-3 py-1.5 text-center text-[11px] font-bold text-cyan-100 ring-1 ring-white/20">
+          <span className="shrink-0 rounded-full bg-[var(--ios-fill-tertiary)] px-3 py-1.5 text-center text-[11px] font-bold text-[color:var(--vb-accent)]">
             {completedCount}/{totalModes} {qs.modesDone}
-            <span className="block text-[10px] text-white/60">{qs.round} {currentRound}/{MAX_ASSIGNMENT_ROUNDS}</span>
+            <span className="block text-[10px] text-[color:var(--ios-label-secondary)]">{qs.round} {currentRound}/{MAX_ASSIGNMENT_ROUNDS}</span>
           </span>
         )}
       </header>

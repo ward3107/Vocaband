@@ -74,8 +74,8 @@ export default function ModeIsland({
         aria-label={`${name} — ${stateWord}${done ? `, ${L.stars(mastery)}` : ""}`}
         whileTap={reduced || locked ? undefined : { scale: 0.92 }}
         whileHover={reduced || locked ? undefined : { scale: 1.06 }}
-        className={`${ARCADE_BUTTON_TOUCH} group relative flex h-28 w-28 items-center justify-center rounded-full ${ring} shadow-xl sm:h-32 sm:w-32 ${
-          next ? "shadow-cyan-500/40" : "shadow-black/30"
+        className={`${ARCADE_BUTTON_TOUCH} group relative flex h-28 w-28 items-center justify-center rounded-full ${ring} shadow-lg sm:h-32 sm:w-32 ${
+          next ? "shadow-violet-500/30" : "shadow-black/10"
         } ${locked ? "opacity-50 grayscale" : ""}`}
       >
         {/* Soft coloured glow halo behind the medallion. */}
@@ -96,7 +96,7 @@ export default function ModeIsland({
         <span aria-hidden className="relative text-5xl drop-shadow-lg sm:text-6xl">{emoji}</span>
 
         {next && !reduced && (
-          <span aria-hidden className="absolute inset-0 -z-20 animate-ping rounded-full bg-cyan-400/30" />
+          <span aria-hidden className="absolute inset-0 -z-20 animate-ping rounded-full bg-violet-400/30" />
         )}
 
         {/* Show earned stars whenever mastery > 0, including replay-round
@@ -105,7 +105,7 @@ export default function ModeIsland({
           <span aria-hidden className="absolute -top-4 left-1/2 flex -translate-x-1/2 gap-0.5">
             {[0, 1, 2].map((i) => (
               <Star key={i} size={14} strokeWidth={2}
-                className={i < mastery ? "text-amber-300 drop-shadow" : "text-white/25"}
+                className={i < mastery ? "text-amber-400 drop-shadow" : "text-[color:var(--ios-label-tertiary)]"}
                 fill={i < mastery ? "currentColor" : "none"} />
             ))}
           </span>
@@ -115,7 +115,7 @@ export default function ModeIsland({
         {locked && <Lock aria-hidden size={18} className="absolute -bottom-1 -end-1 rounded-full bg-black/40 p-0.5 text-white/80" />}
       </motion.button>
 
-      <span className="pointer-events-none absolute left-1/2 top-full mt-2.5 w-32 -translate-x-1/2 text-center text-sm font-bold leading-tight text-white drop-shadow-md">
+      <span className="pointer-events-none absolute left-1/2 top-full mt-2.5 w-32 -translate-x-1/2 text-center text-sm font-bold leading-tight text-[color:var(--ios-label)]">
         {name}
       </span>
     </div>

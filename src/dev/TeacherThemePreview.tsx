@@ -110,9 +110,6 @@ export default function TeacherThemePreview() {
               onCategoryRaceClick={noop}
               onSpeedRoundClick={noop}
               onArenaClick={noop}
-              onClassShowClick={noop}
-              onHotSeatClick={noop}
-              onWheelClick={noop}
               onClassroomClick={() => setPage("classroom")}
               onApprovalsClick={noop}
               onWorksheetResultsClick={noop}
