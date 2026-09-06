@@ -124,18 +124,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState(false);
   const [isSchoolModalOpen, setIsSchoolModalOpen] = useState(false);
 
-  // Sticky Teacher Sign-In: a fixed-position twin of the hero button
-  // that slides up from the bottom once the user scrolls past the
-  // hero.  Lets teachers tap "Sign in" from anywhere on the marketing
-  // page on phones AND desktop without scrolling back to the top.
-  // Hidden while the hero CTA is in view to avoid a double-button.
-  const heroSignInRef = useRef<HTMLButtonElement>(null);
-  const [heroSignInVisible, setHeroSignInVisible] = useState(true);
+  // Sticky sign-in bar: a fixed-position twin of the two hero doors
+  // (teachers + students) that slides up from the bottom once the user
+  // scrolls past the hero.  Lets either audience tap "Sign in" from
+  // anywhere on the marketing page on phones AND desktop without
+  // scrolling back to the top.  The sentinel ref is attached to the
+  // LOWER (student) hero button, so the bar only appears once BOTH
+  // doors have scrolled out of view — never competing with a hero CTA
+  // that is still on screen.
+  const heroCtaRef = useRef<HTMLButtonElement>(null);
+  const [heroCtaVisible, setHeroCtaVisible] = useState(true);
   useEffect(() => {
-    const el = heroSignInRef.current;
+    const el = heroCtaRef.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
     const obs = new IntersectionObserver(
-      ([entry]) => setHeroSignInVisible(entry.isIntersecting),
+      ([entry]) => setHeroCtaVisible(entry.isIntersecting),
       { threshold: 0.1 },
     );
     obs.observe(el);
@@ -351,14 +354,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <p className="text-sm text-white/70 mb-5 flex-1">{t.heroV2.staffDesc}</p>
                   <button
                     type="button"
-                    // Sentinel for the sticky sign-in below: it slides in once
-                    // this button scrolls out of view. The ref was declared and
-                    // observed but never attached to any element, so
-                    // heroSignInRef.current was always null, the observer
-                    // returned early, heroSignInVisible stayed true forever and
-                    // the sticky CTA was permanently opacity:0 /
-                    // pointerEvents:none — it has never appeared for anyone.
-                    ref={heroSignInRef}
                     onClick={onTeacherLogin}
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                     aria-label={`${t.navSignIn} — ${t.heroV2.staffTitle}`}
@@ -385,6 +380,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   <p className="text-sm text-white/70 mb-5 flex-1">{t.heroV2.studentDesc}</p>
                   <button
                     type="button"
+                    // Sentinel for the sticky sign-in bar below. It's the LOWER
+                    // of the two hero doors, so once it scrolls out of view both
+                    // doors are gone and the bar can slide up without competing
+                    // with a hero CTA still on screen.
+                    ref={heroCtaRef}
                     onClick={onGetStarted}
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                     aria-label={`${t.heroV2.studentCta} — ${t.heroV2.studentNote}`}
@@ -496,11 +496,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           matching every other page that renders FloatingButtons. */}
       <FloatingButtons showBackToTop />
 
-      {/* Sticky Teacher Sign-In — slides up once the hero CTA scrolls
-          out of view so the primary conversion path is always one tap
-          away.  Hidden when the hero button is on-screen to avoid
-          competing with itself.  Same gradient + iconography as the
-          hero so it reads as the same action, just compact.
+      {/* Sticky sign-in bar — the two hero doors (teachers + students)
+          slide up together once the hero CTAs scroll out of view, so
+          either audience is always one tap from signing in on phones and
+          desktop.  Hidden while the hero is on-screen to avoid competing
+          with itself.  Same gradients + iconography as the hero cards so
+          each reads as the same action, just compact.
 
           PR #708 (perf: strip motion/react from public-landing path)
           removed motion/react from this file's imports. PR #709 then
@@ -508,37 +509,58 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
           without re-adding the import — production crashed with
           "ReferenceError: motion is not defined", and the page froze
           on "Loading Vocaband..." because LandingPage couldn't
-          render. Reimplemented as a plain <button> with a CSS
-          transform + opacity transition so the slide effect is
+          render. Reimplemented with plain <button>s + a CSS transform +
+          opacity transition on the wrapper so the slide effect is
           preserved without re-pulling motion onto the landing chunk. */}
-      <button
-        type="button"
-        onClick={onTeacherLogin}
-        aria-label={`${t.navSignIn} — ${t.heroSignInForTeachers}`}
-        aria-hidden={heroSignInVisible}
-        tabIndex={heroSignInVisible ? -1 : 0}
+      <div
+        aria-hidden={heroCtaVisible}
         style={{
-          touchAction: "manipulation",
-          WebkitTapHighlightColor: "transparent",
           bottom: "max(1rem, env(safe-area-inset-bottom))",
-          pointerEvents: heroSignInVisible ? "none" : "auto",
-          opacity: heroSignInVisible ? 0 : 1,
-          transform: heroSignInVisible
+          pointerEvents: heroCtaVisible ? "none" : "auto",
+          opacity: heroCtaVisible ? 0 : 1,
+          transform: heroCtaVisible
             ? "translate(-50%, 120px)"
             : "translate(-50%, 0)",
           transition: "transform 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 250ms ease-out",
         }}
-        className="fixed left-1/2 z-40 inline-flex items-center gap-2 px-5 sm:px-7 py-3 sm:py-3.5 rounded-xl text-base sm:text-lg font-black text-white shadow-[0_10px_0_0_#581c87,0_18px_36px_rgba(168,85,247,0.55)] hover:shadow-[0_12px_0_0_#4c1d95,0_22px_44px_rgba(168,85,247,0.7)] active:translate-y-0.5 active:shadow-[0_4px_0_0_#581c87] bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/40 hover:ring-violet-300/60"
+        className="fixed left-1/2 z-40 w-[calc(100%-1.5rem)] max-w-md flex items-stretch gap-2 sm:gap-3"
       >
-        <GraduationCap size={20} strokeWidth={2.5} />
-        <span className={`flex flex-col leading-tight ${isRTL ? "items-end" : "items-start"}`}>
-          <span>{t.navSignIn}</span>
-          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.18em] text-violet-100/90">
-            {t.heroSignInForTeachers}
+        {/* Teachers — violet, matching the hero staff card */}
+        <button
+          type="button"
+          onClick={onTeacherLogin}
+          tabIndex={heroCtaVisible ? -1 : 0}
+          aria-label={`${t.navSignIn} — ${t.heroSignInForTeachers}`}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          className="flex-1 min-w-0 inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base font-black text-white shadow-[0_8px_0_0_#581c87,0_16px_32px_rgba(168,85,247,0.5)] active:translate-y-0.5 active:shadow-[0_3px_0_0_#581c87] bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-2 ring-violet-300/40 transition-all"
+        >
+          <GraduationCap size={18} strokeWidth={2.5} className="flex-shrink-0" />
+          <span className={`flex flex-col leading-tight min-w-0 ${isRTL ? "items-end" : "items-start"}`}>
+            <span className="truncate">{t.navSignIn}</span>
+            <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-violet-100/90 truncate">
+              {t.heroSignInForTeachers}
+            </span>
           </span>
-        </span>
-        <LogIn size={18} strokeWidth={2.5} className="opacity-90" />
-      </button>
+        </button>
+
+        {/* Students — amber, matching the hero student card */}
+        <button
+          type="button"
+          onClick={onGetStarted}
+          tabIndex={heroCtaVisible ? -1 : 0}
+          aria-label={`${t.navSignIn} — ${t.heroSignInForStudents}`}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          className="flex-1 min-w-0 inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-3 sm:py-3.5 rounded-xl text-sm sm:text-base font-black text-amber-950 shadow-[0_8px_0_0_#9a3412,0_16px_32px_rgba(251,146,60,0.5)] active:translate-y-0.5 active:shadow-[0_3px_0_0_#9a3412] bg-gradient-to-br from-amber-300 via-amber-400 to-orange-400 ring-2 ring-amber-200/50 transition-all"
+        >
+          <Backpack size={18} strokeWidth={2.5} className="flex-shrink-0" />
+          <span className={`flex flex-col leading-tight min-w-0 ${isRTL ? "items-end" : "items-start"}`}>
+            <span className="truncate">{t.navSignIn}</span>
+            <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-amber-900/80 truncate">
+              {t.heroSignInForStudents}
+            </span>
+          </span>
+        </button>
+      </div>
 
       {isSubjectModalOpen && (
         <Suspense fallback={null}>

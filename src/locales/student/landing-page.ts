@@ -41,6 +41,7 @@ export interface LandingPageT {
   navSignIn: string;
   navStartFree: string;
   heroSignInForTeachers: string;
+  heroSignInForStudents: string;
   navMenuOpen: string;
   navMenuClose: string;
   heroTitleLine1: string;
@@ -129,6 +130,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navSignIn: "Sign in",
     navStartFree: "Start free",
     heroSignInForTeachers: "for teachers",
+    heroSignInForStudents: "for students",
     navMenuOpen: "Open menu",
     navMenuClose: "Close menu",
     heroTitleLine1: "Level Up",
@@ -215,6 +217,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navSignIn: "התחברות",
     navStartFree: "התחילו בחינם",
     heroSignInForTeachers: "למורות ומורים",
+    heroSignInForStudents: "לתלמידות ותלמידים",
     navMenuOpen: "פתיחת תפריט",
     navMenuClose: "סגירת תפריט",
     heroTitleLine1: "שדרגו",
@@ -301,6 +304,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navSignIn: "تسجيل الدخول",
     navStartFree: "ابدأ مجانًا",
     heroSignInForTeachers: "للمعلمين والمعلمات",
+    heroSignInForStudents: "للطلاب والطالبات",
     navMenuOpen: "فتح القائمة",
     navMenuClose: "إغلاق القائمة",
     heroTitleLine1: "ارتقِ",
@@ -387,6 +391,7 @@ export const landingPageT: Record<Language, LandingPageT> = {
     navSignIn: "Sign in",
     navStartFree: "Start free",
     heroSignInForTeachers: "for teachers",
+    heroSignInForStudents: "for students",
     navMenuOpen: "Open menu",
     navMenuClose: "Close menu",
     heroTitleLine1: "Level Up",
