@@ -296,12 +296,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                   {t.heroV2.eyebrow}
                 </span>
 
-                <h1 className={`relative z-20 text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black font-headline ${isRTL ? "" : "italic"} leading-[1.05] text-balance break-words mb-3 md:mb-4`}>
-                  <span className="inline-block bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
+                {/* leading-[1.15] + pb-[0.2em] on each gradient span give
+                    glyph descenders (the "y" tails in "Your Vocabulary",
+                    and Arabic descenders on line 2) room to paint. With a
+                    tighter line-height the bg-clip-text fill area ended at
+                    the line box and the descender ink below it rendered
+                    transparent — the title looked cut off in production. */}
+                <h1 className={`relative z-20 text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black font-headline ${isRTL ? "" : "italic"} leading-[1.15] text-balance break-words mb-3 md:mb-4`}>
+                  <span className="inline-block pb-[0.2em] bg-gradient-to-r from-white via-white to-white/90 bg-clip-text text-transparent drop-shadow-2xl">
                     {t.heroTitleLine1}
                   </span>
                   <br />
-                  <span className="inline-block bg-gradient-to-r from-violet-300 via-fuchsia-300 to-amber-300 bg-clip-text text-transparent">
+                  <span className="inline-block pb-[0.2em] bg-gradient-to-r from-violet-300 via-fuchsia-300 to-amber-300 bg-clip-text text-transparent">
                     {t.heroTitleLine2}
                   </span>
                 </h1>
