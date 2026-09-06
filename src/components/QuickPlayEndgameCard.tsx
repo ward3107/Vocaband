@@ -9,14 +9,14 @@
  *      student's entry can't be found, e.g. leaderboard broadcast lost.
  *   2. "Words to practice 📚" — up to 5 words missed this round, with
  *      the translation the student was actually playing with.
- *   3. Play again (primary) + Back to home (quiet link).
+ *   3. Play another mode (primary) + Exit Quick Play (quiet link).
  *
  * Rank uses competition ranking (ties share a place) so two kids with
  * the same score never argue about who's "really" 3rd.
  */
 import { useEffect, useMemo } from "react";
 import { motion } from "motion/react";
-import { Home, RotateCcw } from "lucide-react";
+import { DoorOpen, Grid3X3 } from "lucide-react";
 import type { QpStudentEntry } from "../core/quickPlayProtocol";
 import type { Word } from "../data/vocabulary";
 import { readStoredClientId } from "../hooks/useQuickPlaySocket";
@@ -38,13 +38,13 @@ interface QuickPlayEndgameCardProps {
   disabled: boolean;
   /** Replay a word's audio — same speaker used in-game. */
   speakWord: (wordId: number, fallbackText?: string) => void;
-  onPlayAgain: () => void;
-  onBackToHome: () => void;
+  onPlayAnotherMode: () => void;
+  onExitQuickPlay: () => void;
 }
 
 export default function QuickPlayEndgameCard({
   leaderboard, mistakes, gameWords, targetLanguage,
-  isDark, disabled, speakWord, onPlayAgain, onBackToHome,
+  isDark, disabled, speakWord, onPlayAnotherMode, onExitQuickPlay,
 }: QuickPlayEndgameCardProps) {
   const { language, dir } = useLanguage();
   const tt = gameFinishedT[language];
@@ -85,25 +85,25 @@ export default function QuickPlayEndgameCard({
       <motion.button
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.97 }}
-        onClick={onPlayAgain}
+        onClick={onPlayAnotherMode}
         disabled={disabled}
         type="button"
         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
         className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white px-6 py-5 rounded-xl font-black text-xl shadow-lg shadow-violet-500/20 hover:shadow-xl transition-all disabled:opacity-50"
       >
-        <RotateCcw size={22} />
-        {tt.playAgain}
+        <Grid3X3 size={22} />
+        {tt.playAnotherMode}
       </motion.button>
 
       <button
-        onClick={onBackToHome}
+        onClick={onExitQuickPlay}
         disabled={disabled}
         type="button"
         style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
         className={`w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg font-semibold text-xs transition-all disabled:opacity-50 ${isDark ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-stone-400 hover:text-stone-700 hover:bg-stone-50'}`}
       >
-        <Home size={12} />
-        {tt.backToHome}
+        <DoorOpen size={12} />
+        {tt.exitQuickPlay}
       </button>
     </div>
   );

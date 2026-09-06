@@ -26,24 +26,15 @@ export const LottieAnimation: React.FC<LottieAnimationProps> = ({
   slowMotion = true,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const [animationData, setAnimationData] = useState<any>(null);
-
-  // Load animation from URL
-  useEffect(() => {
-    fetch(src)
-      .then((res) => res.json())
-      .then((data) => setAnimationData(data))
-      .catch((err) => console.error('Failed to load Lottie:', err));
-  }, [src]);
-
-  // Use useLottie hook
+  // lottie-react v3 loads URL sources itself and exposes a display ref
+  // instead of the v2 `View` element.
   const options = {
-    animationData: animationData,
+    src,
     loop: !hoverPlay,
     autoplay: !hoverPlay,
   };
 
-  const { View, setSpeed, play, pause } = useLottie(options);
+  const { setDisplayRef, setSpeed, play, pause } = useLottie(options);
 
   // Update speed based on hover state
   useEffect(() => {
@@ -62,20 +53,9 @@ export const LottieAnimation: React.FC<LottieAnimationProps> = ({
     if (hoverPlay) pause();
   };
 
-  // Show loading state or nothing while loading
-  if (!animationData) {
-    return (
-      <div
-        className={className}
-        style={{ width: size, height: size }}
-        role="img"
-        aria-label={alt}
-      />
-    );
-  }
-
   return (
     <div
+      ref={setDisplayRef}
       className={className}
       style={{
         width: size,
@@ -87,9 +67,7 @@ export const LottieAnimation: React.FC<LottieAnimationProps> = ({
       onMouseLeave={handleMouseLeave}
       role="img"
       aria-label={alt}
-    >
-      {View}
-    </div>
+    />
   );
 };
 
