@@ -19,6 +19,7 @@
 import { useEffect } from 'react';
 import type React from 'react';
 import { stripUrlParam } from '../utils/url';
+import { resolveAssignmentWords } from '../utils/resolveAssignmentWords';
 import type { AppUser, AssignmentData } from '../core/supabase';
 import type { View } from '../core/views';
 import type { Word } from '../data/vocabulary';
@@ -58,12 +59,32 @@ export function useDeepLinkConsumers(args: UseDeepLinkConsumersArgs): void {
     if (studentAssignments.length === 0) return;
     const match = studentAssignments.find((a) => a.id === pendingAssignmentId);
     if (!match) return;
-    setActiveAssignment(match);
-    setAssignmentWords(match.words ?? []);
-    setShowModeSelection(true);
-    setView('game');
+
+    // Resolve through the shared resolver — NOT `match.words ?? []`.
+    // A curriculum assignment carries its list in `wordIds` and may have
+    // no `words` JSONB at all, so the old expression handed the game an
+    // empty array and it substituted a generic Set-2 sample. That made a
+    // teacher-shared ?assignment=<id> link (the WhatsApp hand-out) serve
+    // words the teacher never assigned, while tapping the SAME assignment
+    // from the dashboard — which already used the resolver — worked. That
+    // divergence is what made the bug look intermittent.
+    let cancelled = false;
     setPendingAssignmentId(null);
     stripUrlParam('assignment');
+    void (async () => {
+      const words = await resolveAssignmentWords(match);
+      if (cancelled) return;
+      if (words.length === 0) {
+        // Never open a round we cannot populate; leave the student on the
+        // dashboard where the assignment card can report the real state.
+        return;
+      }
+      setActiveAssignment(match);
+      setAssignmentWords(words);
+      setShowModeSelection(true);
+      setView('game');
+    })();
+    return () => { cancelled = true; };
   }, [
     pendingAssignmentId, user?.role, view, studentAssignments,
     setActiveAssignment, setAssignmentWords, setShowModeSelection, setView,

@@ -8,6 +8,7 @@ import { useLanguage } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
 import { pickNextAssignment } from "../../utils/pickNextAssignment";
 import { resolveAssignmentWords } from "../../utils/resolveAssignmentWords";
+import { trackAutoError } from "../../errorTracking";
 
 interface NextUpCardProps {
   studentAssignments: AssignmentData[];
@@ -85,6 +86,17 @@ export default function NextUpCard({
 
   const handleStart = async () => {
     const filteredWords = await resolveAssignmentWords(assignment);
+    // See StudentAssignmentCard: refuse to launch an assignment that
+    // resolves to no words rather than letting the game substitute a
+    // generic sample and score it against this assignment.
+    if (filteredWords.length === 0) {
+      trackAutoError(
+        new Error("Assignment resolved to zero words — launch blocked"),
+        "assignment-empty-on-launch",
+        { assignmentId: assignment.id, wordIdCount: assignment.wordIds?.length ?? 0 },
+      );
+      return;
+    }
     setActiveAssignment(assignment);
     setAssignmentWords(filteredWords);
     React.startTransition(() => {

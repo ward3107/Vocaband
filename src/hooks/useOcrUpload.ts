@@ -130,7 +130,16 @@ export function useOcrUpload(params: UseOcrUploadParams) {
       const customWordsFromOCR: Word[] = extractedWords.map((word: string, index: number) => {
         const t = translations.get(word.toLowerCase().trim());
         return {
-          id: Date.now() + index,
+          // NEGATIVE id — the project-wide convention for custom words
+          // (see useQuickPlayUrlBootstrap.ts:497 and WordInputStep2026).
+          // A positive Date.now() id passed the `id > 0` "this is a
+          // curriculum word" filter in handleSaveAssignment, so a
+          // ~1.75e12 value was written into `assignments.word_ids
+          // INTEGER[]` and Postgres rejected the whole insert with 22003
+          // (out of range) — a teacher's photographed word list could
+          // never be saved as an assignment, and the toast blamed a
+          // generic create failure.
+          id: -(Date.now() + index),
           english: word,
           hebrew: t?.hebrew || '',
           arabic: t?.arabic || '',

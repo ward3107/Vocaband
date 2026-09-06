@@ -14,7 +14,7 @@ import {
   type ProgressData,
 } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
-import { getCachedVocabulary } from "./useVocabularyLazy";
+import { getCachedVocabulary, ensureVocabulary } from "./useVocabularyLazy";
 import { chunkArray } from "../utils";
 import { loadMammoth } from "../utils/lazyLoad";
 import { trackAutoError } from "../errorTracking";
@@ -588,11 +588,34 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
       const { HEBREW_LEMMAS } = await import("../data/vocabulary-hebrew");
       allPossibleWords = HEBREW_LEMMAS as unknown as ReadonlyArray<{ id: number }>;
     } else {
-      allPossibleWords = [...(getCachedVocabulary()?.ALL_WORDS ?? []), ...customWords] as ReadonlyArray<{ id: number }>;
+      // AWAIT the corpus — never `getCachedVocabulary()?.ALL_WORDS ?? []`.
+      // This is a WRITE path: on a cold cache the `?? []` default silently
+      // reduced `allPossibleWords` to just `customWords`, so every
+      // curriculum word the teacher picked was dropped from the `words`
+      // JSONB and the row persisted as `words: []`.  The student side
+      // then resolved that to zero words and the game substituted a
+      // generic Set-2 sample — the "student sees the demo list" bug.
+      // The Hebrew branch above already awaited its corpus; this one
+      // silently didn't.
+      const { ALL_WORDS } = getCachedVocabulary() ?? (await ensureVocabulary());
+      allPossibleWords = [...ALL_WORDS, ...customWords] as ReadonlyArray<{ id: number }>;
     }
     const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
     const wordsToCheckSet = new Set(wordsToCheck);
     const wordsToSave = uniqueWords.filter(w => wordsToCheckSet.has(w.id));
+
+    // Refuse to persist an assignment whose word list resolved to nothing.
+    // The validation above only proved the teacher SELECTED ids; this
+    // proves those ids actually resolved against a corpus. Saving anyway
+    // produces a row that looks valid to the teacher but is unplayable
+    // for students, which is exactly how the bad rows got created.
+    if (wordsToSave.length === 0) {
+      showToast(
+        "Could not load the vocabulary for these words. Please check your connection and try saving again.",
+        "error",
+      );
+      return;
+    }
 
     const assignmentData = {
       classId: selectedClass.id,
@@ -728,16 +751,25 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     }
   };
 
-  const handlePreviewAssignment = () => {
+  const handlePreviewAssignment = async () => {
     if (selectedWords.length === 0) {
       showToast("Please select at least one word to preview.", "error");
       return;
     }
 
-    // Get the selected words
-    const allPossibleWords = [...(getCachedVocabulary()?.ALL_WORDS ?? []), ...customWords];
+    // Get the selected words. Awaits the corpus for the same reason the
+    // save path does: on a cold cache the old `?? []` default resolved
+    // zero words, and the game view then substituted its generic Set-2
+    // sample — so the teacher's own preview showed words they never picked.
+    const { ALL_WORDS } = getCachedVocabulary() ?? (await ensureVocabulary());
+    const allPossibleWords = [...ALL_WORDS, ...customWords];
     const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
     const wordsToPreview = uniqueWords.filter(w => new Set(selectedWords).has(w.id));
+
+    if (wordsToPreview.length === 0) {
+      showToast("Could not load the vocabulary for these words. Please try again.", "error");
+      return;
+    }
 
     // Create a temporary assignment object with selected modes
     const previewAssignment: AssignmentData = {

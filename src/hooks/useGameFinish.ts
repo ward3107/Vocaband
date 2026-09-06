@@ -43,6 +43,7 @@ import {
   resolveAssignmentPlays,
 } from "./useAssignmentPlays";
 import { celebrate } from "../utils/celebrate";
+import { trackAutoError } from "../errorTracking";
 import { coinsForGame } from "../utils/coins";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
@@ -251,6 +252,60 @@ export function useGameFinish(params: UseGameFinishParams) {
 
     // Regular assignment mode
     if (!activeAssignment) return;
+
+    // Refuse to file a round that was played on words this assignment
+    // does not contain.
+    //
+    // When the assignment's word list resolved empty, the game used to
+    // substitute a generic sample (GAME_FALLBACK_WORDS in
+    // useAppController) and the resulting score was saved here under the
+    // teacher's assignment_id — with Set-2 word ids in `mistakes` and
+    // `p_word_attempts`. That polluted the gradebook ("Top struggling
+    // words" and the per-assignment mastery views intersect mistakes
+    // against assignment.wordIds) AND burned one of the student's three
+    // allowed rounds on a round they never really played.
+    //
+    // The upstream resolver fixes are what stop the substitution from
+    // happening; this is the last line of defence, so a future
+    // regression corrupts no data. Deliberately narrow: it only fires
+    // when the assignment names words AND not one played word belongs to
+    // it. A partial overlap (a review subset, a custom-word assignment
+    // whose negative ids are absent from wordIds) is left alone.
+    // Majority test, not `.some()`. The fallback list is
+    // SET_2_WORDS.slice(0, 12), so an assignment that happens to include
+    // any ONE of those first twelve Set-2 words would satisfy a
+    // some()-overlap check and slip a fully-substituted round past the
+    // guard. Requiring most of the round to belong to the assignment
+    // still leaves a legitimate review subset or a custom-word list
+    // (negative ids, absent from wordIds) untouched — those overlap
+    // heavily or carry no wordIds at all.
+    const assignmentWordIds = new Set(activeAssignment.wordIds ?? []);
+    const belonging = assignmentWordIds.size > 0
+      ? gameWords.filter(w => assignmentWordIds.has(w.id)).length
+      : 0;
+    const hasCustomWords = gameWords.some(w => w.id < 0);
+    const playedNoAssignedWords =
+      assignmentWordIds.size > 0 &&
+      gameWords.length > 0 &&
+      !hasCustomWords &&
+      belonging * 2 <= gameWords.length;
+    if (playedNoAssignedWords) {
+      trackAutoError(
+        new Error("Refused to save a round played on words outside the assignment"),
+        "assignment-words-mismatch",
+        {
+          assignmentId: activeAssignment.id,
+          assignmentWordCount: assignmentWordIds.size,
+          playedWordCount: gameWords.length,
+          mode: gameMode,
+        },
+      );
+      showToast(
+        "Something went wrong loading your word list — this round wasn't saved. Please try the assignment again.",
+        "error",
+      );
+      return;
+    }
 
     // Anti-farm round cap — new semantics: 1 round = all allowed modes
     // once; after MAX_ASSIGNMENT_ROUNDS (3) full rounds the assignment

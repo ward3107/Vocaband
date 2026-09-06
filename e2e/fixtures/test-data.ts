@@ -51,7 +51,15 @@ export const TEST_ASSIGNMENT = {
   id: 'assignment-001',
   class_id: 'class-001',
   title: 'Week 1 Vocabulary',
-  word_ids: [1, 2, 3, 4, 5],
+  // Every id here must exist in ALL_WORDS — the vocabulary tuple table is
+  // NOT densely numbered (there is no id 2), and an id that doesn't resolve
+  // silently shrinks the round, which would make a word-count assertion fail
+  // for a reason unrelated to the behaviour under test.
+  //   1 -> "in a hurry", 3 -> "worth a fortune", 4 -> "worth it",
+  //   5 -> "get along",  6 -> "skiing"
+  word_ids: [1, 3, 4, 5, 6],
+  // null, not [] — this is the curriculum-assignment shape: the words live
+  // in word_ids and must be hydrated from ALL_WORDS at read time.
   words: null,
   deadline: '2026-12-31T23:59:59Z',
   allowed_modes: ['classic', 'spelling', 'matching', 'true-false', 'flashcards'],
