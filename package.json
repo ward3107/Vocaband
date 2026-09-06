@@ -92,10 +92,10 @@
   },
   "overrides": {
     "serialize-javascript": "^7.0.4",
-    "@xmldom/xmldom": "^0.8.13",
+    "@xmldom/xmldom": "^0.8.15",
     "postcss": "^8.5.10",
     "ip-address": "^10.1.1",
-    "fast-uri": "^3.1.2",
+    "fast-uri": "^3.1.7",
     "brace-expansion@5": "^5.0.6",
     "ws@8": "^8.21.0",
     "tmp": "^0.2.7",
@@ -106,7 +106,12 @@
     "undici": "^7.28.0",
     "@opentelemetry/core": "^2.8.0",
     "@babel/core": "^7.29.7",
-    "image-size": "^2.0.2"
+    "image-size": "^2.0.2",
+    "fflate": "^0.8.3",
+    "qs": "^6.16.0",
+    "browserslist": "^4.28.9",
+    "nanoid": "^3.3.18",
+    "@humanfs/node": "^0.16.8"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.0",
