@@ -192,12 +192,57 @@ const SENTENCE_BANK: Map<number, string[]> = new Map([
  * Get sentences for a given word at a specific difficulty level.
  * Priority: hand-written bank (filtered by word count) > inline word.sentences > level templates.
  */
+/**
+ * Does this sentence actually demonstrate this word?
+ *
+ * SENTENCE_BANK is keyed by word id, but its keys were written against a
+ * DIFFERENT numbering than `ALL_WORDS` uses — they look like 1-based
+ * positions in an alphabetically sorted list. The result is that not one
+ * of its 115 entries lands on the word it describes: id 1 is "in a hurry"
+ * but carries "I know a little bit about cooking" (that sentence belongs
+ * to "a little bit", id 13), and 16 keys name ids that do not exist at
+ * all. Sentence Builder was therefore asking students to build a sentence
+ * about a completely different word than the one the teacher assigned.
+ *
+ * Re-keying the bank is a content task that needs a human eye — inferring
+ * the intended word from the sentence text is not reliable enough to
+ * automate (inflected forms like "accompanies" for "accompany" break it,
+ * and a wrong guess is no better than the current wrong key). So this
+ * guard makes the lookup self-validating instead: a hand-written sentence
+ * is used ONLY if it visibly contains the word it is supposed to teach.
+ * Anything else falls through to the template generator below, which
+ * substitutes the real word and is correct by construction.
+ *
+ * Once the bank is re-keyed this guard stays useful — it turns any future
+ * key drift into a silent fallback rather than wrong content in front of
+ * a student.
+ */
+function sentenceDemonstratesWord(sentence: string, english: string): boolean {
+  const s = sentence.toLowerCase();
+  const w = english.toLowerCase().trim();
+  if (!w) return false;
+  if (s.includes(w)) return true;
+  // Allow a light inflection tolerance for single words ("accompanies"
+  // for "accompany", "studies" for "study") without matching unrelated
+  // words that merely share a short prefix.
+  if (!w.includes(" ") && w.length >= 5) {
+    const stem = w.replace(/(y|e)$/, "");
+    if (stem.length >= 4 && new RegExp(`\\b${stem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(s)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function getSentencesForWord(word: Word, difficulty: SentenceDifficulty = 2): string[] {
   const config = DIFFICULTY_CONFIG[difficulty];
 
-  // 1. Check hand-written bank — filter by word count for the target level
-  const handWritten = SENTENCE_BANK.get(word.id);
-  if (handWritten && handWritten.length > 0) {
+  // 1. Check hand-written bank — must actually demonstrate this word (see
+  //    sentenceDemonstratesWord), then filter by word count for the level.
+  const handWritten = (SENTENCE_BANK.get(word.id) ?? []).filter(s =>
+    sentenceDemonstratesWord(s, word.english),
+  );
+  if (handWritten.length > 0) {
     const fitting = handWritten.filter(s => {
       const wc = s.split(/\s+/).length;
       return wc >= config.minWords && wc <= config.maxWords;

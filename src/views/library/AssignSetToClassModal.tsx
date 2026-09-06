@@ -24,7 +24,7 @@ import {
   type VocabularySetWord,
 } from "../../core/vocabularyLibrary";
 import type { Word } from "../../data/vocabulary";
-import { getCachedVocabulary } from "../../hooks/useVocabularyLazy";
+import { getCachedVocabulary, ensureVocabulary } from "../../hooks/useVocabularyLazy";
 import { assignSetT } from "../../locales/teacher/vocabulary-library-assign";
 
 interface AssignSetToClassModalProps {
@@ -115,9 +115,15 @@ export default function AssignSetToClassModal({
 
     setBusy(true);
     try {
-      const cached = getCachedVocabulary();
+      // AWAIT the corpus. With `cached?.ALL_WORDS ?? []` a cold cache made
+      // every curriculum word fall through to the Custom branch of
+      // libraryWordToAssignmentWord, so the row persisted `word_ids: []`
+      // and a `words` JSONB of synthetic-id Custom entries — the gradebook
+      // and analytics RPCs, which join on word_ids, then saw an empty
+      // assignment.
+      const cached = getCachedVocabulary() ?? (await ensureVocabulary());
       const allWordsById = new Map<number, Word>();
-      for (const w of cached?.ALL_WORDS ?? []) allWordsById.set(w.id, w);
+      for (const w of cached.ALL_WORDS) allWordsById.set(w.id, w);
 
       const rawAssignmentWords = words.map((w) => libraryWordToAssignmentWord(w, allWordsById));
       // Strip the un-selected translation so students only see the one
@@ -137,6 +143,15 @@ export default function AssignSetToClassModal({
       const wordIds = assignmentWords
         .filter((w) => w.level !== "Custom")
         .map((w) => w.id);
+
+      // Refuse to create an unplayable assignment. `words` can be [] both
+      // when the set is genuinely empty and when listSetWords() failed
+      // (the catch above collapses the error into []), and a row with no
+      // words sends students straight to the generic fallback sample.
+      if (assignmentWords.length === 0) {
+        showToast(t.errorCreate, "error");
+        return;
+      }
 
       const { error } = await supabase
         .from("assignments")

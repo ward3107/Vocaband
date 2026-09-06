@@ -589,13 +589,40 @@ export default function QuickPlayStudentView({
                         // onto the generic fallback words instead of the
                         // teacher's. Rebuild from the live session's words.
                         if (quickPlayActiveSession?.words?.length) {
-                          setAssignmentWords(
-                            shuffle(quickPlayActiveSession.words).map(w => ({
-                              ...w,
-                              hebrew: w.hebrew || "",
-                              arabic: w.arabic || "",
-                            })),
-                          );
+                          const resumeWords = shuffle(quickPlayActiveSession.words).map(w => ({
+                            ...w,
+                            hebrew: w.hebrew || "",
+                            arabic: w.arabic || "",
+                          }));
+                          setAssignmentWords(resumeWords);
+                          // Re-align the sentences to THIS shuffle. Re-seeding
+                          // the words without re-seeding `sentences` left
+                          // activeAssignment.sentences in the order of the
+                          // first shuffle, so for the rest of the session Fill
+                          // in the Blank showed a sentence belonging to a
+                          // different word. Same alignment the initial join
+                          // does: aiSentences are stored in the session's
+                          // ORIGINAL word order, so map each shuffled word
+                          // back to its original index.
+                          const ai = quickPlayActiveSession.aiSentences;
+                          const haveAi = Array.isArray(ai)
+                            && ai.length === quickPlayActiveSession.words.length;
+                          setActiveAssignment({
+                            id: "quickplay-" + quickPlayActiveSession.id,
+                            classId: "",
+                            wordIds: resumeWords.map(w => w.id),
+                            words: resumeWords,
+                            title: "Quick Play",
+                            allowedModes: quickPlayActiveSession.allowedModes || ALL_GAME_MODES,
+                            sentences: haveAi
+                              ? resumeWords.map(w => {
+                                  const i = quickPlayActiveSession.words.findIndex(o => o.id === w.id);
+                                  return i >= 0 ? ai![i] : `I like the word ${w.english}.`;
+                                })
+                              : generateSentencesForAssignment(resumeWords, 2),
+                            sentenceDifficulty: 2,
+                            subject: quickPlayActiveSession.subject ?? 'english',
+                          });
                         }
                         setShowModeSelection(true);
                         setView("game");

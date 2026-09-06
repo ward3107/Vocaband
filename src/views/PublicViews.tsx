@@ -274,7 +274,15 @@ function LandingPageWithScrollRestore({
         onNavigate={onNavigate}
         onGetStarted={onStudentLogin}
         onTeacherLogin={onTeacherOAuth}
-        onTryDemo={() => setShowDemo(true)}
+        // The demo is a taster for people who do not have an account. A
+        // signed-in user reaching it (via Privacy Settings -> policy page
+        // -> the nav's Home link, or any view-guard recovery, which route
+        // to public-landing) could mount a full-screen overlay on top of
+        // their live session and play a second, fake game with fake XP —
+        // exactly the "which door am I in?" confusion the demo is meant to
+        // avoid. Every consumer treats onTryDemo as optional and hides the
+        // CTA when it is absent.
+        onTryDemo={isAuthenticated ? undefined : () => setShowDemo(true)}
         isAuthenticated={isAuthenticated}
       />
       {showDemo && (

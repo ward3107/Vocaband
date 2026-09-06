@@ -104,3 +104,19 @@ export function useVocabularyLazyWithDefaults(shouldLoad: boolean) {
 export function getCachedVocabulary(): VocabularyModule | null {
   return cached;
 }
+
+/**
+ * Awaitable accessor for paths that must NOT proceed on a cold cache.
+ *
+ * `getCachedVocabulary()` returning null is fine for read-only render
+ * paths (they re-render when the chunk lands), but it is NOT fine for
+ * a WRITE path: `getCachedVocabulary()?.ALL_WORDS ?? []` silently
+ * degrades to an empty corpus, and an assignment saved through that
+ * branch persists an empty/partial `words` JSONB — which the student
+ * side then cannot distinguish from a legitimately custom-word-only
+ * assignment.  Any handler that persists resolved words must await
+ * this instead of accepting the `?? []` default.
+ */
+export function ensureVocabulary(): Promise<VocabularyModule> {
+  return loadVocabulary();
+}

@@ -328,33 +328,78 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                 </div>
               </div>
 
-              {/* Sign-in column — staff (teachers + principals, role-routed
-                  on login) plus the live-demo secondary action. */}
+              {/* Sign-in column — the app's TWO real doors, presented as
+                  peers.
+                  Vocaband has exactly two ways in: staff (teachers +
+                  principals, role-routed on login) and students (class
+                  code). The student lane used to be a low-contrast
+                  underlined text link BELOW the demo button — the weakest
+                  affordance on the page, for the highest-volume users. On a
+                  phone that put the only student entry roughly two
+                  viewports down, and gave the demo more visual weight than
+                  a real login, which is how visitors ended up walking
+                  through the demo door expecting the app. Both gates now
+                  carry equal weight and the demo sits below both as the
+                  clearly tertiary option. */}
               <div className={`w-full max-w-md mx-auto lg:mx-0 lg:justify-self-end ${isRTL ? "text-right" : "text-left"}`}>
                 {/* Staff lane */}
-                <div className="rounded-[1.75rem] p-6 sm:p-8 bg-white/10 backdrop-blur-md border border-white/15 hover:border-violet-300/40 transition-colors flex flex-col">
-                  <div className="w-14 h-14 lg:w-16 lg:h-16 rounded-2xl lg:rounded-3xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/40 mb-4">
-                    <GraduationCap size={32} strokeWidth={2.5} className="text-white w-8 h-8 lg:w-9 lg:h-9" aria-hidden="true" />
+                <div className="rounded-[1.75rem] p-6 sm:p-7 bg-white/10 backdrop-blur-md border border-white/15 hover:border-violet-300/40 transition-colors flex flex-col">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/40 mb-4">
+                    <GraduationCap size={32} strokeWidth={2.5} className="text-white w-8 h-8" aria-hidden="true" />
                   </div>
-                  <h2 className="text-2xl lg:text-3xl font-black text-white mb-2">{t.heroV2.staffTitle}</h2>
-                  <p className="text-sm lg:text-base text-white/70 mb-5 flex-1">{t.heroV2.staffDesc}</p>
+                  <h2 className="text-2xl font-black text-white mb-2">{t.heroV2.staffTitle}</h2>
+                  <p className="text-sm text-white/70 mb-5 flex-1">{t.heroV2.staffDesc}</p>
                   <button
                     type="button"
+                    // Sentinel for the sticky sign-in below: it slides in once
+                    // this button scrolls out of view. The ref was declared and
+                    // observed but never attached to any element, so
+                    // heroSignInRef.current was always null, the observer
+                    // returned early, heroSignInVisible stayed true forever and
+                    // the sticky CTA was permanently opacity:0 /
+                    // pointerEvents:none — it has never appeared for anyone.
+                    ref={heroSignInRef}
                     onClick={onTeacherLogin}
                     style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                     aria-label={`${t.navSignIn} — ${t.heroV2.staffTitle}`}
                     className="w-full px-6 py-4 rounded-2xl text-lg sm:text-xl font-black text-white flex items-center justify-center gap-3 bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 ring-4 ring-violet-300/30 hover:ring-violet-300/50 shadow-[0_10px_0_0_#581c87,0_22px_44px_rgba(168,85,247,0.45)] active:translate-y-1 active:shadow-[0_4px_0_0_#581c87] transition-all"
                   >
-                    <LogIn size={24} strokeWidth={2.5} />
+                    {/* Mirror the arrow in RTL so it points toward the
+                        reading direction, matching PublicNav. */}
+                    <LogIn size={24} strokeWidth={2.5} className={isRTL ? "-scale-x-100" : ""} />
                     {t.navSignIn}
                   </button>
                   <p className="text-center text-xs sm:text-sm text-white/55 mt-3">{t.heroV2.staffNote}</p>
                 </div>
 
-                {/* Live demo — clear secondary action (only when available). */}
+                {/* Student lane — structurally identical to the staff card
+                    so the two doors read as one choice. Amber/orange keeps
+                    them instantly distinguishable at a glance, and the
+                    Backpack icon reads as "for students" without colliding
+                    with the staff card's GraduationCap. */}
+                <div className="mt-4 rounded-[1.75rem] p-6 sm:p-7 bg-white/10 backdrop-blur-md border border-white/15 hover:border-amber-300/40 transition-colors flex flex-col">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 flex items-center justify-center shadow-lg shadow-amber-500/40 mb-4">
+                    <Backpack size={32} strokeWidth={2.5} className="text-white w-8 h-8" aria-hidden="true" />
+                  </div>
+                  <h2 className="text-2xl font-black text-white mb-2">{t.navStudents}</h2>
+                  <p className="text-sm text-white/70 mb-5 flex-1">{t.heroV2.studentDesc}</p>
+                  <button
+                    type="button"
+                    onClick={onGetStarted}
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                    aria-label={`${t.heroV2.studentCta} — ${t.heroV2.studentNote}`}
+                    className="w-full px-6 py-4 rounded-2xl text-lg sm:text-xl font-black text-amber-950 flex items-center justify-center gap-3 bg-gradient-to-br from-amber-300 via-amber-400 to-orange-400 ring-4 ring-amber-200/40 hover:ring-amber-200/60 shadow-[0_10px_0_0_#9a3412,0_22px_44px_rgba(251,146,60,0.45)] active:translate-y-1 active:shadow-[0_4px_0_0_#9a3412] transition-all"
+                  >
+                    <LogIn size={24} strokeWidth={2.5} className={isRTL ? "-scale-x-100" : ""} />
+                    {t.heroV2.studentCta}
+                  </button>
+                  <p className="text-center text-xs sm:text-sm text-white/55 mt-3">{t.heroV2.studentNote}</p>
+                </div>
+
+                {/* Live demo — tertiary. A taster, not a third door. */}
                 {onTryDemo && (
                   <>
-                    <div className="mt-4 flex items-center justify-center gap-3" aria-hidden="true">
+                    <div className="mt-5 flex items-center justify-center gap-3" aria-hidden="true">
                       <span className="h-px w-12 bg-white/20" />
                       <span className="text-xs uppercase tracking-widest text-white/40 font-bold">{t.heroV2.or}</span>
                       <span className="h-px w-12 bg-white/20" />
@@ -363,36 +408,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
                       type="button"
                       onClick={onTryDemo}
                       style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                      className="mt-3 w-full flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-2xl text-base font-bold text-white bg-white/10 border-2 border-white/30 hover:bg-white/15 hover:border-white/50 transition-colors backdrop-blur-sm"
+                      className="mt-3 w-full flex items-center justify-center gap-2.5 px-7 py-3 rounded-2xl text-sm font-bold text-white/75 hover:text-white bg-white/5 border border-white/20 hover:bg-white/10 hover:border-white/35 transition-colors backdrop-blur-sm"
                     >
-                      <PlayCircle size={22} strokeWidth={2.5} />
+                      <PlayCircle size={18} strokeWidth={2.5} />
                       {t.heroV2.demoCta}
-                      <span className="text-xs font-semibold text-white/60">{t.heroV2.demoNote}</span>
+                      <span className="text-xs font-semibold text-white/50">{t.heroV2.demoNote}</span>
                     </button>
                   </>
                 )}
-
-                {/* Student escape hatch — students on shared school
-                    computers or family desktops have no phone to run the
-                    QR-join flow. Low-contrast link (not a competing CTA)
-                    lets them find the class-code screen without pushing
-                    against the teacher-first hero pitch. */}
-                <button
-                  type="button"
-                  onClick={onGetStarted}
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                  aria-label={`${t.heroV2.studentCta} — ${t.heroV2.studentNote}`}
-                  className="mt-4 w-full flex items-center justify-center gap-2 text-center text-sm text-white/70 hover:text-white/95 transition-colors"
-                >
-                  {/* Backpack icon: instantly reads as "for students" and doesn't
-                      collide with the GraduationCap on the staff card above. */}
-                  <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gradient-to-br from-amber-400/30 to-orange-500/30 border border-amber-300/40">
-                    <Backpack size={15} strokeWidth={2.5} className="text-amber-100" aria-hidden="true" />
-                  </span>
-                  <span className="underline underline-offset-4 decoration-white/30 hover:decoration-white/70">
-                    {t.heroV2.studentDesc} <span className="font-bold">{t.heroV2.studentCta} {isRTL ? "←" : "→"}</span>
-                  </span>
-                </button>
               </div>
             </div>
 
