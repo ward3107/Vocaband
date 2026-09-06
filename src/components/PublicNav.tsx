@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Menu, X, LogIn, GraduationCap, PlayCircle } from "lucide-react";
+import { Menu, X, LogIn, GraduationCap, PlayCircle, Backpack } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { landingPageT } from "../locales/student/landing-page";
 import NavLanguageToggle from "./NavLanguageToggle";
@@ -41,6 +41,12 @@ interface PublicNavProps {
 const PublicNav: React.FC<PublicNavProps> = ({
   currentPage,
   onNavigate,
+  // The student gate. This prop was declared and passed by every host but
+  // never destructured, so the student half of the login had no nav entry
+  // at all — on mobile, where the desktop CTAs are hidden, that left a
+  // student with no way to reach the class-code screen except a
+  // low-contrast text link at the bottom of the hero.
+  onGetStarted,
   onTeacherLogin,
   onTryDemo,
   onOpenSchoolInquiry,
@@ -195,6 +201,19 @@ const PublicNav: React.FC<PublicNavProps> = ({
                 <PlayCircle size={16} strokeWidth={2.5} /> {t.navDemo}
               </button>
             )}
+            {/* Student gate — sits next to the staff CTA so the two real
+                doors are adjacent and the demo reads as the odd one out. */}
+            {onGetStarted && (
+              <button
+                onClick={onGetStarted}
+                type="button"
+                className="hidden md:inline-flex items-center gap-1.5 px-3 py-2.5 text-sm font-bold text-stone-700 hover:text-primary rounded-lg hover:bg-primary/5 transition-colors"
+                style={{ touchAction: 'manipulation' }}
+                aria-label={`${t.heroV2.studentCta} — ${t.heroV2.studentNote}`}
+              >
+                <Backpack size={16} strokeWidth={2.5} /> {t.heroV2.studentCta}
+              </button>
+            )}
             {/* Desktop header CTA — dominant Teacher Sign In.  Same
                 Google OAuth flow as the hero; the nav pill carries the
                 affordance on sub-pages and when the hero scrolls
@@ -211,6 +230,23 @@ const PublicNav: React.FC<PublicNavProps> = ({
                 <LogIn size={16} strokeWidth={2.5} className={isRTL ? "-scale-x-100" : ""} />
               </button>
             )}
+
+            {/* Mobile login entry — the only always-visible sign-in
+                affordance on a phone.  Both desktop CTAs above are
+                `hidden md:*`, so before this the entire login surface on
+                mobile was an unlabelled hamburger icon: users reported
+                "I can hardly see the log in".  This opens the drawer,
+                whose footer presents the teacher and student gates as an
+                explicit choice rather than assuming a role. */}
+              <button
+                onClick={() => setMobileOpen(true)}
+                className="md:hidden inline-flex items-center gap-1.5 px-3 py-2 text-xs font-black text-white bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600 rounded-lg shadow-md shadow-violet-500/30 ring-1 ring-violet-300/40"
+                type="button"
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+              >
+                {t.navSignIn}
+                <LogIn size={14} strokeWidth={2.5} className={isRTL ? "-scale-x-100" : ""} />
+              </button>
 
             {/* Mobile hamburger */}
             <button
@@ -301,10 +337,14 @@ const PublicNav: React.FC<PublicNavProps> = ({
               )}
             </nav>
 
+            {/* Login footer — the drawer is the mobile role chooser.
+                Vocaband has TWO doors (staff sign-in and student class
+                code) and they must be presented as a visible choice: a
+                teacher-only CTA here is what pushed students toward the
+                demo door, which then looked like the app but served its
+                own sample words. Demo is deliberately demoted to a
+                tertiary link below both real gates for the same reason. */}
             <div className="border-t border-stone-200 p-4">
-              {/* Mobile dominant CTA — Teacher Sign In.  Single,
-                  oversized button so it's the obvious tap target when
-                  the drawer is open. */}
               {onTeacherLogin && (
                 <button
                   onClick={() => {
@@ -326,7 +366,33 @@ const PublicNav: React.FC<PublicNavProps> = ({
                   <LogIn size={18} strokeWidth={2.5} className="opacity-90" />
                 </button>
               )}
-              {/* Mobile demo — secondary outline button under sign-in. */}
+
+              {/* Student gate — peer of the staff gate, not an afterthought.
+                  Students are the highest-volume users and previously had
+                  no entry point in this drawer at all. */}
+              {onGetStarted && (
+                <button
+                  onClick={() => {
+                    setMobileOpen(false);
+                    onGetStarted();
+                  }}
+                  className="w-full mt-3 inline-flex items-center justify-center gap-3 px-4 py-4 text-lg font-black text-amber-950 bg-gradient-to-r from-amber-300 via-amber-400 to-orange-400 rounded-xl shadow-lg shadow-amber-500/30 ring-2 ring-amber-200/60"
+                  type="button"
+                  style={{ touchAction: 'manipulation' }}
+                  aria-label={`${t.heroV2.studentCta} — ${t.heroV2.studentNote}`}
+                >
+                  <Backpack size={22} strokeWidth={2.5} />
+                  <div className="flex flex-col items-start leading-tight">
+                    <span>{t.heroV2.studentCta}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-900/80">
+                      {t.heroV2.studentNote}
+                    </span>
+                  </div>
+                  <LogIn size={18} strokeWidth={2.5} className="opacity-80" />
+                </button>
+              )}
+
+              {/* Demo — tertiary. A taster, not a third login. */}
               {onTryDemo && (
                 <button
                   onClick={() => {
@@ -334,10 +400,11 @@ const PublicNav: React.FC<PublicNavProps> = ({
                     onTryDemo();
                   }}
                   type="button"
-                  className="w-full mt-3 inline-flex items-center justify-center gap-2 px-4 py-3 text-base font-bold text-stone-700 border border-stone-300 rounded-xl hover:bg-stone-50"
+                  className="w-full mt-3 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-stone-500 hover:text-stone-700 rounded-lg"
                   style={{ touchAction: 'manipulation' }}
                 >
-                  <PlayCircle size={18} strokeWidth={2.5} /> {t.navDemo}
+                  <PlayCircle size={16} strokeWidth={2.5} /> {t.navDemo}
+                  <span className="text-xs font-semibold text-stone-400">{t.heroV2.demoNote}</span>
                 </button>
               )}
             </div>

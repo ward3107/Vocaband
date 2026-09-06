@@ -18,6 +18,7 @@ import { useTeacherGuidesSync } from "./useTeacherGuidesSync";
 import { useVocaRouting } from "./useVocaRouting";
 import { useApplyTeacherTheme } from "./useApplyTeacherTheme";
 import { useApplyStudentTheme } from "./useApplyStudentTheme";
+import { trackAutoError } from "../errorTracking";
 import { useAuthRestore } from "./useAuthRestore";
 import { useDeepLinkConsumers } from "./useDeepLinkConsumers";
 import { useAssignmentViewDeepLink } from "./useAssignmentViewDeepLink";
@@ -861,12 +862,25 @@ export function useAppController(initialView?: View): AppViewRouterProps {
   // Without this, a returning student is silently dropped onto 12 generic
   // Set-2 words the teacher never assigned, which reads as "demo words"
   // instead of the test the teacher handed out (student-qr-scan bug).
+  //
+  // The recovery chain deliberately ends with the assignment's `wordIds`
+  // hydrated against ALL_WORDS. `activeAssignment.words` alone is not
+  // enough: an assignment row whose `words` JSONB was persisted empty or
+  // partial (see resolveAssignmentWords + the save-path fix) still carries
+  // the correct curriculum ids in `wordIds`, and hydrating those recovers
+  // the teacher's real list instead of dropping to the generic sample.
+  const assignmentIdWords =
+    activeAssignment?.wordIds && activeAssignment.wordIds.length > 0 && ALL_WORDS.length > 0
+      ? ALL_WORDS.filter(w => activeAssignment.wordIds.includes(w.id))
+      : [];
   const recoveredSessionWords =
     quickPlayActiveSession?.words && quickPlayActiveSession.words.length > 0
       ? quickPlayActiveSession.words
       : activeAssignment?.words && activeAssignment.words.length > 0
         ? activeAssignment.words
-        : null;
+        : assignmentIdWords.length > 0
+          ? assignmentIdWords
+          : null;
   const gameWords =
     view === "game"
       ? assignmentWords.length > 0
@@ -874,6 +888,30 @@ export function useAppController(initialView?: View): AppViewRouterProps {
         : recoveredSessionWords ?? GAME_FALLBACK_WORDS
       : GAME_FALLBACK_WORDS;
   const currentWord = gameWords[currentIndex];
+
+  // Loud signal when a student is actually playing the generic sample
+  // while an assignment is active. This is always a bug — the student is
+  // answering words their teacher never assigned, and the resulting score
+  // is filed against that assignment. It used to fail silently, which is
+  // why it went undiagnosed; route it to error tracking so a recurrence
+  // shows up instead of being reported as "sometimes they see demo words".
+  const servedFallbackForAssignment =
+    view === "game" &&
+    gameWords === GAME_FALLBACK_WORDS &&
+    !!activeAssignment;
+  useEffect(() => {
+    if (!servedFallbackForAssignment) return;
+    trackAutoError(
+      new Error("Game served GAME_FALLBACK_WORDS while an assignment was active"),
+      "assignment-words-fallback",
+      {
+        assignmentId: activeAssignment?.id,
+        wordIdCount: activeAssignment?.wordIds?.length ?? 0,
+        embeddedWordCount: activeAssignment?.words?.length ?? 0,
+        vocabularyLoaded: ALL_WORDS.length > 0,
+      },
+    );
+  }, [servedFallbackForAssignment, activeAssignment, ALL_WORDS.length]);
 
   // Bundle of small side-effects (userRef sync, Sentry pipe, feedback
   // cleanup, legacy view redirect, round-finish audio, welcome popup
