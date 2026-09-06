@@ -271,18 +271,31 @@ export function useGameFinish(params: UseGameFinishParams) {
     // when the assignment names words AND not one played word belongs to
     // it. A partial overlap (a review subset, a custom-word assignment
     // whose negative ids are absent from wordIds) is left alone.
-    const assignmentWordIds = activeAssignment.wordIds ?? [];
+    // Majority test, not `.some()`. The fallback list is
+    // SET_2_WORDS.slice(0, 12), so an assignment that happens to include
+    // any ONE of those first twelve Set-2 words would satisfy a
+    // some()-overlap check and slip a fully-substituted round past the
+    // guard. Requiring most of the round to belong to the assignment
+    // still leaves a legitimate review subset or a custom-word list
+    // (negative ids, absent from wordIds) untouched — those overlap
+    // heavily or carry no wordIds at all.
+    const assignmentWordIds = new Set(activeAssignment.wordIds ?? []);
+    const belonging = assignmentWordIds.size > 0
+      ? gameWords.filter(w => assignmentWordIds.has(w.id)).length
+      : 0;
+    const hasCustomWords = gameWords.some(w => w.id < 0);
     const playedNoAssignedWords =
-      assignmentWordIds.length > 0 &&
+      assignmentWordIds.size > 0 &&
       gameWords.length > 0 &&
-      !gameWords.some(w => assignmentWordIds.includes(w.id));
+      !hasCustomWords &&
+      belonging * 2 <= gameWords.length;
     if (playedNoAssignedWords) {
       trackAutoError(
         new Error("Refused to save a round played on words outside the assignment"),
         "assignment-words-mismatch",
         {
           assignmentId: activeAssignment.id,
-          assignmentWordCount: assignmentWordIds.length,
+          assignmentWordCount: assignmentWordIds.size,
           playedWordCount: gameWords.length,
           mode: gameMode,
         },

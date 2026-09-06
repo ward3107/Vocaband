@@ -853,7 +853,17 @@ export function useAppController(initialView?: View): AppViewRouterProps {
   // to the ENTIRE Set 2 — 809 words — which dropped the student into an
   // "QUESTION 1 OF 809" marathon. Cap the fallback so it can never become a
   // giant game; the real assignment replaces it the instant its words load.
-  const GAME_FALLBACK_WORDS = SET_2_WORDS.slice(0, 12);
+  //
+  // MEMOIZED — identity matters, not just contents. `gameWords` (below)
+  // sits in the dependency array of useGameModeSetup's Matching / Memory
+  // Flip setup effect, which calls setMatchingPairs, and of
+  // useGameRoundOptions' option-shuffling memos. A fresh array identity on
+  // every render therefore re-runs a state-setting effect every render
+  // (an unbounded loop) and reshuffles multiple-choice answers and the
+  // True/False statement under the student's finger between taps.
+  // `.slice()` allocates unconditionally, so this was unstable on the
+  // fallback branch before it was ever a recovery branch.
+  const GAME_FALLBACK_WORDS = useMemo(() => SET_2_WORDS.slice(0, 12), [SET_2_WORDS]);
   // The teacher's REAL word list also lives on the active Quick Play session
   // and the active assignment. If `assignmentWords` is momentarily empty when
   // the game view mounts — a load race, or a resume / "Continue playing" path
@@ -869,24 +879,46 @@ export function useAppController(initialView?: View): AppViewRouterProps {
   // partial (see resolveAssignmentWords + the save-path fix) still carries
   // the correct curriculum ids in `wordIds`, and hydrating those recovers
   // the teacher's real list instead of dropping to the generic sample.
-  const assignmentIdWords =
-    activeAssignment?.wordIds && activeAssignment.wordIds.length > 0 && ALL_WORDS.length > 0
-      ? ALL_WORDS.filter(w => activeAssignment.wordIds.includes(w.id))
-      : [];
-  const recoveredSessionWords =
-    quickPlayActiveSession?.words && quickPlayActiveSession.words.length > 0
-      ? quickPlayActiveSession.words
-      : activeAssignment?.words && activeAssignment.words.length > 0
-        ? activeAssignment.words
-        : assignmentIdWords.length > 0
-          ? assignmentIdWords
-          : null;
-  const gameWords =
-    view === "game"
-      ? assignmentWords.length > 0
-        ? assignmentWords
-        : recoveredSessionWords ?? GAME_FALLBACK_WORDS
-      : GAME_FALLBACK_WORDS;
+  // Set membership, not Array.includes: this ran 6482 × wordIds
+  // comparisons on EVERY render of the orchestrator — including every
+  // keystroke in Spelling Bee — on the low-end Android phones this app
+  // targets.
+  const assignmentIdWords = useMemo(() => {
+    const ids = activeAssignment?.wordIds;
+    if (!ids || ids.length === 0 || ALL_WORDS.length === 0) return [];
+    const wanted = new Set(ids);
+    return ALL_WORDS.filter(w => wanted.has(w.id));
+  }, [activeAssignment?.wordIds, ALL_WORDS]);
+
+  const recoveredSessionWords = useMemo(() => {
+    const qp = quickPlayActiveSession?.words;
+    if (qp && qp.length > 0) return qp;
+    const embedded = activeAssignment?.words ?? [];
+    // A PARTIAL embedded list is the exact damage the cold-cache save bug
+    // produced: 3 of the teacher's 12 words persisted, the rest recoverable
+    // only from wordIds. Preferring `embedded` wholesale would serve the
+    // short list and contradict resolveAssignmentWords, which unions both.
+    // Custom words (negative ids) live only in `embedded` and never appear
+    // in wordIds, so the union is what preserves the teacher's full list.
+    if (embedded.length > 0) {
+      if (assignmentIdWords.length === 0) return embedded;
+      const have = new Set(embedded.map(w => w.id));
+      const missing = assignmentIdWords.filter(w => !have.has(w.id));
+      return missing.length > 0 ? [...embedded, ...missing] : embedded;
+    }
+    if (assignmentIdWords.length > 0) return assignmentIdWords;
+    return null;
+  }, [quickPlayActiveSession?.words, activeAssignment?.words, assignmentIdWords]);
+
+  const gameWords = useMemo(
+    () =>
+      view === "game"
+        ? assignmentWords.length > 0
+          ? assignmentWords
+          : recoveredSessionWords ?? GAME_FALLBACK_WORDS
+        : GAME_FALLBACK_WORDS,
+    [view, assignmentWords, recoveredSessionWords, GAME_FALLBACK_WORDS],
+  );
   const currentWord = gameWords[currentIndex];
 
   // Loud signal when a student is actually playing the generic sample
