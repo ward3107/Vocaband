@@ -124,15 +124,30 @@ const PublicNav: React.FC<PublicNavProps> = ({
       >
         <div className="max-w-7xl mx-auto flex justify-between items-center px-4 md:px-6 py-2 gap-4">
           {/* Brand — always tappable, returns home from any sub-page. */}
+          {/* min-w-0 (not flex-shrink-0): in a justify-between row where
+              BOTH children refuse to shrink, a narrow viewport pushes the
+              trailing controls off-screen instead of squeezing anything.
+              That clipped the hamburger entirely at 360px in every
+              language, and at 390px in Arabic. Letting the wordmark
+              truncate keeps every control reachable at any width. */}
           <button
             onClick={() => onNavigate("home")}
-            className="flex items-center gap-2 flex-shrink-0"
+            className="flex items-center gap-2 min-w-0"
             type="button"
           >
-            <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg signature-gradient flex items-center justify-center shadow-md shadow-primary/20">
+            {/* flex-shrink-0 keeps the mark square — without it the squeeze
+                that lets the row fit deforms the logo into an oval. */}
+            <div className="w-7 h-7 md:w-8 md:h-8 flex-shrink-0 rounded-lg signature-gradient flex items-center justify-center shadow-md shadow-primary/20">
               <span className="text-white text-base md:text-lg font-black font-headline italic">V</span>
             </div>
-            <span className="text-lg md:text-xl font-black text-primary font-headline tracking-tight">
+            {/* Threshold measured, not guessed: with the login pill present
+                the wordmark only renders in full from 400px (en/he) — Arabic
+                needs 430px because "تسجيل الدخول" is a wider label. Below
+                that it is dropped rather than shown truncated to "V…" /
+                "d..", which reads as a rendering fault; the mark alone still
+                identifies the brand. `truncate` stays as the safety net for
+                Arabic between 400 and 430px. */}
+            <span className="hidden min-[400px]:inline text-lg md:text-xl font-black text-primary font-headline tracking-tight truncate">
               Vocaband
             </span>
             <span className="hidden lg:inline-block px-2 py-0.5 bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest rounded-full">
@@ -188,7 +203,7 @@ const PublicNav: React.FC<PublicNavProps> = ({
               control (the previous gap-2 + the Globe's hover-scale
               animation made the language popover open when the user
               meant the hamburger). */}
-          <div className="flex items-center gap-3 md:gap-2 flex-shrink-0 me-12 md:me-0">
+          <div className="flex items-center gap-2 md:gap-2 flex-shrink-0">
             <NavLanguageToggle />
             {/* Demo — quiet, always-visible "try it without signing up". */}
             {onTryDemo && (
@@ -240,7 +255,7 @@ const PublicNav: React.FC<PublicNavProps> = ({
                 explicit choice rather than assuming a role. */}
               <button
                 onClick={() => setMobileOpen(true)}
-                className="md:hidden inline-flex items-center gap-1.5 px-3 py-2 text-xs font-black text-white bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600 rounded-lg shadow-md shadow-violet-500/30 ring-1 ring-violet-300/40"
+                className="md:hidden inline-flex items-center gap-1.5 px-3 min-h-[44px] text-xs font-black text-white bg-gradient-to-r from-indigo-500 via-violet-600 to-fuchsia-600 rounded-lg shadow-md shadow-violet-500/30 ring-1 ring-violet-300/40"
                 type="button"
                 style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
               >
@@ -253,7 +268,7 @@ const PublicNav: React.FC<PublicNavProps> = ({
               onClick={() => setMobileOpen(true)}
               aria-label={t.navMenuOpen}
               aria-expanded={mobileOpen}
-              className="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg text-stone-700 hover:bg-primary/5"
+              className="md:hidden inline-flex items-center justify-center w-11 h-11 rounded-lg text-stone-700 hover:bg-primary/5"
               type="button"
             >
               <Menu size={22} />
