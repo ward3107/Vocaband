@@ -11,7 +11,6 @@
 import { useMemo, useState, type FC } from "react";
 import qrcode from "qrcode-generator";
 import { Check, Copy, Download, FileText, MessageCircle, Share2 } from "lucide-react";
-import { jsPDF } from "jspdf";
 import type { shareWorksheetT } from "../locales/teacher/share-worksheet";
 
 type ShareStrings = (typeof shareWorksheetT)["en"];
@@ -122,9 +121,13 @@ export const WorksheetShareCard: FC<Props> = ({ slug, topicName, t }) => {
     triggerDownload(dataUrl, `${safeFilename(topicName)}-qr.png`);
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     const dataUrl = qrMatrixToPngDataUrl(qr);
     if (!dataUrl) return;
+    // jsPDF (~90 kB gz) is only needed the moment a teacher taps Download
+    // PDF, which most never do — load it on demand so it stays out of this
+    // dialog's chunk instead of shipping with every worksheet share.
+    const { jsPDF } = await import("jspdf");
     const pdf = new jsPDF({ unit: "mm", format: "a4" });
     const pageWidth = pdf.internal.pageSize.getWidth();
     pdf.setFont("helvetica", "bold");

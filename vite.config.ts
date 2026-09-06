@@ -216,6 +216,15 @@ export default defineConfig(() => {
   const isTest = process.env.PLAYWRIGHT_TEST === 'true';
   const analyze = process.env.ANALYZE === 'true';
   return {
+    // Strip developer console noise from the MINIFIED production build:
+    // esbuild treats these as side-effect-free and drops them during
+    // minification, so `vite build` ships clean while `vite` (dev, no
+    // minify) keeps every log. console.warn / console.error are preserved
+    // on purpose. This also removes the prod-console leaks (OCR text,
+    // sessionCode, clientId) that were logged from a few hot paths.
+    esbuild: {
+      pure: ['console.log', 'console.info', 'console.debug'],
+    },
     plugins: [
       react(),
       vocabandHtmlPerf(),

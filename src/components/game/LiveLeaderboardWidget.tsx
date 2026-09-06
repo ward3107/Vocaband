@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import type { LeaderboardEntry } from "../../core/types";
 import type { AppUser } from "../../core/supabase";
 import { useLanguage } from "../../hooks/useLanguage";

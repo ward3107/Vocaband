@@ -700,7 +700,7 @@ export default function QuickPlayStudentView({
                         onClick={() => { setSelectedLang(lang); setAppLanguage(lang); }}
                         style={{
                           touchAction: "manipulation",
-                          WebkitTapHighlightColor: "transparent" as any,
+                          WebkitTapHighlightColor: "transparent",
                           background: active
                             ? "var(--vb-accent)"
                             : "var(--ios-fill-tertiary)",

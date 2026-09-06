@@ -323,8 +323,12 @@ export default function AnalyticsView({
     return analytics;
   }, [allScores, rpcRows, wordIdSubjectMap]);
 
-  // Get analytics for selected class (or "all")
-  const currentAnalytics = selectedClass
+  // Get analytics for selected class (or "all"). Memoized: the "all
+  // classes" branch (selectedClass === null, the default view) re-runs a
+  // full aggregate over every class — up to ~2000 score rows — so without
+  // this it re-computed on every unrelated re-render (toast dismiss, word
+  // selection, etc.). Now it only recomputes when its real inputs change.
+  const currentAnalytics = useMemo(() => selectedClass
     ? classAnalytics.get(selectedClass)
     : (() => {
         // Aggregate for "all classes"
@@ -414,7 +418,7 @@ export default function AnalyticsView({
           modeCounts: allModeCounts,
           strugglingStudents,
         };
-      })();
+      })(), [selectedClass, classAnalytics]);
 
   const selectedClassData = classes.find(c => c.code === selectedClass);
 

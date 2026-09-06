@@ -234,7 +234,7 @@ export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPa
           onClick={onCancel}
           aria-label={camLabels.close}
           className="w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white"
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
         >
           <X className="w-6 h-6" />
         </button>
@@ -247,7 +247,7 @@ export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPa
           aria-label={camLabels.switch}
           disabled={!ready}
           className="w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white disabled:opacity-40"
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
         >
           <RefreshCw className="w-5 h-5" />
         </button>
@@ -287,7 +287,7 @@ export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPa
                   onUseGallery();  // then open the gallery picker
                 }}
                 className="w-full px-6 py-3 mb-3 rounded-lg bg-gradient-to-r from-rose-500 to-fuchsia-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform"
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               >
                 <ImageIcon className="w-5 h-5" />
                 {camLabels.pickGallery}
@@ -297,7 +297,7 @@ export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPa
               type="button"
               onClick={onCancel}
               className="px-6 py-3 rounded-lg bg-white/10 text-white font-bold text-sm border border-white/20"
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             >
               {camLabels.closeBtn}
             </button>
@@ -315,7 +315,7 @@ export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPa
               disabled={capturing}
               aria-label={camLabels.capture}
               className="relative w-20 h-20 rounded-full bg-[var(--vb-surface)] border-4 border-white/40 active:scale-95 transition-transform disabled:opacity-60"
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             >
               <span className="absolute inset-2 rounded-full bg-[var(--vb-surface)]" />
               <span className="absolute inset-0 flex items-center justify-center">

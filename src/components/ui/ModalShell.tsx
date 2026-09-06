@@ -15,7 +15,7 @@
  * The caller owns open/close state.  `footer` is optional — when
  * omitted (e.g. for view-only modals) the foot bar is hidden.
  */
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import { useEffect, useRef, type ReactNode, type ButtonHTMLAttributes } from "react";
 import { modalBackStack } from "../../utils/modalBackStack";

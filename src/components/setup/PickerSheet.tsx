@@ -107,7 +107,7 @@ const PickerSheet: React.FC<PickerSheetProps> = ({
                   onClick={onBack}
                   aria-label={backAria}
                   className="-ms-1.5 grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-white/20"
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 >
                   <ArrowLeft className={`h-5 w-5 ${isRTL ? 'rotate-180' : ''}`} />
                 </button>
@@ -130,7 +130,7 @@ const PickerSheet: React.FC<PickerSheetProps> = ({
                 onClick={onClose}
                 aria-label={closeAria}
                 className="-me-1.5 grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors hover:bg-white/20"
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
               >
                 <X className="h-5 w-5" />
               </button>

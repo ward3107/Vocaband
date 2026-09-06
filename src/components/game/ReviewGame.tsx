@@ -21,7 +21,7 @@
  * cleared it).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Volume2, X, ArrowRight, Brain, CheckCircle2, Loader2 } from 'lucide-react';
 import type { Word } from '../../data/vocabulary';
 import { supabase } from '../../core/supabase';

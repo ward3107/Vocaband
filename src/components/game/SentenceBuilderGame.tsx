@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { Volume2, X } from "lucide-react";
 import type { AssignmentData } from "../../core/supabase";
 import { useLanguage } from "../../hooks/useLanguage";

@@ -1,6 +1,6 @@
 import { useState, useMemo, Suspense } from "react";
 import { lazyWithRetry } from "../utils/lazyWithRetry";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { Trophy, AlertTriangle, CheckCircle2, Info, Home, Grid3X3, RefreshCw, Printer } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { THEMES } from "../constants/game";

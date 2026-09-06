@@ -35,7 +35,7 @@
  * disambiguation between obscure words.
  */
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { Volume2, X, SkipForward, Zap, Clock } from "lucide-react";
 import type { Word } from "../../data/vocabulary";
 import { useLanguage } from "../../hooks/useLanguage";
