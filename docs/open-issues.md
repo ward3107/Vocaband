@@ -429,3 +429,50 @@ These items are DONE. Don't rebuild them — surface and market them.
 ## Live backend reachability from teacher device
 
 **Status:** `/health` 404'd for user — they tried `/health` but real endpoint is `/api/health`. Needs re-test.
+
+---
+
+## VocaHebrew: assignments RPC does not return `subject`
+
+**Status:** Confirmed, deliberately NOT fixed (2026-09-06). Harmless while Hebrew is unused.
+
+**Cause:** `assignments.subject` was added by `20260507204614_voca_subject_flags.sql`, which
+landed AFTER the RPC's last definition in `20260507_fix_get_assignments_smallint_cast.sql`.
+The `RETURNS TABLE` was never updated, so the column has been missing from every student-side
+read since VocaHebrew Phase 2.
+
+**Effect:** The student dashboard loads assignments only through this RPC
+(`useTeacherData.loadAssignmentsForClass`), and `mapAssignment` (src/core/supabase.ts:611)
+resolves a missing column to the English default:
+
+    subject: row.subject === 'hebrew' ? 'hebrew' : 'english'
+
+So every student-side assignment maps as English. **English classes are unaffected** — the
+wrong default is accidentally correct for them. Hebrew assignments are the casualty: the
+student gets the English mode picker, and the English renderer is handed `HebrewLemma` rows
+whose fields it does not have, so every option and answer reads `undefined`. The teacher
+cannot reproduce it, because her own dashboard reads the table directly
+(`ASSIGNMENT_COLUMNS` includes `subject`) and renders correctly.
+
+`bootstrap_student_session` (20260517105307) aggregates this function's rows with
+`to_jsonb(a)`, so it inherits the omission and would be fixed by the same change.
+
+**Why it's not fixed:** the fix is a DROP + CREATE of `get_assignments_for_class` — the RPC
+every English student's dashboard depends on — and `supabase-migrations.yml` auto-applies on
+merge with no PR-time validation. Owner's decision (2026-09-06): not worth touching that
+function for a subject that isn't shipping. The written migration was removed from PR #1352;
+recover it from that PR's history if needed.
+
+**Fix when Hebrew ships:** add `subject TEXT` to the `RETURNS TABLE` and `a.subject::TEXT` to
+the SELECT, in a new migration that drops and recreates the function (a return-type change
+requires DROP). Keep the auth gates and the `::INTEGER` casts from 20260507 verbatim.
+
+**Related, same area, also unfixed:** `HEBREW_LEMMAS` ids start at 1 — the SAME id space as
+English `ALL_WORDS` (ids 1–9448). All 30 Hebrew ids collide with real English word ids. The
+docstring at `src/data/wordLookup.ts:5` claims the two spaces are "disjoint by convention",
+which is false. Nothing breaks today because `lookupDisplayWord` takes an explicit `subject`,
+but that makes the whole separation depend on `subject` propagating correctly everywhere —
+and the RPC above proves it doesn't. Before the corpus grows past its current 30 lemmas,
+consider offsetting Hebrew ids into their own band (e.g. 10_000_000+), matching the scheme
+already used for library words (`100_000_000 + hash`) and custom/OCR words (negative ids).
+That turns a silent wrong-language render into a visible "unknown word".
