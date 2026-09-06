@@ -10,6 +10,7 @@ import { useLanguage } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
 import { competitionsT } from "../../locales/competitions";
 import { resolveAssignmentWords } from "../../utils/resolveAssignmentWords";
+import { trackAutoError } from "../../errorTracking";
 import CompetitionLeaderboardModal from "../CompetitionLeaderboardModal";
 
 const DEFAULT_MODES = ALL_GAME_MODES;
@@ -121,6 +122,20 @@ export default function StudentAssignmentCard({
   const handleStart = async () => {
     if (isLocked) return;
     const filteredWords = await resolveAssignmentWords(assignment);
+    // Never open a round we cannot populate. An assignment with neither
+    // `words` nor resolvable `wordIds` is a broken row; launching it
+    // anyway used to drop the student into the game view with an empty
+    // list, where the generic Set-2 sample was substituted and then
+    // scored against this assignment. Staying put keeps the card as the
+    // thing the student (and their teacher) can see is wrong.
+    if (filteredWords.length === 0) {
+      trackAutoError(
+        new Error("Assignment resolved to zero words — launch blocked"),
+        "assignment-empty-on-launch",
+        { assignmentId: assignment.id, wordIdCount: assignment.wordIds?.length ?? 0 },
+      );
+      return;
+    }
     setActiveAssignment(assignment);
     setAssignmentWords(filteredWords);
     React.startTransition(() => {
