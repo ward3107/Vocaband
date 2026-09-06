@@ -9,6 +9,7 @@ import QuickPlayEndgameCard from "../components/QuickPlayEndgameCard";
 import { EndgameStanding, EndgamePracticeWords, MAX_PRACTICE_WORDS } from "../components/endgame/EndgameParts";
 import RatingPrompt from "../components/RatingPrompt";
 import { useLanguage } from "../hooks/useLanguage";
+import { useQuickPlayEndgameBack } from "../hooks/useQuickPlayEndgameBack";
 import { gameFinishedT } from "../locales/student/game-finished";
 import { useGameRoute } from "./GameRouteContext";
 
@@ -136,6 +137,10 @@ export default function GameFinishedView({
     setHiddenOptions([]);
     setSpellingInput("");
   };
+  const returnQuickPlayGuestToModes = useQuickPlayEndgameBack(isGuest, () => {
+    resetRound();
+    setShowModeSelection(true);
+  });
   const activeThemeConfig = THEMES.find(th => th.id === (user?.activeTheme ?? 'default')) ?? THEMES[0];
   const t = activeThemeConfig.colors;
   const isDark = t.bg.includes('gray-9') || t.bg.includes('gray-950');
@@ -281,7 +286,7 @@ export default function GameFinishedView({
           {isGuest ? (
             // Quick Play endgame (open-issues §D): score + rank from the
             // session leaderboard, missed words to practice, then the
-            // Play again / Back to home pair.  "Play again" routes to
+            // Play another mode / Exit Quick Play pair. The primary routes to
             // the mode picker — same one-extra-tap trade-off as the
             // authenticated Back-to-Modes redesign above.
             <QuickPlayEndgameCard
@@ -292,11 +297,8 @@ export default function GameFinishedView({
               isDark={isDark}
               disabled={isSaving}
               speakWord={speakWord}
-              onPlayAgain={() => {
-                resetRound();
-                setShowModeSelection(true);
-              }}
-              onBackToHome={() => {
+              onPlayAnotherMode={returnQuickPlayGuestToModes}
+              onExitQuickPlay={() => {
                 resetRound();
                 if (onQuickPlayExit) onQuickPlayExit();
               }}

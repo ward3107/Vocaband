@@ -14,7 +14,7 @@
  * (loop + autoplay off), no per-frame cost.
  */
 import { useEffect, useState } from "react";
-import Lottie from "lottie-react";
+import { Lottie } from "lottie-react";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
 import PetModel from "./PetModel";
 
@@ -92,7 +92,7 @@ export default function PetLottie({ stage, fallbackEmoji, className }: PetLottie
   // not animating). Otherwise loop the idle animation.
   return (
     <Lottie
-      animationData={data}
+      src={data}
       loop={!reduced}
       autoplay={!reduced}
       className={className}
