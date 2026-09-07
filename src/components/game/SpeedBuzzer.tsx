@@ -115,7 +115,14 @@ export default function SpeedBuzzer({
   useEffect(() => {
     if (phase !== "answering") return;
     const tick = () => {
-      const left = Math.max(0, Math.round((deadlineTs - Date.now()) / 1000));
+      // Clamp the server deadline to the round's real length. A student device
+      // whose clock is skewed into the past makes deadlineTs - Date.now()
+      // enormous (the timer would count down from minutes); a valid round can
+      // never exceed roundSeconds, so cap it. A clock skewed into the future
+      // just shortens the local timer — the server stays authoritative on
+      // scoring either way, so no answer is ever wrongly rejected here.
+      const secsFromDeadline = Math.round((deadlineTs - Date.now()) / 1000);
+      const left = Math.max(0, Math.min(roundSeconds, secsFromDeadline));
       setSecondsLeft(left);
       if (left <= 0 && !answeredRef.current) {
         answeredRef.current = true;
@@ -125,7 +132,7 @@ export default function SpeedBuzzer({
     tick();
     const id = window.setInterval(tick, 250);
     return () => window.clearInterval(id);
-  }, [phase, deadlineTs, roundId]);
+  }, [phase, deadlineTs, roundSeconds, roundId]);
 
   const handleTap = (index: number) => {
     if (answeredRef.current) return;

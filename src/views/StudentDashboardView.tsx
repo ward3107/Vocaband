@@ -14,7 +14,7 @@ import { useDueReviews } from "../hooks/useDueReviews";
 import ArcadeHubLayout from "../components/arcade/ArcadeHubLayout";
 import EvolutionRing from "../components/arcade/EvolutionRing";
 import OrbitalHub, { type OrbitItem } from "../components/arcade/OrbitalHub";
-import { getXpTitle, PET_ACCESSORIES, type PetRewardKind, type PetMilestone } from "../constants/game";
+import { getXpTitle, PET_ACCESSORIES, ALL_GAME_MODES, type PetRewardKind, type PetMilestone } from "../constants/game";
 import { claimPetMilestoneReward } from "../handlers/retentionGrants";
 import { usePetAccessory } from "../hooks/usePetAccessory";
 import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
@@ -204,10 +204,24 @@ export default function StudentDashboardView({
   //   Play · Tasks · Practice · Daily · Shop · Ranks
   // Daily folds chest/weekly + missions + goal + active boosts + badges.
   // Order = clockwise from the top so Play sits dead-centre at 12 o'clock.
+  // Remaining work for the Tasks badge — assignments the student hasn't
+  // finished (every allowed mode played at least once). Mirrors
+  // StudentAssignmentCard's completion check so the badge reflects work left,
+  // not the raw assignment total.
+  const remainingTasks = studentAssignments.filter((a) => {
+    const modes = (a.allowedModes || ALL_GAME_MODES).filter((m) => m !== "flashcards");
+    const done = new Set(
+      studentProgress
+        .filter((p) => p.assignmentId === a.id && p.mode !== "flashcards")
+        .map((p) => p.mode),
+    ).size;
+    return done < modes.length;
+  }).length;
+
   const orbitItems: OrbitItem[] = [
     { key: "play", onClick: () => { void launchNextAssignment?.(); }, disabled: !launchNextAssignment },
     { key: "join", onClick: () => setJoinOpen(true) },
-    { key: "tasks", onClick: () => setTasksOpen(true), badge: studentAssignments.length || undefined },
+    { key: "tasks", onClick: () => setTasksOpen(true), badge: remainingTasks || undefined },
     { key: "shop", onClick: () => setView("shop") },
     { key: "leaderboard", onClick: () => setView("global-leaderboard") },
     { key: "daily", onClick: () => setView("student-daily") },
