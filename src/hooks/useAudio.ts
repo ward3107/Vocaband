@@ -680,8 +680,11 @@ export const useAudio = (options: UseAudioOptions = {}) => {
       // The Howl is created with preload:true, so it's already loading.
       // The old code also called sound.load() here, which raced that
       // in-flight load and could fire playback twice — play once on the
-      // load already running.
-      sound.once('load', () => sound.play())
+      // load already running. Guard against a superseded word: if the
+      // student advanced to the next card before this MP3 finished loading,
+      // `currentWord` now points at the new sound, so skip this stale
+      // deferred play instead of talking over the new word.
+      sound.once('load', () => { if (currentWord === sound) sound.play() })
     }
   }
 
@@ -802,8 +805,11 @@ let ttsSettings = {
   cleanText: true,     // Remove grammatical markers like (n), (v)
 };
 
-// Add to window for easy console access during development/debugging
-if (typeof window !== 'undefined') {
+// Add to window for easy console access during development/debugging.
+// DEV-only: these are console conveniences, so they must not ship to
+// production builds (the app itself drives forceTTSMode via the module-level
+// setForceTTSMode/getForceTTSMode, never these window globals).
+if (typeof window !== 'undefined' && import.meta.env.DEV) {
   // Store the state on window object for cross-module access
   (window as any).__forceTTSMode = false;
   (window as any).__ttsSettings = ttsSettings;
