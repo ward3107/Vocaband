@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import { ChevronRight, X } from 'lucide-react';
 import { useLanguage, type Language } from '../hooks/useLanguage';
@@ -53,19 +53,12 @@ export default function StudentOnboarding({ userName, onComplete }: StudentOnboa
     onComplete();
   };
 
-  // Escape dismisses the onboarding, like any modal dialog. Inlined (not a
-  // handleSkip reference) so the effect depends only on the stable onComplete.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        localStorage.setItem('vocaband_student_onboarding_done', '1');
-        onComplete();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onComplete]);
-
+  // NOTE: intentionally NO global Escape-to-dismiss here. For a first-time
+  // student the mandatory StudentVisibilityConsent gate mounts ABOVE this
+  // onboarding (and treats Escape as a no-op); a global Escape listener here
+  // would still fire, set the onboarding-done flag, and skip onboarding for
+  // good once consent is accepted. The focusable X (Skip) button is the
+  // keyboard-accessible way out.
   const current = STEPS[step];
   const skipAria = language === 'he' ? 'דלגו על האונבורדינג' : language === 'ar' ? 'تخطّي التعريف' : 'Skip onboarding';
   const letsGoLabel = language === 'he' ? 'יוצאים לדרך!' : language === 'ar' ? 'لنبدأ!' : "Let's Go!";

@@ -80,11 +80,15 @@ export default function FlashcardsGame({
           mobile (text-5xl → text-6xl on desktop) since this IS the
           prompt now. */}
       <div className="[perspective:1200px]">
+        {/* The card stays a plain click-to-flip surface (not role="button"):
+            it contains the real pronunciation <button>, and a button nested
+            inside a role="button" is invalid — AT treats the inner control as
+            presentational and the audio action becomes unreachable. Keyboard
+            users flip via the game keyboard hook (Space/Enter). A dedicated
+            focusable flip control is a follow-up (flipCard string is kept for
+            it). */}
         <motion.div
           onClick={handleFlip}
-          role="button"
-          tabIndex={0}
-          aria-label={tAria.flipCard}
           aria-keyshortcuts="Space Enter"
           animate={{ rotateY: isFlipped ? 180 : 0 }}
           transition={{ type: "spring", stiffness: 200, damping: 22 }}

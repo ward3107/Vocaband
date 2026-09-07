@@ -78,7 +78,13 @@ export default function AnswerFeedback({ feedback, xpGain = 10 }: AnswerFeedback
           the instant `feedback` flips; it clears silently when feedback
           resets to null (empty string → nothing announced). */}
       <span role="status" aria-live="assertive" className="sr-only">
-        {feedback === "correct" ? tAria.answerCorrect : feedback === "wrong" ? tAria.answerWrong : ""}
+        {feedback === "correct"
+          ? tAria.answerCorrect
+          : feedback === "wrong"
+            ? tAria.answerWrong
+            : feedback === "show-answer"
+              ? tAria.answerShown
+              : ""}
       </span>
       <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden" aria-hidden>
       <AnimatePresence>
