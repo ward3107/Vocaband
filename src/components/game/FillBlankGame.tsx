@@ -48,14 +48,18 @@ function escapeRegExp(s: string): string {
 
 export function redactSentence(sentence: string, target: string): string {
   if (!sentence || !target) return sentence || BLANK_SENTINEL;
-  const wordBoundary = new RegExp(`\\b${escapeRegExp(target)}\\b`, "i");
-  if (wordBoundary.test(sentence)) {
-    return sentence.replace(wordBoundary, BLANK_SENTINEL);
-  }
-  const idx = sentence.toLowerCase().indexOf(target.toLowerCase());
-  if (idx >= 0) {
-    return sentence.slice(0, idx) + BLANK_SENTINEL + sentence.slice(idx + target.length);
-  }
+  const esc = escapeRegExp(target);
+  // Blank EVERY occurrence, not just the first. A target word that appears
+  // twice in the sentence ("the cat sat where the cat sleeps") used to leave
+  // the later copy visible and hand the student the answer. The renderer
+  // shows the first sentinel as the slot and collapses any extras to spaces,
+  // so all copies stay hidden.
+  const wholeWord = sentence.replace(new RegExp(`\\b${esc}\\b`, "gi"), BLANK_SENTINEL);
+  if (wholeWord !== sentence) return wholeWord;
+  // Fallback for inflected forms the word boundary misses ("run" inside
+  // "running") — also global, for the same anti-leak reason.
+  const substr = sentence.replace(new RegExp(esc, "gi"), BLANK_SENTINEL);
+  if (substr !== sentence) return substr;
   return `${sentence} ${BLANK_SENTINEL}`;
 }
 
