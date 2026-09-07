@@ -27,10 +27,19 @@ const todayKey = () => {
 };
 const isoWeekKey = () => {
   const d = new Date();
-  // ISO week number — close-enough formula (good to within ±1 day of edge cases).
-  const start = new Date(d.getFullYear(), 0, 1);
-  const diffDays = Math.floor((d.getTime() - start.getTime()) / 86400000);
-  return `${d.getFullYear()}-W${Math.ceil((diffDays + start.getDay() + 1) / 7)}`;
+  // Canonical ISO 8601 week: weeks start Monday and week 1 is the week
+  // containing the year's first Thursday. The previous "close-enough"
+  // formula could misassign the week (and the year) around year boundaries,
+  // which would reset or bleed the weekly-challenge counter a day early/late.
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = (date.getUTCDay() + 6) % 7; // Mon=0 … Sun=6
+  date.setUTCDate(date.getUTCDate() - dayNum + 3); // shift to this week's Thursday
+  const isoYear = date.getUTCFullYear(); // may differ from the calendar year at edges
+  const firstThursday = new Date(Date.UTC(isoYear, 0, 4));
+  const firstDayNum = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3);
+  const week = 1 + Math.round((date.getTime() - firstThursday.getTime()) / (7 * 86400000));
+  return `${isoYear}-W${week}`;
 };
 const daysBetween = (a: number, b: number) => Math.floor((b - a) / 86400000);
 
