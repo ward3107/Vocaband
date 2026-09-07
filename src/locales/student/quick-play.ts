@@ -36,6 +36,10 @@ export interface QuickPlayStrings {
   /** "You already joined as " — `<strong><bdi>{name}</bdi></strong>` is
    *  appended inline so the LTR nickname stays bidi-isolated in HE/AR. */
   alreadyJoinedAsPrefix: string;
+  /** "Not you? Switch player" — unlocks the name field on a shared device. */
+  switchPlayer: string;
+  /** Proactive volume nudge on the join screen (the game speaks the words). */
+  silentTip: string;
   joining: string;
   startPlaying: string;
   guestModeNote: string;
@@ -118,6 +122,8 @@ export const quickPlayT: Record<Language, QuickPlayStrings> = {
     yourNameLabel: "YOUR NAME",
     namePlaceholder: "Enter your nickname...",
     alreadyJoinedAsPrefix: "You already joined as ",
+    switchPlayer: "Not you? Switch player",
+    silentTip: "🔊 Turn your volume up — this game says the words out loud.",
     joining: "Joining…",
     startPlaying: "Start playing",
     guestModeNote: "ℹ️ Your progress won't be saved (guest mode). Create an account to track your XP and unlock features!",
@@ -178,6 +184,8 @@ export const quickPlayT: Record<Language, QuickPlayStrings> = {
     yourNameLabel: "השם שלך",
     namePlaceholder: "הכניסו כינוי...",
     alreadyJoinedAsPrefix: "כבר הצטרפת בשם ",
+    switchPlayer: "לא אתם? החלפת שחקן",
+    silentTip: "🔊 הגבירו את עוצמת הקול — המשחק מקריא את המילים בקול.",
     joining: "מצטרפים…",
     startPlaying: "בואו נתחיל",
     guestModeNote: "ℹ️ ההתקדמות שלך לא תישמר (מצב אורח). פתחו חשבון כדי לעקוב אחר הנקודות ולפתוח אפשרויות נוספות!",
@@ -238,6 +246,8 @@ export const quickPlayT: Record<Language, QuickPlayStrings> = {
     yourNameLabel: "اسمك",
     namePlaceholder: "أدخل اسمك المستعار...",
     alreadyJoinedAsPrefix: "لقد انضممت بالفعل باسم ",
+    switchPlayer: "لست أنت؟ تبديل اللاعب",
+    silentTip: "🔊 ارفع مستوى الصوت — تنطق اللعبة الكلمات بصوت عالٍ.",
     joining: "ينضم…",
     startPlaying: "لنبدأ",
     guestModeNote: "ℹ️ لن يتم حفظ تقدمك (وضع الضيف). أنشئ حسابًا لتتبع نقاطك وفتح ميزات إضافية!",
