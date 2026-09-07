@@ -186,7 +186,7 @@ const STRINGS: Record<Language, {
 };
 
 function safeFilename(s: string): string {
-  return s.replace(/[^\p{L}\d\s\-]/gu, "_").trim() || "certificate";
+  return s.replace(/[^\p{L}\d\s-]/gu, "_").trim() || "certificate";
 }
 
 export default function CertificateModal({

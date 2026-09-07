@@ -17,7 +17,7 @@ export function normalizeText(text: string): string {
     // Remove extra whitespace
     .replace(/\s+/g, ' ')
     // Remove common punctuation
-    .replace(/[.,!?;:'"(){}\[\]<>]/g, '')
+    .replace(/[.,!?;:'"(){}[\]<>]/g, '')
     // Remove niqqud (Hebrew vowel points)
     .replace(/[\u05B0-\u05BD\u05C1\u05C2\u05C4\u05C5\u05C7]/g, '')
     // Remove Arabic diacritics (harakat)

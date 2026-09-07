@@ -13,9 +13,20 @@
  * Reduced motion → the character is frozen on its first frame
  * (loop + autoplay off), no per-frame cost.
  */
-import { useEffect, useState } from "react";
-import { Lottie } from "lottie-react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
+
+// lottie-react (~55 kB gz) only ever renders once a stage actually ships a
+// JSON animation. CharacterStage (and therefore this component) mounts on
+// the normal student dashboard, so a static import would drag lottie-web
+// into that hot chunk for every student even though the pet dir is empty
+// today and every stage falls back to the emoji. Lazy-load it instead:
+// while there is no JSON the chunk is never fetched, and when a file is
+// added it loads on demand for that stage only. React.lazy needs a default
+// export, so adapt lottie-react's named { Lottie }.
+const LazyLottie = lazy(() =>
+  import("lottie-react").then((m) => ({ default: m.Lottie })),
+);
 
 // Build-time map of any pet Lottie files present. Empty (→ all emoji)
 // until files are added. import.meta.glob is build-stable even when the
@@ -64,14 +75,18 @@ export default function PetLottie({ stage, fallbackEmoji, className }: PetLottie
   }
 
   // Reduced motion → freeze on the first frame (still the character, just
-  // not animating). Otherwise loop the idle animation.
+  // not animating). Otherwise loop the idle animation. The emoji stays as
+  // the Suspense fallback so the pet never disappears while lottie-web's
+  // chunk loads on first use.
   return (
-    <Lottie
-      src={data}
-      loop={!reduced}
-      autoplay={!reduced}
-      className={className}
-      aria-hidden
-    />
+    <Suspense fallback={<span aria-hidden>{fallbackEmoji}</span>}>
+      <LazyLottie
+        src={data}
+        loop={!reduced}
+        autoplay={!reduced}
+        className={className}
+        aria-hidden
+      />
+    </Suspense>
   );
 }

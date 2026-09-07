@@ -445,7 +445,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onGetStarted }) => {
           // Don't generate options - the full app reveals letters one by one
           setRevealedLetters(0);
           break;
-        case "sentence-builder":
+        case "sentence-builder": {
           // Initialize sentence builder with a real sentence from the
           // sentence bank. Old code used case "sentence" (never matched —
           // the mode id is "sentence-builder") with the silly
@@ -455,6 +455,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onGetStarted }) => {
           setBuiltSentence([]);
           setSentenceFeedback(null);
           break;
+        }
       }
     }
   }, [view, selectedMode, currentWordIndex]);

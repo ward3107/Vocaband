@@ -135,7 +135,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
   const extractWordsFromPaste = (text: string): string[] => {
     const cleaned = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
     const words = cleaned
-      .split(/[,\n;\t\|]+/)
+      .split(/[,\n;\t|]+/)
       .map(w => w.trim().toLowerCase())
       .filter(w => w.length >= 2 && w.length <= 100);
     const unique = [...new Set(words)];
