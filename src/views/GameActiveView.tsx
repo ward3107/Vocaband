@@ -107,11 +107,11 @@ export default function GameActiveView() {
     handleAnswer, handleMatchClick, handleTFAnswer,
     handleFlashcardAnswer, handleSpellingSubmit, handleSentenceWordTap,
     handleSentenceCheck, speakWord, speak, shuffle,
-    // In-game 🆘 help button (mid-gameplay) — Quick Play only.
-    // `showTranslation` isn't read here yet (setter-only wiring for now —
-    // a follow-up will add the translation overlay); destructure the
-    // setter only to avoid TS unused-var flagging.
-    quickPlaySocket, quickPlayStudentUid, setShowTranslation,
+    // In-game 🆘 help button (mid-gameplay) — Quick Play only. The
+    // "I can't read this" action flips showTranslation; the banner near the
+    // help button renders the current word's L1 translation and auto-hides
+    // when the question advances (effect below).
+    quickPlaySocket, quickPlayStudentUid, showTranslation, setShowTranslation,
   } = useGameRoute();
 
   // Wire the raise-hand hook only when we're actually in a Quick Play
@@ -121,6 +121,11 @@ export default function GameActiveView() {
     ? { sessionCode: quickPlayActiveSession.sessionCode, studentUid: quickPlayStudentUid }
     : null;
   const { handRaised, onRaiseHand } = useQuickPlayHelp(quickPlaySocket, qpHelpSession);
+
+  // Auto-hide the "I can't read this" translation help whenever the question
+  // advances, so it never lingers over the next word. Setting it false when
+  // already false is a no-op (React bails), so this can't cascade renders.
+  useEffect(() => { setShowTranslation(false); }, [currentIndex, setShowTranslation]);
   // Self-contained modes (Idiom, Speed Round) don't go through the
   // per-question scoring path that Classic / Listening / etc. use to
   // trigger saveScore on the last correct answer.  Each mode emits
@@ -733,6 +738,33 @@ export default function GameActiveView() {
           </div>
         )}
       </div>
+
+      {/* "I can't read this" translation help — the help button's fourth
+          action. Renders the current word's L1 translation as a dismissible
+          banner, auto-hidden on the next question (effect above). Built for
+          the exact audience the help button targets: a young HE/AR reader who
+          can't yet decode the English word. */}
+      {quickPlayActiveSession && !isFinished && showTranslation && currentWord && (
+        <div className="fixed top-3 inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
+          <div className="pointer-events-auto w-full max-w-sm rounded-2xl bg-stone-900/92 text-white shadow-xl ring-1 ring-white/10 px-4 py-3 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] font-black uppercase tracking-widest text-white/50" dir="ltr">{currentWord.english}</div>
+              <div className="text-xl font-black leading-tight" dir="auto">
+                {language === "he" ? currentWord.hebrew : language === "ar" ? currentWord.arabic : `${currentWord.hebrew} · ${currentWord.arabic}`}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowTranslation(false)}
+              aria-label={language === "he" ? "סגירה" : language === "ar" ? "إغلاق" : "Close"}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              className="flex-shrink-0 w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center font-black transition"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* In-game 🆘 help button — Quick Play only, gameplay phase only.
           Uses position: fixed so it floats above the game surface without

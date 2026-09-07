@@ -13,6 +13,7 @@
 import { useLanguage } from "../hooks/useLanguage";
 import type { Language } from "../hooks/useLanguage";
 import { useDailyMissions } from "../hooks/useDailyMissions";
+import { useDueReviews } from "../hooks/useDueReviews";
 import { ARCADE_BUTTON_TOUCH } from "../components/arcade/theme";
 import DailyPracticeRow from "../components/dashboard/DailyPracticeRow";
 import DailyMissionsCard from "../components/dashboard/DailyMissionsCard";
@@ -79,6 +80,7 @@ const BACK_LABEL: Record<Language, string> = {
 export default function StudentHubSubView({
   section, user, onBack,
   studentProgress, studentDataLoading,
+  onStartReview,
   onStartClassMinute,
   boosters, badges, onClaimBadgeXp,
   retention, onGrantXp, onPlay,
@@ -89,6 +91,9 @@ export default function StudentHubSubView({
   // Both hooks always run; only the section that needs the data sets
   // `enabled`, so the other never fetches. Keeps the Rules of Hooks happy.
   const dailyMissions = useDailyMissions({ enabled: section === "daily" && isStudent });
+  // Spaced-repetition due-count for the Review tile — enabled only on the
+  // practice page for a real student who actually has a Review launcher wired.
+  const dueReviews = useDueReviews({ enabled: section === "practice" && isStudent && !!onStartReview });
   const dl = DAILY_LABELS[language] || DAILY_LABELS.en;
 
   // Class Minute streak — same derivation the dashboard used to do for
@@ -135,6 +140,11 @@ export default function StudentHubSubView({
 
         {section === "practice" && (
           <DailyPracticeRow
+            review={onStartReview ? {
+              dueCount: dueReviews.dueCount,
+              isLoading: dueReviews.isLoading,
+              onStart: onStartReview,
+            } : undefined}
             classMinute={onStartClassMinute ? {
               doneToday: classMinuteDoneToday,
               streak: classMinuteStreak,

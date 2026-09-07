@@ -134,6 +134,10 @@ export default function QuickPlayStudentView({
   // the Start button locked + spinning so impatient kids don't tap
   // five times and queue five join emits.
   const [joining, setJoining] = useState<boolean>(false);
+  // Shared-device escape (A10 residual): unlock the pre-filled name so a
+  // different student can join under their own name. Clears the stored guest
+  // record so the lock doesn't immediately re-apply on re-render.
+  const [nameUnlocked, setNameUnlocked] = useState(false);
   const qpT = quickPlayT[qpLanguage] ?? quickPlayT.en;
 
   // Pending-join intent: when the student clicks Join in V2, we emit
@@ -727,7 +731,7 @@ export default function QuickPlayStudentView({
                         }
                       }
                     } catch {}
-                    return lockedName ? (
+                    return (lockedName && !nameUnlocked) ? (
                       <IOSTextField
                         id="quick-play-name-input"
                         name="nickname"
@@ -741,6 +745,18 @@ export default function QuickPlayStudentView({
                           <>
                             {qpT.alreadyJoinedAsPrefix}
                             <strong><bdi>{lockedName}</bdi></strong>
+                            {" · "}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                try { localStorage.removeItem("vocaband_qp_guest"); } catch { /* storage unavailable */ }
+                                setNameUnlocked(true);
+                              }}
+                              className="underline font-bold"
+                              style={{ color: "var(--vb-accent)", touchAction: "manipulation" }}
+                            >
+                              {qpT.switchPlayer}
+                            </button>
                           </>
                         }
                       />
@@ -847,6 +863,12 @@ export default function QuickPlayStudentView({
 
               <p
                 className="ios-footnote mt-6 px-4 text-center"
+                style={{ color: "var(--ios-label-secondary)" }}
+              >
+                {qpT.silentTip}
+              </p>
+              <p
+                className="ios-footnote mt-3 px-4 text-center"
                 style={{ color: "var(--ios-label-secondary)" }}
               >
                 {qpT.guestModeNote}
