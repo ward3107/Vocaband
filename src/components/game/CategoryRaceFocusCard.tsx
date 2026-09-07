@@ -88,8 +88,13 @@ export default function CategoryRaceFocusCard({
     onHintUsed?.(cat.id);
   };
 
+  // height:100dvh (not just inset-0) so the container shrinks with the
+  // on-screen keyboard — otherwise the auto-focused input opens the keyboard
+  // over the fixed footer and the Submit button becomes unreachable. inset-0
+  // stays as a graceful full-height fallback where dvh is unsupported (CSS
+  // drops `bottom` when top and height are both set).
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-stone-100" dir={dir}>
+    <div className="fixed inset-0 z-40 flex flex-col bg-stone-100" style={{ height: "100dvh" }} dir={dir}>
       {/* Header: letter + countdown */}
       <header className="flex-shrink-0 px-4 pt-[max(14px,env(safe-area-inset-top))] pb-3">
         <div className="max-w-xl mx-auto">

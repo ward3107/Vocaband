@@ -66,6 +66,7 @@ const STRINGS = {
     nailedIt: "Nailed it — all in English! 🎯",
     niceTry: (n: number) => n > 0 ? `Nice — ${n} in English! Keep going.` : "Keep going — you'll get the next one! 💪",
     speedLabel: "speed bonus", standings: "Live standings", you: "You",
+    reconnecting: "Reconnecting…", leave: "Leave",
   },
   he: {
     joinTitle: "מרוץ קטגוריות", joinSub: "כתבו את השם והצטרפו!",
@@ -81,6 +82,7 @@ const STRINGS = {
     nailedIt: "מצוין — הכול באנגלית! 🎯",
     niceTry: (n: number) => n > 0 ? `יפה — ${n} באנגלית! המשיכו.` : "המשיכו — תצליחו בסבב הבא! 💪",
     speedLabel: "בונוס מהירות", standings: "דירוג חי", you: "אתם",
+    reconnecting: "מתחברים מחדש…", leave: "יציאה",
   },
   ar: {
     joinTitle: "سباق الفئات", joinSub: "اكتب اسمك وانضم!",
@@ -96,6 +98,7 @@ const STRINGS = {
     nailedIt: "أحسنت — كله بالإنجليزية! 🎯",
     niceTry: (n: number) => n > 0 ? `جيد — ${n} بالإنجليزية! واصل.` : "واصل — ستنجح في الجولة القادمة! 💪",
     speedLabel: "مكافأة السرعة", standings: "الترتيب المباشر", you: "أنت",
+    reconnecting: "جارٍ إعادة الاتصال…", leave: "خروج",
   },
 } as const;
 
@@ -123,7 +126,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
 
   const qp = useQuickPlaySocket({ sessionCode, enabled: true });
   const {
-    currentRace, leaderboard, clientId, joinedSessionCode, lastError,
+    currentRace, leaderboard, clientId, joinedSessionCode, lastError, status,
     joinAsStudent, submitRaceAnswers,
     onRaceResult, onRaceEnded, onSessionEnded, onKicked,
     teamMode, myTeam, switchTeam,
@@ -139,6 +142,15 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
     try { sessionStorage.removeItem(RACE_GUEST_KEY); } catch { /* storage unavailable */ }
     try { window.history.replaceState({}, "", window.location.pathname); } catch { /* history unavailable */ }
   }, []);
+
+  // Explicit way out of a live race. The hardware back button is trapped
+  // below, so without this a student waiting in the lobby / between rounds
+  // has no exit. Drops the rejoin marker so a later reload doesn't
+  // auto-rejoin a race they chose to leave.
+  const handleLeave = useCallback(() => {
+    forgetRace();
+    setView("public-landing");
+  }, [forgetRace, setView]);
 
   const [phase, setPhase] = useState<Phase>("join");
   // Join form
@@ -220,6 +232,19 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
       } catch { /* storage unavailable — a refresh just shows the join form */ }
     }
   }, [joining, joinedSessionCode, sessionCode, name, avatar]);
+
+  // Watchdog: if the server never confirms the join (a dropped JOINED frame,
+  // an edge / Fly-VM swap mid-handshake), don't strand the student on an
+  // endless spinner — reset and surface a retryable error after a bounded
+  // wait so they can tap Join again.
+  useEffect(() => {
+    if (!joining) return;
+    const id = window.setTimeout(() => {
+      setJoining(false);
+      setJoinError(t.joinFailed);
+    }, 10000);
+    return () => window.clearTimeout(id);
+  }, [joining, t.joinFailed]);
 
   // ─── Auto-rejoin after a refresh ───────────────────────────────────────
   // If this tab already joined THIS race, replay the join immediately on mount
@@ -486,7 +511,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
     const perfect = total > 0 && englishCount === total;
     const behind = myEntry && leaderScore > myEntry.score ? leaderScore - myEntry.score : 0;
     return (
-      <Shell dir={dir}>
+      <Shell dir={dir} status={status} onLeave={handleLeave} leaveLabel={t.leave} reconnectingLabel={t.reconnecting}>
         <motion.div initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full max-w-md">
           <header className="text-center mb-4">
             <motion.div
@@ -591,7 +616,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
 
   // ─── Lobby (default / between rounds before first submit) ────────────
   return (
-    <Shell dir={dir}>
+    <Shell dir={dir} status={status} onLeave={handleLeave} leaveLabel={t.leave} reconnectingLabel={t.reconnecting}>
       <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center">
         <motion.div
           initial={{ scale: 0.6 }} animate={{ scale: 1 }}
@@ -620,9 +645,35 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
   );
 }
 
-function Shell({ children, dir }: { children: ReactNode; dir: "ltr" | "rtl" }) {
+function Shell({ children, dir, status, onLeave, leaveLabel, reconnectingLabel }: {
+  children: ReactNode;
+  dir: "ltr" | "rtl";
+  /** Socket status — drives the "Reconnecting…" banner when disconnected so
+   *  a dropped connection is visible instead of silently freezing the view. */
+  status?: string;
+  /** When provided, renders a corner Leave button — the hardware back button
+   *  is trapped, so this is the student's only intentional way out. */
+  onLeave?: () => void;
+  leaveLabel?: string;
+  reconnectingLabel?: string;
+}) {
   return (
     <div className="min-h-[100dvh] flex items-center justify-center px-5 bg-gradient-to-br from-fuchsia-50 via-white to-pink-50" dir={dir}>
+      {status === "disconnected" && (
+        <div role="status" className="fixed top-0 inset-x-0 z-50 flex items-center justify-center gap-2 bg-amber-500 text-white font-black text-sm py-2 px-4 shadow-md">
+          <Loader2 size={15} className="animate-spin" /> {reconnectingLabel}
+        </div>
+      )}
+      {onLeave && (
+        <button
+          type="button"
+          onClick={onLeave}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          className="fixed top-3 end-3 z-[60] inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/85 backdrop-blur-sm text-stone-600 font-black text-xs shadow-sm active:scale-95 transition"
+        >
+          <X size={14} /> {leaveLabel}
+        </button>
+      )}
       {children}
     </div>
   );
