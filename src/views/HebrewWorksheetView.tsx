@@ -114,7 +114,7 @@ export default function HebrewWorksheetView({
     setSelectedIds((prev) => (allOn ? prev.filter((x) => !ids.includes(x)) : Array.from(new Set([...prev, ...ids]))));
   }
 
-  const pdfFilename = () => `${title.replace(/[^\p{L}\d\s\-]/gu, "_") || "worksheet"}.pdf`;
+  const pdfFilename = () => `${title.replace(/[^\p{L}\d\s-]/gu, "_") || "worksheet"}.pdf`;
 
   // Legacy client-side render (html2canvas → jsPDF). Kept for the match-up
   // layout, the Hebrew-only word list, and as a fallback if the server

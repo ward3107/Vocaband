@@ -829,7 +829,6 @@ if (typeof window !== 'undefined') {
   (window as any).ttsSettings = (newSettings?: Partial<typeof ttsSettings>) => {
     if (newSettings) {
       Object.assign(ttsSettings, newSettings);
-    } else {
     }
     return ttsSettings;
   };
