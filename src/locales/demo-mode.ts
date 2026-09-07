@@ -10,7 +10,7 @@
  */
 import type { Language } from "../hooks/useLanguage";
 
-const baseTranslations: Record<Exclude<Language, 'ru'>, Record<string, string>> = {
+const baseTranslations: Record<Language, Record<string, string>> = {
   en: {
     demoMode: "Demo Mode — a hands-on preview of Vocaband",
     signUpFree: "",
@@ -304,12 +304,7 @@ const baseTranslations: Record<Exclude<Language, 'ru'>, Record<string, string>> 
   },
 };
 
-// Russian was retired as a UI language (see useLanguage.tsx — ALL_LANGUAGES
-// is en/he/ar only) but stays in the Language type for the Russian-PDF
-// export feature, so demoTranslations must still carry a 'ru' key. The demo
-// never renders it, so alias English here rather than maintaining a
-// duplicate ~90-line English block that silently drifts out of sync.
-export const demoTranslations: Record<Language, Record<string, string>> = {
-  ...baseTranslations,
-  ru: baseTranslations.en,
-};
+// demoTranslations is just baseTranslations — kept as a separate export so
+// the many call sites don't churn. (Russian is no longer a UI language, so
+// there is no longer a dead English-aliased 'ru' key to carry.)
+export const demoTranslations = baseTranslations;

@@ -72,20 +72,6 @@ const STRINGS: Record<Language, Strings> = {
     runAgain: 'إعادة الفحص',
     close: 'إغلاق',
   },
-  ru: {
-    triggerLabel: 'Network status',
-    modalTitle: 'Network diagnostic',
-    modalSubtitle: 'Checking the connections Vocaband uses.',
-    online: 'Internet connection',
-    api: 'Vocaband server',
-    database: 'Student & class data',
-    websocket: 'Live game server',
-    pass: 'OK',
-    fail: 'Blocked',
-    running: 'Checking…',
-    runAgain: 'Run again',
-    close: 'Close',
-  },
 };
 
 function StatusRow({ label, status, passLabel, failLabel, runningLabel }: {

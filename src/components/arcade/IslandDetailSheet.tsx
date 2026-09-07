@@ -36,7 +36,6 @@ const STR: Record<Language, {
   en: { play: "Play", bestNone: "none yet", bestLabel: "Best", starTarget: "Beat 90% for 3★", xpOnFinish: "+XP on finish", close: "Close" },
   he: { play: "שחק", bestNone: "עדיין אין", bestLabel: "שיא", starTarget: "90% ל-3★", xpOnFinish: "+XP בסיום", close: "סגור" },
   ar: { play: "العب", bestNone: "لا شيء بعد", bestLabel: "الأفضل", starTarget: "90% لـ 3★", xpOnFinish: "+XP عند الإنهاء", close: "إغلاق" },
-  ru: { play: "Играть", bestNone: "пока нет", bestLabel: "Рекорд", starTarget: "90% для 3★", xpOnFinish: "+XP в конце", close: "Закрыть" },
 };
 
 export default function IslandDetailSheet({ open, mode, onClose, onPlay, reduced }: IslandDetailSheetProps) {

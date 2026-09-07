@@ -56,7 +56,6 @@ const RECOGNITION_LANG: Record<Language, string> = {
   en: "en-US",
   he: "he-IL",
   ar: "ar-SA",
-  ru: "ru-RU",
 };
 
 // Speak-language picker labels. The Web Speech API can't auto-detect the
@@ -64,18 +63,16 @@ const RECOGNITION_LANG: Record<Language, string> = {
 // picks which language they're about to speak. Defaults to the dashboard
 // language but can differ (e.g. an English-dashboard teacher speaking
 // Arabic). The transcript then drives the AI's reply language.
-const SPEAK_LANGS: Language[] = ["en", "he", "ar", "ru"];
+const SPEAK_LANGS: Language[] = ["en", "he", "ar"];
 const SPEAK_LANG_LABEL: Record<Language, string> = {
   en: "English",
   he: "עברית",
   ar: "العربية",
-  ru: "Русский",
 };
 const SPEAK_LANG_SHORT: Record<Language, string> = {
   en: "EN",
   he: "עב",
   ar: "ع",
-  ru: "RU",
 };
 
 // Language-independent keyword bank (English + Hebrew + Arabic roots in

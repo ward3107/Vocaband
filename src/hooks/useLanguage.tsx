@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback, createContext, ReactNode } from 'react';
 
-// 'ru' is kept in the type so legacy translation maps + the
-// `word.russian` translation field continue to type-check, but it
-// is no longer offered as a UI language anywhere (removed from the
-// supported set, ALL_LANGUAGES, and the browser-detect path below).
-export type Language = 'en' | 'he' | 'ar' | 'ru';
+// The UI language union. Russian was dropped: it was never a
+// selectable UI language (ALL_LANGUAGES has only en/he/ar and the
+// toggle never sets it), so every `ru` entry in the i18n maps below
+// was dead, verbatim-English copy that could never render. The
+// Russian-PDF feature keeps its own `russian` field on the Word type
+// and its own worksheet-language types — those are unaffected.
+export type Language = 'en' | 'he' | 'ar';
 
 export const LANGUAGE_KEY = 'vocaband_legal_language';
 
@@ -120,7 +122,6 @@ export const languageNames: Record<Language, string> = {
   en: 'English',
   he: 'עברית',
   ar: 'العربية',
-  ru: 'Русский',
 };
 
 /** Short labels for UI toggles (2-3 chars). */
@@ -128,13 +129,11 @@ export const languageShortLabels: Record<Language, string> = {
   en: 'EN',
   he: 'עב',
   ar: 'ع',
-  ru: 'РУ',
 };
 
 /** All user-selectable UI languages — drives every language toggle in
- *  the app.  Russian is intentionally excluded: pre-translated `ru`
- *  strings remain in i18n maps and on the Word type for the
- *  Russian-PDF feature, but the UI toggle no longer offers it. */
+ *  the app. (Russian lives only on the Word type for the Russian-PDF
+ *  feature; it is not a UI language.) */
 export const ALL_LANGUAGES: Language[] = ['en', 'he', 'ar'];
 
 /** Language options for dropdowns/toggles with code + label. */

@@ -13,7 +13,6 @@ const STRINGS: Record<Language, string> = {
   en: 'Offline — your work is being saved locally',
   he: 'אופליין — העבודה שלך נשמרת מקומית',
   ar: 'غير متصل — يتم حفظ عملك محلياً',
-  ru: 'Offline — your work is being saved locally',
 };
 
 export function OfflineIndicator() {

@@ -43,13 +43,11 @@ const WEEKDAY_LABELS_BY_LANG: Record<Language, string[]> = {
   en: WEEKDAY_LABELS_DEFAULT,
   he: ["א'", "ב'", "ג'", "ד'", "ה'", "ו'", "ש'"],
   ar: ["أحد", "اثن", "ثلا", "أرب", "خمي", "جمع", "سبت"],
-  ru: WEEKDAY_LABELS_DEFAULT,
 };
 const MONTH_LABELS_BY_LANG: Record<Language, string[]> = {
   en: MONTH_LABELS_DEFAULT,
   he: ["ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"],
   ar: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"],
-  ru: MONTH_LABELS_DEFAULT,
 };
 
 const MINUTES_OPTIONS = [0, 15, 30, 45];

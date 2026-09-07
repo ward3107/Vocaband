@@ -50,11 +50,6 @@ const STRINGS: Record<Language, {
     subhead: (title) => `أنت الآن ${title}`,
     cta: "رائع",
   },
-  ru: {
-    headline: "НОВЫЙ УРОВЕНЬ!",
-    subhead: (title) => `Теперь ты ${title}`,
-    cta: "Класс",
-  },
 };
 
 export default function LevelUpModal({ tier, onClose }: LevelUpModalProps) {

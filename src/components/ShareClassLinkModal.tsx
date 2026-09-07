@@ -94,10 +94,6 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
       eyebrow: 'أرسل دقيقة الصف',
       subtitle: `سينضم الطلاب الذين يفتحون هذا الرابط إلى ${className} وينتقلون مباشرة إلى تمرين 60 ثانية لليوم.`,
     },
-    ru: {
-      eyebrow: 'Send Class Minute',
-      subtitle: `Students who open this link join ${className} and go straight into today's 60-second drill.`,
-    },
   };
   const cmHeader = headerCopy[language] ?? headerCopy.en;
 
@@ -113,10 +109,6 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
     ar: {
       eyebrow: 'مشاركة الواجب',
       subtitle: `سينضم الطلاب الذين يفتحون هذا الرابط إلى ${className} وينتقلون مباشرة إلى هذا الواجب.`,
-    },
-    ru: {
-      eyebrow: 'Share assignment',
-      subtitle: `Students who open this link join ${className} and go straight to this assignment.`,
     },
   };
   const assignHeader = assignmentHeaderCopy[language] ?? assignmentHeaderCopy.en;

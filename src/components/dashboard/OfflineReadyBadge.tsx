@@ -15,7 +15,6 @@ const STRINGS: Record<Language, string> = {
   en: 'Works offline',
   he: 'עובד גם בלי חיבור',
   ar: 'يعمل دون اتصال',
-  ru: 'Works offline',
 };
 
 export default function OfflineReadyBadge() {

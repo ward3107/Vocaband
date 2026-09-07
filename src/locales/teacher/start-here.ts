@@ -291,5 +291,4 @@ export const startHereT: Record<Language, StartHereStrings> = {
   en,
   he,
   ar,
-  ru: en,
 };

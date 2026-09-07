@@ -53,17 +53,4 @@ export const inAppBrowserT: Record<Language, InAppBrowserStrings> = {
     openInChrome: 'افتح في Chrome',
     dismiss: 'متابعة على أي حال',
   },
-  ru: {
-    title: 'Open Vocaband in your browser',
-    subtitle:
-      "You're inside an in-app browser. Vocaband needs your real browser (Safari or Chrome) to save offline progress.",
-    iosStep1: 'Tap the "•••" menu',
-    iosStep2: 'Choose "Open in Safari"',
-    androidStep1: 'Tap the "⋮" menu',
-    androidStep2: 'Choose "Open in browser" or "Open in Chrome"',
-    copyUrl: 'Copy link',
-    copyUrlSuccess: 'Link copied — paste it in your browser',
-    openInChrome: 'Open in Chrome',
-    dismiss: 'Continue anyway',
-  },
 };

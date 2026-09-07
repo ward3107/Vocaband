@@ -50,7 +50,7 @@ function qpBootstrapStrings() {
   let lang: Language = "en";
   try {
     const saved = localStorage.getItem(LANGUAGE_KEY);
-    if (saved === "en" || saved === "he" || saved === "ar" || saved === "ru") lang = saved;
+    if (saved === "en" || saved === "he" || saved === "ar") lang = saved;
   } catch { /* localStorage blocked — default English */ }
   return quickPlayT[lang] ?? quickPlayT.en;
 }

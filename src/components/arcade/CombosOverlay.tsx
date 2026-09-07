@@ -30,7 +30,6 @@ const STRINGS: Record<Language, { combo: string; mega: string }> = {
   en: { combo: "COMBO", mega: "MEGA COMBO!" },
   he: { combo: "קומבו", mega: "מגה קומבו!" },
   ar: { combo: "كومبو", mega: "ميجا كومبو!" },
-  ru: { combo: "КОМБО", mega: "МЕГА-КОМБО!" },
 };
 
 export default function CombosOverlay({ chain, multiplier }: CombosOverlayProps) {

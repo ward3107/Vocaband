@@ -46,7 +46,6 @@ const STRINGS: Record<Language, { greeting: string; rewardWaiting: string; evolv
   en: { greeting: "Hi", rewardWaiting: "Reward waiting", evolved: "Evolved!" },
   he: { greeting: "היי", rewardWaiting: "פרס מחכה", evolved: "התפתח!" },
   ar: { greeting: "أهلاً", rewardWaiting: "مكافأة في الانتظار", evolved: "تطور!" },
-  ru: { greeting: "Привет", rewardWaiting: "Награда ждёт", evolved: "Эволюция!" },
 };
 
 type StageKey =

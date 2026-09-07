@@ -124,33 +124,4 @@ export const assignSetT: Record<Language, AssignSetStrings> = {
     errorNoTitle: "أعطِ الواجب عنوانًا.",
     errorCreate: "تعذّر إنشاء الواجب. حاول مرة أخرى.",
   },
-  ru: {
-    modalTitle: (setName) => `Assign · ${setName}`,
-    closeAria: "Close",
-    cancel: "Cancel",
-    assigning: "Assigning…",
-    assign: "Create assignment",
-
-    pickClassHeading: "Which class?",
-    pickClassEmpty: "You don't have any classes yet — create one from the dashboard first.",
-    classMetaRow: (code) => `Code · ${code}`,
-
-    titleLabel: "Assignment title",
-    titlePlaceholder: "e.g. Animals — Unit 3",
-    deadlineLabel: "Deadline (optional)",
-    deadlineHint: "Students can still play after the deadline, but the assignment shows as overdue.",
-    deadlineNone: "No deadline",
-
-    translationsHeading: "Translations students see",
-    translationsHint: "Pick the language(s) shown alongside the English word.",
-    translationHebrew: "Hebrew",
-    translationArabic: "Arabic",
-    translationBoth: "Both",
-
-    toastAssigned: (className) => `Assigned to ${className} 📋`,
-
-    errorNoClass: "Pick a class to assign to.",
-    errorNoTitle: "Give the assignment a title.",
-    errorCreate: "Couldn't create the assignment. Please try again.",
-  },
 };

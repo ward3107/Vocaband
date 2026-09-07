@@ -141,34 +141,4 @@ export const liveChallengeT: Record<Language, LiveChallengeStrings> = {
     endConfirmCancel: "المتابعة",
     endConfirmEnd: "نعم، إنهاء",
   },
-  ru: {
-    backToClassSelection: "← Back to Class Selection",
-    liveIndicator: "🔴 LIVE",
-    reconnecting: "Reconnecting...",
-    endChallenge: "End Challenge",
-    liveChallengeFor: (name) => `🏆 Live Challenge: ${name}`,
-    classCodeLabel: "Class Code:",
-    podiumNotConnected: "Live podium not connected",
-    podiumOfflineHelp:
-      "Students who join right now won't show up here until the socket reconnects. This is usually the real-time server waking up from idle — try refreshing this page in 10–20 seconds. If it keeps showing, the live backend (Render) may be down or unreachable from your network.",
-    fullLeaderboard: "Full Leaderboard",
-    playerCount: (n) => `${n} ${n === 1 ? "Player" : "Players"}`,
-    waitingForStudents: "Waiting for students to join...",
-    shareCodeToStart: "Share the class code to start the competition!",
-    pointsLabel: "POINTS",
-    rankBadge1: "1ST",
-    rankBadge2: "2ND",
-    rankBadge3: "3RD",
-    challengeComplete: "Challenge Complete!",
-    placeSuffix: (rank) => `#${rank} place`,
-    studentsPlayedSummary: (n) => `${n} ${n === 1 ? "student" : "students"} played`,
-    close: "Close",
-    endConfirmTitle: "End the challenge?",
-    endConfirmBody: (n) =>
-      n === 1
-        ? "1 student is playing right now. Their last answers will still count, but no new answers will be accepted."
-        : `${n} students are playing right now. Their last answers will still count, but no new answers will be accepted.`,
-    endConfirmCancel: "Keep going",
-    endConfirmEnd: "Yes, end it",
-  },
 };

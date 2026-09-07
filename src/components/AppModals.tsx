@@ -183,14 +183,6 @@ const STUDENT_STRINGS: Record<Language, {
     logOut: 'تسجيل الخروج',
     switchClass: 'تغيير الصف',
   },
-  ru: {
-    headline: n => `See you tomorrow, ${n}! 👋`,
-    classCodeLabel: 'Your class code:',
-    hint: "Scan the QR or open your teacher's link to come back.",
-    keepPlaying: 'Keep playing',
-    logOut: 'Log out',
-    switchClass: 'Switch class',
-  },
 };
 
 export const ExitConfirmModal: React.FC<ExitConfirmModalProps> = ({
