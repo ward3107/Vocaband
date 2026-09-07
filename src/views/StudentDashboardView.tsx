@@ -24,6 +24,7 @@ import type { RetentionState } from "../hooks/useRetention";
 import { pickNextAssignment } from "../utils/pickNextAssignment";
 import { resolveAssignmentWords } from "../utils/resolveAssignmentWords";
 import React from "react";
+import { useLanguage } from "../hooks/useLanguage";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 
@@ -164,6 +165,16 @@ export default function StudentDashboardView({
   // sheet, so the home page stays a clean hub (no long list scrolling
   // below the ring).
   const [tasksOpen, setTasksOpen] = React.useState(false);
+  const { language } = useLanguage();
+
+  // Escape closes the Tasks sheet, like any modal dialog (the sheet is
+  // role="dialog" aria-modal, so keyboard dismissal is expected).
+  React.useEffect(() => {
+    if (!tasksOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setTasksOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [tasksOpen]);
   // "Join a game" sheet — lets a logged-in student enter the teacher's live
   // Quick Play game (code or in-app QR scan) without leaving the app.
   const [joinOpen, setJoinOpen] = React.useState(false);
@@ -293,13 +304,15 @@ export default function StudentDashboardView({
             transition={{ duration: 0.22, ease: "easeOut" }}
             role="dialog"
             aria-modal="true"
+            aria-label={language === 'he' ? 'משימות' : language === 'ar' ? 'المهام' : 'Assignments'}
           >
             <div className="mx-auto w-full max-w-3xl px-4 pb-16 pt-5 sm:px-6">
               <div className="mb-4 flex items-center justify-end">
                 <button
                   type="button"
+                  autoFocus
                   onClick={() => setTasksOpen(false)}
-                  aria-label="Close"
+                  aria-label={language === 'he' ? 'סגירה' : language === 'ar' ? 'إغلاق' : 'Close'}
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                   className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--ios-fill-tertiary)] text-[color:var(--ios-label)] transition-transform active:scale-95 hover:bg-[var(--ios-fill-secondary)]"
                 >

@@ -82,6 +82,9 @@ export default function FlashcardsGame({
       <div className="[perspective:1200px]">
         <motion.div
           onClick={handleFlip}
+          role="button"
+          tabIndex={0}
+          aria-label={tAria.flipCard}
           aria-keyshortcuts="Space Enter"
           animate={{ rotateY: isFlipped ? 180 : 0 }}
           transition={{ type: "spring", stiffness: 200, damping: 22 }}

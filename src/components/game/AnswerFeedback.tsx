@@ -1,4 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useLanguage } from "../../hooks/useLanguage";
+import { gameAriasT } from "../../locales/student/game-arias";
 
 /**
  * AnswerFeedback — shared celebration / commiseration layer for quiz
@@ -64,9 +66,21 @@ export const cardShakeTransition = (
 
 export default function AnswerFeedback({ feedback, xpGain = 10 }: AnswerFeedbackProps) {
   const reduceMotion = useReducedMotion();
+  const { language } = useLanguage();
+  const tAria = gameAriasT[language];
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden" aria-hidden>
+    <>
+      {/* Screen-reader announcement of the outcome. The visual ✓/✗ button
+          states and the XP burst are all aria-hidden, so without this a
+          non-sighted student gets NO signal that they answered right or
+          wrong. A persistent assertive live region announces the change
+          the instant `feedback` flips; it clears silently when feedback
+          resets to null (empty string → nothing announced). */}
+      <span role="status" aria-live="assertive" className="sr-only">
+        {feedback === "correct" ? tAria.answerCorrect : feedback === "wrong" ? tAria.answerWrong : ""}
+      </span>
+      <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden" aria-hidden>
       <AnimatePresence>
         {feedback === "correct" && (
           <motion.div
@@ -104,6 +118,7 @@ export default function AnswerFeedback({ feedback, xpGain = 10 }: AnswerFeedback
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+      </div>
+    </>
   );
 }

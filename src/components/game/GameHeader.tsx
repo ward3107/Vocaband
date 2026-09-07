@@ -98,7 +98,9 @@ export default function GameHeader({
           <span className="text-xs font-bold text-stone-600">{speed === "slow" ? t.speedSlow : t.speedNormal}</span>
         </button>
         <button
+          type="button"
           onClick={onExit}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
           className="signature-gradient text-white px-4 py-2 rounded-lg font-bold text-sm hover:scale-105 active:scale-95 transition-all shadow-lg"
         >{t.exit}</button>
       </div>
