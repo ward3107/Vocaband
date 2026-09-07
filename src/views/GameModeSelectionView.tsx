@@ -32,7 +32,6 @@ const QUEST_STRINGS: Record<Language, { modesDone: string; round: string }> = {
   en: { modesDone: "modes", round: "Round" },
   he: { modesDone: "מצבים", round: "סבב" },
   ar: { modesDone: "أوضاع", round: "جولة" },
-  ru: { modesDone: "режимов", round: "Раунд" },
 };
 
 interface GameModeSelectionViewProps {

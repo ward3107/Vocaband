@@ -75,16 +75,6 @@ const STRINGS: Record<Language, {
     classMinuteDone: "عُد غدًا!",
     classMinuteStreak: (n) => `${n}🔥`,
   },
-  ru: {
-    header: "Daily practice",
-    review: "Review",
-    reviewDue: (n) => `${n} due`,
-    reviewClear: "All caught up",
-    classMinute: "Class Minute",
-    classMinuteSubtitle: "60s drill",
-    classMinuteDone: "Back tomorrow!",
-    classMinuteStreak: (n) => `${n}🔥`,
-  },
 };
 
 interface PracticeTileProps {

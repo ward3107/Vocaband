@@ -85,14 +85,6 @@ const STRINGS: Record<Language, {
     empty: 'لا يوجد طلاب في هذا الصف بعد.',
     error: 'لم نتمكن من تحميل قائمة الصف. حاول مرة أخرى.',
   },
-  ru: {
-    label: 'Load players from a class',
-    placeholder: 'Choose a class…',
-    loading: 'Loading students…',
-    loaded: (n) => `${n} student${n === 1 ? '' : 's'} loaded — edit the list below if needed`,
-    empty: 'No students in this class yet.',
-    error: "Couldn't load the class list. Try again.",
-  },
 };
 
 const ACCENT_FOCUS: Record<NonNullable<ClassRosterPickerProps['accent']>, string> = {

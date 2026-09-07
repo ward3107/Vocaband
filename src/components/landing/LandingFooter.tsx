@@ -317,7 +317,6 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                   href={
                     language === "he" ? "/parents-he.html"
                     : language === "ar" ? "/parents-ar.html"
-                    : language === "ru" ? "/parents-ru.html"
                     : "/parents.html"
                   }
                   target="_blank"

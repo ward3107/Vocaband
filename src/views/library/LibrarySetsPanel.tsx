@@ -321,19 +321,4 @@ const copy = {
         ? `يُضاف ${total} ${total === 1 ? "كلمة" : "كلمات"}.`
         : `${fresh} جديدة (${total - fresh} موجودة بالفعل في قائمتك).`,
   },
-  ru: {
-    title: "Pick from your Library",
-    closeAria: "Close",
-    back: "Back",
-    setMeta: (n: number) => `${n} ${n === 1 ? "word" : "words"}`,
-    emptyTitle: "No saved sets yet",
-    emptyBlurb: "Build a Vocabulary Set in your Library — then come back here to drop it into this activity.",
-    emptySetTitle: "This set is empty",
-    emptySetBlurb: "Add words to this set from the Library and try again.",
-    addToSelection: "Add to selection",
-    addCount: (fresh: number, total: number) =>
-      fresh === total
-        ? `Adds ${total} ${total === 1 ? "word" : "words"}.`
-        : `${fresh} new (${total - fresh} already in your list).`,
-  },
 } as const;

@@ -62,11 +62,10 @@ export function EndgamePracticeWords({
   const tt = gameFinishedT[language];
   if (words.length === 0) return null;
 
-  // Russian-UI kids get the Russian column when a custom word carries one;
-  // everyone else sees the translation they just played with.
+  // Show the translation the student just played with — the Arabic column
+  // for Arabic learners, Hebrew otherwise.
   const translationFor = (w: Word) =>
-    (language === "ru" && w.russian) ? w.russian
-      : targetLanguage === "arabic" ? w.arabic : w.hebrew;
+    targetLanguage === "arabic" ? w.arabic : w.hebrew;
 
   return (
     <div className={`rounded-2xl border p-4 ${isDark ? 'border-gray-700 bg-gray-800/60' : 'border-rose-100 bg-rose-50/60'}`}>

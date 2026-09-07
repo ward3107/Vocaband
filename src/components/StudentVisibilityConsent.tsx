@@ -187,52 +187,6 @@ const COPY: Record<Language, CopyBlock> = {
     cta: "تابع اللعب ←",
     saving: "جارٍ الحفظ…",
   },
-  ru: {
-    title: "Before you start playing",
-    subtitle: "A quick heads-up — please read",
-    intro: "Hi! Before you start, you should know how Vocaband works:",
-    bullets: [
-      {
-        emoji: "👀",
-        title: "Your teacher can see your gameplay",
-        body:
-          "Your scores, which words you got right or wrong, time spent, and which games you played all show up on your teacher's dashboard.",
-      },
-      {
-        emoji: "👥",
-        title: "Only your teacher",
-        body:
-          "Other students don't see your scores. Other classes don't see them either. Just the teacher of your class.",
-      },
-      {
-        emoji: "🎯",
-        title: "Why this matters",
-        body:
-          "Your teacher uses what they see to choose which words the class should practise next and to know who needs extra help.",
-      },
-      {
-        emoji: "🔒",
-        title: "We don't sell your data",
-        body:
-          "Vocaband never sells your info or uses it for ads. It's stored safely in the EU.",
-      },
-      {
-        emoji: "👨‍👩‍👧",
-        title: "If you're under 13",
-        body:
-          "Please make sure your parent or guardian knows you're using this. They can email your school anytime to ask for your data to be deleted.",
-      },
-      {
-        emoji: "📧",
-        title: "Your rights",
-        body:
-          "You can ask your teacher to delete your data anytime, and your school can request a full export on your behalf.",
-      },
-    ],
-    checkbox: "I read this. I understand my teacher sees what I play.",
-    cta: "Continue playing →",
-    saving: "Saving…",
-  },
 };
 
 /**

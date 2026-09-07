@@ -96,17 +96,6 @@ const STRINGS: Record<Language, {
       beat_record:  { name: 'حطّم رقمك القياسي',    subtitle: 'تخطى أفضل علامة لك في أي وضع' },
     },
   },
-  ru: {
-    title: "Today's missions",
-    doneChip: (n, total) => `${n}/${total} done`,
-    loading: 'Loading…',
-    allDone: 'Awesome! All missions complete today 🎉',
-    missions: {
-      master_words: { name: 'Master 5 new words', subtitle: 'Answer 5 different words correctly' },
-      play_modes:   { name: 'Play 3 game modes',  subtitle: 'Try 3 different modes today' },
-      beat_record:  { name: 'Beat your record',   subtitle: 'Top your all-time best on any mode' },
-    },
-  },
 };
 
 export default function DailyMissionsCard({ missions, isLoading }: DailyMissionsCardProps) {

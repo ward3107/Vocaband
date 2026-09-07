@@ -30,7 +30,6 @@ const STRINGS: Record<Language, { unlocked: string }> = {
   en: { unlocked: "Achievement unlocked!" },
   he: { unlocked: "הישג נפתח!" },
   ar: { unlocked: "تم فتح إنجاز!" },
-  ru: { unlocked: "Достижение!" },
 };
 
 export default function AchievementToast({ toasts, onDismiss }: AchievementToastProps) {

@@ -63,7 +63,6 @@ const TITLES: Record<Language, Record<HubSection, string>> = {
   en: { practice: "Practice", daily: "Daily" },
   he: { practice: "תרגול", daily: "יומי" },
   ar: { practice: "تدريب", daily: "يومي" },
-  ru: { practice: "Практика", daily: "Ежедневно" },
 };
 
 /** Section sub-headers on the Daily page. */
@@ -71,11 +70,10 @@ const DAILY_LABELS: Record<Language, { missions: string; badges: string; boosts:
   en: { missions: "Today's missions", badges: "Your badges", boosts: "Active boosts" },
   he: { missions: "משימות היום", badges: "התגים שלך", boosts: "בוסטים פעילים" },
   ar: { missions: "مهام اليوم", badges: "أوسمتك", boosts: "المعززات النشطة" },
-  ru: { missions: "Задания дня", badges: "Ваши значки", boosts: "Активные бусты" },
 };
 
 const BACK_LABEL: Record<Language, string> = {
-  en: "Back", he: "חזרה", ar: "رجوع", ru: "Назад",
+  en: "Back", he: "חזרה", ar: "رجوع",
 };
 
 export default function StudentHubSubView({

@@ -89,19 +89,6 @@ const CHROME: Record<Language, Record<string, string>> = {
     playCta: 'العب لتربح',
     buyCta: 'اشترِ الآن',
   },
-  ru: {
-    almostHeader: 'Almost yours!',
-    almostGap: '{gap} 🪙 to unlock',
-    chestHeader: "Today's chest is waiting",
-    chestSub: 'Open it for free coins',
-    chestCta: 'Open chest',
-    pinnedHeader: 'Saving for',
-    pinnedProgress: '{have} / {total} 🪙',
-    pinnedUnpin: 'Unpin',
-    fallbackHeader: 'Try this',
-    playCta: 'Play to earn',
-    buyCta: 'Buy now',
-  },
 };
 
 function isOwned(user: AppUser, kind: PinnedKind, id: string, emoji: string): boolean {

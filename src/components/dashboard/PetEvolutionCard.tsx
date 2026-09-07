@@ -72,15 +72,6 @@ const STRINGS: Record<Language, {
     daysSince: n => n === 1 ? 'لعبت بالأمس' : `${n} أيام منذ آخر لعب`,
     comeBack: 'عد قريبًا — رفيقك ينتظرك!',
   },
-  ru: {
-    title: 'Your companion',
-    stages: { egg: 'Egg', baby: 'Baby', child: 'Child', teen: 'Teen', adult: 'Adult' },
-    daysActive: n => `${n} active day${n === 1 ? '' : 's'}`,
-    nextStageIn: (n, stage) => `${n} more day${n === 1 ? '' : 's'} → ${stage}`,
-    fullyGrown: 'Fully grown! 🎉',
-    daysSince: n => n === 1 ? 'Played yesterday' : `${n} days since last play`,
-    comeBack: 'Come back soon — your companion is waiting!',
-  },
 };
 
 export default function PetEvolutionCard({ state, isLoading }: PetEvolutionCardProps) {

@@ -413,8 +413,7 @@ const ar: Catalog = {
   },
 };
 
-// Russian falls back to English until shopCatalog gains a dedicated ru block.
-export const shopCatalog: Record<Language, Catalog> = { en, he, ar, ru: en };
+export const shopCatalog: Record<Language, Catalog> = { en, he, ar };
 
 export function catalogName(
   section: CatalogSection,

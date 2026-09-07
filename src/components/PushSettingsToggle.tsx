@@ -16,7 +16,6 @@ const COPY = {
   en: { title: "Notifications", on: "On — you'll be notified about new tasks, rewards, and live challenges.", off: "Off — turn on to get notified about new tasks.", blocked: "Blocked in your browser settings. Re-enable notifications for this site to use them.", turnOn: "Turn on", turnOff: "Turn off" },
   he: { title: "התראות", on: "פעיל — תקבל התראות על משימות חדשות, פרסים ואתגרים חיים.", off: "כבוי — הפעל כדי לקבל התראות על משימות חדשות.", blocked: "חסום בהגדרות הדפדפן. אפשר התראות לאתר הזה כדי להשתמש בהן.", turnOn: "הפעל", turnOff: "כבה" },
   ar: { title: "الإشعارات", on: "مُفعّل — ستتلقى إشعارات بالمهام الجديدة والمكافآت والتحديات المباشرة.", off: "متوقف — فعّله لتلقي إشعارات بالمهام الجديدة.", blocked: "محظور في إعدادات المتصفح. اسمح بالإشعارات لهذا الموقع لاستخدامها.", turnOn: "تفعيل", turnOff: "إيقاف" },
-  ru: { title: "Уведомления", on: "Включены — вы будете получать уведомления о новых заданиях, наградах и соревнованиях.", off: "Выключены — включите, чтобы получать уведомления о новых заданиях.", blocked: "Заблокировано в настройках браузера. Разрешите уведомления для этого сайта.", turnOn: "Включить", turnOff: "Выключить" },
 } as const;
 
 export default function PushSettingsToggle({ user }: { user: AppUser }) {

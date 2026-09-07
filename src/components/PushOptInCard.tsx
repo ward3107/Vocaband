@@ -27,7 +27,6 @@ const COPY = {
   en: { title: "Get a ping when your teacher sends a task?", body: "We'll notify you about new assignments, rewards, and live challenges. No ads — turn it off anytime in Privacy Settings.", yes: "Yes, notify me", no: "Not now" },
   he: { title: "לקבל התראה כשהמורה שולח משימה?", body: "נעדכן אותך על משימות חדשות, פרסים ואתגרים חיים. בלי פרסומות — אפשר לכבות בכל רגע בהגדרות הפרטיות.", yes: "כן, עדכנו אותי", no: "לא עכשיו" },
   ar: { title: "هل تريد تنبيهًا عندما يرسل معلمك مهمة؟", body: "سننبهك بالمهام الجديدة والمكافآت والتحديات المباشرة. بدون إعلانات — يمكنك إيقافه في إعدادات الخصوصية.", yes: "نعم، أبلغني", no: "ليس الآن" },
-  ru: { title: "Получать уведомление, когда учитель отправляет задание?", body: "Мы сообщим вам о новых заданиях, наградах и живых соревнованиях. Без рекламы — отключить можно в настройках конфиденциальности.", yes: "Да, уведомлять", no: "Не сейчас" },
 } as const;
 
 export default function PushOptInCard({ user }: { user: AppUser }) {

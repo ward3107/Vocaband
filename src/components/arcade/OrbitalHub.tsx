@@ -63,7 +63,6 @@ const LABELS: Record<Language, Record<OrbitKey, string>> = {
   en: { play: "Play", join: "Join", tasks: "Tasks", shop: "Shop", leaderboard: "Ranks", practice: "Practice", daily: "Daily" },
   he: { play: "שחק", join: "הצטרף", tasks: "משימות", shop: "חנות", leaderboard: "דירוג", practice: "תרגול", daily: "יומי" },
   ar: { play: "العب", join: "انضم", tasks: "المهام", shop: "المتجر", leaderboard: "الترتيب", practice: "تدريب", daily: "يومي" },
-  ru: { play: "Играть", join: "Войти", tasks: "Задания", shop: "Магазин", leaderboard: "Рейтинг", practice: "Практика", daily: "Ежедневно" },
 };
 
 export default function OrbitalHub({ center, items }: OrbitalHubProps) {

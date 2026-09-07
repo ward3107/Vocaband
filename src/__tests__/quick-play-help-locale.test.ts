@@ -10,7 +10,7 @@ const HELP_KEYS = [
 ] as const;
 
 describe('quick-play help locale keys', () => {
-  it.each(['en', 'he', 'ar', 'ru'] as const)('has all help keys populated in %s', (lang) => {
+  it.each(['en', 'he', 'ar'] as const)('has all help keys populated in %s', (lang) => {
     for (const key of HELP_KEYS) {
       const value = (quickPlayT[lang] as unknown as Record<string, unknown>)[key];
       expect(value, `${lang}.${key} missing`).toBeTypeOf('string');

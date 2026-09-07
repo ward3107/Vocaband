@@ -68,23 +68,4 @@ export const classroomTodayT: Record<Language, ClassroomTodayStrings> = {
       sub: "متوسط الدرجة عبر كل لعبة، يومًا بيوم. الفجوات تعني عدم وجود ألعاب في ذلك اليوم.",
     },
   },
-  ru: {
-    stats: {
-      plays: "Plays this week",
-      avgScore: "Avg score",
-      activeStudents: "Active students",
-      playsShort: "Plays",
-      avgScoreShort: "Avg",
-      activeShort: "Active",
-    },
-    pulse: {
-      ontrack: { label: "On track", desc: "≥70% and active this week" },
-      attn: { label: "Needs attention", desc: "Low scores or stuck on specific words" },
-      idle: { label: "Not playing", desc: "No activity in 7+ days" },
-    },
-    chart: {
-      title: "Class activity — last 7 days",
-      sub: "Average score across every play, day by day. Gaps mean no plays that day.",
-    },
-  },
 };

@@ -24,7 +24,6 @@ const A11Y: Record<Language, { done: string; next: string; todo: string; locked:
   en: { done: "completed", next: "recommended next", todo: "to play", locked: "locked", stars: (n) => `${n} of 3 stars` },
   he: { done: "הושלם", next: "הבא המומלץ", todo: "לשחק", locked: "נעול", stars: (n) => `${n} מתוך 3 כוכבים` },
   ar: { done: "مكتمل", next: "التالي المقترح", todo: "للعب", locked: "مقفل", stars: (n) => `${n} من 3 نجوم` },
-  ru: { done: "пройдено", next: "рекомендуется далее", todo: "играть", locked: "заблокировано", stars: (n) => `${n} из 3 звёзд` },
 };
 
 interface ModeIslandProps {
