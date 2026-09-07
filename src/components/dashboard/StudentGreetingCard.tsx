@@ -87,10 +87,18 @@ export default function StudentGreetingCard({
     }
   };
 
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(user.classCode || "");
-    setCopiedCode(user.classCode || "");
-    setTimeout(() => setCopiedCode(null), 2000);
+  const handleCopyCode = async () => {
+    const code = user.classCode || "";
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      setTimeout(() => setCopiedCode(null), 2000);
+    } catch {
+      // navigator.clipboard is undefined / rejects in some in-app webviews
+      // and insecure contexts, which used to throw uncaught. Fall back to a
+      // prompt so the student can still copy the code by hand.
+      window.prompt("", code);
+    }
   };
 
   const xpTitle = getXpTitle(xp);

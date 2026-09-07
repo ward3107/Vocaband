@@ -47,13 +47,6 @@ export default function StudentAssignmentsList({
     >
       <div className="mb-5 sm:mb-6 flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <div className="mb-1.5 flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#8B5CF6]">
-            <span
-              className="inline-block h-1.5 w-1.5 rounded-full"
-              style={{ background: "linear-gradient(135deg,#8B5CF6,#D946EF)" }}
-            />
-            {t.yourAssignments}
-          </div>
           <h2 className="flex items-center gap-2 text-xl sm:text-2xl font-black tracking-[-0.01em] text-[#1F1147]">
             <BookOpen className="text-[#8B5CF6]" size={22} /> {t.yourAssignments}
           </h2>
