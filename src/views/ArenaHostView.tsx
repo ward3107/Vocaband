@@ -48,6 +48,7 @@ import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
 import { SPEED_MODE_META } from "./speedRoundStrings";
 import { ARENA_HOST_STRINGS } from "./arenaStrings";
+import { LIVE_GAME_ACCENTS } from "./liveGameAccents";
 
 interface ArenaHostViewProps {
   sessionCode: string;
@@ -240,10 +241,11 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
     });
   };
 
+  const A = LIVE_GAME_ACCENTS.arena;
   const cardCls = "bg-surface border-outline-variant shadow-lg";
   const headingCls = "text-on-surface";
   const pillIdle = "bg-surface border-outline-variant text-on-surface-variant hover:border-outline";
-  const iconBtn = "bg-surface text-indigo-600 hover:bg-surface-container border border-outline-variant";
+  const iconBtn = `bg-surface ${A.text600} hover:bg-surface-container border border-outline-variant`;
 
   // Remove a student — available both in Controls and on the live/projected
   // board, since teachers need to drop a disruptive kid mid-game. The confirm
@@ -274,7 +276,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
               <span className="truncate">{t.title}</span>
             </h1>
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-              <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl font-black text-xs sm:text-base tracking-[0.12em] bg-indigo-50 text-indigo-700">
+              <span className={`inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl font-black text-xs sm:text-base tracking-[0.12em] ${A.chipStatic}`}>
                 {sessionCode}
               </span>
               <button
@@ -312,7 +314,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                   className="h-full"
                 />
               </div>
-              <p className="mt-1 text-center text-[11px] sm:text-xs font-black uppercase tracking-widest text-indigo-500 flex-shrink-0">
+              <p className={`mt-1 text-center text-[11px] sm:text-xs font-black uppercase tracking-widest ${A.label} flex-shrink-0`}>
                 {t.wordsLeft(wordsLeft)}
               </p>
             </section>
@@ -327,7 +329,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
           </h1>
           {presenting ? (
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-              <span className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-black text-base sm:text-lg tracking-[0.12em] bg-indigo-50 text-indigo-700">
+              <span className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-black text-base sm:text-lg tracking-[0.12em] ${A.chipStatic}`}>
                 {t.code}: {sessionCode}
               </span>
               <button
@@ -372,7 +374,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                 leaderboard takes over (and stays as the post-game results). */}
             {hasStarted ? (
               <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${presenting ? theme.card : cardCls}`}>
-                <h2 className="text-sm font-black uppercase tracking-widest text-indigo-500 mb-4 flex items-center gap-2">
+                <h2 className={`text-sm font-black uppercase tracking-widest ${A.label} mb-4 flex items-center gap-2`}>
                   <Users size={18} /> {t.leaderboard}
                   <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
                 </h2>
@@ -384,7 +386,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                   players={sorted}
                   countLabel={t.inRoom}
                   emptyLabel={t.noStudents}
-                  accent="from-indigo-500 to-violet-600"
+                  accent={A.rosterGrad}
                   large={presenting}
                   onKick={onKick}
                   theme={presenting ? theme : undefined}
@@ -397,7 +399,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
           <aside className={`lg:col-span-4 space-y-4 order-1 lg:order-2 ${presenting ? "hidden" : ""}`}>
             <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500">{t.joinHeading}</h2>
+                <h2 className={`text-xs font-black uppercase tracking-widest ${A.label}`}>{t.joinHeading}</h2>
                 <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
                   className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition active:scale-95 ${iconBtn}`} aria-label={t.enlarge}>
                   <Maximize2 size={15} />
@@ -416,7 +418,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                     onClick={handleCopy}
                     style={{ touchAction: "manipulation" }}
                     className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm transition active:scale-[0.98] ${
-                      copied ? "bg-emerald-100 text-emerald-700" : "bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md shadow-indigo-500/30"
+                      copied ? "bg-emerald-100 text-emerald-700" : `bg-gradient-to-r ${A.grad} text-white shadow-md ${A.shadow30}`
                     }`}
                   >
                     {copied ? <><Check size={16} /> {t.copied}</> : <><Copy size={16} /> {t.copy}</>}
@@ -430,7 +432,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             <TeamModeToggle
               teamMode={teamMode}
               onToggle={(en) => tokenRef.current && setTeamMode(en, tokenRef.current)}
-              headingClass="text-indigo-500"
+              headingClass={A.label}
               idleClass={pillIdle}
               cardClass={cardCls}
             />
@@ -440,7 +442,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             <RoughModeToggle
               roughMode={roughMode}
               onToggle={(en) => tokenRef.current && setRoughMode(en, tokenRef.current)}
-              headingClass="text-indigo-500"
+              headingClass={A.label}
               idleClass={pillIdle}
               cardClass={cardCls}
               disabled={!arenaActive}
@@ -448,19 +450,19 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
 
             <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
               {/* The teacher's word list — typed / picked from the library. */}
-              <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500 mb-3">{t.wordsHeading}</h2>
+              <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mb-3`}>{t.wordsHeading}</h2>
               <SpeedWordPicker
                 library={vocab?.ALL_WORDS ?? null}
                 picked={pickedWords}
                 onChange={setPickedWords}
                 minWords={MIN_WORDS}
                 t={t}
-                chipClass="bg-indigo-100 text-indigo-700"
+                chipClass={A.chip}
                 savedGroups={savedGroups}
               />
 
               {/* Mode mix — multi-toggle, unlike Speed Round's single pick */}
-              <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500 mt-5 mb-3">{t.modeHeading}</h2>
+              <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mt-5 mb-3`}>{t.modeHeading}</h2>
               <div className="grid grid-cols-2 gap-2">
                 {QP_SPEED_MODES.map((m) => {
                   const picked = enabledModes.has(m);
@@ -470,7 +472,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                       type="button"
                       onClick={() => toggleMode(m)}
                       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                      className={`relative rounded-xl p-2.5 text-start border-2 transition-all ${picked ? "bg-gradient-to-br from-indigo-500 to-violet-600 border-transparent text-white shadow-md" : pillIdle}`}
+                      className={`relative rounded-xl p-2.5 text-start border-2 transition-all ${picked ? `bg-gradient-to-br ${A.grad} border-transparent text-white shadow-md` : pillIdle}`}
                     >
                       <div className="flex items-center gap-2">
                         <span className="text-lg">{SPEED_MODE_META[m].emoji}</span>
@@ -484,7 +486,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
               {enabledModes.size === 0 && <p className="mt-2 text-xs font-bold text-rose-600">{t.pickMode}</p>}
 
               {/* Timer (per grabbed word) */}
-              <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500 mt-5 mb-3">{t.timerHeading}</h2>
+              <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mt-5 mb-3`}>{t.timerHeading}</h2>
               <div className="grid grid-cols-5 gap-2">
                 {QP_SPEED_ROUND_SECONDS.map((opt) => {
                   const picked = roundSeconds === opt;
@@ -494,7 +496,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                       type="button"
                       onClick={() => setRoundSeconds(opt)}
                       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                      className={`px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white border-transparent shadow-md" : pillIdle}`}
+                      className={`px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? `bg-gradient-to-r ${A.grad} text-white border-transparent shadow-md` : pillIdle}`}
                     >
                       {t.seconds(opt)}
                     </button>
@@ -504,13 +506,13 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
 
               {/* Arena map — themed background the whole class sees. "Surprise
                   me" rolls a fresh scene per hunt; tapping a tile locks it. */}
-              <h2 className="text-xs font-black uppercase tracking-widest text-indigo-500 mt-5 mb-3">{t.mapHeading}</h2>
+              <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mt-5 mb-3`}>{t.mapHeading}</h2>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => selectMap("random")}
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                  className={`relative aspect-[10/7] rounded-xl overflow-hidden border-2 flex flex-col items-center justify-center gap-0.5 bg-gradient-to-br from-indigo-500 to-violet-600 text-white transition ${mapChoice === "random" ? "border-amber-400 ring-2 ring-amber-300" : "border-transparent opacity-90 hover:opacity-100"}`}
+                  className={`relative aspect-[10/7] rounded-xl overflow-hidden border-2 flex flex-col items-center justify-center gap-0.5 bg-gradient-to-br ${A.grad} text-white transition ${mapChoice === "random" ? "border-amber-400 ring-2 ring-amber-300" : "border-transparent opacity-90 hover:opacity-100"}`}
                 >
                   <span className="text-xl">🎲</span>
                   <span className="text-[10px] font-black leading-tight px-1 text-center">{t.randomMap}</span>
@@ -544,10 +546,10 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                 aria-checked={autoPlay}
                 onClick={() => setAutoPlay(v => !v)}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`mt-5 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border-2 transition-all ${autoPlay ? "bg-indigo-50 border-indigo-300" : pillIdle}`}
+                className={`mt-5 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border-2 transition-all ${autoPlay ? `${A.soft50} ${A.borderActive}` : pillIdle}`}
               >
-                <span className={`font-black text-xs ${autoPlay ? "text-indigo-700" : ""}`}>⚡ {t.autoPlayLabel}</span>
-                <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${autoPlay ? "bg-indigo-500" : "bg-stone-300"}`}>
+                <span className={`font-black text-xs ${autoPlay ? A.text700 : ""}`}>⚡ {t.autoPlayLabel}</span>
+                <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${autoPlay ? A.switchOn : "bg-stone-300"}`}>
                   <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${autoPlay ? "start-[18px]" : "start-0.5"}`} />
                 </span>
               </button>
@@ -569,7 +571,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                   onClick={handleStart}
                   disabled={!canStart}
                   style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                  className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${!canStart ? "bg-stone-300 cursor-not-allowed" : "bg-gradient-to-r from-indigo-500 to-violet-600 shadow-indigo-500/30 active:scale-[0.98]"}`}
+                  className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${!canStart ? "bg-stone-300 cursor-not-allowed" : `bg-gradient-to-r ${A.grad} ${A.shadow30} active:scale-[0.98]`}`}
                 >
                   {autoCountdown !== null
                     ? <><Zap size={18} /> {t.autoNextIn(autoCountdown)}</>
@@ -591,7 +593,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             onClick={handleStart}
             disabled={!canStart}
             style={{ touchAction: "manipulation" }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-lg text-white shadow-xl shadow-indigo-500/40 bg-gradient-to-r from-indigo-500 to-violet-600 active:scale-[0.98] transition disabled:opacity-60"
+            className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-lg text-white shadow-xl ${A.shadow40} bg-gradient-to-r ${A.grad} active:scale-[0.98] transition disabled:opacity-60`}
           >
             {autoCountdown !== null
               ? <><Zap size={20} /> {t.autoNextIn(autoCountdown)}</>
@@ -614,7 +616,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
       {/* Celebratory results — shown when ending a hunt that has scores. */}
       <AnimatePresence>
         {showResults && (
-          <GameResults entries={sorted} onBack={leaveToDashboard} accent="from-indigo-500 to-violet-600" />
+          <GameResults entries={sorted} onBack={leaveToDashboard} accent={A.rosterGrad} />
         )}
       </AnimatePresence>
 

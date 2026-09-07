@@ -788,7 +788,11 @@ export default function QuickPlayMonitor({
   }, []);
   const [endModal, setEndModal] = useState(false);
   const [showWordsModal, setShowWordsModal] = useState(false);
-  const [theme, setTheme] = useState<ThemeKey>('neon');
+  // Default to the indigo 'Classroom' skin so Quick Play OPENS in the same
+  // indigo family as its launcher tile (the aurora hero) — part of the
+  // live-games colour-carry: the hue you tap is the hue you land in. The
+  // teacher can still pick Neon / Galaxy / any skin from the theme picker.
+  const [theme, setTheme] = useState<ThemeKey>('classic');
   // Reduced-motion toggle for sensory-sensitive classrooms — disables
   // particles, +N floaters, sparkles, and the gentle ambient bobs.
   // Persisted to localStorage so the teacher's preference sticks

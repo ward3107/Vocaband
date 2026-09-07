@@ -40,6 +40,7 @@ import { celebrate } from "../utils/celebrate";
 import { primeAudio } from "../utils/primeAudio";
 import { playRoundStart } from "../utils/raceSfx";
 import { QP_RACE_ROUND_SECONDS, QP_CATEGORY_RACE_MODE } from "../core/quickPlayProtocol";
+import { LIVE_GAME_ACCENTS } from "./liveGameAccents";
 import type { View } from "../core/views";
 
 interface CategoryRaceHostViewProps {
@@ -83,7 +84,7 @@ function SlotLetter({ letter, roundId }: { letter: string; roundId: string }) {
       key={settled ? "settled" : "spin"}
       animate={settled ? { scale: [1.35, 1], rotate: [6, 0] } : { scale: 1 }}
       transition={{ type: "spring", stiffness: 320, damping: 14 }}
-      className="inline-flex items-center justify-center w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white text-7xl sm:text-8xl font-black shadow-xl shadow-fuchsia-500/40 mt-1"
+      className={`inline-flex items-center justify-center w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-gradient-to-br ${LIVE_GAME_ACCENTS.race.grad} text-white text-7xl sm:text-8xl font-black shadow-xl ${LIVE_GAME_ACCENTS.race.shadow40} mt-1`}
     >
       {display}
     </motion.span>
@@ -329,10 +330,11 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   // old in-page Moon/Sun toggle is gone: the dashboard theme is now the
   // single source of truth, and brand-coloured accents (fuchsia/indigo/
   // rose buttons) auto-adapt to dark via the global utility remap.
+  const A = LIVE_GAME_ACCENTS.race;
   const cardCls = "bg-surface border-outline-variant shadow-lg";
   const headingCls = "text-on-surface";
   const pillIdle = "bg-surface border-outline-variant text-on-surface-variant hover:border-outline";
-  const iconBtn = "bg-surface text-fuchsia-600 hover:bg-surface-container border border-outline-variant";
+  const iconBtn = `bg-surface ${A.text600} hover:bg-surface-container border border-outline-variant`;
 
   // Remove a student — available both in Controls and on the live/projected
   // board, since teachers need to drop a disruptive kid mid-game. The confirm
@@ -360,7 +362,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
             // Presentation mode: keep only the join code visible (so late
             // students can still join) + a button back to the controls.
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-              <span className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-black text-base sm:text-lg tracking-[0.12em] bg-fuchsia-50 text-fuchsia-700">
+              <span className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-black text-base sm:text-lg tracking-[0.12em] ${A.chipStatic}`}>
                 {t.code}: {liveCode}
               </span>
               <button
@@ -389,7 +391,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                 onClick={handleEndAndNew}
                 disabled={restarting}
                 style={{ touchAction: "manipulation" }}
-                className="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-xl font-black text-sm bg-fuchsia-100 text-fuchsia-700 hover:bg-fuchsia-200 active:scale-95 transition disabled:opacity-60"
+                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-xl font-black text-sm ${A.chip} active:scale-95 transition disabled:opacity-60`}
               >
                 <Plus size={16} /> <span className="hidden sm:inline">{restarting ? t.restarting : t.endNew}</span>
               </button>
@@ -414,8 +416,8 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
               return (
                 <div key={p} className="flex items-center gap-2">
                   {i > 0 && <span className="w-7 h-px bg-stone-300" />}
-                  <span className={`inline-flex items-center gap-1.5 ${active ? "text-fuchsia-600" : done ? "text-emerald-600" : "text-stone-400"}`}>
-                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] ${active ? "bg-fuchsia-500 text-white" : done ? "bg-emerald-500 text-white" : "bg-stone-200 text-stone-500"}`}>
+                  <span className={`inline-flex items-center gap-1.5 ${active ? A.stepText : done ? "text-emerald-600" : "text-stone-400"}`}>
+                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] ${active ? `${A.stepBg} text-white` : done ? "bg-emerald-500 text-white" : "bg-stone-200 text-stone-500"}`}>
                       {done ? <Check size={12} strokeWidth={3} /> : num}
                     </span>
                     {label}
@@ -436,13 +438,13 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Teams toggle — Solo vs Red/Blue (in-memory, per session) */}
               <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
-                <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mb-3">{t.teams}</h2>
+                <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mb-3`}>{t.teams}</h2>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => tokenRef.current && setTeamMode(false, tokenRef.current)}
                     style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                    className={`px-3 py-2.5 rounded-xl font-black text-sm border-2 transition ${!teamMode ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white border-transparent shadow-md" : pillIdle}`}
+                    className={`px-3 py-2.5 rounded-xl font-black text-sm border-2 transition ${!teamMode ? `bg-gradient-to-r ${A.grad} text-white border-transparent shadow-md` : pillIdle}`}
                   >
                     {t.teamsOff}
                   </button>
@@ -462,7 +464,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
 
             {/* Round setup */}
             <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
-              <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mb-3">{t.catsHeading}</h2>
+              <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mb-3`}>{t.catsHeading}</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {CATEGORIES.map(cat => {
                   const picked = selectedCats.includes(cat.id);
@@ -485,12 +487,12 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
               </div>
 
               <div className="flex items-center justify-between mt-5 mb-3">
-                <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500">{t.timerHeading}</h2>
+                <h2 className={`text-xs font-black uppercase tracking-widest ${A.label}`}>{t.timerHeading}</h2>
                 <button
                   type="button"
                   onClick={() => setUntimed(u => !u)}
                   style={{ touchAction: "manipulation" }}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-black text-xs transition active:scale-95 ${untimed ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-md" : pillIdle}`}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full font-black text-xs transition active:scale-95 ${untimed ? `bg-gradient-to-r ${A.grad} text-white shadow-md` : pillIdle}`}
                 >
                   <InfinityIcon size={14} /> {t.untimed}
                 </button>
@@ -504,7 +506,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                       type="button"
                       onClick={() => setRoundSeconds(opt)}
                       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                      className={`px-2 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white border-transparent shadow-md" : pillIdle}`}
+                      className={`px-2 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? `bg-gradient-to-r ${A.grad} text-white border-transparent shadow-md` : pillIdle}`}
                     >
                       {t.seconds(opt)}
                     </button>
@@ -523,10 +525,10 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                 aria-checked={autoPlay}
                 onClick={() => setAutoPlay(v => !v)}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`mt-5 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border-2 transition-all ${autoPlay ? "bg-fuchsia-50 border-fuchsia-300" : pillIdle}`}
+                className={`mt-5 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border-2 transition-all ${autoPlay ? `${A.soft50} ${A.borderActive}` : pillIdle}`}
               >
-                <span className={`font-black text-xs ${autoPlay ? "text-fuchsia-700" : ""}`}>⚡ {t.autoPlayLabel}</span>
-                <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${autoPlay ? "bg-fuchsia-500" : "bg-stone-300"}`}>
+                <span className={`font-black text-xs ${autoPlay ? A.text700 : ""}`}>⚡ {t.autoPlayLabel}</span>
+                <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${autoPlay ? A.switchOn : "bg-stone-300"}`}>
                   <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${autoPlay ? "start-[18px]" : "start-0.5"}`} />
                 </span>
               </button>
@@ -538,7 +540,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
               onClick={() => canStart && setPhase("room")}
               disabled={!canStart}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${canStart ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]" : "bg-stone-300 cursor-not-allowed"}`}
+              className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${canStart ? `bg-gradient-to-r ${A.grad} ${A.shadow30} active:scale-[0.98]` : "bg-stone-300 cursor-not-allowed"}`}
             >
               {canStart ? <>{t.openRoom} →</> : t.needCatsShort}
             </button>
@@ -559,7 +561,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                 >
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-5 sm:gap-10">
                     <div className="flex flex-col items-center">
-                      <span className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-500">{t.letterLabel}</span>
+                      <span className={`text-xs font-black uppercase tracking-[0.2em] ${A.label}`}>{t.letterLabel}</span>
                       <SlotLetter letter={currentRace.letter} roundId={currentRace.roundId} />
                     </div>
                     <div className="flex flex-col items-center">
@@ -592,7 +594,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                 <aside className="lg:col-span-4 space-y-4">
                   <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
                     <div className="flex items-center justify-between mb-3">
-                      <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500">{t.joinHeading}</h2>
+                      <h2 className={`text-xs font-black uppercase tracking-widest ${A.label}`}>{t.joinHeading}</h2>
                       <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
                         className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition active:scale-95 ${iconBtn}`} aria-label={t.enlarge}>
                         <Maximize2 size={15} />
@@ -611,7 +613,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                           onClick={handleCopy}
                           style={{ touchAction: "manipulation" }}
                           className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm transition active:scale-[0.98] ${
-                            copied ? "bg-emerald-100 text-emerald-700" : "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white shadow-md shadow-fuchsia-500/30"
+                            copied ? "bg-emerald-100 text-emerald-700" : `bg-gradient-to-r ${A.grad} text-white shadow-md ${A.shadow30}`
                           }`}
                         >
                           {copied ? <><Check size={16} /> {t.copied}</> : <><Copy size={16} /> {t.copy}</>}
@@ -621,7 +623,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                             type="button"
                             onClick={() => setPhase("setup")}
                             style={{ touchAction: "manipulation" }}
-                            className="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl font-black text-xs text-fuchsia-600 bg-fuchsia-50 hover:bg-fuchsia-100 active:scale-[0.98] transition"
+                            className={`mt-2 w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl font-black text-xs ${A.text600} ${A.soft50} ${A.softHover100} active:scale-[0.98] transition`}
                           >
                             ← {t.editGame}
                           </button>
@@ -637,7 +639,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                       onClick={handleStart}
                       disabled={selectedCats.length === 0 || roundActive}
                       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                      className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${roundActive || selectedCats.length === 0 ? "bg-stone-300 cursor-not-allowed" : "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]"}`}
+                      className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${roundActive || selectedCats.length === 0 ? "bg-stone-300 cursor-not-allowed" : `bg-gradient-to-r ${A.grad} ${A.shadow30} active:scale-[0.98]`}`}
                     >
                       {roundActive
                         ? <><Clock size={18} /> {t.roundLive}{currentRace?.untimed ? "" : ` · ${secondsLeft}s`}</>
@@ -663,7 +665,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
               <div className={`${presenting ? "lg:col-span-12" : "lg:col-span-8"}`}>
                 {hasRunRound || roundActive ? (
                   <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${presenting ? theme.card : cardCls}`}>
-                    <h2 className="text-sm font-black uppercase tracking-widest text-fuchsia-500 mb-4 flex items-center gap-2">
+                    <h2 className={`text-sm font-black uppercase tracking-widest ${A.label} mb-4 flex items-center gap-2`}>
                       <Users size={18} /> {t.leaderboard}
                       <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
                     </h2>
@@ -680,7 +682,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                       players={sorted}
                       countLabel={t.inRoom}
                       emptyLabel={t.noStudents}
-                      accent="from-fuchsia-500 to-pink-600"
+                      accent={A.rosterGrad}
                       large={presenting}
                       onKick={onKick}
                       theme={presenting ? theme : undefined}
@@ -705,7 +707,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
             onClick={handleStart}
             disabled={selectedCats.length === 0}
             style={{ touchAction: "manipulation" }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-lg text-white shadow-xl shadow-fuchsia-500/40 bg-gradient-to-r from-fuchsia-500 to-pink-600 active:scale-[0.98] transition disabled:opacity-60"
+            className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-lg text-white shadow-xl ${A.shadow40} bg-gradient-to-r ${A.grad} active:scale-[0.98] transition disabled:opacity-60`}
           >
             {autoCountdown !== null
               ? <><Zap size={20} /> {t.autoNextIn(autoCountdown)}</>
@@ -746,7 +748,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
       {/* Celebratory results — shown when ending a game that has scores. */}
       <AnimatePresence>
         {showResults && (
-          <GameResults entries={sorted} onBack={leaveToDashboard} accent="from-fuchsia-500 to-pink-600" />
+          <GameResults entries={sorted} onBack={leaveToDashboard} accent={A.rosterGrad} />
         )}
       </AnimatePresence>
 
