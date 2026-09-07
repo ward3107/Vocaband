@@ -353,7 +353,7 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
                           ? 'bg-amber-50 border-amber-200 text-amber-800'
                           : 'bg-indigo-50 border-indigo-200 text-indigo-800'
                       }`}
-                      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                       title={
                         m.kind === 'fuzzy'
                           ? TEXT.autocompleteFuzzyTitle(currentToken.token, m.word)
@@ -404,7 +404,7 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
                           type="button"
                           onClick={() => acceptSuggestion(s)}
                           className="flex items-center gap-1.5 text-sm font-medium text-[var(--vb-text-secondary)] hover:text-amber-700"
-                          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                           title={TEXT.suggestionAcceptTitle(s.typo, s.suggestion)}
                         >
                           <span className="line-through text-[var(--vb-text-muted)]">{s.typo}</span>
@@ -415,7 +415,7 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
                           type="button"
                           onClick={() => dismissSuggestion(s.typo)}
                           className="ml-1 w-6 h-6 rounded-full flex items-center justify-center text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)] hover:bg-[var(--vb-surface-alt)]"
-                          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                          style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                           aria-label={TEXT.suggestionDismissAria(s.typo)}
                         >
                           <X className="w-3.5 h-3.5" />
@@ -434,7 +434,7 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
             disabled={!text.trim() || isAnalyzing}
             type="button"
             className="mt-4 w-full bg-gradient-to-r from-indigo-300 to-violet-400 text-white font-bold py-3 px-6 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:shadow-lg transition-shadow"
-            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           >
             {isAnalyzing ? (
               <>
@@ -487,7 +487,7 @@ const OptionCard: React.FC<OptionCardProps> = ({
       className="w-full rounded-[22px] border px-[18px] pb-4 pt-[18px] text-start transition-[transform,box-shadow]"
       style={{
         touchAction: 'manipulation',
-        WebkitTapHighlightColor: 'transparent' as any,
+        WebkitTapHighlightColor: 'transparent',
         backgroundColor: 'var(--vb-surface)',
         borderColor: 'var(--vb-border)',
         boxShadow:
@@ -592,7 +592,7 @@ const StatusCards: React.FC<StatusCardsProps> = ({ readyCount, needsWorkCount, o
               type="button"
               disabled={isTranslating}
               className="mt-3 w-full bg-gradient-to-r from-amber-400 to-orange-500 text-white text-sm font-bold py-2 px-4 rounded-lg hover:shadow-md transition-shadow disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             >
               {isTranslating ? (
                 <>
@@ -702,7 +702,7 @@ const WordCard: React.FC<WordCardProps> = ({
               }}
               type="button"
               className="mt-1 text-xs text-amber-600 font-medium hover:text-amber-700 flex items-center gap-0.5"
-              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             >
               <AlertTriangle className="w-2.5 h-2.5" />
               {TEXT.addTranslation}
@@ -724,7 +724,7 @@ const WordCard: React.FC<WordCardProps> = ({
               type="button"
               disabled={localTranslating || isTranslating}
               className="p-2 rounded-md bg-gradient-to-br from-amber-100 to-orange-100 hover:from-amber-200 hover:to-orange-200 text-amber-700 hover:text-amber-800 transition-all min-w-[36px] min-h-[36px] disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
               title={TEXT.quickTranslateWithAi}
             >
               {localTranslating || isTranslating ? (
@@ -743,7 +743,7 @@ const WordCard: React.FC<WordCardProps> = ({
             }}
             type="button"
             className="p-2 rounded-md bg-[var(--vb-surface-alt)] hover:bg-indigo-100 text-[var(--vb-text-secondary)] hover:text-indigo-600 transition-colors min-w-[36px] min-h-[36px]"
-            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             title={TEXT.editTranslationsTitle}
           >
             <span className="text-sm">✏️</span>
@@ -757,7 +757,7 @@ const WordCard: React.FC<WordCardProps> = ({
             }}
             type="button"
             className="p-2 rounded-md bg-[var(--vb-surface-alt)] hover:bg-red-100 text-[var(--vb-text-secondary)] hover:text-red-600 transition-colors min-w-[36px] min-h-[36px]"
-            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             title={TEXT.removeWordTitle}
           >
             <X className="w-4 h-4" />
@@ -851,7 +851,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
             onClick={onClose}
             type="button"
             className="text-white/80 hover:text-white"
-            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           >
             <X className="w-6 h-6" />
           </button>
@@ -877,7 +877,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
                 type="button"
                 onClick={handleAutoTranslate}
                 disabled={translating}
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-white font-bold rounded-lg shadow-md hover:shadow-lg active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {translating ? (
@@ -970,7 +970,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
               onClick={onClose}
               type="button"
               className="flex-1 py-3 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] font-bold rounded-lg hover:opacity-80 transition-colors"
-              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             >
               {TEXT.cancel}
             </button>
@@ -981,7 +981,7 @@ const EditTranslationModal: React.FC<EditTranslationModalProps> = ({
               }}
               type="button"
               className="flex-1 py-3 bg-gradient-to-r from-indigo-300 to-violet-400 text-white font-bold rounded-lg hover:shadow-lg transition-shadow"
-              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             >
               Save Changes
             </button>
@@ -1053,7 +1053,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
                   onClick={onOpenCamera}
                   type="button"
                   className="flex flex-col items-center gap-3 rounded-3xl bg-gradient-to-br from-rose-400 to-fuchsia-500 px-4 py-6 text-white shadow-lg shadow-rose-500/20"
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 >
                   <div className="grid h-14 w-14 place-items-center rounded-2xl bg-white/20">
                     <Camera className="h-7 w-7" />
@@ -1066,7 +1066,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
                   onClick={onOpenGallery}
                   type="button"
                   className="flex flex-col items-center gap-3 rounded-3xl border border-[var(--vb-border)] bg-[var(--vb-surface)] px-4 py-6 text-[var(--vb-text-secondary)] transition-colors hover:border-fuchsia-300"
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 >
                   <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-rose-100 to-fuchsia-100 text-fuchsia-600">
                     <Upload className="h-7 w-7" />
@@ -1136,7 +1136,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
                   onClick={onClose}
                   type="button"
                   className="flex-1 bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] font-bold py-3 px-4 rounded-lg"
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 >
                   {TEXT.cancel}
                 </button>
@@ -1144,7 +1144,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
                   onClick={() => onConfirm(extractedWords.filter(w => w.trim()))}
                   type="button"
                   className="flex-1 bg-gradient-to-r from-rose-300 to-fuchsia-400 text-white font-bold py-3 px-4 rounded-lg"
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 >
                   {TEXT.addWords}
                 </button>
@@ -1171,7 +1171,7 @@ const OcrModal: React.FC<OcrModalProps> = ({
                 onClick={onClose}
                 type="button"
                 className="bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] font-bold py-3 px-6 rounded-lg"
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
               >
                 {TEXT.tryAgain}
               </button>
@@ -1257,7 +1257,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
             disabled={selectedForAdd.size === 0}
             type="button"
             className="w-full rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 px-6 py-3.5 font-bold text-white shadow-lg shadow-emerald-500/20 transition-opacity disabled:opacity-40"
-            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           >
             {selectedForAdd.size > 0 ? `${TEXT.addSelected} (${selectedForAdd.size})` : TEXT.addSelected}
           </button>
@@ -1270,7 +1270,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
             onClick={selectAll}
             type="button"
             className="flex-1 rounded-xl bg-[var(--vb-accent-soft)] py-2 text-sm font-semibold text-[var(--vb-accent)] transition-colors hover:opacity-80"
-            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           >
             {TEXT.allWords}
           </button>
@@ -1278,7 +1278,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
             onClick={deselectAll}
             type="button"
             className="flex-1 rounded-xl bg-[var(--vb-surface-alt)] py-2 text-sm font-semibold text-[var(--vb-text-secondary)] transition-colors hover:opacity-80"
-            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           >
             {TEXT.cancel}
           </button>
@@ -1306,7 +1306,7 @@ const PackWordsModal: React.FC<PackWordsModalProps> = ({
                       ? 'bg-[var(--vb-accent-soft)] border-2 border-[var(--vb-accent)]'
                       : 'bg-[var(--vb-surface)] border border-[var(--vb-border)] hover:border-[var(--vb-accent)]'
                   }`}
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -1392,7 +1392,7 @@ const TopicPacksPanel: React.FC<TopicPacksPanelProps> = ({
               onClick={() => handlePackClick(pack)}
               type="button"
               className="group flex items-center gap-3 rounded-2xl border border-[var(--vb-border)] bg-[var(--vb-surface)] p-3.5 text-start transition-[transform,box-shadow] hover:border-emerald-300 hover:shadow-md"
-              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             >
               <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 text-2xl">
                 {pack.icon}
@@ -1522,7 +1522,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
                             <button
                               type="submit"
                               className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-bold"
-                              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                             >
                               Save
                             </button>
@@ -1530,7 +1530,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
                               type="button"
                               onClick={() => setEditingId(null)}
                               className="px-3 py-1.5 rounded-lg bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] text-xs font-bold"
-                              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                             >
                               Cancel
                             </button>
@@ -1544,7 +1544,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
                               onClose();
                             }}
                             className="flex w-full items-center gap-3 text-start"
-                            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                           >
                             <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-amber-100 to-orange-100">
                               <FolderOpen className="h-6 w-6 text-orange-500" />
@@ -1576,7 +1576,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
                                 setEditingName(group.name);
                               }}
                               className="p-2 rounded-lg text-[var(--vb-text-muted)] hover:text-amber-600 hover:bg-amber-50 transition-colors"
-                              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                             >
                               <Pencil className="w-4 h-4" />
                             </button>
@@ -1593,7 +1593,7 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
                                 }
                               }}
                               className="p-2 rounded-lg text-[var(--vb-text-muted)] hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -1670,7 +1670,7 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
             onClick={onClose}
             type="button"
             className="text-white/80 hover:text-white"
-            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           >
             <X className="w-6 h-6" />
           </button>
@@ -1706,7 +1706,7 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
                     ? 'bg-indigo-500 text-white'
                     : 'bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] hover:opacity-80'
                 }`}
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
               >
                 {level}
               </button>
@@ -1748,7 +1748,7 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
                       ? 'bg-[var(--vb-accent-soft)] border-2 border-[var(--vb-accent)] opacity-80'
                       : 'bg-[var(--vb-surface)] border border-[var(--vb-border)] hover:border-[var(--vb-text-muted)]'
                   }`}
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -1786,7 +1786,7 @@ const BrowseLibraryPanel: React.FC<BrowseLibraryPanelProps> = ({
               onClick={handleAddSelected}
               type="button"
               className="w-full bg-gradient-to-r from-indigo-300 to-violet-400 text-white font-bold py-3 px-6 rounded-lg"
-              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             >
               {TEXT.addSelectedWords} ({selectedForAdd.size})
             </button>
@@ -2380,7 +2380,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
               onClick={() => onSelectedWordsChange([])}
               type="button"
               className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold rounded-lg transition-colors"
-              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
             >
               <Trash2 className="w-4 h-4" />
               <span>{TEXT.clearAll}</span>
@@ -2405,7 +2405,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
                     ? 'bg-indigo-500 text-white shadow-sm'
                     : 'text-[var(--vb-text-secondary)] hover:opacity-80'
                 }`}
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
               >
                 {TEXT.bothLang}
               </button>
@@ -2417,7 +2417,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
                     ? 'bg-indigo-500 text-white shadow-sm'
                     : 'text-[var(--vb-text-secondary)] hover:opacity-80'
                 }`}
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
               >
                 {TEXT.hebrewOnly}
               </button>
@@ -2429,7 +2429,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
                     ? 'bg-indigo-500 text-white shadow-sm'
                     : 'text-[var(--vb-text-secondary)] hover:opacity-80'
                 }`}
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
               >
                 {TEXT.arabicOnly}
               </button>
@@ -2492,7 +2492,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
             onClick={onNext}
             type="button"
             className="w-full bg-gradient-to-r from-indigo-300 to-violet-400 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow"
-            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           >
             {TEXT.continue} →
           </button>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Trophy } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { gameActiveT } from "../../locales/student/game-active";

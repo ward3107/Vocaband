@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { AlertTriangle, X } from "lucide-react";
 import { THEMES, PET_MILESTONES } from "../constants/game";
 import { useGameRoute } from "./GameRouteContext";

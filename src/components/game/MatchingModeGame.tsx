@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { getThemeColors, type GameThemeColor } from "./GameShell";
 import { useLanguage } from "../../hooks/useLanguage";
 import { gameActiveT } from "../../locales/student/game-active";

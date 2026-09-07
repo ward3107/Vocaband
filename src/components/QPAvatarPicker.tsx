@@ -119,7 +119,7 @@ export default function AvatarPicker({ selected, onSelect }: AvatarPickerProps) 
           whileTap={{ scale: 0.94 }}
           aria-label={changeLabel}
           className="relative flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-full bg-emerald-100 ring-4 ring-emerald-500 shadow-md shadow-emerald-500/30"
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
         >
           <QPAvatar value={selected} iconSize={48} className="text-5xl sm:text-6xl" />
           {/* Pencil badge tells the kid the avatar is tappable, not just decorative. */}
@@ -131,7 +131,7 @@ export default function AvatarPicker({ selected, onSelect }: AvatarPickerProps) 
           type="button"
           onClick={() => setExpanded(true)}
           className="px-4 py-1.5 rounded-full bg-surface-container hover:bg-surface-container-high text-sm font-black text-on-surface-variant transition-colors"
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
         >
           {changeLabel}
         </button>
@@ -150,7 +150,7 @@ export default function AvatarPicker({ selected, onSelect }: AvatarPickerProps) 
           type="button"
           onClick={() => setExpanded(false)}
           className="px-3 py-1 rounded-full bg-surface-container hover:bg-surface-container-high text-xs font-black text-primary transition-colors"
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
         >
           {doneLabel}
         </button>
@@ -169,7 +169,7 @@ export default function AvatarPicker({ selected, onSelect }: AvatarPickerProps) 
                   ? "bg-primary text-on-primary shadow-md"
                   : "bg-surface-container text-on-surface-variant hover:bg-surface-container-high"
               }`}
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             >
               {GROUP_LABEL[g]?.[language] ?? GROUP_LABEL[g]?.en ?? g}
             </button>
@@ -200,7 +200,7 @@ export default function AvatarPicker({ selected, onSelect }: AvatarPickerProps) 
                     ? "bg-emerald-100 ring-4 ring-emerald-500 shadow-md shadow-emerald-500/30"
                     : "bg-surface-container hover:bg-surface-container-high text-on-surface"
                 }`}
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                 aria-label={tAria.selectAvatar(av)}
                 aria-pressed={isSelected}
               >

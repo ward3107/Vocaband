@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { Brain } from "lucide-react";
 import { getThemeColors, type GameThemeColor } from "./GameShell";
 import { useLanguage } from "../../hooks/useLanguage";

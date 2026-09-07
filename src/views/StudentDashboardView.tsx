@@ -2,7 +2,6 @@ import StudentOnboarding from "../components/StudentOnboarding";
 import FloatingButtons from "../components/FloatingButtons";
 import StudentTopBar from "../components/dashboard/StudentTopBar";
 import PetCompanion from "../components/dashboard/PetCompanion";
-import Pet3DCard from "../components/dashboard/Pet3DCard";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import PushOptInCard from "../components/PushOptInCard";
 import JoinGameModal from "../components/JoinGameModal";
@@ -271,9 +270,6 @@ export default function StudentDashboardView({
             onApplyServerRewards({ xpToAdd, coinsToAdd, badgesToAppend });
           }}
         />
-        {/* Always-visible 3D pet — a real spinnable model so every student
-            sees their pet in 3D, regardless of stage. */}
-        <Pet3DCard stage={retention.currentPetStage.stage} />
         {!studentDataLoading && studentAssignments.length === 0 && (
           <StudentWelcomeCard displayName={user.displayName} />
         )}

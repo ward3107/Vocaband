@@ -61,7 +61,7 @@ export default function QpReactionBar({ sendReaction }: QpReactionBarProps) {
               whileTap={{ scale: 0.85 }}
               whileHover={{ scale: 1.1 }}
               className="relative w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center text-2xl sm:text-3xl rounded-full hover:bg-white/10 transition-colors"
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as any }}
+              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
               aria-label={tAria.sendReactionEmoji(emoji)}
             >
               <span>{emoji}</span>

@@ -24,7 +24,7 @@
  *     would see four English phrases and have to guess at random.
  */
 import { useEffect, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { Volume2, X, ArrowRight } from "lucide-react";
 import { IDIOMS, pickRandomIdioms, type Idiom } from "../../data/idioms";
 import { useLanguage, type Language } from "../../hooks/useLanguage";

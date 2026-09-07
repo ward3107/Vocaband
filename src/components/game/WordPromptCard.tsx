@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Volume2 } from "lucide-react";
 import { getGameDebugger } from "../../utils/gameDebug";
 import { useLanguage } from "../../hooks/useLanguage";

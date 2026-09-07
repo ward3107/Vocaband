@@ -1547,7 +1547,7 @@ export default function QuickPlayMonitor({
                 ? 'bg-white/5 text-current opacity-60'
                 : 'bg-white/10 text-current'
             } hover:bg-white/20`}
-            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           >
             {reducedMotion ? <ZapOff size={16} /> : <Zap size={16} />}
           </button>
@@ -1659,7 +1659,7 @@ export default function QuickPlayMonitor({
                 onClick={() => setQrEnlarged(true)}
                 aria-label={tT.qpShowQrAria}
                 className="relative bg-white rounded-t-xl shadow-xl hover:shadow-2xl hover:scale-[1.03] active:scale-95 transition-all p-2 ring-4 ring-white/30"
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
               >
                 <div className="w-full aspect-square flex items-center justify-center">
                   <QRCodeSVG
@@ -1765,7 +1765,7 @@ export default function QuickPlayMonitor({
                   type="button"
                   onClick={() => setShowWordsModal(true)}
                   className="inline-flex items-center justify-center gap-1.5 bg-white/15 hover:bg-white/25 text-white font-bold text-xs sm:text-sm px-3 py-2.5 rounded-lg transition-colors"
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 >
                   <BookOpen size={14} />
                   Words
@@ -1774,7 +1774,7 @@ export default function QuickPlayMonitor({
                   type="button"
                   onClick={() => setEndModal(true)}
                   className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm px-3 py-2.5 rounded-lg shadow-lg shadow-red-500/30 hover:shadow-red-500/50 border-2 border-red-400 transition-all active:scale-95"
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                   title="⚠️ Ends the Quick Play session for all students"
                 >
                   <ShieldAlert size={14} className="text-yellow-300" />
@@ -1785,7 +1785,7 @@ export default function QuickPlayMonitor({
               <button
                 type="button"
                 onClick={toggleQrCollapsed}
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 className="w-full mt-2 inline-flex items-center justify-center gap-2 text-sm font-bold px-4 py-3 bg-slate-700 hover:bg-slate-800 text-white rounded-lg transition-all shadow-md hover:shadow-lg"
               >
                 Hide QR
@@ -2257,7 +2257,7 @@ export default function QuickPlayMonitor({
                     handleCopyLink();
                   }}
                   className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-dim text-white font-bold py-3 rounded-xl shadow-md active:scale-[0.97] transition-all"
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 >
                   <Share2 size={16} /> Share
                 </button>
@@ -2265,7 +2265,7 @@ export default function QuickPlayMonitor({
                   type="button"
                   onClick={handleCopyLink}
                   className="px-4 py-3 bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold transition-colors inline-flex items-center gap-2"
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 >
                   {copiedLink ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
                   {copiedLink ? 'Copied!' : 'Copy'}
@@ -2283,7 +2283,7 @@ export default function QuickPlayMonitor({
                     type="button"
                     onClick={() => { setQrCollapsed(false); try { localStorage.setItem('vocaband-qp-qr-collapsed', '0'); } catch { /* best-effort */ } setQrEnlarged(false); }}
                     className="flex-1 py-3 bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold transition-colors text-sm"
-                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                   >
                     Pin to page
                   </button>
@@ -2291,7 +2291,7 @@ export default function QuickPlayMonitor({
                 <button
                   onClick={() => setQrEnlarged(false)}
                   className="flex-1 py-3 bg-stone-900 hover:bg-black text-white rounded-xl font-bold transition-colors"
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as any }}
+                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
                 >
                   Close
                 </button>
