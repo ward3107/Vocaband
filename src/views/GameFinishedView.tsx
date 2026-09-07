@@ -49,7 +49,7 @@ export default function GameFinishedView({
     setIsFinished, setScore, setCurrentIndex, setMistakes, setFeedback,
     setWordAttempts, setHiddenOptions, setSpellingInput,
     setAssignmentWords, setShowModeSelection, setView,
-    qpLeaderboard, leaderboard, targetLanguage, speakWord,
+    qpLeaderboard, leaderboard, targetLanguage, speakWord, gameMode,
   } = useGameRoute();
   const isGuest = !!user?.isGuest;
 
@@ -150,7 +150,19 @@ export default function GameFinishedView({
   const { language, dir } = useLanguage();
   const tt = gameFinishedT[language];
   const displayName = user?.displayName || "";
-  const fillName = (template: string) => template.replace("{name}", displayName);
+  // Pick the celebration copy ONCE per finish screen. secureRandomInt was
+  // being called inline in render, so the headline + subtitle re-rolled on
+  // every unrelated re-render (save-state change, certificate modal open).
+  // Memoise so the message stays put; re-pick only if the language (tt) or
+  // the student's name changes.
+  const headline = useMemo(
+    () => tt.headlines[secureRandomInt(tt.headlines.length)].replace("{name}", displayName),
+    [tt, displayName],
+  );
+  const subtitle = useMemo(
+    () => tt.subtitles[secureRandomInt(tt.subtitles.length)],
+    [tt],
+  );
 
   // ─── Certificate modal — student-facing print/share ──────────────
   // Only authenticated real students get the option; QP guests have no
@@ -197,10 +209,10 @@ export default function GameFinishedView({
         <Trophy className="w-20 h-20 sm:w-24 sm:h-24 text-yellow-500 mb-4 mx-auto" />
       </motion.div>
       <h1 className={`text-3xl sm:text-4xl font-bold mb-2 ${t.text}`}>
-        {fillName(tt.headlines[secureRandomInt(tt.headlines.length)])}
+        {headline}
       </h1>
       <p className={`text-lg sm:text-xl mb-6 ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>
-        {tt.subtitles[secureRandomInt(tt.subtitles.length)]}
+        {subtitle}
       </p>
       <div className="flex flex-col sm:flex-row gap-4 mb-8 w-full max-w-lg">
         <div className={`${t.card} p-5 sm:p-8 rounded-2xl shadow-md flex-1 text-center`}>
@@ -218,13 +230,22 @@ export default function GameFinishedView({
           </div>
         )}
       </div>
-      {/* Accuracy summary */}
-      {gameWords.length > 0 && (
-        <div className={`${t.card} rounded-xl shadow-sm px-6 py-3 mb-6 ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>
-          {tt.correctOf(gameWords.length - mistakes.length, gameWords.length)}
-          {mistakes.length > 0 && <span className="ms-2 text-rose-500 font-bold">{tt.toReview(mistakes.length)}</span>}
-        </div>
-      )}
+      {/* Accuracy summary — words the student got right first try. Missed
+          words are de-duplicated (some modes append a word id on EVERY wrong
+          attempt, which previously pushed the "correct" count negative) and
+          the count is clamped at 0. Hidden for Sentence Builder, which plays
+          over sentences, not the gameWords list, so a per-word tally there is
+          meaningless. */}
+      {gameWords.length > 0 && gameMode !== "sentence-builder" && (() => {
+        const uniqueMissed = new Set(mistakes).size;
+        const correctCount = Math.max(0, gameWords.length - uniqueMissed);
+        return (
+          <div className={`${t.card} rounded-xl shadow-sm px-6 py-3 mb-6 ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>
+            {tt.correctOf(correctCount, gameWords.length)}
+            {uniqueMissed > 0 && <span className="ms-2 text-rose-500 font-bold">{tt.toReview(uniqueMissed)}</span>}
+          </div>
+        );
+      })()}
       {badges.length > 0 && (
         <div className="mb-8">
           <p className={`text-xs font-black ${isDark ? 'text-gray-500' : 'text-stone-400'} uppercase mb-4 tracking-widest`}>{tt.badgesEarned}</p>

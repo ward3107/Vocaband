@@ -171,8 +171,13 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
   const handleSentenceCheck = () => {
     const sentences = (activeAssignment as AssignmentData & { sentences?: string[] }).sentences || [];
     const validSentences = sentences.filter(s => s.trim().length > 0);
-    const target = validSentences[sentenceIndex]?.trim().toLowerCase();
-    const built = builtSentence.join(" ").toLowerCase();
+    // Collapse internal whitespace on BOTH sides before comparing. The built
+    // sentence joins tiles with single spaces, but a teacher's raw sentence
+    // can carry double spaces (or a stray tab), which used to make a
+    // perfectly-correct assembly compare unequal and mark the student wrong.
+    const normalizeSentence = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+    const target = normalizeSentence(validSentences[sentenceIndex] ?? "");
+    const built = normalizeSentence(builtSentence.join(" "));
     if (built === target) {
       setSentenceFeedback("correct");
       celebrate('small');

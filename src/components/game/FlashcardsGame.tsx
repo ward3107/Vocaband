@@ -177,7 +177,6 @@ export default function FlashcardsGame({
       <div dir="ltr" className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4">
         <button
           onClick={() => onAnswer(false)}
-          onTouchStart={(e) => { if (!isProcessingRef.current) e.currentTarget.click(); }}
           disabled={isProcessingRef.current}
           type="button"
           aria-keyshortcuts="ArrowLeft"
@@ -197,7 +196,6 @@ export default function FlashcardsGame({
         </button>
         <button
           onClick={() => onAnswer(true)}
-          onTouchStart={(e) => { if (!isProcessingRef.current) e.currentTarget.click(); }}
           disabled={isProcessingRef.current}
           type="button"
           aria-keyshortcuts="ArrowRight"
