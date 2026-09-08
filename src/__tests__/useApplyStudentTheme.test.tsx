@@ -7,7 +7,7 @@
  *  - explicit dark theme  ⇒ sets data-theme-dark="true"
  *  - explicit light theme ⇒ never sets the flag (a stray "false" would
  *    disable the a11y toggle, which is gated on :not([data-theme-dark]))
- *  - 'default' (Auto)     ⇒ follows the device prefers-color-scheme, live
+ *  - 'default' (Classic)  ⇒ always LIGHT; ignores the device prefers-color-scheme
  *  - null (teacher/signed-out) ⇒ no-op; never clobbers a teacher's flag
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -62,24 +62,10 @@ describe('useApplyStudentTheme', () => {
     expect(flag()).toBeUndefined();
   });
 
-  it('follows the device preference for the default (Auto) theme', () => {
-    mockMatchMedia(true);
+  it('stays light for the default theme even when the device prefers dark', () => {
+    mockMatchMedia(true); // device is in dark mode…
     renderHook(() => useApplyStudentTheme('default'));
-    expect(flag()).toBe('true');
-  });
-
-  it('stays light for default when the device prefers light', () => {
-    mockMatchMedia(false);
-    renderHook(() => useApplyStudentTheme('default'));
-    expect(flag()).toBeUndefined();
-  });
-
-  it('reacts live when the OS preference flips', () => {
-    const mql = mockMatchMedia(false);
-    renderHook(() => useApplyStudentTheme('default'));
-    expect(flag()).toBeUndefined();
-    mql._set(true);
-    expect(flag()).toBe('true');
+    expect(flag()).toBeUndefined(); // …but the default 'Classic' theme is light regardless
   });
 
   it('is a no-op for null (teacher / signed-out) and never clobbers an existing flag', () => {

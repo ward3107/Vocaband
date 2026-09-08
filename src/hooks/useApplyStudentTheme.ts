@@ -13,24 +13,19 @@
  *
  * Behaviour:
  *   - Explicit dark theme  → set `data-theme-dark="true"` so the remap fires.
- *   - Explicit light theme → do NOT set the flag.  Setting it to "false"
- *     would still create the attribute, and the accessibility dark toggle
- *     is gated on `:not([data-theme-dark])` — so a stray "false" would
- *     silently disable the a11y toggle.  We only ever ADD "true", and undo
- *     our own write when switching back to a light theme / signing out.
- *   - `'default'` (the Classic / unequipped theme) → AUTO: follow the
- *     device's `prefers-color-scheme`.  A student on a dark phone who
- *     hasn't picked a theme gets a dark app; flipping the OS setting
- *     mid-session updates live.  Picking any explicit theme overrides this.
+ *   - Light / default theme → do NOT set the flag. The default 'Classic'
+ *     theme is LIGHT (product decision 2026-09): the student app's default
+ *     look is the light UI, regardless of the device's OS dark-mode setting.
+ *     A student who wants dark equips a dark theme (Dark Mode / Neon / Galaxy
+ *     / Esports) or uses the accessibility dark toggle. Setting the flag to
+ *     "false" would still create the attribute, and the a11y toggle is gated
+ *     on `:not([data-theme-dark])`, so we only ever ADD "true" and undo our
+ *     own write when switching back to a light theme / signing out.
  *   - `null` (teacher context, or no user) → no-op; never clobber a teacher
  *     palette, which owns the same flag via useApplyTeacherTheme.
  */
 import { useEffect, useRef } from 'react';
 import { THEMES } from '../constants/game';
-
-// The Classic / unequipped theme is treated as "Auto" — follow the device
-// preference rather than forcing light.  Any other id is an explicit pick.
-const AUTO_THEME_ID = 'default';
 
 export function useApplyStudentTheme(studentThemeId: string | null): void {
   // Tracks whether WE set the dark flag, so we only ever undo our own
@@ -55,22 +50,10 @@ export function useApplyStudentTheme(studentThemeId: string | null): void {
       return;
     }
 
-    // Explicit theme → honour its own dark/light, fixed.
-    if (studentThemeId !== AUTO_THEME_ID) {
-      setDark(!!THEMES.find(t => t.id === studentThemeId)?.dark);
-      return;
-    }
-
-    // Auto (default / unequipped) → follow the device, and keep following
-    // it if the student flips their OS setting mid-session.
-    const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
-    if (!mq) {
-      setDark(false);
-      return;
-    }
-    const sync = () => setDark(mq.matches);
-    sync();
-    mq.addEventListener('change', sync);
-    return () => mq.removeEventListener('change', sync);
+    // Every theme — including the default 'Classic' — honours its own `dark`
+    // flag. 'Classic' is light, so the student app's default look is the
+    // light UI regardless of the device's OS dark-mode setting; only an
+    // explicitly-equipped dark theme (or the a11y dark toggle) goes dark.
+    setDark(!!THEMES.find(t => t.id === studentThemeId)?.dark);
   }, [studentThemeId]);
 }
