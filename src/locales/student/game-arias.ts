@@ -51,6 +51,15 @@ export interface GameAriasStrings {
   sendReactionEmoji: (emoji: string) => string;
   /** QPAvatarPicker — per-avatar select button. */
   selectAvatar: (avatar: string) => string;
+  /** Live-region announcement when an answer is marked correct (AnswerFeedback). */
+  answerCorrect: string;
+  /** Live-region announcement when an answer is marked wrong (AnswerFeedback). */
+  answerWrong: string;
+  /** Live-region announcement when the correct answer is revealed after the
+   *  final wrong attempt (AnswerFeedback show-answer state). */
+  answerShown: string;
+  /** Flashcards flip-card aria-label (the tappable card that flips front↔back). */
+  flipCard: string;
 }
 
 export const gameAriasT: Record<Language, GameAriasStrings> = {
@@ -79,6 +88,10 @@ export const gameAriasT: Record<Language, GameAriasStrings> = {
     sendReactionBar: "Send a reaction to the class screen",
     sendReactionEmoji: (emoji) => `Send ${emoji}`,
     selectAvatar: (avatar) => `Avatar ${avatar}`,
+    answerCorrect: "Correct!",
+    answerWrong: "Not quite — try again",
+    answerShown: "Here's the correct answer",
+    flipCard: "Flip card",
   },
   he: {
     replayAudio: "השמע שוב",
@@ -105,6 +118,10 @@ export const gameAriasT: Record<Language, GameAriasStrings> = {
     sendReactionBar: "שלחו תגובה למסך הכיתה",
     sendReactionEmoji: (emoji) => `שלח ${emoji}`,
     selectAvatar: (avatar) => `דמות ${avatar}`,
+    answerCorrect: "נכון!",
+    answerWrong: "לא מדויק — נסו שוב",
+    answerShown: "הנה התשובה הנכונה",
+    flipCard: "הפכו את הכרטיס",
   },
   ar: {
     replayAudio: "إعادة تشغيل الصوت",
@@ -131,5 +148,9 @@ export const gameAriasT: Record<Language, GameAriasStrings> = {
     sendReactionBar: "أرسل تفاعلًا إلى شاشة الصف",
     sendReactionEmoji: (emoji) => `أرسل ${emoji}`,
     selectAvatar: (avatar) => `صورة ${avatar}`,
+    answerCorrect: "صحيح!",
+    answerWrong: "ليس تمامًا — حاول مرة أخرى",
+    answerShown: "إليك الإجابة الصحيحة",
+    flipCard: "اقلب البطاقة",
   },
 };

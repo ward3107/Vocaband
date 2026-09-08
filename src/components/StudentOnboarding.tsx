@@ -53,6 +53,12 @@ export default function StudentOnboarding({ userName, onComplete }: StudentOnboa
     onComplete();
   };
 
+  // NOTE: intentionally NO global Escape-to-dismiss here. For a first-time
+  // student the mandatory StudentVisibilityConsent gate mounts ABOVE this
+  // onboarding (and treats Escape as a no-op); a global Escape listener here
+  // would still fire, set the onboarding-done flag, and skip onboarding for
+  // good once consent is accepted. The focusable X (Skip) button is the
+  // keyboard-accessible way out.
   const current = STEPS[step];
   const skipAria = language === 'he' ? 'דלגו על האונבורדינג' : language === 'ar' ? 'تخطّي التعريف' : 'Skip onboarding';
   const letsGoLabel = language === 'he' ? 'יוצאים לדרך!' : language === 'ar' ? 'لنبدأ!' : "Let's Go!";
@@ -60,7 +66,7 @@ export default function StudentOnboarding({ userName, onComplete }: StudentOnboa
   const heyName = language === 'he' ? `שלום ${userName}!` : language === 'ar' ? `أهلاً ${userName}!` : `Hey ${userName}!`;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" dir={dir}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" dir={dir} role="dialog" aria-modal="true" aria-label={current.title}>
       <motion.div
         key={step}
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -71,6 +77,7 @@ export default function StudentOnboarding({ userName, onComplete }: StudentOnboa
       >
         {/* Skip button */}
         <button
+          type="button"
           onClick={handleSkip}
           className="absolute top-4 end-4 text-stone-400 hover:text-stone-600 transition-colors"
           aria-label={skipAria}
@@ -105,11 +112,12 @@ export default function StudentOnboarding({ userName, onComplete }: StudentOnboa
 
         {/* Action button */}
         <button
+          type="button"
           onClick={handleNext}
           className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold text-lg hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >
           {step === STEPS.length - 1 ? letsGoLabel : nextLabel}
-          {step < STEPS.length - 1 && <ChevronRight size={20} />}
+          {step < STEPS.length - 1 && <ChevronRight size={20} className={dir === 'rtl' ? 'rotate-180' : ''} />}
         </button>
       </motion.div>
     </div>

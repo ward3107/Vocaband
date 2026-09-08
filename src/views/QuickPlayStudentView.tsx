@@ -791,6 +791,16 @@ export default function QuickPlayStudentView({
                           const el = e.currentTarget;
                           setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
                         }}
+                        // Enter submits the join, like any native form — a
+                        // Chromebook / physical-keyboard student shouldn't
+                        // have to reach for the mouse. Fires the exact same
+                        // handler by clicking the join CTA.
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            (document.querySelector("[data-quick-play-join]") as HTMLElement | null)?.click();
+                          }
+                        }}
                         autoFocus
                       />
                     );
