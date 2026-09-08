@@ -42,6 +42,7 @@ import KickConfirmModal from "../components/game/KickConfirmModal";
 import GameThemePicker from "../components/game/GameThemePicker";
 import { useGameTheme } from "../hooks/useGameTheme";
 import { SPEED_HOST_STRINGS, SPEED_MODE_META } from "./speedRoundStrings";
+import { LIVE_GAME_ACCENTS } from "./liveGameAccents";
 
 /** Enough words for distractor options (questions need 2–4 choices). */
 const MIN_WORDS = 4;
@@ -315,10 +316,11 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
     ? Math.round(podiumEntries.reduce((s, e) => s + e.score, 0) / podiumEntries.length)
     : 0;
 
+  const A = LIVE_GAME_ACCENTS.speed;
   const cardCls = "bg-surface border-outline-variant shadow-lg";
   const headingCls = "text-on-surface";
   const pillIdle = "bg-surface border-outline-variant text-on-surface-variant hover:border-outline";
-  const iconBtn = "bg-surface text-fuchsia-600 hover:bg-surface-container border border-outline-variant";
+  const iconBtn = `bg-surface ${A.text600} hover:bg-surface-container border border-outline-variant`;
 
   const startLabel = hasRunRound ? t.nextWord : t.start;
 
@@ -346,7 +348,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
             </button>
           ) : presenting ? (
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-              <span className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-black text-base sm:text-lg tracking-[0.12em] bg-fuchsia-50 text-fuchsia-700">
+              <span className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-black text-base sm:text-lg tracking-[0.12em] ${A.chipStatic}`}>
                 {t.code}: {sessionCode}
               </span>
               <button
@@ -389,8 +391,8 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               return (
                 <div key={p} className="flex items-center gap-2">
                   {i > 0 && <span className="w-7 h-px bg-stone-300" />}
-                  <span className={`inline-flex items-center gap-1.5 ${active ? "text-fuchsia-600" : done ? "text-emerald-600" : "text-stone-400"}`}>
-                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] ${active ? "bg-fuchsia-500 text-white" : done ? "bg-emerald-500 text-white" : "bg-stone-200 text-stone-500"}`}>
+                  <span className={`inline-flex items-center gap-1.5 ${active ? A.stepText : done ? "text-emerald-600" : "text-stone-400"}`}>
+                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] ${active ? `${A.stepBg} text-white` : done ? "bg-emerald-500 text-white" : "bg-stone-200 text-stone-500"}`}>
                       {done ? <Check size={12} strokeWidth={3} /> : num}
                     </span>
                     {label}
@@ -421,7 +423,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
 
             <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
               {/* The teacher's word list — typed / picked from the library. */}
-              <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mb-3">{t.wordsHeading}</h2>
+              <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mb-3`}>{t.wordsHeading}</h2>
               <SpeedWordPicker
                 library={vocab?.ALL_WORDS ?? null}
                 picked={pickedWords}
@@ -432,7 +434,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               />
 
               {/* Modes — multi-select; each word draws a random one */}
-              <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mt-5 mb-1">{t.modeHeading}</h2>
+              <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mt-5 mb-1`}>{t.modeHeading}</h2>
               <p className="text-[11px] font-bold text-stone-400 mb-3">{t.modeHint}</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {QP_SPEED_MODES.map((m) => {
@@ -445,7 +447,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                       role="checkbox"
                       aria-checked={picked}
                       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                      className={`relative rounded-xl p-2.5 text-start border-2 transition-all ${picked ? "bg-gradient-to-br from-indigo-500 to-violet-600 border-transparent text-white shadow-md" : pillIdle}`}
+                      className={`relative rounded-xl p-2.5 text-start border-2 transition-all ${picked ? `bg-gradient-to-br ${A.grad} border-transparent text-white shadow-md` : pillIdle}`}
                     >
                       <div className="flex items-center gap-2">
                         <span className="text-lg">{SPEED_MODE_META[m].emoji}</span>
@@ -460,7 +462,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5">
                 {/* Timer */}
                 <div>
-                  <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mt-5 mb-3">{t.timerHeading}</h2>
+                  <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mt-5 mb-3`}>{t.timerHeading}</h2>
                   <div className="grid grid-cols-4 gap-2">
                     {QP_SPEED_ROUND_SECONDS.map((opt) => {
                       const picked = roundSeconds === opt;
@@ -470,7 +472,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                           type="button"
                           onClick={() => setRoundSeconds(opt)}
                           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                          className={`px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white border-transparent shadow-md" : pillIdle}`}
+                          className={`px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? `bg-gradient-to-r ${A.grad} text-white border-transparent shadow-md` : pillIdle}`}
                         >
                           {t.seconds(opt)}
                         </button>
@@ -482,7 +484,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                 {/* Repeats — cycle the whole list ×1–×4 so short lists fill a
                     longer session (e.g. 10 words ×2 = 20 rounds). */}
                 <div>
-                  <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mt-5 mb-3">{t.repeatsHeading}</h2>
+                  <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mt-5 mb-3`}>{t.repeatsHeading}</h2>
                   <div className="grid grid-cols-4 gap-2">
                     {SPEED_REPEAT_OPTIONS.map((opt) => {
                       const picked = passes === opt;
@@ -492,7 +494,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                           type="button"
                           onClick={() => setPasses(opt)}
                           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                          className={`px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white border-transparent shadow-md" : pillIdle}`}
+                          className={`px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? `bg-gradient-to-r ${A.grad} text-white border-transparent shadow-md` : pillIdle}`}
                         >
                           {t.repeatsLabel(opt)}
                         </button>
@@ -510,10 +512,10 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                 aria-checked={autoPlay}
                 onClick={() => setAutoPlay(v => !v)}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`mt-5 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border-2 transition-all ${autoPlay ? "bg-fuchsia-50 border-fuchsia-300" : pillIdle}`}
+                className={`mt-5 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border-2 transition-all ${autoPlay ? `${A.soft50} ${A.borderActive}` : pillIdle}`}
               >
-                <span className={`font-black text-xs ${autoPlay ? "text-fuchsia-700" : ""}`}>⚡ {t.autoPlayLabel}</span>
-                <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${autoPlay ? "bg-fuchsia-500" : "bg-stone-300"}`}>
+                <span className={`font-black text-xs ${autoPlay ? A.text700 : ""}`}>⚡ {t.autoPlayLabel}</span>
+                <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${autoPlay ? A.switchOn : "bg-stone-300"}`}>
                   <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${autoPlay ? "start-[18px]" : "start-0.5"}`} />
                 </span>
               </button>
@@ -525,7 +527,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               onClick={() => canStart && setPhase("room")}
               disabled={!canStart}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${canStart ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]" : "bg-stone-300 cursor-not-allowed"}`}
+              className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${canStart ? `bg-gradient-to-r ${A.grad} ${A.shadow30} active:scale-[0.98]` : "bg-stone-300 cursor-not-allowed"}`}
             >
               {canStart ? <>{t.openRoom} →</> : t.needWordsShort(MIN_WORDS)}
             </button>
@@ -545,13 +547,13 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                     lowTime ? "bg-red-50 border-red-200" : cardCls
                   }`}
                 >
-                  <span className="text-xs font-black uppercase tracking-[0.18em] text-fuchsia-500">
+                  <span className={`text-xs font-black uppercase tracking-[0.18em] ${A.label}`}>
                     {SPEED_MODE_META[currentSpeed.mode].emoji} {t.modeNames[currentSpeed.mode]}
                   </span>
                   <span className={`font-black ${headingCls} text-xl sm:text-2xl`} dir="auto">
                     {currentSpeed.promptKind === "audio" ? "🔊 ?" : currentSpeed.prompt}
                   </span>
-                  <span className={`tabular-nums font-black ${lowTime ? "text-red-600 animate-pulse" : "text-fuchsia-500"} text-2xl sm:text-3xl`}>
+                  <span className={`tabular-nums font-black ${lowTime ? "text-red-600 animate-pulse" : A.label} text-2xl sm:text-3xl`}>
                     {secondsLeft}
                   </span>
                 </motion.section>
@@ -568,7 +570,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                 <aside className="lg:col-span-4 space-y-4">
                   <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
                     <div className="flex items-center justify-between mb-3">
-                      <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500">{t.joinHeading}</h2>
+                      <h2 className={`text-xs font-black uppercase tracking-widest ${A.label}`}>{t.joinHeading}</h2>
                       <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
                         className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition active:scale-95 ${iconBtn}`} aria-label={t.enlarge}>
                         <Maximize2 size={15} />
@@ -587,7 +589,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                           onClick={handleCopy}
                           style={{ touchAction: "manipulation" }}
                           className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm transition active:scale-[0.98] ${
-                            copied ? "bg-emerald-100 text-emerald-700" : "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white shadow-md shadow-fuchsia-500/30"
+                            copied ? "bg-emerald-100 text-emerald-700" : `bg-gradient-to-r ${A.grad} text-white shadow-md ${A.shadow30}`
                           }`}
                         >
                           {copied ? <><Check size={16} /> {t.copied}</> : <><Copy size={16} /> {t.copy}</>}
@@ -598,7 +600,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                             type="button"
                             onClick={() => setPhase("setup")}
                             style={{ touchAction: "manipulation" }}
-                            className="mt-2 w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl font-black text-xs text-fuchsia-600 bg-fuchsia-50 hover:bg-fuchsia-100 active:scale-[0.98] transition"
+                            className={`mt-2 w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl font-black text-xs ${A.text600} ${A.soft50} ${A.softHover100} active:scale-[0.98] transition`}
                           >
                             ← {t.editGame}
                           </button>
@@ -631,7 +633,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                         onClick={handleStart}
                         disabled={roundActive || !canStart}
                         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                        className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${roundActive || !canStart ? "bg-stone-300 cursor-not-allowed" : "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]"}`}
+                        className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${roundActive || !canStart ? "bg-stone-300 cursor-not-allowed" : `bg-gradient-to-r ${A.grad} ${A.shadow30} active:scale-[0.98]`}`}
                       >
                         {roundActive
                           ? <><Clock size={18} /> {t.wordLive} · {secondsLeft}s</>
@@ -658,7 +660,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               <div className={`${presenting ? "lg:col-span-12" : "lg:col-span-8"}`}>
                 {hasRunRound || roundActive ? (
                   <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${presenting ? theme.card : cardCls}`}>
-                    <h2 className="text-sm font-black uppercase tracking-widest text-fuchsia-500 mb-4 flex items-center gap-2">
+                    <h2 className={`text-sm font-black uppercase tracking-widest ${A.label} mb-4 flex items-center gap-2`}>
                       <Users size={18} /> {t.leaderboard}
                       <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
                     </h2>
@@ -686,7 +688,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                       players={sorted}
                       countLabel={t.inRoom}
                       emptyLabel={t.noStudents}
-                      accent="from-amber-400 to-orange-500"
+                      accent={A.rosterGrad}
                       large={presenting}
                       onKick={onKick}
                       theme={presenting ? theme : undefined}
@@ -711,7 +713,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
             className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-lg text-white shadow-xl active:scale-[0.98] transition disabled:opacity-60 ${
               allPlayed
                 ? "shadow-emerald-500/40 bg-gradient-to-r from-emerald-500 to-teal-600"
-                : "shadow-fuchsia-500/40 bg-gradient-to-r from-fuchsia-500 to-pink-600"
+                : `${A.shadow40} bg-gradient-to-r ${A.grad}`
             }`}
           >
             {allPlayed
@@ -748,7 +750,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
       {/* Celebratory results — shown when ending a game that has scores. */}
       <AnimatePresence>
         {showResults && (
-          <GameResults entries={sorted} onBack={leaveToDashboard} accent="from-amber-400 to-orange-500" />
+          <GameResults entries={sorted} onBack={leaveToDashboard} accent={A.rosterGrad} />
         )}
       </AnimatePresence>
 
