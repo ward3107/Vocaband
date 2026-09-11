@@ -1,6 +1,15 @@
 import { getCachedVocabulary } from "../hooks/useVocabularyLazy";
 import type { Word } from "../data/vocabulary";
-import type { AssignmentData } from "../core/supabase";
+
+/**
+ * The two word sources the resolver reads. Structural on purpose: the
+ * core `AssignmentData` (student dashboard, deep links) and the wizard's
+ * own `setup/types` `AssignmentData` (the edit flow) are different
+ * nominal types that both carry exactly these fields, and every consumer
+ * of an assignment's word list must go through this one resolver rather
+ * than reading `words` directly.
+ */
+export type AssignmentWordSource = { words?: Word[]; wordIds?: number[] };
 
 /**
  * Resolve the Word objects for an assignment WITHOUT dragging the
@@ -36,7 +45,7 @@ import type { AssignmentData } from "../core/supabase";
  * fix are still in the database, so backfilling the missing ids here is
  * what actually heals them at read time.
  */
-export async function resolveAssignmentWords(assignment: AssignmentData): Promise<Word[]> {
+export async function resolveAssignmentWords(assignment: AssignmentWordSource): Promise<Word[]> {
   const embedded = assignment.words ?? [];
   const ids = assignment.wordIds ?? [];
 
