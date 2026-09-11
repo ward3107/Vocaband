@@ -18,6 +18,7 @@ import { ConfigureStep } from './ConfigureStep';
 import { ReviewStep } from './ReviewStep';
 import ActivityTypeTabs, { type ActivityType } from './ActivityTypeTabs';
 import { useLanguage } from '../../hooks/useLanguage';
+import { resolveAssignmentWords } from '../../utils/resolveAssignmentWords';
 import { teacherWizardsT } from '../../locales/teacher/wizards';
 import { useFirstTimeGuide } from '../../hooks/useFirstTimeGuide';
 import FirstTimeGuide from '../onboarding/FirstTimeGuide';
@@ -325,14 +326,29 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
 
   // ── Pre-populate from editing assignment ─────────────────────────────────────
   useEffect(() => {
-    if (editingAssignment) {
-      if (editingAssignment.words) {
-        setSelectedWords(editingAssignment.words);
-      }
-      if (editingAssignment.allowedModes) {
-        setSelectedModes(editingAssignment.allowedModes);
-      }
+    if (!editingAssignment) return;
+    if (editingAssignment.allowedModes) {
+      setSelectedModes(editingAssignment.allowedModes);
     }
+    // Seed the word list through the shared resolver — never from
+    // `editingAssignment.words` directly. A curriculum assignment carries
+    // its real list in `wordIds`, and its embedded `words` JSONB can be
+    // EMPTY or PARTIAL (the old cold-cache save bug); `[]` is truthy, so
+    // the previous `if (editingAssignment.words)` seed opened the editor
+    // with none / a subset of the teacher's words, the picker fell back
+    // to a generic sample, and saving then overwrote the assignment with
+    // that sample — which is what students then saw as "demo words".
+    // resolveAssignmentWords hydrates the missing ids and keeps any
+    // negative-id custom words that live only in the embedded array. An
+    // empty result means a genuinely empty assignment: leave the list
+    // empty rather than inventing words.
+    let cancelled = false;
+    void (async () => {
+      const words = await resolveAssignmentWords(editingAssignment);
+      if (cancelled || words.length === 0) return;
+      setSelectedWords(words);
+    })();
+    return () => { cancelled = true; };
   }, [editingAssignment]);
 
   // ── Pre-populate from initial selected words (analytics flow, etc.) ────────────
