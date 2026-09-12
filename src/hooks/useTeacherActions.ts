@@ -427,7 +427,10 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
 
   const handleAddUnmatchedAsCustom = () => {
     const newCustomWords = pasteUnmatched.map((word, idx) => ({
-      id: Date.now() + idx,
+      // Custom words get NEGATIVE ids (app-wide convention) so they never
+      // reach the assignments.word_ids INTEGER[] column — a positive
+      // Date.now() (~1.7e12) would overflow int4 there.
+      id: -(Date.now() + idx),
       english: word,
       hebrew: "",
       arabic: "",
@@ -460,7 +463,8 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
   const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter" || !tagInput.trim()) return;
     e.preventDefault();
-    const word: Word = { id: Date.now(), english: tagInput.trim(), hebrew: "", arabic: "", level: "Custom" };
+    // Negative id — custom-word convention; keeps it out of word_ids (int4).
+    const word: Word = { id: -Date.now(), english: tagInput.trim(), hebrew: "", arabic: "", level: "Custom" };
     setCustomWords(prev => [...prev, word]);
     setSelectedWords(prev => [...prev, word.id]);
     setSelectedLevel("Custom");
@@ -509,7 +513,8 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
       const lines = text.split("\n");
       const words: Word[] = lines.slice(1).map((line, idx) => {
         const [english, hebrew, arabic] = line.split(",");
-        return { id: 7000 + idx, english: english?.trim() ?? "", hebrew: hebrew?.trim() ?? "", arabic: arabic?.trim() ?? "", level: "Custom" as const };
+        // Negative id — custom-word convention; keeps it out of word_ids (int4).
+        return { id: -(Date.now() + idx), english: english?.trim() ?? "", hebrew: hebrew?.trim() ?? "", arabic: arabic?.trim() ?? "", level: "Custom" as const };
       }).filter(w => w.english);
       if (words.length === 0) { showToast("No words found in the sheet. Make sure column A is English.", "error"); return; }
       const limited = words.slice(0, MAX_IMPORT_WORDS);

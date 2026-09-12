@@ -44,18 +44,26 @@ interface LibrarySetsPanelProps {
   onAddWords: (words: Word[]) => void;
 }
 
-// Stable numeric-id mint for custom library words so they satisfy the
-// `Word.id: number` contract without colliding with ALL_WORDS ids
-// (which are 0..~6500). 1e8 + hash keeps us well above the curriculum
-// range and deterministic per word, so re-picking the same set doesn't
-// produce ghost duplicates.
+// Stable numeric-id mint for custom library words. Custom words follow the
+// app-wide NEGATIVE-id convention (the OCR + paste + tag paths all mint
+// negatives) so they never collide with the positive curriculum ids AND are
+// filtered out of the assignments.word_ids INTEGER[] column by the `id > 0`
+// gate on save.
+//
+// The old `100_000_000 + Math.abs(h)` was POSITIVE, so it slipped past that
+// gate into word_ids, where `Math.abs(h)` can reach 2^31 — overflowing int4
+// and failing the entire INSERT (22003), while the ones that fit became
+// phantom ids resolveAssignmentWords later reported as "missing". Bounding
+// with `% 2_000_000_000` keeps |id| safely under the int4 max, and the hash
+// stays deterministic per word, so re-picking the same set yields the same
+// id and dedup still works.
 function hashEnglishToId(s: string): number {
   let h = 0;
   const norm = s.toLowerCase().trim();
   for (let i = 0; i < norm.length; i++) {
     h = ((h << 5) - h + norm.charCodeAt(i)) | 0;
   }
-  return 100_000_000 + Math.abs(h);
+  return -(1 + (Math.abs(h) % 2_000_000_000));
 }
 
 /** Convert a library word row to the Word shape the picker expects. */

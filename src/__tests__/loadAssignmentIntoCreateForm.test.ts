@@ -32,7 +32,9 @@ const OCR_CUSTOM = {
   id: -101, english: 'photosynthesis', hebrew: 'פוטוסינתזה', arabic: '—', level: 'Custom',
 } as unknown as Word;
 
-/** The vocabulary library mints POSITIVE synthetic ids (1e8 + |hash|). */
+/** Legacy library rows carry POSITIVE synthetic ids (the old
+ *  `1e8 + |hash|` mint, before it was made negative). The loader must still
+ *  detect them as custom by their 'Custom' level, not by id sign. */
 const LIBRARY_CUSTOM = {
   id: 100_000_042, english: 'mitochondria', hebrew: 'מיטוכונדריה', arabic: '—', level: 'Custom',
 } as unknown as Word;

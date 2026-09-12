@@ -295,12 +295,11 @@ export const ShareWorksheetDialog: FC<Props> = ({ source, defaultLang, onClose, 
       // Persist off-curriculum words so the solver can resolve them —
       // they're absent from ALL_WORDS, so a worksheet built from them
       // would otherwise auto-skip every exercise (the student opens the
-      // link and sees no questions at all). Two id schemes count as
-      // off-curriculum: negative Date.now()-derived ids (paste / OCR /
-      // manual entry) AND the positive ≥1e8 synthetic ids minted by the
-      // Vocabulary Library (hashEnglishToId). Checking membership against
-      // the real curriculum id set is scheme-agnostic, so neither path is
-      // missed. Scoped to the worksheet's actual pool; curriculum words
+      // link and sees no questions at all). Every off-curriculum id is now
+      // negative — Date.now()-derived (paste / OCR / manual) or the bounded
+      // Vocabulary-Library hash (hashEnglishToId). Checking membership
+      // against the real curriculum id set is scheme-agnostic, so it catches
+      // them all. Scoped to the worksheet's actual pool; curriculum words
       // resolve client-side from ALL_WORDS without help.
       const poolIds = new Set(uniqueIds);
       const { ALL_WORDS } = await import("../data/vocabulary");
