@@ -619,7 +619,18 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
 
     const assignmentData = {
       classId: selectedClass.id,
-      wordIds: wordsToCheck.filter(id => id > 0), // Only save positive IDs (database words, not custom/phrases)
+      // word_ids carries ONLY ids that actually resolved against a corpus and
+      // are not custom. The old `id > 0` test was not enough: the vocabulary
+      // library mints synthetic custom ids as `100_000_000 + Math.abs(hash)`
+      // (LibrarySetsPanel), which are POSITIVE, so they flowed into this
+      // INTEGER[] column. |hash| reaches 2^31, so the value can exceed int4
+      // and fail the entire write (22003), and the ones that fit become
+      // phantom ids that resolveAssignmentWords later reports as "missing" —
+      // the same empty-list path that serves students the generic sample.
+      // AssignSetToClassModal already filters on level exactly this way.
+      wordIds: wordsToSave
+        .filter((w) => w.id > 0 && (w as { level?: string }).level !== 'Custom')
+        .map((w) => w.id),
       // JSONB column carries either Word[] (English) or HebrewLemma[] (Hebrew);
       // the subject column disambiguates at read time.
       words: wordsToSave as unknown as Word[],
