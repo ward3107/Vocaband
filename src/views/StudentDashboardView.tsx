@@ -23,6 +23,7 @@ import type { View } from "../core/views";
 import type { RetentionState } from "../hooks/useRetention";
 import { pickNextAssignment } from "../utils/pickNextAssignment";
 import { resolveAssignmentWords } from "../utils/resolveAssignmentWords";
+import { trackAutoError } from "../errorTracking";
 import React from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { motion, AnimatePresence } from "motion/react";
@@ -135,6 +136,22 @@ export default function StudentDashboardView({
   const launchNextAssignment = nextPick
     ? async () => {
         const filteredWords = await resolveAssignmentWords(nextPick.assignment);
+        // Never open a round we cannot populate. With an empty list the game
+        // view substitutes GAME_FALLBACK_WORDS — a generic Set-2 sample the
+        // teacher never assigned, then scores it against this assignment
+        // (the "student sees the demo words" report). StudentAssignmentCard
+        // and NextUpCard already block; this orbital Play circle did not.
+        if (filteredWords.length === 0) {
+          trackAutoError(
+            new Error("Assignment resolved to zero words — launch blocked"),
+            "assignment-empty-on-launch",
+            {
+              assignmentId: nextPick.assignment.id,
+              wordIdCount: nextPick.assignment.wordIds?.length ?? 0,
+            },
+          );
+          return;
+        }
         setActiveAssignment(nextPick.assignment);
         setAssignmentWords(filteredWords);
         React.startTransition(() => {

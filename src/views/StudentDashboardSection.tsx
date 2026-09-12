@@ -16,6 +16,7 @@ import {
 } from '../handlers/retentionGrants';
 import { pickNextAssignment } from '../utils/pickNextAssignment';
 import { resolveAssignmentWords } from '../utils/resolveAssignmentWords';
+import { trackAutoError } from '../errorTracking';
 import type { AppUser, AssignmentData, ProgressData } from '../core/supabase';
 import type { Word } from '../data/vocabulary';
 import type { View } from '../core/views';
@@ -190,6 +191,20 @@ export function StudentHubSection(
   const onPlay = nextPick
     ? async () => {
         const words = await resolveAssignmentWords(nextPick.assignment);
+        // Same guard as the dashboard Play circle: an empty list would fall
+        // through to GAME_FALLBACK_WORDS (a generic Set-2 sample) and score
+        // it against this assignment. Stay put instead.
+        if (words.length === 0) {
+          trackAutoError(
+            new Error('Assignment resolved to zero words — launch blocked'),
+            'assignment-empty-on-launch',
+            {
+              assignmentId: nextPick.assignment.id,
+              wordIdCount: nextPick.assignment.wordIds?.length ?? 0,
+            },
+          );
+          return;
+        }
         setActiveAssignment(nextPick.assignment);
         setAssignmentWords(words);
         setView('game');

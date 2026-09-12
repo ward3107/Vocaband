@@ -325,8 +325,18 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   const [aiGeneratedLesson, setAiGeneratedLesson] = useState<any>(null);
 
   // ── Pre-populate from editing assignment ─────────────────────────────────────
+  // LATCHED per assignment id. This effect depends on `editingAssignment`,
+  // whose IDENTITY changes without the row changing — useTeacherActions does
+  // `setEditingAssignment(prev => ({ ...prev, ...assignmentData }))` after a
+  // save, and any parent re-render can rebuild the object. Unlatched, every
+  // such change re-seeded the wizard and CLOBBERED both the correctly
+  // hydrated list and whatever words the teacher had just picked. Keying on
+  // id still re-seeds when the teacher opens a different assignment.
+  const seededEditIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!editingAssignment) return;
+    if (seededEditIdRef.current === editingAssignment.id) return;
+    seededEditIdRef.current = editingAssignment.id;
     if (editingAssignment.allowedModes) {
       setSelectedModes(editingAssignment.allowedModes);
     }

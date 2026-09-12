@@ -44,7 +44,11 @@ function hashEnglishToId(s: string): number {
   for (let i = 0; i < norm.length; i++) {
     h = ((h << 5) - h + norm.charCodeAt(i)) | 0;
   }
-  return 100_000_000 + Math.abs(h);
+  // NEGATIVE + int4-safe, matching LibrarySetsPanel: custom words follow the
+  // app-wide negative-id convention so they never leak into the
+  // assignments.word_ids INTEGER[] column, where the old positive
+  // `1e8 + Math.abs(h)` could reach 2^31 and overflow int4 (22003).
+  return -(1 + (Math.abs(h) % 2_000_000_000));
 }
 
 function libraryWordToAssignmentWord(

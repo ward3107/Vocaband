@@ -427,7 +427,10 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
 
   const handleAddUnmatchedAsCustom = () => {
     const newCustomWords = pasteUnmatched.map((word, idx) => ({
-      id: Date.now() + idx,
+      // Custom words get NEGATIVE ids (app-wide convention) so they never
+      // reach the assignments.word_ids INTEGER[] column — a positive
+      // Date.now() (~1.7e12) would overflow int4 there.
+      id: -(Date.now() + idx),
       english: word,
       hebrew: "",
       arabic: "",
@@ -460,7 +463,8 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
   const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter" || !tagInput.trim()) return;
     e.preventDefault();
-    const word: Word = { id: Date.now(), english: tagInput.trim(), hebrew: "", arabic: "", level: "Custom" };
+    // Negative id — custom-word convention; keeps it out of word_ids (int4).
+    const word: Word = { id: -Date.now(), english: tagInput.trim(), hebrew: "", arabic: "", level: "Custom" };
     setCustomWords(prev => [...prev, word]);
     setSelectedWords(prev => [...prev, word.id]);
     setSelectedLevel("Custom");
@@ -509,7 +513,8 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
       const lines = text.split("\n");
       const words: Word[] = lines.slice(1).map((line, idx) => {
         const [english, hebrew, arabic] = line.split(",");
-        return { id: 7000 + idx, english: english?.trim() ?? "", hebrew: hebrew?.trim() ?? "", arabic: arabic?.trim() ?? "", level: "Custom" as const };
+        // Negative id — custom-word convention; keeps it out of word_ids (int4).
+        return { id: -(Date.now() + idx), english: english?.trim() ?? "", hebrew: hebrew?.trim() ?? "", arabic: arabic?.trim() ?? "", level: "Custom" as const };
       }).filter(w => w.english);
       if (words.length === 0) { showToast("No words found in the sheet. Make sure column A is English.", "error"); return; }
       const limited = words.slice(0, MAX_IMPORT_WORDS);
@@ -619,7 +624,18 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
 
     const assignmentData = {
       classId: selectedClass.id,
-      wordIds: wordsToCheck.filter(id => id > 0), // Only save positive IDs (database words, not custom/phrases)
+      // word_ids carries ONLY ids that actually resolved against a corpus and
+      // are not custom. The old `id > 0` test was not enough: the vocabulary
+      // library mints synthetic custom ids as `100_000_000 + Math.abs(hash)`
+      // (LibrarySetsPanel), which are POSITIVE, so they flowed into this
+      // INTEGER[] column. |hash| reaches 2^31, so the value can exceed int4
+      // and fail the entire write (22003), and the ones that fit become
+      // phantom ids that resolveAssignmentWords later reports as "missing" —
+      // the same empty-list path that serves students the generic sample.
+      // AssignSetToClassModal already filters on level exactly this way.
+      wordIds: wordsToSave
+        .filter((w) => w.id > 0 && (w as { level?: string }).level !== 'Custom')
+        .map((w) => w.id),
       // JSONB column carries either Word[] (English) or HebrewLemma[] (Hebrew);
       // the subject column disambiguates at read time.
       words: wordsToSave as unknown as Word[],
