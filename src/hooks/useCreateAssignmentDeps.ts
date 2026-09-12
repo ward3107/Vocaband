@@ -5,7 +5,7 @@
  * Nothing could be absorbed here: every field is produced by hooks whose
  * outputs are shared with hooks that stay in App (useAssignmentBuilderState
  * feeds useTeacherActions + useAssignmentAutoPopulate; the OCR state feeds
- * QuickPlaySetupSection; handleDocxUpload/handleOcrUpload are reused by
+ * QuickPlaySetupSection; handleOcrUpload is reused by
  * Quick Play setup), so their call sites can't move without reordering the
  * global hook sequence.  This builder owns the bag assembly plus the
  * `selectedClass` gate — App passes its possibly-null selection and gets

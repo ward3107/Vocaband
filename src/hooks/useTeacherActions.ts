@@ -16,17 +16,12 @@ import {
 import type { Word } from "../data/vocabulary";
 import { getCachedVocabulary, ensureVocabulary } from "./useVocabularyLazy";
 import { chunkArray } from "../utils";
-import { loadMammoth } from "../utils/lazyLoad";
 import { trackAutoError } from "../errorTracking";
 import { compressImageForUpload } from "../utils/compressImage";
-import { requestCustomWordAudio } from "../utils/requestCustomWordAudio";
 import { logAudit } from "../utils/audit";
 import { pushNotify } from "../utils/pushNotify";
 import { isPro, FREE_TIER_LIMITS } from "../core/plan";
 import { createCompetition } from "./useCompetitions";
-
-const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MB
-const MAX_IMPORT_WORDS = 500;
 
 export interface UseTeacherActionsParams {
   user: AppUser | null;
@@ -63,25 +58,8 @@ export interface UseTeacherActionsParams {
   sentenceDifficulty: number;
   setSentenceDifficulty: (v: 1 | 2 | 3 | 4) => void;
   setAssignmentStep: (v: number) => void;
-  pastedText: string;
-  setPastedText: (v: string) => void;
-  setPasteMatchedCount: (v: number) => void;
-  pasteUnmatched: string[];
-  setPasteUnmatched: (v: string[]) => void;
-  setShowPasteDialog: React.Dispatch<React.SetStateAction<boolean>>;
-  tagInput: string;
-  setTagInput: (v: string) => void;
   setIsOcrProcessing: (v: boolean) => void;
   setOcrProgress: (v: string | number) => void;
-  // Google Sheets import is a separate experimental feature; when a
-  // caller doesn't wire it, handleGSheetsImport is effectively a no-op.
-  gSheetsUrl?: string;
-  setGSheetsUrl?: (v: string) => void;
-  setGSheetsLoading?: (v: boolean) => void;
-  setWordSearchQuery: (v: string) => void;
-  setSelectedCore: (v: any) => void;
-  setSelectedRecProd: (v: string) => void;
-  setSelectedPos: (v: string) => void;
   teacherAssignments: AssignmentData[];
   setTeacherAssignments: React.Dispatch<React.SetStateAction<AssignmentData[]>>;
   setTeacherAssignmentsLoading: (v: boolean) => void;
@@ -116,12 +94,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     assignmentSentences, setAssignmentSentences,
     sentenceDifficulty, setSentenceDifficulty,
     setAssignmentStep,
-    pastedText, setPastedText,
-    setPasteMatchedCount, pasteUnmatched, setPasteUnmatched, setShowPasteDialog,
-    tagInput, setTagInput,
     setIsOcrProcessing, setOcrProgress,
-    gSheetsUrl, setGSheetsUrl, setGSheetsLoading,
-    setWordSearchQuery, setSelectedCore, setSelectedRecProd, setSelectedPos,
     setTeacherAssignments, setTeacherAssignmentsLoading,
     setPendingStudents,
     setAllScores,
@@ -130,56 +103,6 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     setConfirmDialog, showToast, setView,
     lastFetchRef,
   } = params;
-
-  // --- Helper: extract words from pasted text ---
-  const extractWordsFromPaste = (text: string): string[] => {
-    const cleaned = text.replace(/[\u200B-\u200D\uFEFF]/g, '');
-    const words = cleaned
-      .split(/[,\n;\t|]+/)
-      .map(w => w.trim().toLowerCase())
-      .filter(w => w.length >= 2 && w.length <= 100);
-    const unique = [...new Set(words)];
-    if (unique.length > MAX_IMPORT_WORDS) {
-      console.warn(`Large paste: ${unique.length} words (processing first ${MAX_IMPORT_WORDS})`);
-    }
-    return unique.slice(0, MAX_IMPORT_WORDS);
-  };
-
-  // --- Helper: find matching Set 2 words ---
-  const findMatchesInSet2 = (words: string[]): { matched: Word[]; unmatched: string[] } => {
-    const allMatches: Word[] = [];
-    const unmatched: string[] = [];
-    for (const word of words) {
-      const matches = (getCachedVocabulary()?.SET_2_WORDS ?? []).filter(w =>
-        w.english.toLowerCase() === word ||
-        w.english.toLowerCase().startsWith(word) ||
-        w.english.toLowerCase().endsWith(word)
-      );
-      if (matches.length > 0) {
-        allMatches.push(...matches);
-      } else {
-        unmatched.push(word);
-      }
-    }
-    const groupedMatches = new Map<string, Word[]>();
-    for (const match of allMatches) {
-      const base = match.english.replace(/\(n\)$/, '').toLowerCase().trim();
-      if (!groupedMatches.has(base)) groupedMatches.set(base, []);
-      groupedMatches.get(base)!.push(match);
-    }
-    const matched: Word[] = [];
-    for (const [, group] of groupedMatches) {
-      const hebrewParts = group.map(w => w.hebrew.trim()).filter(h => h.length > 0);
-      const arabicParts = group.map(w => w.arabic.trim()).filter(a => a.length > 0);
-      matched.push({
-        ...group[0],
-        english: group[0].english.replace(/\(n\)$/, '').trim(),
-        hebrew: [...new Set(hebrewParts)].join(' | '),
-        arabic: [...new Set(arabicParts)].join(' | '),
-      });
-    }
-    return { matched, unmatched };
-  };
 
   const handleCreateClass = async () => {
     if (!newClassName || !user) return;
@@ -401,133 +324,6 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
       setOcrProgress(0);
       // Reset the file input so the same file can be uploaded again if needed
       e.target.value = '';
-    }
-  };
-
-  const handlePasteSubmit = () => {
-    const words = extractWordsFromPaste(pastedText);
-    if (words.length === 0) return;
-
-    const { matched, unmatched } = findMatchesInSet2(words);
-
-    setPasteMatchedCount(matched.length);
-    setPasteUnmatched(unmatched);
-    setShowPasteDialog(true);
-
-    // Auto-add matched words
-    const newSelected = [...selectedWords];
-    matched.forEach(w => {
-      if (!newSelected.includes(w.id)) {
-        newSelected.push(w.id);
-      }
-    });
-    setSelectedWords(newSelected);
-    setPastedText("");
-  };
-
-  const handleAddUnmatchedAsCustom = () => {
-    const newCustomWords = pasteUnmatched.map((word, idx) => ({
-      // Custom words get NEGATIVE ids (app-wide convention) so they never
-      // reach the assignments.word_ids INTEGER[] column — a positive
-      // Date.now() (~1.7e12) would overflow int4 there.
-      id: -(Date.now() + idx),
-      english: word,
-      hebrew: "",
-      arabic: "",
-      level: "Custom" as const
-    }));
-    setCustomWords(prev => [...prev, ...newCustomWords]);
-    setSelectedWords(prev => [...prev, ...newCustomWords.map(w => w.id)]);
-    // Fire off Neural2 audio generation so students hear a real voice
-    // for these words instead of browser TTS. Never await — it can
-    // take 5-10s and we don't want the teacher flow to block.
-    void requestCustomWordAudio(newCustomWords);
-    // Switch to Custom tab so users can see the added words
-    setSelectedLevel("Custom");
-    // Clear search and filters so all words are visible
-    setWordSearchQuery("");
-    setSelectedCore("");
-    setSelectedPos("");
-    setSelectedRecProd("");
-    setShowPasteDialog(false);
-    setPasteUnmatched([]);
-    setPasteMatchedCount(0);
-  };
-
-  const handleSkipUnmatched = () => {
-    setShowPasteDialog(false);
-    setPasteUnmatched([]);
-    setPasteMatchedCount(0);
-  };
-
-  const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== "Enter" || !tagInput.trim()) return;
-    e.preventDefault();
-    // Negative id — custom-word convention; keeps it out of word_ids (int4).
-    const word: Word = { id: -Date.now(), english: tagInput.trim(), hebrew: "", arabic: "", level: "Custom" };
-    setCustomWords(prev => [...prev, word]);
-    setSelectedWords(prev => [...prev, word.id]);
-    setSelectedLevel("Custom");
-    setTagInput("");
-  };
-
-  const handleDocxUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_UPLOAD_SIZE) { showToast("File too large (max 5 MB).", "error"); e.target.value = ""; return; }
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      // Lazy load mammoth
-      const mammothModule = await loadMammoth();
-      const mammoth = mammothModule.default || mammothModule;
-      const result = await mammoth.extractRawText({ arrayBuffer });
-      setPastedText(result.value);
-      showToast("Word document text extracted — click Import Words to continue.", "info");
-    } catch {
-      showToast("Could not read Word document.", "error");
-    }
-    e.target.value = "";
-  };
-
-  const handleGSheetsImport = async () => {
-    // Callers without the gSheets state wired in effectively disable
-    // this flow — silent bail-out keeps the rest of the hook usable.
-    if (!gSheetsUrl || !setGSheetsUrl || !setGSheetsLoading) return;
-    if (!gSheetsUrl.trim()) return;
-    try {
-      const parsed = new URL(gSheetsUrl.trim());
-      if (parsed.hostname !== "google.com" && !parsed.hostname.endsWith(".google.com")) {
-        showToast("Only Google Sheets URLs are allowed.", "error");
-        return;
-      }
-    } catch {
-      showToast("Invalid URL.", "error");
-      return;
-    }
-    setGSheetsLoading(true);
-    try {
-      const csvUrl = gSheetsUrl.replace(/\/edit.*$/, "/export?format=csv");
-      const res = await fetch(csvUrl);
-      if (!res.ok) throw new Error("Could not fetch sheet");
-      const text = await res.text();
-      const lines = text.split("\n");
-      const words: Word[] = lines.slice(1).map((line, idx) => {
-        const [english, hebrew, arabic] = line.split(",");
-        // Negative id — custom-word convention; keeps it out of word_ids (int4).
-        return { id: -(Date.now() + idx), english: english?.trim() ?? "", hebrew: hebrew?.trim() ?? "", arabic: arabic?.trim() ?? "", level: "Custom" as const };
-      }).filter(w => w.english);
-      if (words.length === 0) { showToast("No words found in the sheet. Make sure column A is English.", "error"); return; }
-      const limited = words.slice(0, MAX_IMPORT_WORDS);
-      if (words.length > MAX_IMPORT_WORDS) showToast(`Only the first ${MAX_IMPORT_WORDS} words were imported.`, "info");
-      setCustomWords(prev => [...prev, ...limited]);
-      setSelectedWords(prev => [...prev, ...limited.map(w => w.id)]);
-      setSelectedLevel("Custom");
-      setGSheetsUrl("");
-      showToast(`Imported ${limited.length} words from Google Sheets.`, "success");
-    } catch {
-      showToast("Could not import from Google Sheets. Make sure the sheet is public and the URL is correct.", "error");
-    } finally {
-      setGSheetsLoading(false);
     }
   };
 
@@ -1014,12 +810,6 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
   return {
     handleCreateClass,
     handleOcrUpload,
-    handlePasteSubmit,
-    handleAddUnmatchedAsCustom,
-    handleSkipUnmatched,
-    handleTagInputKeyDown,
-    handleDocxUpload,
-    handleGSheetsImport,
     handleSaveAssignment,
     handlePreviewAssignment,
     handleDeleteClass,

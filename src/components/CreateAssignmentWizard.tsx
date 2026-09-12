@@ -41,19 +41,6 @@ export interface CreateAssignmentWizardProps {
   setSelectedWords: React.Dispatch<React.SetStateAction<number[]>>;
   selectedLevel: string;
   setSelectedLevel: (level: "Set 1" | "Set 2" | "Custom") => void;
-  tagInput: string;
-  setTagInput: (input: string) => void;
-  pastedText: string;
-  setPastedText: (text: string) => void;
-  showPasteDialog: boolean;
-  setShowPasteDialog: (show: boolean) => void;
-  pasteMatchedCount: number;
-  pasteUnmatched: string[];
-  handlePasteSubmit: () => void;
-  handleAddUnmatchedAsCustom: () => void;
-  handleSkipUnmatched: () => void;
-  handleTagInputKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  handleDocxUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleOcrUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   // Optional overrides match the real signature in useTeacherActions —
   // the call site at line 225 passes (wordIds, modes) explicitly to
@@ -145,7 +132,6 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   setAssignmentModes,
   selectedWords: selectedWordsIds,
   setSelectedWords,
-  handleDocxUpload,
   handleOcrUpload,
   handleSaveAssignment,
   assignmentSentences,
@@ -437,7 +423,6 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
       isOcrProcessing={isOcrProcessing}
       ocrProgress={ocrProgress}
       ocrStatus={ocrStatus}
-      onDocxUpload={handleDocxUpload}
       customWords={customWords}
       onCustomWordsChange={setCustomWords}
       onSwitchActivity={onSwitchActivity}

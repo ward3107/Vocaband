@@ -41,8 +41,6 @@ export interface QuickPlaySetupSectionDeps {
   ocrProgress: number;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handleOcrUpload: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handleDocxUpload: any;
 
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   showPaywallToast: (msg: string) => void;
@@ -82,7 +80,7 @@ export function QuickPlaySetupSection(deps: QuickPlaySetupSectionDeps): ReactNod
     customWords, setCustomWords,
     quickPlayInitialWords, quickPlayInitialModes,
     isOcrProcessing, ocrProgress,
-    handleOcrUpload, handleDocxUpload,
+    handleOcrUpload,
     showToast, showPaywallToast, speakWord, translateWord,
     setQuickPlayActiveSession, setQuickPlaySessionCode,
     onSaveTemplate, appToasts,
@@ -124,7 +122,6 @@ export function QuickPlaySetupSection(deps: QuickPlaySetupSectionDeps): ReactNod
         onOcrUpload={handleOcrUpload}
         isOcrProcessing={isOcrProcessing}
         ocrProgress={ocrProgress}
-        onDocxUpload={handleDocxUpload}
         customWords={customWords}
         onCustomWordsChange={setCustomWords}
         onCreateSession={(words, modes) =>
