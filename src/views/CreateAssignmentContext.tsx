@@ -38,28 +38,10 @@ export interface CreateAssignmentSectionDeps {
   setSelectedWords: React.Dispatch<React.SetStateAction<number[]>>;
   selectedLevel: 'Set 1' | 'Set 2' | 'Custom';
   setSelectedLevel: React.Dispatch<React.SetStateAction<'Set 1' | 'Set 2' | 'Custom'>>;
-  tagInput: string;
-  setTagInput: React.Dispatch<React.SetStateAction<string>>;
-  pastedText: string;
-  setPastedText: React.Dispatch<React.SetStateAction<string>>;
-  showPasteDialog: boolean;
-  setShowPasteDialog: React.Dispatch<React.SetStateAction<boolean>>;
-  pasteMatchedCount: number;
-  pasteUnmatched: string[];
 
   // Passing through to CreateAssignmentView's existing signatures —
   // these are too varied (event handlers, async with optional args) to
   // pin down here so the section types them as any pass-throughs.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handlePasteSubmit: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handleAddUnmatchedAsCustom: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handleSkipUnmatched: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handleTagInputKeyDown: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  handleDocxUpload: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handleOcrUpload: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

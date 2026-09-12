@@ -30,12 +30,7 @@ export function CreateAssignmentSection(): ReactNode {
     assignmentModes, setAssignmentModes,
     selectedWords, setSelectedWords,
     selectedLevel, setSelectedLevel,
-    tagInput, setTagInput,
-    pastedText, setPastedText,
-    showPasteDialog, setShowPasteDialog,
-    pasteMatchedCount, pasteUnmatched,
-    handlePasteSubmit, handleAddUnmatchedAsCustom, handleSkipUnmatched,
-    handleTagInputKeyDown, handleDocxUpload, handleOcrUpload, handleSaveAssignment,
+    handleOcrUpload, handleSaveAssignment,
     assignmentSentences, setAssignmentSentences,
     sentenceDifficulty, setSentenceDifficulty,
     isOcrProcessing, ocrProgress, ocrStatus,
@@ -66,19 +61,6 @@ export function CreateAssignmentSection(): ReactNode {
         setSelectedWords={setSelectedWords}
         selectedLevel={selectedLevel}
         setSelectedLevel={setSelectedLevel}
-        tagInput={tagInput}
-        setTagInput={setTagInput}
-        pastedText={pastedText}
-        setPastedText={setPastedText}
-        showPasteDialog={showPasteDialog}
-        setShowPasteDialog={setShowPasteDialog}
-        pasteMatchedCount={pasteMatchedCount}
-        pasteUnmatched={pasteUnmatched}
-        handlePasteSubmit={handlePasteSubmit}
-        handleAddUnmatchedAsCustom={handleAddUnmatchedAsCustom}
-        handleSkipUnmatched={handleSkipUnmatched}
-        handleTagInputKeyDown={handleTagInputKeyDown}
-        handleDocxUpload={handleDocxUpload}
         handleOcrUpload={handleOcrUpload}
         handleSaveAssignment={handleSaveAssignment}
         assignmentSentences={assignmentSentences}

@@ -170,7 +170,6 @@ export interface SetupWizardProps {
   isOcrProcessing?: boolean;
   ocrProgress?: number;
   ocrStatus?: string;
-  onDocxUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 
   // Custom words
   customWords?: Word[];
