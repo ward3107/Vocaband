@@ -17,7 +17,7 @@
  */
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
-import { useEffect, useRef, type ReactNode, type ButtonHTMLAttributes } from "react";
+import { useEffect, useRef, type ReactNode, type ButtonHTMLAttributes, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { modalBackStack } from "../../utils/modalBackStack";
 export type ModalVariant = "brand" | "success" | "danger" | "calm";
 
@@ -103,6 +103,50 @@ export default function ModalShell({
     return () => modalBackStack.remove(entry);
   }, [open]);
 
+  // Focus management — move focus into the dialog on open and restore it to
+  // the element that opened the modal on close, so keyboard/screen-reader
+  // users aren't stranded on the page behind the modal.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+    const raf = requestAnimationFrame(() => {
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusable = panel.querySelector<HTMLElement>(
+        'a[href], button:not([disabled]), textarea, input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      (focusable ?? panel).focus();
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      previouslyFocusedRef.current?.focus?.();
+    };
+  }, [open]);
+
+  // Keep Tab focus inside the dialog (aria-modal alone doesn't trap focus).
+  const trapFocus = (e: ReactKeyboardEvent) => {
+    if (e.key !== "Tab") return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const focusables = Array.from(
+      panel.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), textarea, input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ),
+    ).filter((el) => el.offsetParent !== null);
+    if (focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey) {
+      if (active === first || !panel.contains(active)) { e.preventDefault(); last.focus(); }
+    } else if (active === last || !panel.contains(active)) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
   return (
     <AnimatePresence>
       {open && (
@@ -120,13 +164,19 @@ export default function ModalShell({
           onClick={onClose}
         >
           <motion.div
+            ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={title}
+            tabIndex={-1}
+            onKeyDown={trapFocus}
             dir={dir}
             initial={{ opacity: 0, scale: 0.94, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.94, y: 8 }}
             transition={{ type: "spring", stiffness: 220, damping: 22 }}
             onClick={(e) => e.stopPropagation()}
-            className={`relative w-full overflow-hidden rounded-[28px] bg-white flex flex-col ${
+            className={`relative w-full overflow-hidden rounded-[28px] bg-white flex flex-col outline-none ${
               wide ? "max-w-[560px] md:max-w-[680px]" : "max-w-[480px] md:max-w-[580px]"
             }`}
             style={{

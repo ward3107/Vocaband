@@ -275,10 +275,11 @@ ${formData.description}`;
                     <form onSubmit={handleSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                       {/* Name */}
                       <div>
-                        <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
+                        <label htmlFor="fr-name" className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                           {t.nameLabel}
                         </label>
                         <input
+                          id="fr-name"
                           type="text"
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -289,10 +290,11 @@ ${formData.description}`;
 
                       {/* Email */}
                       <div>
-                        <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
+                        <label htmlFor="fr-email" className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                           {t.emailLabel}
                         </label>
                         <input
+                          id="fr-email"
                           type="email"
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -304,10 +306,11 @@ ${formData.description}`;
 
                       {/* Category */}
                       <div>
-                        <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
+                        <label htmlFor="fr-category" className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                           {t.categoryLabel}
                         </label>
                         <select
+                          id="fr-category"
                           value={formData.category}
                           onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                           className="w-full px-4 py-2.5 rounded-lg border-2 border-[var(--vb-border)] focus:border-amber-500 focus:outline-none transition-colors bg-[var(--vb-surface)] text-sm"
@@ -323,10 +326,11 @@ ${formData.description}`;
 
                       {/* Description */}
                       <div>
-                        <label className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
+                        <label htmlFor="fr-description" className="block text-sm font-bold text-[var(--vb-text-secondary)] mb-2">
                           {t.descriptionLabel} *
                         </label>
                         <textarea
+                          id="fr-description"
                           required
                           value={formData.description}
                           onChange={(e) => setFormData({ ...formData, description: e.target.value })}

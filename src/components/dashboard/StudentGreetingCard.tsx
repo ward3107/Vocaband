@@ -130,7 +130,7 @@ export default function StudentGreetingCard({
     : null;
   const frameRingClass = equippedFrame?.border ?? 'ring-4 ring-white/40';
 
-  const { language } = useLanguage();
+  const { language, isRTL } = useLanguage();
   const t = studentDashboardT[language];
   const hour = new Date().getHours();
   const greeting = hour < 12 ? t.greetingMorning : hour < 18 ? t.greetingAfternoon : t.greetingEvening;
@@ -311,7 +311,9 @@ export default function StudentGreetingCard({
                   initial={{ scaleX: 0 }}
                   animate={{ scaleX: progressPct / 100 }}
                   transition={{ duration: 0.9, ease: 'easeOut', delay: 0.2 }}
-                  style={{ transformOrigin: 'left' }}
+                  // Fill from the inline-start edge so the bar grows the right
+                  // way under RTL (Hebrew/Arabic) instead of from the left.
+                  style={{ transformOrigin: isRTL ? 'right' : 'left' }}
                   className="absolute inset-0 bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-200 rounded-full shadow-[0_0_8px_rgba(253,224,71,0.7)]"
                 />
               </div>

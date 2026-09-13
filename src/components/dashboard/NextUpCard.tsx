@@ -145,7 +145,7 @@ export default function NextUpCard({
             {assignment.title}
           </h3>
           <p className="mt-0.5 text-[11px] font-bold text-white/80 sm:text-xs">
-            {assignment.wordIds.length} words
+            {t.wordsCountLabel(assignment.wordIds.length)}
           </p>
         </div>
 

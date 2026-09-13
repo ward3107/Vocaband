@@ -41,7 +41,7 @@ interface PetCompanionProps {
 export default function PetCompanion({
   open, onClose, xp, displayName, currentStage, nextStage, claimableMilestone, accessoryEmoji, onClaim,
 }: PetCompanionProps) {
-  const { language, dir } = useLanguage();
+  const { language, dir, isRTL } = useLanguage();
   const t = studentDashboardT[language];
 
   // Gradient glow per stage — cycled deterministically from stage index
@@ -151,7 +151,7 @@ export default function PetCompanion({
                     initial={{ scaleX: 0 }}
                     animate={{ scaleX: pct / 100 }}
                     transition={{ duration: 0.6, ease: 'easeOut' }}
-                    style={{ transformOrigin: 'left' }}
+                    style={{ transformOrigin: isRTL ? 'right' : 'left' }}
                     className="h-full w-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500"
                   />
                 </div>

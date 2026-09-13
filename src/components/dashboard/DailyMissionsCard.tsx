@@ -99,7 +99,7 @@ const STRINGS: Record<Language, {
 };
 
 export default function DailyMissionsCard({ missions, isLoading }: DailyMissionsCardProps) {
-  const { language, dir } = useLanguage();
+  const { language, dir, isRTL } = useLanguage();
   const t = STRINGS[language] || STRINGS.en;
 
   // Always render the card frame (consistent dashboard layout) — empty
@@ -219,7 +219,7 @@ export default function DailyMissionsCard({ missions, isLoading }: DailyMissions
                       initial={{ scaleX: 0 }}
                       animate={{ scaleX: pct / 100 }}
                       transition={{ duration: 0.6, ease: 'easeOut' }}
-                      style={{ transformOrigin: 'left' }}
+                      style={{ transformOrigin: isRTL ? 'right' : 'left' }}
                       className={`h-full w-full bg-gradient-to-r ${meta.barGradient}`}
                     />
                   </div>
