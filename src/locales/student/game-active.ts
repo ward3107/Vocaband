@@ -106,6 +106,12 @@ export interface GameActiveStrings {
   // ShowAnswerFeedback (the amber pulse shown after 3 failed attempts).
   correctAnswerIs: string;
 
+  // Screen-reader announcements for typed-answer modes where correct/wrong
+  // is otherwise conveyed by colour only (no visible text). Read out via an
+  // aria-live region.
+  feedbackCorrectAnnounce: string;
+  feedbackWrongAnnounce: string;
+
   // LiveLeaderboardWidget heading.
   liveRank: string;
 
@@ -185,6 +191,8 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     ariaEmptySlot: "Empty slot",
     ariaPlaceLetter: (letter) => `Place letter ${letter}`,
     correctAnswerIs: "The correct answer is:",
+    feedbackCorrectAnnounce: "Correct!",
+    feedbackWrongAnnounce: "Incorrect, try again.",
     liveRank: "Live Rank",
     loadingGame: "Loading game...",
     loadingResults: "Loading results...",
@@ -264,6 +272,8 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     ariaEmptySlot: "משבצת ריקה",
     ariaPlaceLetter: (letter) => `הנח את האות ${letter}`,
     correctAnswerIs: "התשובה הנכונה היא:",
+    feedbackCorrectAnnounce: "נכון!",
+    feedbackWrongAnnounce: "לא נכון, נסו שוב.",
     liveRank: "דירוג חי",
     loadingGame: "טוען משחק...",
     loadingResults: "טוען תוצאות...",
@@ -343,6 +353,8 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     ariaEmptySlot: "خانة فارغة",
     ariaPlaceLetter: (letter) => `ضع الحرف ${letter}`,
     correctAnswerIs: "الإجابة الصحيحة هي:",
+    feedbackCorrectAnnounce: "صحيح!",
+    feedbackWrongAnnounce: "غير صحيح، حاول مرة أخرى.",
     liveRank: "الترتيب المباشر",
     loadingGame: "جارٍ تحميل اللعبة...",
     loadingResults: "جارٍ تحميل النتائج...",

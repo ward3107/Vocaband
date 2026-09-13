@@ -58,6 +58,7 @@ export function AvatarPicker({ value, onChange, xp, label, className = "" }: Ava
               key={category}
               type="button"
               onClick={() => setSelectedCategory(category)}
+              aria-pressed={active}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 active
                   ? "bg-primary text-white shadow-md"
@@ -130,6 +131,7 @@ export function AvatarPicker({ value, onChange, xp, label, className = "" }: Ava
             onClick={() => onChange(avatar)}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
+            aria-pressed={value === avatar}
             className={`aspect-square rounded-xl border-2 transition-all flex items-center justify-center text-5xl sm:text-6xl shadow-md ${
               value === avatar
                 ? "bg-gradient-to-br from-primary/30 to-violet-30 border-primary ring-2 ring-primary shadow-lg shadow-primary/30"

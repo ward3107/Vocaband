@@ -114,7 +114,7 @@ function getCalendarGrid(viewYear: number, viewMonth: number): Date[] {
 }
 
 export function DateTimePicker({ value, onChange, placeholder, minDate }: DateTimePickerProps) {
-  const { language } = useLanguage();
+  const { language, isRTL } = useLanguage();
   const WEEKDAY_LABELS = WEEKDAY_LABELS_BY_LANG[language];
   const MONTH_LABELS = MONTH_LABELS_BY_LANG[language];
   const labels = language === "he"
@@ -218,7 +218,7 @@ export function DateTimePicker({ value, onChange, placeholder, minDate }: DateTi
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`w-full p-3 rounded-lg border-2 text-left flex items-center gap-3 transition-all cursor-pointer outline-none bg-[var(--vb-surface)] ${
+        className={`w-full p-3 ${parsed ? "pe-11" : ""} rounded-lg border-2 text-start flex items-center gap-3 transition-all cursor-pointer outline-none bg-[var(--vb-surface)] ${
           open ? "border-primary ring-4 ring-primary/10" : "border-[var(--vb-text-muted)]/60 hover:border-primary/40"
         }`}
         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
@@ -227,25 +227,25 @@ export function DateTimePicker({ value, onChange, placeholder, minDate }: DateTi
         <span className={`flex-1 text-sm font-bold ${parsed ? "text-[var(--vb-text-primary)]" : "text-[var(--vb-text-muted)]"}`}>
           {displayText}
         </span>
-        {parsed && (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => { e.stopPropagation(); clear(); }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); clear(); }
-            }}
-            className="p-1 rounded-full hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)] transition-colors"
-            aria-label={labels.clearDate}
-          >
-            <X size={14} />
-          </span>
-        )}
       </button>
+      {/* Clear is its OWN button, a sibling of the trigger — a real button
+          nested inside the trigger button was invalid interactive nesting.
+          Positioned at the inline-end edge so it flips correctly under RTL. */}
+      {parsed && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); clear(); }}
+          className="absolute end-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-muted)] hover:text-[var(--vb-text-secondary)] transition-colors"
+          aria-label={labels.clearDate}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+        >
+          <X size={14} />
+        </button>
+      )}
 
       {/* Popover - opens upward to avoid going off-screen on mobile */}
       {open && (
-        <div className="absolute z-50 bottom-full left-0 mb-2 bg-[var(--vb-surface)] rounded-xl shadow-2xl border border-[var(--vb-border)] w-80 overflow-hidden">
+        <div className="absolute z-50 bottom-full start-0 mb-2 bg-[var(--vb-surface)] rounded-xl shadow-2xl border border-[var(--vb-border)] w-80 overflow-hidden">
           {/* Month nav */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--vb-border)]">
             <button
@@ -254,7 +254,9 @@ export function DateTimePicker({ value, onChange, placeholder, minDate }: DateTi
               className="w-8 h-8 rounded-lg hover:bg-primary/10 flex items-center justify-center text-[var(--vb-text-secondary)] transition-colors"
               aria-label={labels.prev}
             >
-              <ChevronLeft size={18} />
+              {/* Prev/next glyphs mirror under RTL so "previous" still points
+                  toward the start edge of the calendar. */}
+              {isRTL ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
             </button>
             <span className="font-black text-[var(--vb-text-primary)] text-base">
               {MONTH_LABELS[viewMonth]} {viewYear}
@@ -265,7 +267,7 @@ export function DateTimePicker({ value, onChange, placeholder, minDate }: DateTi
               className="w-8 h-8 rounded-lg hover:bg-primary/10 flex items-center justify-center text-[var(--vb-text-secondary)] transition-colors"
               aria-label={labels.next}
             >
-              <ChevronRight size={18} />
+              {isRTL ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
             </button>
           </div>
 

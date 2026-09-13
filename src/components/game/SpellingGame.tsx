@@ -191,6 +191,15 @@ export default function SpellingGame({
         <ShowAnswerFeedback answer={currentWord?.english} dir="ltr" className="mb-4" />
       )}
 
+      {/* Screen-reader announcement — correct/wrong is otherwise conveyed by
+          the input's colour alone. The colours stay as the visual signal;
+          this sr-only live region voices the same result for AT users. */}
+      <p className="sr-only" role="status" aria-live="assertive">
+        {feedback === "correct" ? t.feedbackCorrectAnnounce :
+         feedback === "wrong" ? t.feedbackWrongAnnounce :
+         feedback === "show-answer" ? `${t.correctAnswerIs} ${currentWord?.english ?? ""}` : ""}
+      </p>
+
       {showMissingSpaceHint && (
         <p
           className="mb-3 sm:mb-4 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm sm:text-base font-bold text-center"

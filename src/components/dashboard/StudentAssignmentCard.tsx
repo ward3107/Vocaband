@@ -178,7 +178,7 @@ export default function StudentAssignmentCard({
           className="absolute top-2 end-2 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md flex items-center gap-1 bg-gradient-to-r from-stone-700 to-stone-900"
         >
           <Lock size={10} />
-          MAXED
+          {t.maxedBadge}
         </motion.div>
       )}
 
@@ -191,7 +191,7 @@ export default function StudentAssignmentCard({
           className="absolute top-2 end-2 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-md flex items-center gap-1"
         >
           <Sparkles size={10} className="fill-white" />
-          MASTERED
+          {t.masteredBadge}
         </motion.div>
       )}
 
@@ -211,13 +211,13 @@ export default function StudentAssignmentCard({
           </h3>
           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wide text-stone-500">
-              {assignment.wordIds.length} words
+              {t.wordsCountLabel(assignment.wordIds.length)}
             </span>
             {assignment.deadline && (
               <>
                 <span className="text-stone-300">·</span>
                 <span className="text-[10px] sm:text-xs font-bold text-stone-500">
-                  Due {new Date(assignment.deadline).toLocaleDateString()}
+                  {t.dueLabel(new Date(assignment.deadline).toLocaleDateString(language))}
                 </span>
               </>
             )}
@@ -246,7 +246,7 @@ export default function StudentAssignmentCard({
               </span>
             )}
             <span className="text-[10px] sm:text-xs font-bold text-stone-500">
-              {completedModes}/{totalModes} modes
+              {t.modesProgress(completedModes, totalModes)}
             </span>
             {/* Rounds counter — colour turns amber as the cap approaches. */}
             <span className={`text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full ${
@@ -256,8 +256,8 @@ export default function StudentAssignmentCard({
               'bg-stone-100 text-stone-600'
             }`}>
               {isLocked
-                ? 'Locked — all 3 rounds done'
-                : `Round ${currentRound} of ${MAX_ASSIGNMENT_ROUNDS}`}
+                ? t.lockedRoundsShort(MAX_ASSIGNMENT_ROUNDS)
+                : t.roundOfLabel(currentRound, MAX_ASSIGNMENT_ROUNDS)}
             </span>
           </div>
         </div>
@@ -289,7 +289,7 @@ export default function StudentAssignmentCard({
       {isLocked && (
         <div className="mt-3 text-[11px] font-bold rounded-lg px-3 py-2 flex items-center gap-2 text-stone-500 bg-white/60 border border-stone-200">
           <Lock size={12} />
-          You've completed all {MAX_ASSIGNMENT_ROUNDS} rounds of this assignment. Great practice! Check your other assignments.
+          {t.lockedRoundsFull(MAX_ASSIGNMENT_ROUNDS)}
         </div>
       )}
 

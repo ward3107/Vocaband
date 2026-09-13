@@ -76,15 +76,15 @@ export default function StudentStatsRow({
   // plays (one progress row per mode played).
   if (arcade) {
     const tiles = [
-      { grad: ARCADE_REWARD_GRADIENT, shadow: "shadow-amber-500/30",   icon: <Trophy size={16} className="text-white" />,   value: xp,                    label: "XP" },
-      { grad: ARCADE_STREAK_GRADIENT, shadow: "shadow-rose-500/30",    icon: <Flame size={16} className="text-white" />,    value: streak,                label: "STREAK" },
-      { grad: ARCADE_HERO_GRADIENT,   shadow: "shadow-fuchsia-500/30", icon: <Gamepad2 size={16} className="text-white" />, value: studentProgress.length, label: "GAMES" },
+      { id: "xp",     grad: ARCADE_REWARD_GRADIENT, shadow: "shadow-amber-500/30",   icon: <Trophy size={16} className="text-white" />,   value: xp,                    label: "XP" },
+      { id: "streak", grad: ARCADE_STREAK_GRADIENT, shadow: "shadow-rose-500/30",    icon: <Flame size={16} className="text-white" />,    value: streak,                label: t.arcadeStreakLabel },
+      { id: "games",  grad: ARCADE_HERO_GRADIENT,   shadow: "shadow-fuchsia-500/30", icon: <Gamepad2 size={16} className="text-white" />, value: studentProgress.length, label: t.arcadeGamesLabel },
     ];
     return (
       <div className="grid grid-cols-3 gap-3 mb-6">
         {tiles.map((tile, i) => (
           <motion.div
-            key={tile.label}
+            key={tile.id}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: i * 0.05 }}

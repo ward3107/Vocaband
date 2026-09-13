@@ -44,7 +44,7 @@ interface DailyGoalBannerProps {
  * trust raw count.
  */
 export default function DailyGoalBanner({ studentProgress, goal = 1, onPlay, userUid, onGrantXp }: DailyGoalBannerProps) {
-  const { language } = useLanguage();
+  const { language, isRTL } = useLanguage();
   const t = studentDashboardT[language];
   const { playedToday, pct, hit } = useMemo(() => {
     const today = new Date();
@@ -160,7 +160,7 @@ export default function DailyGoalBanner({ studentProgress, goal = 1, onPlay, use
                   animate={{ scaleX: pct / 100 }}
                   transition={{ duration: 0.7, ease: "easeOut" }}
                   style={{
-                    transformOrigin: "left",
+                    transformOrigin: isRTL ? "right" : "left",
                     background:
                       "linear-gradient(110deg, #6366F1 0%, #8B5CF6 50%, #D946EF 100%)",
                     boxShadow: "0 0 12px rgba(139,92,246,0.45)",

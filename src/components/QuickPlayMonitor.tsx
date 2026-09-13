@@ -1703,7 +1703,13 @@ export default function QuickPlayMonitor({
                 enough that the session code + share button fit
                 alongside it on standard desktops (the previous 2xl
                 bump made it dominate the row and clip the text). */}
-            <div className="bg-[var(--vb-surface)] p-2.5 rounded-lg shadow-xl shrink-0 cursor-pointer" onClick={() => setQrEnlarged(true)}>
+            <button
+              type="button"
+              className="bg-[var(--vb-surface)] p-2.5 rounded-lg shadow-xl shrink-0 cursor-pointer"
+              onClick={() => setQrEnlarged(true)}
+              aria-label={tT.qpEnlargeQrAria}
+              style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+            >
               <div className="w-32 h-32 sm:w-40 sm:h-40 2xl:w-48 2xl:h-48 flex items-center justify-center">
                 <QRCodeSVG
                   value={qrUrl}
@@ -1711,10 +1717,10 @@ export default function QuickPlayMonitor({
                   level="M"
                   marginSize={0}
                   style={{ width: '100%', height: '100%' }}
-                  aria-label={tT.qpQrCodeAria}
+                  aria-hidden="true"
                 />
               </div>
-            </div>
+            </button>
             <div className="flex flex-col justify-center text-white min-w-0 flex-1 w-full text-center sm:text-left lg:text-center xl:text-left">
               <span className="font-label text-[10px] 2xl:text-xs uppercase tracking-[0.2em] opacity-80">{tT.qpJoinAtHost(window.location.host)}</span>
               {/* Session code — readable but supporting; QR is the

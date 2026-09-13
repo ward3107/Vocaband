@@ -259,10 +259,14 @@ const FloatingButtons: React.FC<FloatingButtonsProps> = ({
   // students flexing their rank with friends.
   const shareText = useMemo(() => {
     if (shareLevel) {
+      if (language === "he") return `${shareLevel.emoji} צברתי ${shareLevel.xp} XP — ${shareLevel.title} ב-Vocaband! תוכלו לעקוף את הרמה שלי?`;
+      if (language === "ar") return `${shareLevel.emoji} لديّ ${shareLevel.xp} XP — ${shareLevel.title} على Vocaband! هل يمكنك تجاوز مستواي؟`;
       return `${shareLevel.emoji} I'm ${shareLevel.xp} XP — a ${shareLevel.title} on Vocaband! Can you beat my level?`;
     }
+    if (language === "he") return "גלו את Vocaband — הדרך הכיפית לשלוט באוצר המילים באנגלית!";
+    if (language === "ar") return "اكتشفوا Vocaband — الطريقة الممتعة لإتقان مفردات الإنجليزية!";
     return "Check out Vocaband — the fun way to master English vocabulary!";
-  }, [shareLevel]);
+  }, [shareLevel, language]);
 
   // Prefer the OS native share sheet when available — on mobile it
   // opens every messaging app the user has installed (WhatsApp,

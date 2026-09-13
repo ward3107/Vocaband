@@ -35,6 +35,9 @@ export interface StudentDashboardStrings {
   /** Singular vs plural words mastered ("1 word mastered", "5 words mastered").  Caller picks via n. */
   wordsMastered: (n: number) => string;
   assignmentsDone: (n: number) => string;
+  /** Arcade stat-tile labels (rendered uppercase for Latin scripts). */
+  arcadeStreakLabel: string;
+  arcadeGamesLabel: string;
 
   // RetentionStrip
   dailyChest: string;
@@ -116,6 +119,22 @@ export interface StudentDashboardStrings {
   startLearning: string;
   yourAssignments: string;
   noAssignmentsYet: string;
+  /** "MAXED" corner badge — play cap reached. */
+  maxedBadge: string;
+  /** "MASTERED" corner badge — every mode completed. */
+  masteredBadge: string;
+  /** "{n} words" meta line. */
+  wordsCountLabel: (n: number) => string;
+  /** "Due {formattedDate}" — caller formats the date in the active locale. */
+  dueLabel: (formattedDate: string) => string;
+  /** "{done}/{total} modes" meta chip. */
+  modesProgress: (done: number, total: number) => string;
+  /** "Round {current} of {max}" chip. */
+  roundOfLabel: (current: number, max: number) => string;
+  /** Short locked chip — "Locked — all {max} rounds done". */
+  lockedRoundsShort: (max: number) => string;
+  /** Full locked footer message. */
+  lockedRoundsFull: (max: number) => string;
 
   // NextUpCard — primary CTA above the assignments list
   nextUp: string;
@@ -152,6 +171,8 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     startYourStreak: "Start your streak",
     wordsMastered: (n) => n === 1 ? "word mastered" : "words mastered",
     assignmentsDone: (n) => n === 1 ? "1 assignment done" : `${n} assignments done`,
+    arcadeStreakLabel: "Streak",
+    arcadeGamesLabel: "Games",
     dailyChest: "Daily chest",
     claimTodaysReward: "Claim today's reward",
     bonusXpStreakKeeper: "Bonus XP + streak keeper",
@@ -209,6 +230,14 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     startLearning: "Start learning",
     yourAssignments: "Your Assignments",
     noAssignmentsYet: "No assignments yet. Check back later!",
+    maxedBadge: "MAXED",
+    masteredBadge: "MASTERED",
+    wordsCountLabel: (n) => `${n} words`,
+    dueLabel: (date) => `Due ${date}`,
+    modesProgress: (done, total) => `${done}/${total} modes`,
+    roundOfLabel: (current, max) => `Round ${current} of ${max}`,
+    lockedRoundsShort: (max) => `Locked — all ${max} rounds done`,
+    lockedRoundsFull: (max) => `You've completed all ${max} rounds of this assignment. Great practice! Check your other assignments.`,
     nextUp: "Next up",
     continueAction: "Continue",
     welcomeEyebrow: "Welcome aboard",
@@ -237,6 +266,8 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     startYourStreak: "התחל רצף",
     wordsMastered: (n) => n === 1 ? "מילה שנלמדה" : "מילים שנלמדו",
     assignmentsDone: (n) => n === 1 ? "1 מטלה הושלמה" : `${n} מטלות הושלמו`,
+    arcadeStreakLabel: "רצף",
+    arcadeGamesLabel: "משחקים",
     dailyChest: "תיבה יומית",
     claimTodaysReward: "קבל את הפרס של היום",
     bonusXpStreakKeeper: "בונוס XP + שומר רצף",
@@ -294,6 +325,14 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     startLearning: "התחל ללמוד",
     yourAssignments: "המטלות שלך",
     noAssignmentsYet: "אין מטלות עדיין. חזור מאוחר יותר!",
+    maxedBadge: "מוצה",
+    masteredBadge: "הושלם",
+    wordsCountLabel: (n) => `${n} מילים`,
+    dueLabel: (date) => `עד ${date}`,
+    modesProgress: (done, total) => `${done}/${total} מצבים`,
+    roundOfLabel: (current, max) => `סבב ${current} מתוך ${max}`,
+    lockedRoundsShort: (max) => `נעול — כל ${max} הסבבים הושלמו`,
+    lockedRoundsFull: (max) => `השלמת את כל ${max} הסבבים של המטלה הזו. תרגול מצוין! בדוק את שאר המטלות שלך.`,
     nextUp: "הבא בתור",
     continueAction: "המשך",
     welcomeEyebrow: "ברוכים הבאים",
@@ -322,6 +361,8 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     startYourStreak: "ابدأ سلسلتك",
     wordsMastered: (n) => n === 1 ? "كلمة محفوظة" : "كلمات محفوظة",
     assignmentsDone: (n) => n === 1 ? "اكتملت مهمة واحدة" : `${n} مهام مكتملة`,
+    arcadeStreakLabel: "سلسلة",
+    arcadeGamesLabel: "ألعاب",
     dailyChest: "صندوق يومي",
     claimTodaysReward: "احصل على مكافأة اليوم",
     bonusXpStreakKeeper: "مكافأة XP + حافظ السلسلة",
@@ -379,6 +420,14 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     startLearning: "ابدأ التعلم",
     yourAssignments: "مهامك",
     noAssignmentsYet: "لا توجد مهام بعد. عد لاحقاً!",
+    maxedBadge: "مكتمل",
+    masteredBadge: "أتقنت",
+    wordsCountLabel: (n) => `${n} كلمات`,
+    dueLabel: (date) => `الاستحقاق ${date}`,
+    modesProgress: (done, total) => `${done}/${total} أنماط`,
+    roundOfLabel: (current, max) => `الجولة ${current} من ${max}`,
+    lockedRoundsShort: (max) => `مقفل — اكتملت كل الجولات الـ${max}`,
+    lockedRoundsFull: (max) => `لقد أكملت كل الجولات الـ${max} لهذه المهمة. تدريب رائع! تفقّد مهامك الأخرى.`,
     nextUp: "التالي",
     continueAction: "متابعة",
     welcomeEyebrow: "أهلاً بك",

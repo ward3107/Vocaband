@@ -67,6 +67,7 @@ export interface TeacherViewsT {
   qpShowQrShort: string;
   qpQrCodeAria: string;
   qpQrCodeEnlargedAria: string;
+  qpEnlargeQrAria: string;
   qpJoinAtHost: (host: string) => string;
   qpPlayersJoined: (n: number) => string;
   qpWaitingForPlayers: string;
@@ -150,6 +151,7 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpShowQrShort: "Show QR",
     qpQrCodeAria: "Quick Play QR Code",
     qpQrCodeEnlargedAria: "Quick Play QR Code (enlarged)",
+    qpEnlargeQrAria: "Enlarge QR code",
     qpJoinAtHost: (host) => `Join at ${host}`,
     qpPlayersJoined: (n) => `${n} ${n === 1 ? "player" : "players"} joined`,
     qpWaitingForPlayers: "Waiting for players...",
@@ -226,6 +228,7 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpShowQrShort: "הצג QR",
     qpQrCodeAria: "קוד QR למשחק מהיר",
     qpQrCodeEnlargedAria: "קוד QR למשחק מהיר (מוגדל)",
+    qpEnlargeQrAria: "הגדל את קוד ה-QR",
     qpJoinAtHost: (host) => `הצטרפו בכתובת ${host}`,
     qpPlayersJoined: (n) => `${n} ${n === 1 ? "שחקן הצטרף" : "שחקנים הצטרפו"}`,
     qpWaitingForPlayers: "מחכים לשחקנים...",
@@ -302,6 +305,7 @@ export const teacherViewsT: Record<Language, TeacherViewsT> = {
     qpShowQrShort: "عرض QR",
     qpQrCodeAria: "رمز QR للعب السريع",
     qpQrCodeEnlargedAria: "رمز QR للعب السريع (مكبّر)",
+    qpEnlargeQrAria: "تكبير رمز QR",
     qpJoinAtHost: (host) => `انضم على ${host}`,
     qpPlayersJoined: (n) => `${n} ${n === 1 ? "لاعب انضم" : "لاعبين انضموا"}`,
     qpWaitingForPlayers: "في انتظار اللاعبين...",
