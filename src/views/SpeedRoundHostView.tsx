@@ -190,8 +190,13 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
       unused = pickedWords.slice();
     }
     const word = unused[Math.floor(Math.random() * unused.length)];
+    // Mark the word tried for THIS pass (so the retry loop draws a fresh one
+    // and never re-picks an unbuildable word), but do NOT count the round
+    // here — a drawn word whose question fails to build was never served to
+    // students. completedRoundsRef advances only on a successful build in
+    // handleStart, otherwise failed attempts inflate "words played" and end
+    // the run before every word has actually been shown.
     usedWordIdsRef.current.add(word.id);
-    completedRoundsRef.current += 1;
     return word;
   };
 
@@ -212,14 +217,18 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
         trueFalseLabels: { yes: t.tfTrue, no: t.tfFalse },
       });
     }
-    setPlayedCount(completedRoundsRef.current);
     if (!question) {
       // Only an error if words remained but none could build a question;
-      // exhausting the run is the normal "round complete" path.
+      // exhausting the run is the normal "round complete" path. playedCount
+      // is left unchanged — nothing was served this attempt.
       if (completedRoundsRef.current < totalRounds) setBuildError(true);
       return;
     }
     setBuildError(false);
+    // Count the round only now that a question actually built and is about
+    // to be pushed to students.
+    completedRoundsRef.current += 1;
+    setPlayedCount(completedRoundsRef.current);
     // The Start tap is a user gesture — prime + play the jingle.
     primeAudio();
     playRoundStart();

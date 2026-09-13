@@ -518,6 +518,12 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       return;
     }
     let cancelled = false;
+    // Holds the listener-teardown once the socket resolves. The effect's
+    // own cleanup calls it — returning it from inside .then() below would
+    // hand it to the promise chain, which discards it, so the socket.off()
+    // never ran and handlers piled up on the module-cached socket across
+    // reconnects/rejoins.
+    let removeListeners: (() => void) | null = null;
     setStatus("connecting");
 
     getSocket().then(socket => {
@@ -780,7 +786,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
 
       if (socket.connected) onConnect();
 
-      return () => {
+      removeListeners = () => {
         socket.off("connect", onConnect);
         socket.off("disconnect", onDisconnect);
         socket.off("connect_error", onConnectError);
@@ -813,7 +819,10 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       };
     });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      removeListeners?.();
+    };
   }, [shouldConnect, sessionCode, clientId]);
 
   // ─── Imperative actions ────────────────────────────────────────────

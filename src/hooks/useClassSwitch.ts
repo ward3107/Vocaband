@@ -86,6 +86,13 @@ export function useClassSwitch(params: UseClassSwitchParams) {
         ]);
         setStudentAssignments((assignResult.data ?? []).map(mapAssignment));
         setStudentProgress((progressResult.data ?? []).map(mapProgress));
+        // The switch itself already committed via the RPC, so don't abort —
+        // but a swallowed load error here looks identical to an empty class.
+        // Log it and nudge the student so a blank dashboard isn't silent.
+        if (assignResult.error || progressResult.error) {
+          console.error('Class switch: content load failed:', assignResult.error, progressResult.error);
+          showToast('Switched class, but its content didn\'t fully load. Please refresh.', 'info');
+        }
       }
 
       // Update in-memory user.classCode so the dashboard header shows the new code.

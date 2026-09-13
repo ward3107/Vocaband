@@ -30,10 +30,17 @@ type ActiveMode = "paste" | "ocr_image";
 /** A row in the words-review table. Local-only — gets mapped to the
  *  DB row shape at save time. */
 interface WordRow {
+  // Stable identity for React keys. The editable rows are add/removable, so
+  // keying by array index shifted a row's input state onto its neighbour when
+  // an earlier row was deleted; a per-row id keeps DOM + focus with the row.
+  id: string;
   english: string;
   hebrew: string;
   arabic: string;
 }
+
+const newRowId = (): string =>
+  (globalThis.crypto?.randomUUID?.() ?? `row-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
 interface SetBuildWizardProps {
   user: AppUser;
@@ -95,7 +102,7 @@ export default function SetBuildWizard({
       const translations = await translateWordsBatch(dedup);
       const rows: WordRow[] = dedup.map((w) => {
         const tr = translations.get(w.toLowerCase());
-        return { english: w, hebrew: tr?.hebrew || "", arabic: tr?.arabic || "" };
+        return { id: newRowId(), english: w, hebrew: tr?.hebrew || "", arabic: tr?.arabic || "" };
       });
       setExtractedWords(rows);
     } catch (err) {
@@ -122,7 +129,7 @@ export default function SetBuildWizard({
       const translations = await translateWordsBatch(result.words);
       const rows: WordRow[] = result.words.map((w) => {
         const tr = translations.get(w.toLowerCase().trim());
-        return { english: w, hebrew: tr?.hebrew || "", arabic: tr?.arabic || "" };
+        return { id: newRowId(), english: w, hebrew: tr?.hebrew || "", arabic: tr?.arabic || "" };
       });
       setExtractedWords(rows);
     } catch (err) {
@@ -562,7 +569,7 @@ function WordsReviewTable({
         </div>
         <div className="divide-y max-h-[40vh] overflow-y-auto" style={{ borderColor: 'var(--vb-border)' }}>
           {rows.map((row, idx) => (
-            <div key={idx} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 px-3 py-2 items-center">
+            <div key={row.id} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 px-3 py-2 items-center">
               <input
                 type="text"
                 value={row.english}

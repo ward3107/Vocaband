@@ -125,7 +125,16 @@ const FillBlankGame = React.memo(({
   // Match each round's word to its sentence by index -- same word
   // index drives the gameplay, so word i <-> sentence i.  Wrap if
   // there are fewer sentences than words (teacher deleted some).
-  const sentence = sentences[currentIndex % sentences.length] || "";
+  const indexedSentence = sentences[currentIndex % sentences.length] || "";
+  // When the index wraps, it can land on a sentence written for a DIFFERENT
+  // word — redactSentence then finds nothing to blank and just tacks a
+  // context-free "@@BLANK@@" onto the end. If the indexed sentence doesn't
+  // contain the word, prefer any sentence that does so the blank keeps its
+  // context; fall back to the indexed one when none matches.
+  const containsTarget = new RegExp(escapeRegExp(currentWord.english), "i");
+  const sentence = containsTarget.test(indexedSentence)
+    ? indexedSentence
+    : (sentences.find((s) => containsTarget.test(s)) ?? indexedSentence);
   const redacted = redactSentence(sentence, currentWord.english);
 
   // Split around the sentinel so we can render the blank as a

@@ -37,7 +37,7 @@
  *     breaking other modes for a v1.  Worth factoring out in a v2 if
  *     a third pass-around mode shows up.
  */
-import { useCallback, useMemo, useState, useRef, type ChangeEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef, type ChangeEvent, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Trophy, Users, ArrowRight, Volume2, X, ChevronRight, Play,
@@ -581,6 +581,13 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, cl
   const [question, setQuestion] = useState<Question | null>(null);
   const [picked, setPicked] = useState<Word | null>(null);
   const submittedRef = useRef(false);
+  // The 1.2s answer→advance timer. Held so Cancel and unmount can clear it —
+  // otherwise a Cancel mid-reveal is undone when the timer fires setPhase,
+  // and an unmount mid-reveal setStates on a gone component.
+  const advanceTimeoutRef = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (advanceTimeoutRef.current) window.clearTimeout(advanceTimeoutRef.current);
+  }, []);
 
   // OCR a captured/uploaded image and stash the resulting English tokens
   // in ocrWords.  rawPool above resolves them against englishLookup, so
@@ -699,7 +706,8 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, cl
       correct: p.correct + (isCorrect ? 1 : 0),
       total: p.total + 1,
     } : p));
-    window.setTimeout(() => {
+    advanceTimeoutRef.current = window.setTimeout(() => {
+      advanceTimeoutRef.current = null;
       // Determine the next slot.  Players answer in rotation; once we
       // wrap back to player 0 the question number bumps.  When the
       // question number passes the cap, the round is done.
@@ -721,6 +729,10 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, cl
   // Hot Seat" was tapped there was no way out until the last player's
   // last question.
   const handleCancel = () => {
+    if (advanceTimeoutRef.current) {
+      window.clearTimeout(advanceTimeoutRef.current);
+      advanceTimeoutRef.current = null;
+    }
     setPhase('setup');
     setQuestion(null);
     setPicked(null);

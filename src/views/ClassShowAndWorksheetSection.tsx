@@ -64,11 +64,16 @@ function buildSourcesFromAssignment(
   allWords: Word[],
 ): { label: string; description?: string; words: Word[] }[] {
   if (!assignment) return [];
-  const knownWords = allWords.filter((w) => assignment.wordIds.includes(w.id));
+  // Set membership instead of Array.includes / Array.some — over ALL_WORDS
+  // (6.5k) the array scans were O(words × ids), re-run on every render of
+  // this section; the Sets make it O(words + ids).
+  const idSet = new Set(assignment.wordIds);
+  const knownWords = allWords.filter((w) => idSet.has(w.id));
+  const knownIds = new Set(knownWords.map((k) => k.id));
   const customs = assignment.customWords ?? [];
   const merged = [
     ...knownWords,
-    ...customs.filter((c) => !knownWords.some((k) => k.id === c.id)),
+    ...customs.filter((c) => !knownIds.has(c.id)),
   ];
   if (merged.length === 0) return [];
   return [{ label: assignment.title || 'Assignment', description: 'From assignment', words: merged }];

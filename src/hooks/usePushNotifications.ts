@@ -112,11 +112,23 @@ async function getNativeToken(): Promise<string | null> {
   if (perm.receive !== "granted") return null;
   return new Promise<string | null>((resolve) => {
     let done = false;
-    const finish = (v: string | null) => { if (!done) { done = true; resolve(v); } };
-    PushNotifications.addListener("registration", (t) => finish(t.value));
-    PushNotifications.addListener("registrationError", () => finish(null));
+    // addListener returns a Promise<PluginListenerHandle>; keep the handles and
+    // the timer so finish() can tear them all down. Without this, every token
+    // fetch left two native listeners + an 8s timer alive → a growing leak
+    // across repeated subscribe attempts.
+    const handles: Array<Promise<{ remove: () => void }>> = [];
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const finish = (v: string | null) => {
+      if (done) return;
+      done = true;
+      if (timer) clearTimeout(timer);
+      for (const h of handles) void Promise.resolve(h).then((hh) => hh?.remove?.()).catch(() => {});
+      resolve(v);
+    };
+    handles.push(PushNotifications.addListener("registration", (t) => finish(t.value)));
+    handles.push(PushNotifications.addListener("registrationError", () => finish(null)));
     void PushNotifications.register();
-    setTimeout(() => finish(null), 8000);
+    timer = setTimeout(() => finish(null), 8000);
   });
 }
 

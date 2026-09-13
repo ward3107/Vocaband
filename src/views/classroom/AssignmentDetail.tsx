@@ -78,6 +78,10 @@ export default function AssignmentDetail({
   const t = teacherDrilldownsT[language];
   const { done, stuck, notStarted, classAvg } = useMemo(() => {
     const byStudent = new Map<string, StudentScore>();
+    // Raw running sum per student. Rounding the mean on every attempt (the old
+    // `Math.round((avg*n + s)/(n+1))`) accumulated error that could flip a
+    // student across the 70% done/stuck line; sum now, divide + round once.
+    const sumByStudent = new Map<string, number>();
     scores.forEach(s => {
       const key = (s.studentUid || s.studentName).toLowerCase();
       if (!byStudent.has(key)) {
@@ -89,15 +93,19 @@ export default function AssignmentDetail({
           avgScore: 0,
           lastDate: s.completedAt,
         });
+        sumByStudent.set(key, 0);
       }
       const r = byStudent.get(key)!;
-      r.avgScore = Math.round((r.avgScore * r.attempts + s.score) / (r.attempts + 1));
+      sumByStudent.set(key, sumByStudent.get(key)! + s.score);
       r.attempts += 1;
       r.bestScore = Math.max(r.bestScore, s.score);
       if (new Date(s.completedAt) > new Date(r.lastDate)) {
         r.lastDate = s.completedAt;
         if (s.avatar) r.avatar = s.avatar;
       }
+    });
+    byStudent.forEach((r, key) => {
+      r.avgScore = r.attempts > 0 ? Math.round(sumByStudent.get(key)! / r.attempts) : 0;
     });
 
     const allStudents = Array.from(byStudent.values()).sort(

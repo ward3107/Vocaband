@@ -258,12 +258,14 @@ export function useGameModeActions(params: UseGameModeActionsParams) {
         setScore(newScore);
 
         streakRef.current += 1;
-        // Matching uses matchedIds.length as the natural "done" count
-        // (each correct pair adds one id). Total is the number of words
-        // in the matching set.
+        // Matching uses matchedIds.length as the natural "done" count (each
+        // correct pair adds one id). matchingPairs holds two entries per pair
+        // (word + translation), so the total must be halved to match "done"
+        // — the completion check below divides by 2 for the same reason.
+        // Without this the Quick-Play progress bar tops out at 50%.
         emitScoreUpdate(newScore, scoreExtras({
           done: matchedIds.length + 1,
-          total: matchingPairs.length,
+          total: Math.floor(matchingPairs.length / 2),
         }));
 
         setSelectedMatch(null);
