@@ -11,6 +11,12 @@ export type Toast = {
 
 type ShowToastOptions = { action?: { label: string; onClick: () => void } };
 
+// Monotonic suffix so toasts fired in the same millisecond (e.g. a sweep of
+// completed daily missions, or the booster/streak toasts in saveScore) get
+// distinct ids — otherwise they collide and the first dismiss timer removes
+// them all at once (and React warns on duplicate keys).
+let toastSeq = 0;
+
 export type ShowToast = (
   message: string,
   type?: ToastType,
@@ -23,7 +29,7 @@ export function useToasts() {
   // Stable across renders so consumers can put `showToast` in
   // useEffect / useCallback dep arrays without causing churn.
   const showToast = useCallback<ShowToast>((message, type = "info", options) => {
-    const id = Date.now().toString();
+    const id = `${Date.now()}-${toastSeq++}`;
     setToasts(prev => [...prev, { id, message, type, action: options?.action }]);
     // Errors and toasts with an action stay longer so the user has time
     // to read + click before auto-dismissal.

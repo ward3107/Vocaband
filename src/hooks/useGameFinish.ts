@@ -251,7 +251,7 @@ export function useGameFinish(params: UseGameFinishParams) {
     }
 
     // Regular assignment mode
-    if (!activeAssignment) return;
+    if (!activeAssignment) { setIsSaving(false); return; }
 
     // Refuse to file a round that was played on words this assignment
     // does not contain.
@@ -304,6 +304,7 @@ export function useGameFinish(params: UseGameFinishParams) {
         "Something went wrong loading your word list — this round wasn't saved. Please try the assignment again.",
         "error",
       );
+      setIsSaving(false);
       return;
     }
 

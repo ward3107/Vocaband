@@ -134,7 +134,7 @@ export function AvatarPicker({ value, onChange, xp, label, className = "" }: Ava
             aria-pressed={value === avatar}
             className={`aspect-square rounded-xl border-2 transition-all flex items-center justify-center text-5xl sm:text-6xl shadow-md ${
               value === avatar
-                ? "bg-gradient-to-br from-primary/30 to-violet-30 border-primary ring-2 ring-primary shadow-lg shadow-primary/30"
+                ? "bg-gradient-to-br from-primary/30 to-violet-300 border-primary ring-2 ring-primary shadow-lg shadow-primary/30"
                 : "bg-gradient-to-br from-surface-container-low to-surface-container border-surface-container-highest hover:border-primary/50 hover:shadow-lg"
             }`}
             style={{ touchAction: "manipulation" }}

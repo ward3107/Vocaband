@@ -116,9 +116,11 @@ export function buildFillBlankQuestion(
   if (!sentence) return null;
 
   // Replace the target word (case-insensitive, whole-word match) with the blank.
-  const re = new RegExp(`\\b${escapeRegex(word.english)}\\b`, 'i');
-  if (!re.test(sentence)) return null;
-  const blanked = sentence.replace(re, '_____');
+  // Blank EVERY occurrence — a repeated target (e.g. "run … run") would otherwise
+  // leave the answer visible in the prompt.
+  const wordPattern = `\\b${escapeRegex(word.english)}\\b`;
+  if (!new RegExp(wordPattern, 'i').test(sentence)) return null;
+  const blanked = sentence.replace(new RegExp(wordPattern, 'gi'), '_____');
 
   const otherEnglishes = pool
     .filter(w => w.id !== word.id)

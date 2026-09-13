@@ -227,7 +227,11 @@ function sentenceDemonstratesWord(sentence: string, english: string): boolean {
   // words that merely share a short prefix.
   if (!w.includes(" ") && w.length >= 5) {
     const stem = w.replace(/(y|e)$/, "");
-    if (stem.length >= 4 && new RegExp(`\\b${stem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(s)) {
+    // Match the stem alone or with a common English inflection, but ALWAYS
+    // require a trailing word boundary so "study" (stem "stud") matches
+    // study/studies/studying but not "student"/"studio".
+    const escapedStem = stem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (stem.length >= 4 && new RegExp(`\\b${escapedStem}(?:e|y|s|es|ed|ies|ied|ing|ying)?\\b`).test(s)) {
       return true;
     }
   }

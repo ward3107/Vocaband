@@ -100,5 +100,10 @@ export interface HebrewLemma {
 const NIQQUD_RE = /[ְ-ׇּׁׂ]/g;
 export const stripNiqqud = (s: string): string => s.replace(NIQQUD_RE, "");
 
+// Non-global copy for membership tests: a global regex's .test() advances and
+// persists lastIndex between calls, so reusing NIQQUD_RE here would make
+// repeated hasNiqqud() calls on the same string flip-flop (…, true, false, true).
+const NIQQUD_TEST_RE = new RegExp(NIQQUD_RE.source);
+
 /** True when a string contains at least one niqqud character. */
-export const hasNiqqud = (s: string): boolean => NIQQUD_RE.test(s);
+export const hasNiqqud = (s: string): boolean => NIQQUD_TEST_RE.test(s);

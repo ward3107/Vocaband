@@ -186,12 +186,16 @@ export function analyzePastedText(
   if (!text.trim()) return emptyResult;
 
   // ── Step 1: Extract quoted phrases ──────────────────────────────────────
-  const quoteRegex = /(["'])(?:(?=(\\1?))\2.)*?\1/g;
+  // Only STRAIGHT DOUBLE quotes delimit a phrase. A lone apostrophe must never
+  // open a "quote", or contractions/possessives ("don't", "can't") would pair
+  // up and everything between them would be deleted from the paste.
+  const quoteRegex = /"([^"]*)"/g;
   const quotedPhrases: string[] = [];
   for (const match of text.matchAll(quoteRegex)) {
-    quotedPhrases.push(match[0].replace(/['"]/g, '').trim().toLowerCase());
+    const phrase = match[1].trim().toLowerCase();
+    if (phrase) quotedPhrases.push(phrase);
   }
-  let remainingText = text.replace(/(["'])(?:(?=(\\1?))\2.)*?\1/g, '');
+  let remainingText = text.replace(/"[^"]*"/g, '');
 
   // ── Step 2: Split by delimiters ─────────────────────────────────────────
   // For Hebrew/Arabic text, don't split on spaces (phrases are space-separated)
