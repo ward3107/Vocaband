@@ -4,6 +4,55 @@ Tracking known issues with their diagnosis status.
 
 ---
 
+## Non-issue — CSP "inline script blocked" + `cf-cache-status: HIT` on the shell (2026-09-13) — ✅ HARMLESS, working as designed
+
+**If a teacher (or you) sees this in the browser console, it is not a bug — no action needed:**
+
+```
+Executing inline script violates the following Content Security Policy directive
+'script-src-elem 'self' 'sha256-Sz9cBPx…' …'. … a hash ('sha256-TNuYsv9…') … is required.
+```
+
+**What it is.** The blocked inline script is the pre-React boot diagnostic
+(`public/boot-debug.js`, inlined into `index.html` by `vite.config.ts`'s
+`vocabandHtmlPerf` plugin and allow-listed in `public/_headers` by SHA-256). The
+message appears when a visitor's browser loads an **old cached `index.html`**
+(whose inlined boot-debug hashes to the old value) while the current CSP header
+allows the new hash. It is a stale copy in that one visitor's browser/SW cache,
+not a server problem.
+
+**Why it's harmless.** The real app boots through
+`<script type="module" src="/src/main.tsx">` → `/assets/index-*.js`, a same-origin
+script covered by `'self'` (hashes apply only to *inline* scripts), so the app
+loads normally — only the boot diagnostic is skipped on that one stale load. It
+self-heals on the next fresh fetch. Instant recovery for a stuck visitor:
+`https://vocaband.com/?unregisterSW=1` (the SW kill switch) or a hard refresh
+(Ctrl+Shift+R).
+
+**About `cf-cache-status: HIT` on `/`.** This is **Cloudflare Workers Static
+Assets' built-in edge cache** — a platform feature, not a Cache Rule. Verified
+2026-09-13: the Cache Rules page shows **0 rules** (there is nothing to delete),
+and per [Cloudflare's docs](https://developers.cloudflare.com/workers/static-assets/headers/)
+this cache serves assets with `Cache-Control: public, max-age=0, must-revalidate`
++ `ETag` and is deployment-versioned, so it **never serves stale content across
+deploys**. `HIT` here means "fast," not "stale." Do **not** go hunting for a
+Cloudflare Cache Rule to fix this — there isn't one.
+
+**Related code (PR #1375, `worker/index.ts` `noStoreHtml`).** Adds
+`CDN-Cache-Control` / `Cloudflare-CDN-Cache-Control: no-store` on the shell as
+belt-and-suspenders. It turned out **not to be the operative fix** (the HIT is the
+Assets cache, which those headers don't govern), but it is harmless and stays as a
+safety net. The `no-store` on the shell (June 2026) is what keeps the *browser*
+from holding a stale shell going forward.
+
+**Not covered (low priority, not causing the console error):** SPA client-routes
+that are *not* in `run_worker_first` (`/teacher`, `/shop`, deep links on refresh)
+are served the SPA-fallback `index.html` by Workers Assets and also show `HIT`.
+Same deployment-versioned, revalidated cache — same "not stale" guarantee — so no
+action unless a real stale-shell case is ever observed on those routes.
+
+---
+
 ## Perf — Supabase + lucide hoisted onto the every-page entry chunk (2026-06-03) — ✅ FIXED 2026-06-09
 
 **Status:** Fixed. Entry static closure cut **132 kB gz → 66 kB gz (−50 %)**.
