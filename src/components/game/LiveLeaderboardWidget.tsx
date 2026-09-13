@@ -41,7 +41,11 @@ export default function LiveLeaderboardWidget({ user, leaderboard }: LiveLeaderb
                 "bg-white/20 text-white";
               return (
                 <div
-                  key={`${entry.uid}-${idx}`}
+                  // Key by the stable uid only — folding the sorted index in
+                  // changed a player's key whenever their rank moved, so React
+                  // remounted the row instead of animating it into its new
+                  // slot (transition-all was never seen).
+                  key={entry.uid}
                   className={`flex justify-between items-center p-2 sm:p-3 rounded-lg transition-all ${isUser ? "bg-white/30 border-2 border-white/50 scale-105 shadow-lg" : "bg-white/10"}`}
                 >
                   <div className="flex items-center gap-2">

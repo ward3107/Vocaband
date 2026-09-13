@@ -53,7 +53,7 @@ export async function persistHebrewScore(
       ? localStorage.getItem(`vocaband_student_${sessionUid}`) || sessionUid
       : user.uid;
     const pct = total > 0 ? Math.round((score / total) * 100) : 0;
-    await supabase.rpc('save_student_progress', {
+    const { error } = await supabase.rpc('save_student_progress', {
       p_student_name: user.displayName,
       p_student_uid: studentUid,
       p_assignment_id: activeAssignment.id,
@@ -64,6 +64,12 @@ export async function persistHebrewScore(
       p_avatar: user.avatar || '🦊',
       p_word_attempts: [],
     });
+    // supabase.rpc resolves (doesn't throw) on RLS / constraint rejection —
+    // the failure lives on `error`. Stay silent to the student, but surface
+    // it in the console so a rejected save isn't completely invisible.
+    if (error) {
+      console.error('[VocaHebrew] save_student_progress rejected:', error);
+    }
   } catch (err) {
     // Silent — same pattern as the English flow.  The student shouldn't
     // see a network error after their score screen.

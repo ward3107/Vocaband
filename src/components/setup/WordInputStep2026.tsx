@@ -1354,7 +1354,10 @@ const TopicPacksPanel: React.FC<TopicPacksPanelProps> = ({
   const TEXT = useStepTexts();
   const [selectedPack, setSelectedPack] = useState<{ name: string; icon: string; ids: number[]; words: Word[] } | null>(null);
 
-  const selectedWordIds = new Set(selectedWords.map(w => w.id));
+  // Memoize the id lookup — a fresh Set each render made it a new dependency
+  // reference every time, so packsWithCounts below recomputed its O(packs ×
+  // ids × allWords) scan on every render instead of only when inputs change.
+  const selectedWordIds = useMemo(() => new Set(selectedWords.map(w => w.id)), [selectedWords]);
 
   // Calculate word counts for each pack
   const packsWithCounts = useMemo(() => {
@@ -1449,7 +1452,9 @@ const SavedGroupsPanel: React.FC<SavedGroupsPanelProps> = ({
   onRenameGroup, onDeleteGroup,
 }) => {
   const TEXT = useStepTexts();
-  const selectedWordIds = new Set(selectedWords.map(w => w.id));
+  // Memoized so groupsWithCounts below isn't forced to recompute every render
+  // by a new Set reference (see TopicPacksPanel for the same fix).
+  const selectedWordIds = useMemo(() => new Set(selectedWords.map(w => w.id)), [selectedWords]);
 
   // Inline-rename state — track which group id is being edited and
   // its draft name.  Only one row is editable at a time.
