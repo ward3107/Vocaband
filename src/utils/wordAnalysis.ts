@@ -86,7 +86,7 @@ export interface WordAnalysisResult {
   };
 }
 
-export interface ExtractedWord {
+interface ExtractedWord {
   word: string;
   frequency: number;
   isStopWord: boolean;
@@ -150,31 +150,6 @@ function detectPhrases(
 
   const remaining = tokens.filter((_, i) => !used.has(i));
   return { phrases, remaining };
-}
-
-// ============================================================================
-// PROSE EXTRACTION
-// ============================================================================
-
-export function extractWordsFromProse(text: string): ExtractedWord[] {
-  if (!text.trim()) return [];
-  const lowerText = text.toLowerCase();
-  const cleanText = lowerText
-    .replace(/[^\w\s'\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const words = cleanText.split(' ').filter(w => w.length > 0);
-  const wordMap = new Map<string, ExtractedWord>();
-  words.forEach(word => {
-    const count = wordMap.get(word);
-    const isStop = STOP_WORDS.has(word);
-    if (count) {
-      wordMap.set(word, { word, frequency: count.frequency + 1, isStopWord: isStop });
-    } else {
-      wordMap.set(word, { word, frequency: 1, isStopWord: isStop });
-    }
-  });
-  return Array.from(wordMap.values());
 }
 
 // ============================================================================
@@ -423,22 +398,3 @@ export function analyzePastedText(
   };
 }
 
-// ============================================================================
-// UTILITIES
-// ============================================================================
-
-export function getStopWords(): string[] {
-  return Array.from(STOP_WORDS).sort();
-}
-
-export function addStopWords(words: string[]): void {
-  words.forEach(word => STOP_WORDS.add(word.toLowerCase()));
-}
-
-export function removeStopWords(words: string[]): void {
-  words.forEach(word => STOP_WORDS.delete(word.toLowerCase()));
-}
-
-export function isStopWord(word: string): boolean {
-  return STOP_WORDS.has(word.toLowerCase());
-}

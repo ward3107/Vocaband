@@ -18,7 +18,6 @@ interface SentenceBuilderGameProps {
   onSentenceWordTap: (word: string, isFromAvailable: boolean) => void;
   onSentenceCheck: () => void;
   speak: (text: string) => void;
-  shuffle: <T>(arr: T[]) => T[];
   /** Phase-3h theme — teal. */
   themeColor?: GameThemeColor;
 }
@@ -47,10 +46,9 @@ interface SentenceBuilderGameProps {
  *   - ACTION ROW — Clear (small ghost) + Check (big teal→emerald
  *     gradient, primary).
  *
- * The shuffle prop is no longer used — the Clear handler now just
- * pushes built words back to the bank without re-shuffling, which
- * was the existing fix for "Clear scrambled the unrelated words"
- * complaints.  Prop kept on the interface for compat.
+ * The Clear handler pushes built words back to the bank without
+ * re-shuffling (the existing fix for "Clear scrambled the unrelated
+ * words" complaints), so this mode takes no shuffle helper.
  */
 export default function SentenceBuilderGame({
   activeAssignment, sentenceIndex, sentenceFeedback,

@@ -49,15 +49,14 @@ export async function resolveAssignmentWords(assignment: AssignmentWordSource): 
   const embedded = assignment.words ?? [];
   const ids = assignment.wordIds ?? [];
 
-  // Fully-hydrated embedded list (the normal custom-assignment case).
   const embeddedIds = new Set(embedded.map((w) => w.id));
   const missingIds = ids.filter((id) => !embeddedIds.has(id));
-  if (embedded.length > 0 && missingIds.length === 0) return embedded;
 
-  // Nothing to hydrate from either — a genuinely empty assignment. Return
-  // the embedded list as-is rather than inventing words; callers must treat
-  // an empty result as "this assignment has no words", never as "use a
-  // sample list".
+  // No ids left to hydrate — either the embedded list already covers every
+  // wordId (the normal custom-assignment case) or the assignment is genuinely
+  // empty. Return the embedded list as-is rather than inventing words; callers
+  // must treat an empty result as "this assignment has no words", never as
+  // "use a sample list".
   if (missingIds.length === 0) return embedded;
 
   let vocab = getCachedVocabulary();
@@ -72,7 +71,8 @@ export async function resolveAssignmentWords(assignment: AssignmentWordSource): 
     };
   }
 
-  const hydrated = vocab.ALL_WORDS.filter((w) => missingIds.includes(w.id));
+  const missingSet = new Set(missingIds);
+  const hydrated = vocab.ALL_WORDS.filter((w) => missingSet.has(w.id));
   // Custom words (negative ids) only ever live in the embedded array and
   // are absent from wordIds, so keeping both halves preserves the teacher's
   // full list rather than silently dropping one kind.
