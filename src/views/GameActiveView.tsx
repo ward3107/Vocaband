@@ -391,7 +391,6 @@ export default function GameActiveView() {
           onSentenceWordTap={handleSentenceWordTap}
           onSentenceCheck={handleSentenceCheck}
           speak={speak}
-          shuffle={shuffle}
           themeColor={modeTheme}
         />
       );

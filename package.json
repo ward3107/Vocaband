@@ -68,7 +68,6 @@
     "jsqr": "^1.4.0",
     "lottie-react": "^3.1.1",
     "lucide-react": "^1.40.0",
-    "mammoth": "^1.12.2",
     "motion": "^13.2.0",
     "multer": "^2.3.0",
     "qrcode-generator": "^2.0.4",
@@ -107,11 +106,11 @@
     "@humanfs/node": "^0.16.8"
   },
   "devDependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@capacitor/cli": "^8.5.1",
     "@cloudflare/puppeteer": "^1.4.0",
     "@cloudflare/vite-plugin": "^1.54.4",
     "@eslint/js": "^10.0.1",
+    "@google/generative-ai": "^0.24.1",
     "@playwright/test": "^1.62.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.1",
