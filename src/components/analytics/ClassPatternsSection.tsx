@@ -55,11 +55,17 @@ export function ClassPatternsSection({ scores, classCode, weeks = 8 }: ClassPatt
       if (!s.completedAt) continue;
       const d = new Date(s.completedAt);
       if (Number.isNaN(d.getTime())) continue;
-      const diffDays = Math.floor((thisWeekSunday.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-      const weeksBack = Math.floor(diffDays / 7) + (diffDays % 7 < 0 ? 0 : 0);
-      // Rows completed AFTER the current week's Sunday midnight have
-      // diffDays < 0 — those belong to weekIndex 0.
-      const weekIndex = diffDays < 0 ? 0 : weeksBack;
+      // Bucket by the play's OWN week, not by the raw timestamp gap: floor the
+      // play to its week's Sunday midnight, then count whole weeks back from
+      // the current week's Sunday. (Diffing raw timestamps mis-bucketed any
+      // play not made exactly at Sunday-midnight — last week bled into "this
+      // week".) Math.round absorbs the DST ±1h wobble at week boundaries.
+      const playWeekSunday = new Date(d);
+      playWeekSunday.setHours(0, 0, 0, 0);
+      playWeekSunday.setDate(playWeekSunday.getDate() - playWeekSunday.getDay());
+      const weekIndex = Math.round(
+        (thisWeekSunday.getTime() - playWeekSunday.getTime()) / (7 * 24 * 60 * 60 * 1000),
+      );
       if (weekIndex < 0 || weekIndex >= weeks) continue;
       const dayIndex = d.getDay();
       grid[weekIndex][dayIndex] += 1;

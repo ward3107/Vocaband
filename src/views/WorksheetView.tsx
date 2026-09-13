@@ -331,6 +331,11 @@ export default function WorksheetView({
     setCustomWords(next);
     if (wasEmpty && next.length > 0) {
       setSourceIdx(0); // jump to "My custom selection"
+    } else if (!wasEmpty && next.length === 0) {
+      // The leading synthetic "My custom selection" slot just disappeared;
+      // shift the selection down one so it still points at the same real
+      // source instead of silently jumping to the adjacent one.
+      setSourceIdx(prev => Math.max(0, prev - 1));
     }
   };
 

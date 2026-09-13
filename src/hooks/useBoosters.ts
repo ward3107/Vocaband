@@ -71,12 +71,20 @@ export function useBoosters(uid: string | null | undefined) {
     try { return localStorage.getItem(k(userKey, 'weekend_armed')) === '1'; } catch { return false; }
   });
 
-  // Persist on changes
-  useEffect(() => { try { localStorage.setItem(k(userKey, 'xp_booster_expiry'), String(xpBoosterExpiry)); } catch {} }, [xpBoosterExpiry, userKey]);
-  useEffect(() => { try { localStorage.setItem(k(userKey, 'focus_mode_expiry'), String(focusModeExpiry)); } catch {} }, [focusModeExpiry, userKey]);
-  useEffect(() => { try { localStorage.setItem(k(userKey, 'streak_freezes'), String(streakFreezes)); } catch {} }, [streakFreezes, userKey]);
-  useEffect(() => { try { localStorage.setItem(k(userKey, 'lucky_charms'), String(luckyCharms)); } catch {} }, [luckyCharms, userKey]);
-  useEffect(() => { try { localStorage.setItem(k(userKey, 'weekend_armed'), weekendArmed ? '1' : '0'); } catch {} }, [weekendArmed, userKey]);
+  // Re-sync from localStorage once userKey settles to the real uid.
+  //
+  // The useState initializers above run ONCE at mount, when `uid` is still
+  // null (auth hasn't restored), so all five read the '__anon__' records.
+  // We must NOT persist in a userKey-dep effect: when userKey flips to the
+  // real uid such an effect would write the stale anon in-memory value into
+  // the real uid's key, wiping a paid-for booster. Instead we mirror
+  // useRetention — re-read each value for the settled uid here, and persist
+  // inside the activate/consume setters below.
+  useEffect(() => { try { setXpBoosterExpiry(Number(localStorage.getItem(k(userKey, 'xp_booster_expiry')) ?? 0)); } catch {} }, [userKey]);
+  useEffect(() => { try { setFocusModeExpiry(Number(localStorage.getItem(k(userKey, 'focus_mode_expiry')) ?? 0)); } catch {} }, [userKey]);
+  useEffect(() => { try { setStreakFreezes(Number(localStorage.getItem(k(userKey, 'streak_freezes')) ?? 0)); } catch {} }, [userKey]);
+  useEffect(() => { try { setLuckyCharms(Number(localStorage.getItem(k(userKey, 'lucky_charms')) ?? 0)); } catch {} }, [userKey]);
+  useEffect(() => { try { setWeekendArmed(localStorage.getItem(k(userKey, 'weekend_armed')) === '1'); } catch {} }, [userKey]);
 
   const now = Date.now();
   const day = new Date().getDay(); // 0=Sun, 6=Sat
@@ -117,35 +125,60 @@ export function useBoosters(uid: string | null | undefined) {
     const tNow = Date.now();
     if (id === 'xp_booster' && d.durationMs) {
       // Stack: extend existing expiry rather than reset.
-      setXpBoosterExpiry(prev => Math.max(prev, tNow) + (d.durationMs ?? 0));
+      setXpBoosterExpiry(prev => {
+        const next = Math.max(prev, tNow) + (d.durationMs ?? 0);
+        try { localStorage.setItem(k(userKey, 'xp_booster_expiry'), String(next)); } catch {}
+        return next;
+      });
     } else if (id === 'focus_mode' && d.durationMs) {
-      setFocusModeExpiry(prev => Math.max(prev, tNow) + (d.durationMs ?? 0));
+      setFocusModeExpiry(prev => {
+        const next = Math.max(prev, tNow) + (d.durationMs ?? 0);
+        try { localStorage.setItem(k(userKey, 'focus_mode_expiry'), String(next)); } catch {}
+        return next;
+      });
     } else if (id === 'streak_freeze') {
-      setStreakFreezes(prev => prev + 1);
+      setStreakFreezes(prev => {
+        const next = prev + 1;
+        try { localStorage.setItem(k(userKey, 'streak_freezes'), String(next)); } catch {}
+        return next;
+      });
     } else if (id === 'lucky_charm') {
-      setLuckyCharms(prev => prev + 1);
+      setLuckyCharms(prev => {
+        const next = prev + 1;
+        try { localStorage.setItem(k(userKey, 'lucky_charms'), String(next)); } catch {}
+        return next;
+      });
     } else if (id === 'weekend_warrior') {
       setWeekendArmed(true);
+      try { localStorage.setItem(k(userKey, 'weekend_armed'), '1'); } catch {}
     }
     // lucky_spin grants a reward immediately via shop RPC; nothing to set here.
-  }, []);
+  }, [userKey]);
 
   /** Consume a single Lucky Charm shield if available.  Call once on
    * game start.  Returns true if a charm was consumed (caller should
    * record this so the first wrong answer is forgiven). */
   const consumeLuckyCharm = useCallback(() => {
     if (luckyCharms <= 0) return false;
-    setLuckyCharms(prev => prev - 1);
+    setLuckyCharms(prev => {
+      const next = Math.max(0, prev - 1);
+      try { localStorage.setItem(k(userKey, 'lucky_charms'), String(next)); } catch {}
+      return next;
+    });
     return true;
-  }, [luckyCharms]);
+  }, [luckyCharms, userKey]);
 
   /** Spend a Streak Freeze if available.  Returns true if one was used
    * (caller should NOT reset the streak).  Otherwise returns false. */
   const tryConsumeStreakFreeze = useCallback(() => {
     if (streakFreezes <= 0) return false;
-    setStreakFreezes(prev => prev - 1);
+    setStreakFreezes(prev => {
+      const next = Math.max(0, prev - 1);
+      try { localStorage.setItem(k(userKey, 'streak_freezes'), String(next)); } catch {}
+      return next;
+    });
     return true;
-  }, [streakFreezes]);
+  }, [streakFreezes, userKey]);
 
   return useMemo(() => ({
     isXpBoosterActive,

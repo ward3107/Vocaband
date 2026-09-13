@@ -212,10 +212,19 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
 
   // playing
   const word = phase.source.words[phase.wordOrder[phase.currentIndex]];
-  const isLast = phase.currentIndex >= phase.wordOrder.length - 1;
   // Batch modes (matching, memory-flip) consume multiple words per
-  // "question" — slice from the current position into the order.
+  // "question" — slice from the current position into the order, and step /
+  // count by whole batches, not by single words.
+  const isBatchMode = phase.mode === 'matching' || phase.mode === 'memory-flip';
   const batchSize = phase.mode === 'memory-flip' ? 6 : 4;
+  const step = isBatchMode ? batchSize : 1;
+  const questionTotal = isBatchMode
+    ? Math.ceil(phase.wordOrder.length / batchSize)
+    : phase.wordOrder.length;
+  const questionIndex = isBatchMode
+    ? Math.floor(phase.currentIndex / batchSize)
+    : phase.currentIndex;
+  const isLast = questionIndex >= questionTotal - 1;
   const batch = phase.source.words
     ? phase.wordOrder.slice(phase.currentIndex, phase.currentIndex + batchSize).map(i => phase.source.words[i])
     : [];
@@ -252,27 +261,27 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
       <ClassShowControls
         revealed={phase.revealed}
         isLast={isLast}
-        currentIndex={phase.currentIndex}
-        total={phase.wordOrder.length}
+        currentIndex={questionIndex}
+        total={questionTotal}
         onSkip={() =>
           setPhase(p => {
             if (p.kind !== 'playing') return p;
-            if (p.currentIndex >= p.wordOrder.length - 1) {
-              // Past the last word — bounce back to mode selection
+            if (p.currentIndex + step >= p.wordOrder.length) {
+              // Past the last word/batch — bounce back to mode selection
               // rather than showing the Finale celebration, matching
               // the new "Choose different mode" flow.
               return { kind: 'setup' };
             }
-            return { ...p, currentIndex: p.currentIndex + 1, revealed: false, flashcardFlipped: false };
+            return { ...p, currentIndex: p.currentIndex + step, revealed: false, flashcardFlipped: false };
           })
         }
         onNext={() =>
           setPhase(p => {
             if (p.kind !== 'playing') return p;
-            if (p.currentIndex >= p.wordOrder.length - 1) {
+            if (p.currentIndex + step >= p.wordOrder.length) {
               return { kind: 'setup' };
             }
-            return { ...p, currentIndex: p.currentIndex + 1, revealed: false, flashcardFlipped: false };
+            return { ...p, currentIndex: p.currentIndex + step, revealed: false, flashcardFlipped: false };
           })
         }
         onChooseDifferentMode={() => setPhase({ kind: 'setup' })}

@@ -368,7 +368,7 @@ export default function LiveChallengeView({
           <div className="space-y-2 sm:space-y-3">
             {rest.map((entry, idx) => (
               <motion.div
-                key={`${entry.uid}-${idx}`}
+                key={entry.uid || entry.name}
                 data-reaction-uid={entry.uid}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}

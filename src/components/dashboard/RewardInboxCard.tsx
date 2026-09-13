@@ -116,6 +116,13 @@ export default function RewardInboxCard({ userUid, onServerRewardsArrived }: Rew
   // doesn't double-apply an xp bump if the same row comes back across
   // multiple fetches before the student has clicked Thanks!.
   const appliedIdsRef = useRef<Set<string>>(new Set());
+  // First-load gate as a REF, not the `loaded` state: the effect below runs
+  // once (deps = [userUid]) and its fetchRewards closure would otherwise
+  // capture `loaded === false` forever — so the callback that syncs live XP
+  // never fires and the confetti re-triggers on every realtime/poll fetch.
+  // `loaded` state is still used for the render gate; the ref drives the
+  // one-shot seed/callback/confetti logic inside the closure.
+  const loadedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -145,7 +152,7 @@ export default function RewardInboxCard({ userUid, onServerRewardsArrived }: Rew
       // Subsequent fetches report only genuinely-new rewards.
       const truelyNew = newList.filter(r => !appliedIdsRef.current.has(r.id));
 
-      if (!loaded) {
+      if (!loadedRef.current) {
         // First load — seed the ref with whatever's there and skip
         // the callback.  Initial page load already has the correct
         // XP from fetchUserProfile; firing the callback would
@@ -178,10 +185,11 @@ export default function RewardInboxCard({ userUid, onServerRewardsArrived }: Rew
       }
 
       setRewards(newList);
-      if (!loaded && newList.length > 0) {
+      if (!loadedRef.current && newList.length > 0) {
         // Confetti only on first surface.
         setTimeout(() => celebrate('big'), 400);
       }
+      loadedRef.current = true;
       setLoaded(true);
     };
 
@@ -228,9 +236,9 @@ export default function RewardInboxCard({ userUid, onServerRewardsArrived }: Rew
       if (fallbackPollId) clearInterval(fallbackPollId);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-    // `loaded` intentionally excluded from deps — it's used as a
-    // one-shot seed gate and adding it would re-run the effect every
-    // time it flips, creating a tight loop.
+    // The one-shot seed gate is `loadedRef` (a ref), not the `loaded`
+    // state, so nothing here re-runs the effect when the first load
+    // completes — deps stay [userUid].
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // Effect deps: ONLY userUid.  onServerRewardsArrived is captured
     // via onServerRewardsArrivedRef above so a new inline arrow from
