@@ -175,20 +175,33 @@ function localizeHtmlResponse(response: Response, lang: LocalizableLang): Respon
 
 // The SPA HTML shell must never be served from a cache across deploys.
 // `/`, `/student`, `/accessibility-statement` are run_worker_first
-// (wrangler.jsonc), so the Worker returns their HTML — and without an
-// explicit Cache-Control they inherit Workers Assets' default
-// (max-age=0, must-revalidate), which Cloudflare still edge-caches
-// (cf-cache-status: HIT). Because _headers re-applies the CURRENT CSP on
-// every serve, a stale edge/browser copy of a previous build's index.html
-// pairs an OLD inlined boot-debug script with the NEW CSP hash — the
-// browser then blocks the script as a hash mismatch. `no-store` keeps the
-// shell off both the edge and the browser HTTP cache so a deploy is never
-// shadowed by an old copy. Hashed /assets/* stay `immutable` (see
-// public/_headers), so this only re-fetches the ~24 KB shell — and the
-// Worker already runs for these routes anyway.
+// (wrangler.jsonc), so the Worker returns their HTML. Because _headers
+// re-applies the CURRENT CSP on every serve, a stale edge/browser copy of a
+// previous build's index.html pairs an OLD inlined boot-debug script with
+// the NEW CSP hash — the browser then blocks the script as a hash mismatch.
+//
+// `Cache-Control: no-store` alone does NOT keep the shell off Cloudflare's
+// edge: prod was observed serving the shell with cf-cache-status: HIT
+// despite it (the edge cache is governed separately from the browser-facing
+// Cache-Control). So we also set the CDN-scoped headers Cloudflare evaluates
+// AHEAD of Cache-Control for its own edge cache — `Cloudflare-CDN-Cache-Control`
+// (Cloudflare-only, stripped before the client) and `CDN-Cache-Control`
+// (standard, honored by downstream CDNs) — with `no-store`, which forces a
+// BYPASS at the edge. The browser-facing `Cache-Control` stays no-store too.
+// Hashed /assets/* stay `immutable` (see public/_headers) and never pass
+// through here.
+//
+// Caveat: a Cloudflare Cache Rule whose Edge Cache TTL is set to "ignore
+// origin cache-control" overrides ALL of these directives. If the shell is
+// still edge-cached after this ships, that rule (dashboard, out-of-repo) is
+// the cause and must be changed to bypass cache for the HTML routes.
 function noStoreHtml(response: Response): Response {
   const headers = new Headers(response.headers);
   headers.set("Cache-Control", "no-store, must-revalidate");
+  // CDN-scoped directives take precedence over Cache-Control for edge
+  // caching (Cloudflare-CDN-Cache-Control > CDN-Cache-Control > Cache-Control).
+  headers.set("CDN-Cache-Control", "no-store");
+  headers.set("Cloudflare-CDN-Cache-Control", "no-store");
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
