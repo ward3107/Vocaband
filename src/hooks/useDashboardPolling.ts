@@ -50,6 +50,7 @@ import {
 } from '../core/supabase';
 import type { View } from '../core/views';
 import { cachedRead } from '../core/readCache';
+import { createDashboardFallback } from '../utils/dashboardFallback';
 
 export interface UseDashboardPollingParams {
   user: AppUser | null;
@@ -117,12 +118,31 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
   useEffect(() => {
     if (userRole !== 'student' || view !== 'student-dashboard' || !userClassCode) return;
     const code = userClassCode;
+    let disposed = false;
+    let refreshing = false;
+    let refreshQueued = false;
     let cachedClassId: string | null = null;
+    let classLookup: Promise<string> | null = null;
+    const resolveClassId = (): Promise<string> => {
+      if (cachedClassId) return Promise.resolve(cachedClassId);
+      if (!classLookup) {
+        classLookup = (async () => {
+          const { data, error } = await supabase.from('classes').select('id').eq('code', code).limit(1);
+          if (error) throw error;
+          if (!data?.length) throw new Error('class-not-found');
+          cachedClassId = data[0].id;
+          return cachedClassId!;
+        })().finally(() => { classLookup = null; });
+      }
+      return classLookup;
+    };
     let fallbackPollId: ReturnType<typeof setInterval> | null = null;
 
-    const refresh = async () => {
+    const refresh = async (): Promise<void> => {
       const scope = userUid;
-      if (!scope) return;
+      if (!scope || disposed) return;
+      if (refreshing) { refreshQueued = true; return; }
+      refreshing = true;
       try {
         // SWR through readCache: a cache hit renders the dashboard
         // instantly from localStorage so a student opening the app on
@@ -134,15 +154,10 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
         const fresh = await cachedRead<AssignmentData[]>(
           `student-assignments:${code}`,
           async () => {
-            if (!cachedClassId) {
-              const { data: classRows, error: classErr } = await supabase
-                .from('classes').select('id').eq('code', code).limit(1);
-              if (classErr) throw classErr;
-              if (!classRows || classRows.length === 0) throw new Error('class-not-found');
-              cachedClassId = classRows[0].id;
-            }
+            const classId = await resolveClassId();
+            if (disposed) throw new Error('dashboard-disposed');
             const { data, error } = await supabase.rpc('get_assignments_for_class', {
-              p_class_id: cachedClassId,
+              p_class_id: classId,
             });
             if (error) throw error;
             return (data ?? []).map(mapAssignment);
@@ -150,15 +165,23 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
           {
             userScope: scope,
             ttlMs: 5 * 60_000,
-            onCacheHit: (cached) => setStudentAssignmentsRef.current(cached),
+            onCacheHit: (cached) => { if (!disposed) setStudentAssignmentsRef.current(cached); },
           },
         );
-        setStudentAssignmentsRef.current(fresh);
+        if (!disposed) setStudentAssignmentsRef.current(fresh);
       } catch {
         // No cached fallback AND the fetcher threw — keep whatever state
         // was already there. Either first visit with no network OR the
         // student's class membership changed; either way, surfacing an
         // error toast here would just confuse them.
+      } finally {
+        refreshing = false;
+        // Coalesce an event burst into one trailing refresh so a change
+        // arriving during the current request is not silently dropped.
+        if (refreshQueued && !disposed) {
+          refreshQueued = false;
+          void refresh();
+        }
       }
     };
     // Initial fetch so the list isn't empty before the first Realtime push.
@@ -169,12 +192,8 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
     // so the cached id stays useful.
     let channel: ReturnType<typeof supabase.channel> | null = null;
     (async () => {
-      if (!cachedClassId) {
-        const { data: classRows } = await supabase
-          .from('classes').select('id').eq('code', code).limit(1);
-        if (!classRows || classRows.length === 0) return;
-        cachedClassId = classRows[0].id;
-      }
+      try { await resolveClassId(); } catch { return; }
+      if (disposed) return;
       channel = supabase
         .channel(`student-assignments-${cachedClassId}`)
         .on(
@@ -183,6 +202,7 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
           () => { if (!document.hidden) refresh(); },
         )
         .subscribe(status => {
+          if (disposed) return;
           if (status === 'SUBSCRIBED') {
             if (fallbackPollId) { clearInterval(fallbackPollId); fallbackPollId = null; }
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
@@ -193,7 +213,11 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
         });
     })();
 
+    const handleVisibility = () => { if (!document.hidden) void refresh(); };
+    document.addEventListener('visibilitychange', handleVisibility);
     return () => {
+      disposed = true;
+      document.removeEventListener('visibilitychange', handleVisibility);
       if (channel) supabase.removeChannel(channel);
       if (fallbackPollId) clearInterval(fallbackPollId);
     };
@@ -208,7 +232,7 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
     loadPendingStudentsRef.current();
 
     const codes = classCodesKey.split(',').filter(Boolean);
-    let fallbackPollId: ReturnType<typeof setInterval> | null = null;
+    const fallback = createDashboardFallback(codes, () => { void loadPendingStudentsRef.current(); }, FALLBACK_POLL_MS);
 
     // One channel per class code keeps the filter narrow (RLS lets
     // teachers only see their own class anyway, but tight filters
@@ -224,15 +248,7 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
           { event: '*', schema: 'public', table: 'student_profiles', filter: `class_code=eq.${code}` },
           () => { if (!document.hidden) loadPendingStudentsRef.current(); },
         )
-        .subscribe(status => {
-          if (status === 'SUBSCRIBED') {
-            if (fallbackPollId) { clearInterval(fallbackPollId); fallbackPollId = null; }
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            if (!fallbackPollId) {
-              fallbackPollId = setInterval(() => { if (!document.hidden) loadPendingStudentsRef.current(); }, FALLBACK_POLL_MS);
-            }
-          }
-        }),
+        .subscribe(status => fallback.status(code, status)),
     );
 
     const handleVisibility = () => {
@@ -241,8 +257,8 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
+      fallback.dispose();
       for (const ch of channels) supabase.removeChannel(ch);
-      if (fallbackPollId) clearInterval(fallbackPollId);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [userRole, view, classCodesKey]);
@@ -265,7 +281,7 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
     if (view !== 'classroom' && view !== 'analytics' && view !== 'gradebook') return;
 
     const codes = classCodesKey.split(',').filter(Boolean);
-    let fallbackPollId: ReturnType<typeof setInterval> | null = null;
+    const fallback = createDashboardFallback(codes, () => { void fetchScoresRef.current(); }, FALLBACK_POLL_MS);
 
     const channels = codes.slice(0, 5).map(code =>
       supabase
@@ -275,15 +291,7 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
           { event: 'INSERT', schema: 'public', table: 'progress', filter: `class_code=eq.${code}` },
           () => { if (!document.hidden) fetchScoresRef.current(); },
         )
-        .subscribe(status => {
-          if (status === 'SUBSCRIBED') {
-            if (fallbackPollId) { clearInterval(fallbackPollId); fallbackPollId = null; }
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            if (!fallbackPollId) {
-              fallbackPollId = setInterval(() => { if (!document.hidden) fetchScoresRef.current(); }, FALLBACK_POLL_MS);
-            }
-          }
-        }),
+        .subscribe(status => fallback.status(code, status)),
     );
 
     const handleVisibility = () => {
@@ -292,8 +300,8 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
+      fallback.dispose();
       for (const ch of channels) supabase.removeChannel(ch);
-      if (fallbackPollId) clearInterval(fallbackPollId);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [userRole, view, classCodesKey]);

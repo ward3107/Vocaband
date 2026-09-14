@@ -1,5 +1,5 @@
 import React from "react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { ArrowRight, Sparkles } from "lucide-react";
 import type { AssignmentData, ProgressData } from "../../core/supabase";
 import type { Word } from "../../data/vocabulary";
@@ -22,6 +22,7 @@ interface NextUpCardProps {
 }
 
 function ProgressRing({ percent }: { percent: number }) {
+  const reduced = useReducedMotion();
   const size = 64;
   const radius = (size - 8) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -47,9 +48,9 @@ function ProgressRing({ percent }: { percent: number }) {
           fill="none"
           className="stroke-white"
           strokeDasharray={circumference}
-          initial={{ strokeDashoffset: circumference }}
+          initial={reduced ? false : { strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 0.9, ease: "easeOut" }}
+          transition={{ duration: reduced ? 0 : 0.9, ease: "easeOut" }}
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
@@ -71,6 +72,7 @@ export default function NextUpCard({
   setShowModeSelection,
 }: NextUpCardProps) {
   const { language, isRTL } = useLanguage();
+  const reduced = useReducedMotion();
   const t = studentDashboardT[language];
 
   const candidate = pickNextAssignment(studentAssignments, studentProgress, userUid);
@@ -111,11 +113,12 @@ export default function NextUpCard({
   return (
     <motion.button
       type="button"
+      aria-label={`${ctaLabel}: ${assignment.title}`}
       onClick={handleStart}
-      initial={{ opacity: 0, y: 8 }}
+      initial={reduced ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={reduced ? undefined : { scale: 1.01 }}
+      whileTap={reduced ? undefined : { scale: 0.98 }}
       style={{
         touchAction: "manipulation",
         WebkitTapHighlightColor: "transparent",
@@ -133,29 +136,26 @@ export default function NextUpCard({
         className="pointer-events-none absolute -bottom-12 -start-8 h-28 w-28 rounded-full bg-fuchsia-300/20 blur-2xl"
       />
 
-      <div className="relative flex items-center gap-4 sm:gap-5">
+      <div className="relative flex flex-wrap items-center gap-4 sm:gap-5">
         <ProgressRing percent={percent} />
 
         <div className="min-w-0 flex-1">
-          <div className="mb-1 flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/85">
+          <div className="mb-1 flex items-center gap-1.5 text-xs font-extrabold text-white/90">
             <Sparkles size={12} className="fill-white" />
             {t.nextUp}
           </div>
           <h3 className="line-clamp-2 text-base font-black leading-tight sm:text-lg">
             {assignment.title}
           </h3>
-          <p className="mt-0.5 text-[11px] font-bold text-white/80 sm:text-xs">
+          <p className="mt-1 text-sm font-bold text-white/90">
             {t.wordsCountLabel(assignment.wordIds.length)}
           </p>
         </div>
 
-        <div className="shrink-0">
-          <div className="hidden sm:flex items-center gap-2 rounded-2xl bg-white/20 px-4 py-2.5 font-black text-sm backdrop-blur-sm border border-white/30">
+        <div className="w-full shrink-0 sm:w-auto">
+          <div className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-white/20 px-4 py-2.5 font-black text-base border border-white/30">
             {ctaLabel}
             <ArrowRight size={16} className={isRTL ? "rotate-180" : ""} />
-          </div>
-          <div className="sm:hidden grid h-11 w-11 place-items-center rounded-full bg-white/25 border border-white/40 backdrop-blur-sm">
-            <ArrowRight size={18} className={isRTL ? "rotate-180" : ""} />
           </div>
         </div>
       </div>

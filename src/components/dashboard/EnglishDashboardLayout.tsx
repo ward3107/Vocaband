@@ -181,7 +181,7 @@ export default function EnglishDashboardLayout({
           the Management utilities below). */}
       <section id={DASHBOARD_SECTION.liveGames}>
         <SectionLabel>{rt.liveGames}</SectionLabel>
-        <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-3 items-stretch">
+        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-3 items-stretch">
           <LiveGameHero
             emoji="⚡"
             title={t.qpTitle}
