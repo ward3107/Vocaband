@@ -1,0 +1,84 @@
+# CodeQL — GitHub's static analysis for security vulnerabilities.
+#
+# Why this file exists (advanced setup instead of default setup):
+#   Vocaband is a Capacitor app, so the repo carries auto-generated
+#   native wrappers — android/ (Gradle → Java/Kotlin) and ios/ (Xcode
+#   → Swift). CodeQL's *default* setup auto-detected those as scannable
+#   languages and produced pure noise:
+#     - Swift: "Detected build command failed" — autobuild can't run
+#       xcodebuild without Xcode signing on the runner.
+#     - Java/Kotlin: "Low Java analysis quality" — Gradle dependency
+#       extraction fails, so results are unreliable anyway.
+#   Neither folder is first-party code we write, so scanning them buys
+#   nothing. This advanced workflow pins CodeQL to the three languages
+#   that ARE our own code, and nothing else.
+#
+# IMPORTANT: advanced setup and default setup are mutually exclusive.
+#   Default setup MUST be disabled once this workflow is in place
+#   (Settings → Code security → Code scanning → CodeQL → Configure →
+#   "Switch to advanced" / disable), or the two configurations conflict.
+
+name: CodeQL
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  # Weekly scheduled scan so newly-disclosed query patterns catch
+  # issues in code that hasn't changed since the last PR. Mirrors the
+  # cadence default setup gave us. Monday 06:17 UTC — an off-peak,
+  # non-zero minute to avoid the top-of-hour scheduler stampede.
+  schedule:
+    - cron: "17 6 * * 1"
+  # Allow manual re-runs from the Actions tab.
+  workflow_dispatch:
+
+# Don't stack redundant scans: a new push to a branch cancels the
+# in-flight scan for that branch, but never cancels main's scans.
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Least-privilege: CodeQL needs to publish results (security-events)
+    # and, on private repos, read Actions metadata. Nothing writes code.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      packages: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Only the languages we actually author. javascript-typescript
+        # covers src/, server.ts, worker/, vite/eslint config, etc.
+        # python covers scripts/ + tools/. actions covers these very
+        # workflow files. NOT swift / java-kotlin (Capacitor wrappers).
+        language:
+          - javascript-typescript
+          - python
+          - actions
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # All three languages are interpreted / analysis-only — no
+          # compilation step, so no autobuild needed.
+          build-mode: none
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
