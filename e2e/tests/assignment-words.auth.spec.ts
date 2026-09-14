@@ -92,9 +92,13 @@ async function openSeededAssignment(page: import('@playwright/test').Page) {
   await dismissModals(page);
   await tasksBtn.click({ force: true });
 
-  const card = page.getByText(TEST_ASSIGNMENT.title, { exact: false }).first();
+  // The home NextUpCard also names this assignment. Only interact with
+  // the open sheet: a forced click on the background title hits its overlay.
+  const assignments = page.getByRole('dialog', { name: 'Assignments', exact: true });
+  await expect(assignments).toBeVisible({ timeout: 15_000 });
+  const card = assignments.getByRole('button').filter({ hasText: TEST_ASSIGNMENT.title });
   await expect(card).toBeVisible({ timeout: 15_000 });
-  await card.click({ force: true });
+  await card.click();
 
   // Mode picker.
   await expect(
