@@ -27,20 +27,21 @@ The Vocaband vocabulary learning application now fully complies with WCAG 2.0 Le
 ## Files Created
 
 ### Accessibility Utilities
-1. **`src/utils/accessibility.tsx`** (NEW)
-   - `VisuallyHidden` component for screen reader-only content
-   - `SkipLinks` component for bypass navigation
-   - `LiveRegion` component for dynamic announcements
-   - `FormField` component with proper label/error associations
-   - `AccessibleButton` with keyboard support
 
-2. **`src/components/Landmarks.tsx`** (NEW)
-   - `Main` landmark component with proper semantics
-   - `Nav` landmark component
-   - `Section` and `Article` landmarks
-   - `Heading` component for level enforcement
-   - `AccessibleButton` with Enter/Space key handling
-   - `LiveRegion` for status/alert announcements
+> **Update (2026-09-13):** the two component modules originally listed here
+> — `src/utils/accessibility.tsx` and `src/components/Landmarks.tsx` — were
+> **removed as dead code**; neither was ever imported by the app. The
+> behaviours they were meant to centralize are implemented **inline where
+> they're actually used**: screen-reader-only text via a Tailwind `sr-only`
+> span, live announcements via `aria-live` / `role="status"` regions (see
+> `src/components/game/AnswerFeedback.tsx`, `SpellingGame.tsx`, and the
+> toast / consent surfaces), landmarks via native `<main>` / `<nav>`
+> elements, and form fields via direct `htmlFor` + `id` label association.
+> The compliance evidence below has been updated to cite those inline
+> patterns rather than the removed modules.
+
+1. ~~**`src/utils/accessibility.tsx`**~~ *(removed — unused: `VisuallyHidden` / `SkipLinks` / `LiveRegion` / `FormField` / `AccessibleButton` had zero importers)*
+2. ~~**`src/components/Landmarks.tsx`**~~ *(removed — unused landmark/heading components)*
 
 3. **WCAG 2.0 AA audit results** (consolidated into this summary 2026-05-19)
    - All 38 criteria PASS
@@ -239,7 +240,7 @@ Screen readers tested:
 ### When Adding New Features:
 1. Add `aria-label` to icon-only buttons
 2. Add `aria-hidden="true"` to decorative icons
-3. Use `VisuallyHidden` for screen-reader-only content
+3. Use a Tailwind `sr-only` span for screen-reader-only content
 4. Ensure form inputs have proper labels (htmlFor + id)
 5. Link errors to inputs with `aria-describedby`
 6. Add `role="dialog"` and `aria-modal` to modals
@@ -252,7 +253,7 @@ Screen readers tested:
 3. If complex, consider longdesc or detailed description
 
 ### When Adding New Forms:
-1. Use the `FormField` component from `accessibility.tsx`
+1. Associate every input with its label via `htmlFor` + `id`
 2. Ensure all inputs have associated labels
 3. Provide clear error messages with `role="alert"`
 4. Link errors to inputs with `aria-describedby`
@@ -287,7 +288,7 @@ completed.
 | 2.1 Criterion | Level | Status | Evidence |
 |---|---|---|---|
 | **1.3.4 Orientation** | AA | ✅ Met | Responsive design from 320px supports both portrait and landscape (`src/index.css` + Tailwind responsive utilities); no `orientation: portrait` media-query lock anywhere. |
-| **1.3.5 Identify Input Purpose** | AA | 🟡 Partial | `FormField` in `src/utils/accessibility.tsx` accepts an `autoComplete` prop. Audit needed: confirm every `<input type="email">` / `<input type="password">` / etc. sets the appropriate WHATWG autofill token (`email`, `username`, `current-password`, …). Operator follow-up. |
+| **1.3.5 Identify Input Purpose** | AA | 🟡 Partial | Inputs set the WHATWG autofill token (`email`, `username`, `current-password`, …) directly on the element. Audit needed: confirm every `<input type="email">` / `<input type="password">` / etc. carries the appropriate `autoComplete` value. Operator follow-up. |
 | **1.4.10 Reflow** | AA | ✅ Met | 320px CSS breakpoint verified by Lighthouse + Playwright viewport tests; horizontal scroll absent except on data tables (acceptable). |
 | **1.4.11 Non-text Contrast** | AA | ✅ Met | Focus indicators are a 3px blue outline (≥3:1 against any background); toolbar toggles use border + colour together (`src/utils/contrast.ts`). |
 | **1.4.12 Text Spacing** | AA | ✅ Met | Accessibility widget exposes "Line Height" (1.5–2.0) and "Letter Spacing" (normal → extra-wide). User overrides survive page navigation via `localStorage`. |
@@ -299,7 +300,7 @@ completed.
 | **2.5.2 Pointer Cancellation** | A | ✅ Met | Standard React `onClick` fires on `mouseup` inside the element — drag-out cancels. No `onMouseDown`-only handlers in critical UI. |
 | **2.5.3 Label in Name** | A | 🟡 Audit needed | We rely on `aria-label` for icon-only buttons (lucide icons). Confirm visible text matches the start of the accessible name for every button — operator can run `axe-core` against the live SPA. |
 | **2.5.4 Motion Actuation** | A | n/a | No motion-actuated features (no shake-to-undo, tilt-to-scroll, etc.). |
-| **4.1.3 Status Messages** | AA | ✅ Met | `LiveRegion` component in `src/utils/accessibility.tsx` provides ARIA live regions for toast notifications, game feedback, and consent-banner state changes. |
+| **4.1.3 Status Messages** | AA | ✅ Met | `aria-live` / `role="status"` regions are applied directly where status changes occur — toast notifications, game feedback (`src/components/game/AnswerFeedback.tsx`, `SpellingGame.tsx`), and consent-banner state changes. |
 | **1.2.3 Audio Description or Media Alternative (Prerecorded)** | A → AA (2.1 elevated) | n/a | No pre-recorded video; only word-pronunciation MP3s with visible text equivalent. |
 | **1.4.5 Images of Text** | AA | ✅ Met | Vocabulary content is text, not images of text. Logos are decorative. |
 | **3.3.5 Help (Context-sensitive help)** | AAA | n/a | Not a 2.1 AA requirement (AAA only). |
