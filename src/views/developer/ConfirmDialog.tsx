@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { AlertTriangle, X } from "lucide-react";
 
@@ -39,6 +39,37 @@ export default function ConfirmDialog({
   const [reasonText, setReasonText] = useState("");
   const [phrase, setPhrase] = useState("");
   const t = TONES[tone];
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const bodyId = useId();
+  const phraseId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    dialog.focus();
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const targets = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]',
+      ));
+      const first = targets[0];
+      const last = targets[targets.length - 1];
+      if (!first) { event.preventDefault(); dialog.focus(); return; }
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+        event.preventDefault(); last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog)) {
+        event.preventDefault(); first.focus();
+      }
+    };
+    dialog.addEventListener("keydown", trapFocus);
+    return () => {
+      dialog.removeEventListener("keydown", trapFocus);
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [open]);
 
   // Reset the typed fields each time the dialog opens so a previous action's
   // text never carries into the next confirm. Resetting on the open→close edge
@@ -70,29 +101,39 @@ export default function ConfirmDialog({
           <button
             type="button"
             aria-label="Close"
+            tabIndex={-1}
+            disabled={busy}
             onClick={() => !busy && onCancel()}
             className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
           />
           <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            aria-describedby={body ? bodyId : undefined}
+            aria-busy={busy}
+            tabIndex={-1}
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 8 }}
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
-            className={`relative w-full max-w-md rounded-3xl bg-slate-900 border ${t.ring} shadow-2xl p-6`}
+            className={`relative w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl bg-slate-900 border ${t.ring} shadow-2xl p-6`}
           >
             <div className="flex items-start gap-3">
               <div className={`rounded-2xl ${t.chip} p-2.5 shrink-0`}>
                 <AlertTriangle className={`w-5 h-5 ${t.accent}`} />
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-white font-black text-lg leading-tight">{title}</h2>
-                {body && <div className="text-white/60 text-sm mt-1.5 leading-relaxed">{body}</div>}
+                <h2 id={titleId} className="text-white font-black text-lg leading-tight">{title}</h2>
+                {body && <div id={bodyId} className="text-white/60 text-sm mt-1.5 leading-relaxed">{body}</div>}
               </div>
               <button
                 type="button"
                 onClick={() => !busy && onCancel()}
                 aria-label="Close"
-                className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 shrink-0"
+                disabled={busy}
+                className="min-h-11 min-w-11 flex items-center justify-center rounded-lg text-white/60 hover:text-white hover:bg-white/10 shrink-0 disabled:opacity-50"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -100,6 +141,9 @@ export default function ConfirmDialog({
 
             {reason && (
               <textarea
+                aria-label={reason.placeholder ?? "Reason (recorded in the audit log)"}
+                aria-required={reason.required}
+                disabled={busy}
                 value={reasonText}
                 onChange={(e) => setReasonText(e.target.value)}
                 placeholder={reason.placeholder ?? "Reason (recorded in the audit log)"}
@@ -110,13 +154,14 @@ export default function ConfirmDialog({
 
             {confirmPhrase && (
               <div className="mt-4">
-                <label className="text-white/50 text-xs font-bold">
+                <label htmlFor={phraseId} className="text-white/70 text-sm font-bold">
                   Type <code className={`px-1.5 py-0.5 rounded ${t.chip} ${t.accent} font-mono`}>{confirmPhrase}</code> to confirm
                 </label>
                 <input
+                  id={phraseId}
+                  disabled={busy}
                   value={phrase}
                   onChange={(e) => setPhrase(e.target.value)}
-                  autoFocus
                   spellCheck={false}
                   className="mt-1.5 w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-base font-mono tracking-wider focus:outline-none focus:border-white/30"
                 />
