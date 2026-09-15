@@ -1,205 +1,121 @@
-# Live Challenge Load-Test Runbook
+# Vocaband capacity verification
 
-> Closes the engineering half of QA framework item #3 — drive N
-> concurrent socket.io connections at the Fly origin and find where
-> the platform breaks.  Ad-hoc cadence (before MoE rollout, before
-> the new school year, after any socket-layer change).
+## Current evidence (2026-09-15)
 
----
+Capacity for 10,000 **active students plus teachers is unverified**.
+`fly.toml` comments claim a historical 10k connection validation, but the committed
+May 21 report contains only runs up to 5,000, with failures. It used an older
+configuration and cannot establish today's capacity. Obtain the later raw report
+before treating those comments as evidence. Do not equate configured connection
+limits, one shared JWT, or idle sockets with distinct active students.
 
-## What this answers
+Live tests against the isolated test Supabase verified two teachers can create
+classes, cannot read/update each other's classes, and two roster students can
+sign in and only read their own class (not another class or its roster).
+These are authorization checks, not capacity results.
 
-1. How many simultaneous sockets can a single Fly machine sustain
-   before connect-time p95 blows past 1.5 s?
-2. Does Fly's `auto_stop_machines = 'stop'` setting trip the
-   1-machine auto-scale ceiling correctly under burst?
-3. Does `@socket.io/redis-adapter` actually fan out broadcasts
-   across all 3 machines in `fly scale count 3` mode?
-4. What's the realistic ceiling we should publish in the
-   pricing page / pilot doc?
+## Connection harness
 
-The script in `scripts/loadtest-socket.ts` covers #1.  Items
-#2–#4 need follow-on work documented at the bottom of this file.
+`node --import tsx scripts/loadtest-socket.ts` now measures a shared hold window
+**after every connection attempt settles**, records premature disconnects,
+and exits 1 on failed criteria (2 for configuration errors). It emits JSON,
+including actual peak/minimum held concurrency and load-driver event-loop delay.
+It does not invent RTT from a fire-and-forget event. There is no application RTT
+measurement until a real application response is observed.
 
----
+Use a fresh synthetic staging JWT via environment injection; never commit tokens
+or paste them into reports. The harness does not renew expired credentials.
+The target is required; production vocaband.com origins are rejected. Review DNS
+and routing too: a different hostname can still point to production.
 
-## Prereqs
+```sh
+# Export TEST_JWT securely in the driver environment first.
+TARGET=https://YOUR-ISOLATED-STAGING-HOST \
+STAGING_ORIGIN=https://YOUR-ISOLATED-STAGING-HOST \
+CONNECTIONS=10 HOLD_SECONDS=60 \
+node --import tsx scripts/loadtest-socket.ts > /tmp/connections-10.json
 
-- Node 22 available on the load-driver machine (`node --version`
-  should print `v22.*`)
-- This repo cloned + `npm ci` run on the load-driver
-- A **JWT for a real signed-in user** — operator captures it once
-  in the browser:
+# Offline harness verification (local Socket.IO fixtures, no Supabase):
+node --test scripts/loadtest/connections.test.mjs
+```
 
-  1. Open https://www.vocaband.com in DevTools
-  2. Sign in as a test teacher (any account works)
-  3. In the console:
-     ```js
-     (await window.supabase.auth.getSession()).data.session.access_token
-     ```
-  4. Copy the long `eyJhbGc…` string — that's your `TEST_JWT`
+Defaults: 10 sockets, batch 10 every 250ms, 15s connect timeout, 60s shared hold.
+Controls: CONNECTIONS (1–10000), HOLD_SECONDS (1–3600), RAMP_BATCH (1–100),
+RAMP_BATCH_DELAY_MS, CONNECT_TIMEOUT_MS, MAX_P95_MS (default 1500).
+Pass: >=99% connected AND >=99% held concurrently, p95 below threshold,
+zero unexpected disconnects. These are proposed connection gates, not an SLA.
+A saturated driver invalidates server-capacity conclusions even if a round fails.
 
-  The JWT expires after 1 hour.  Re-capture between rounds if a
-  test session runs long.
+## Environment required before large runs
 
----
+- Dedicated frontend/Worker and Fly game backend, both using the confirmed test
+  Supabase. Verify JWT issuer and project routing before creating fixtures.
+- Match production machine size/count, region, Redis, auth, RLS, limits and build
+  SHA. Record actual deployed settings; repository configuration is insufficient.
+- Verify Redis adapter health and cross-machine gameplay. The adapter forwards
+  broadcasts; application game state and game commands need separate verification.
+- Distinct synthetic users and class memberships; no repeated JWT as a substitute
+  for student identities in gameplay tests. Provision via supported teacher/roster
+  paths, before the measured phase. Use the actual login flow for login-burst tests.
+- Observe CPU/RSS/event-loop lag, sockets per VM, restarts, Redis errors/traffic,
+  Supabase Auth/API latency, database load/locks and application errors.
+- Confirm an isolated staging origin and resource budget before a 10k run. Do not
+  reuse the historical Fly staging hostname without verifying ownership/config.
 
-## Where to run from
+## Workload model to implement and execute
 
-Three options, pick by load level:
+Baseline assumption: **10,000 students + 400 teachers, 25 students per class**.
+Change class sizes and activity mix to reflect the intended rollout.
+400 observing teachers means at least 10,400 game sockets in an all-live scenario,
+plus API/health traffic and headroom. Two configured hard limits of 5,000 are not
+proof of sufficient capacity. Run distinct scenarios, then a mixed workload:
 
-| Load level | Where to run | Why |
+| Scenario | Real flow | Required assertions |
 |---|---|---|
-| ≤ 500 sockets | Your laptop | Fits in a single Node process; ephemeral-port budget is fine |
-| 500 – 2000 sockets | A $5 DigitalOcean droplet in `fra1` (same region as Fly) | Removes the home-NAT bottleneck + clean network to Fly |
-| 2000 – 5000 sockets | A second droplet (split across two, 2500 each) | Single droplet hits ~3000 ephemeral-port ceiling without sysctl tuning |
+| Login burst | Roster login, class and assignment fetch | Successful sessions, correct roles/classes, latency and rate-limit outcomes |
+| Dashboard | Students fetch assignments, teachers fetch class progress | Correct nonempty fixtures, no cross-class rows, bounded query load |
+| Live Challenge | Teacher observes; distinct students join and increment score | Teacher receives each expected score; no missing or cross-class entries |
+| Quick Play | Create, join, start, answer, kick and end | Exercise each game protocol separately; verify cross-VM commands |
+| Progress | Finish assigned work and read results back | Exact per-user persistence; retry doesn't duplicate rewards/results |
+| Recovery | Drop/reconnect a school-sized cohort | Rejoin correct room, no ghost players, scores retained |
+| Soak | Repeat representative flows for >=60min | No growing memory/queue/backlog; token renewal works |
 
-For the droplet path:
+Do not treat demo mode as authenticated gameplay. Do not send made-up
+SUBMIT_ANSWER events: Live Challenge uses join_challenge/update_score; Quick Play
+has its own event contracts. Build assertions against actual protocol responses.
 
-```bash
-# Provision (~30s on DigitalOcean)
-doctl compute droplet create voca-loadtest \
-  --region fra1 --size s-1vcpu-1gb --image ubuntu-22-04-x64 \
-  --ssh-keys $YOUR_KEY_ID
+Stages: 100, 500, 1,000, 3,000, 5,000, 10,000 students, plus proportional teachers.
+At each stage collect a steady window and a separate burst. Stop on sustained
+errors, unhealthy servers, lost writes or exhausted budget. Recover baseline
+before the next stage. Partition distinct fixtures across multiple load drivers;
+aggregate timestamps/counts, not averages of per-driver percentiles. The current
+connection harness is per-driver, not a distributed orchestrator.
 
-ssh root@<droplet-ip>
-apt update && apt install -y nodejs npm git
-git clone https://github.com/ward3107/Vocaband.git
-cd Vocaband
-npm ci --legacy-peer-deps --include=dev
-```
+## Weak classroom network
 
----
+Existing `e2e/tests/slow-network.spec.ts` covers Chromium landing only at ~400kbps
+and 400ms latency. It does not establish authenticated game reliability.
 
-## Running a single round
+Next browser scenarios: teacher start and student join/answer/save under 400kbps,
+400ms latency; a 10s offline period; recovery; repeat save. Assert UI feedback,
+continued usability, authoritative score/result and absence of duplicate writes.
+Use network shaping on the isolated test path for packet loss and WebSocket
+latency; do not describe sleeps in a load generator as bandwidth emulation.
+Validate on actual Safari/mobile too. Separately test one school's shared public
+IP because classroom NAT can trigger per-IP limits; don't bypass those limits.
 
-```bash
-# Smoke (100 sockets, 30s hold) — should always pass
-TEST_JWT='<the-jwt>' \
-  CONNECTIONS=100 \
-  HOLD_SECONDS=30 \
-  npx tsx scripts/loadtest-socket.ts | tee /tmp/run-100.log
+## Budget and report
 
-# Ramp the load (one round per level)
-CONNECTIONS=500   HOLD_SECONDS=60  TEST_JWT='<jwt>' npx tsx scripts/loadtest-socket.ts | tee /tmp/run-500.log
-CONNECTIONS=1000  HOLD_SECONDS=60  TEST_JWT='<jwt>' npx tsx scripts/loadtest-socket.ts | tee /tmp/run-1000.log
-CONNECTIONS=2500  HOLD_SECONDS=60  TEST_JWT='<jwt>' npx tsx scripts/loadtest-socket.ts | tee /tmp/run-2500.log
-CONNECTIONS=5000  HOLD_SECONDS=60  TEST_JWT='<jwt>' npx tsx scripts/loadtest-socket.ts | tee /tmp/run-5000.log
-```
+No current account plan, deployed machine inventory, quota or approved paid driver
+is available. Therefore there is **no reliable currency estimate yet**. Record:
+VM count × active test hours × current rate; driver hours; Redis commands/bytes;
+Supabase compute/Auth/API/egress; frontend/CDN traffic. Price from current account
+billing and official calculators before execution; do not reuse old price comments.
 
-Leave **5 minutes between rounds** so Fly's auto-stop has time to
-settle.  Don't run two ramps in parallel — they'll race for the
-same connection budget.
+Every report must include SHA, topology, test project, workload/identities, ramp
+and shared hold windows, attempts/successes, active concurrency, p50/p95/p99,
+errors/disconnects, correctness assertions, driver health, server metrics and
+cost. Publish a supported capacity only for a workload that passed all gates.
 
-If you're hitting an ephemeral-port ceiling locally (rejection
-messages like `EADDRNOTAVAIL`), bump the OS limit:
-
-```bash
-# Linux droplet
-sysctl -w net.ipv4.ip_local_port_range='10000 65535'
-ulimit -n 65535
-```
-
----
-
-## Pass criteria
-
-Per round, the report at the bottom of the script's output is
-PASS if:
-
-- **Success rate ≥ 99 %** (4950 / 5000 at the 5000-socket round)
-- **p95 connect time < 1500 ms** under steady state
-- **No rejection messages** after the warmup window (first 30s)
-
-A failure on ANY of these at the 5000 level means we should NOT
-publish "supports 5000 concurrent students" — back off to the
-ceiling that did pass.
-
----
-
-## What to watch on the server side
-
-While the test runs, in another terminal:
-
-```bash
-fly logs --app vocaband | grep -E '\[Socket\]|\[QP|\[redis-adapter\]|memory'
-```
-
-Red flags:
-
-- `out of memory` / OOM-kill → bump fly.toml's `memory` from 512mb
-- `[redis-adapter] pub error` repeating → Upstash quota or network issue
-- `Health check ... has failed` → machine is overloaded, Fly is
-  about to evict it
-- Sustained `cpu = 100%` on a single machine → look at
-  `fly scale count 3` if not already
-
----
-
-## Capturing the round report
-
-Create `docs/load-test-report-YYYY-MM-DD.md` and paste:
-
-```markdown
-# Load-test report — YYYY-MM-DD
-
-## Environment
-- Target: https://www.vocaband.com  (prod, off-hours)
-- Driver: DO droplet in fra1
-- Fly app: vocaband, 3 machines, auto-stop on
-- Started by: <name>
-
-## Round summary
-
-| Round | Sockets | Success | p50 | p95 | p99 | Peak concurrent | Verdict |
-|---|---|---|---|---|---|---|---|
-| 1 | 100  | … | … | … | … | … | PASS |
-| 2 | 500  | … | … | … | … | … | PASS |
-| 3 | 1000 | … | … | … | … | … | PASS |
-| 4 | 2500 | … | … | … | … | … | … |
-| 5 | 5000 | … | … | … | … | … | … |
-
-## Ceiling
-Published ceiling: <max-PASS-round>
-
-## Followups
-- <anything weird that came up>
-```
-
-Commit the file in the next routine push.
-
----
-
-## Off-hours window
-
-Run against **prod** only when school is out of session in Israel:
-
-- **Best window**: Fridays 14:00 – Sundays 06:00 UTC (Israel weekend
-  + sleep hours)
-- **Avoid**: Sun–Thu 06:00 – 14:00 UTC (Israel school hours)
-- **One-classroom-equivalent rule**: 500 sockets ≈ one large
-  classroom.  If real classes are mid-game during your test, you'll
-  show up on their leaderboards.
-
-Or — once we have a staging Fly app, point `TARGET` there and run
-anytime.
-
----
-
-## What this script doesn't cover yet
-
-- **Full game loop**: no `JOIN_CHALLENGE` / `SUBMIT_ANSWER` events.
-  Adding these means provisioning N distinct test users with
-  matching JWT uids and a class they're all enrolled in.  That's
-  ~half a day of follow-on work.  Track in
-  `docs/qa-framework/05-LIVE-CHALLENGE.md` and pick it up after
-  the connection-layer ceiling is published.
-- **Redis broadcast fan-out**: requires emitting one event from a
-  single connection and counting receivers across N others.  Same
-  follow-on workstream as the full game loop.
-- **Recovery**: how the platform behaves when 5000 sockets DROP at
-  once (school WiFi dies).  Chaos-engineering scenario — separate
-  drill.
-
-The MVP scope is justified by `docs/qa-framework/05-LIVE-CHALLENGE.md`
-calling out the connection layer as the primary unknown.
+References: [Socket.IO Redis adapter](https://socket.io/docs/v4/redis-adapter/),
+[Socket.IO memory measurement](https://socket.io/docs/v4/memory-usage/).
