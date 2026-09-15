@@ -45,6 +45,22 @@ describe('student dashboard lifecycle', () => {
     expect(mocks.channel).toHaveBeenCalledTimes(1);
   });
 
+  it('recovers the assignment subscription after the initial class lookup fails', async () => {
+    mocks.lookup
+      .mockRejectedValueOnce(new Error('temporary network failure'))
+      .mockResolvedValue({ data: [{ id: 'class-id' }], error: null });
+    const p = params();
+    renderHook(() => useDashboardPolling(p));
+    await act(async () => {});
+    expect(mocks.channel).not.toHaveBeenCalled();
+
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+
+    expect(mocks.lookup).toHaveBeenCalledTimes(2);
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+    expect(mocks.channel).toHaveBeenCalledTimes(1);
+  });
+
   it('does not create an orphan subscription after leaving during lookup', async () => {
     const lookup = deferred<{ data: { id: string }[]; error: null }>();
     mocks.lookup.mockReturnValue(lookup.promise);

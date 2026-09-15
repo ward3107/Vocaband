@@ -137,6 +137,23 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
       return classLookup;
     };
     let fallbackPollId: ReturnType<typeof setInterval> | null = null;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let subscriptionAttempt: Promise<void> | null = null;
+
+    function stopFallbackPolling(): void {
+      if (!fallbackPollId) return;
+      clearInterval(fallbackPollId);
+      fallbackPollId = null;
+    }
+
+    function startFallbackPolling(): void {
+      if (fallbackPollId) return;
+      fallbackPollId = setInterval(() => {
+        if (document.hidden || disposed) return;
+        void refresh();
+        void ensureSubscription();
+      }, FALLBACK_POLL_MS);
+    }
 
     const refresh = async (): Promise<void> => {
       const scope = userUid;
@@ -190,38 +207,58 @@ export function useDashboardPolling(params: UseDashboardPollingParams): void {
     // Resolve the class id BEFORE the subscription's filter argument
     // can be set.  The subscription refreshes itself on every event,
     // so the cached id stays useful.
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    (async () => {
-      try { await resolveClassId(); } catch { return; }
-      if (disposed) return;
-      channel = supabase
+    function ensureSubscription(): Promise<void> {
+      if (disposed || channel) return Promise.resolve();
+      if (subscriptionAttempt) return subscriptionAttempt;
+
+      subscriptionAttempt = (async () => {
+        let classId: string;
+        try {
+          classId = await resolveClassId();
+        } catch {
+          startFallbackPolling();
+          return;
+        }
+        if (disposed || channel) return;
+
+        const nextChannel = supabase
         .channel(`student-assignments-${cachedClassId}`)
         .on(
           'postgres_changes',
-          { event: '*', schema: 'public', table: 'assignments', filter: `class_id=eq.${cachedClassId}` },
+          { event: '*', schema: 'public', table: 'assignments', filter: `class_id=eq.${classId}` },
           () => { if (!document.hidden) refresh(); },
-        )
-        .subscribe(status => {
+        );
+        channel = nextChannel;
+        nextChannel.subscribe(status => {
           if (disposed) return;
           if (status === 'SUBSCRIBED') {
-            if (fallbackPollId) { clearInterval(fallbackPollId); fallbackPollId = null; }
+            stopFallbackPolling();
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-            if (!fallbackPollId) {
-              fallbackPollId = setInterval(() => { if (!document.hidden) refresh(); }, FALLBACK_POLL_MS);
+            if (channel === nextChannel) {
+              channel = null;
+              void supabase.removeChannel(nextChannel);
             }
+            startFallbackPolling();
           }
         });
-    })();
+      })().finally(() => { subscriptionAttempt = null; });
+      return subscriptionAttempt;
+    }
 
-    const handleVisibility = () => { if (!document.hidden) void refresh(); };
+    void ensureSubscription();
+
+    const handleVisibility = () => {
+      if (document.hidden) return;
+      void refresh();
+      void ensureSubscription();
+    };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => {
       disposed = true;
       document.removeEventListener('visibilitychange', handleVisibility);
       if (channel) supabase.removeChannel(channel);
-      if (fallbackPollId) clearInterval(fallbackPollId);
+      stopFallbackPolling();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userRole, userClassCode, view, userUid]);
 
   // ─── 2. Teacher pending-student approvals — Realtime + fallback ───
