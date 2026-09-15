@@ -20,8 +20,16 @@ These are authorization checks, not capacity results.
 **after every connection attempt settles**, records premature disconnects,
 and exits 1 on failed criteria (2 for configuration errors). It emits JSON,
 including actual peak/minimum held concurrency and load-driver event-loop delay.
+`connectionPhasesMs` separates transport opening from subsequent namespace
+authentication for successful connections. These client-observed phases include
+network transit; they are not server CPU timings. Programmatic callers may pass
+`config.agent` for their environment's approved proxy. A proxied run must be
+identified in the report; its latency does not isolate the application's latency.
 It does not invent RTT from a fire-and-forget event. There is no application RTT
 measurement until a real application response is observed.
+
+See [September 15 staging observations](load-test-observations-2026-09-15.md)
+for the small live probes and unresolved reconnect behavior.
 
 Use a fresh synthetic staging JWT via environment injection; never commit tokens
 or paste them into reports. The harness does not renew expired credentials.

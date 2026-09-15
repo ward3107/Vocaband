@@ -11,7 +11,7 @@ export function configuration(env = process.env) {
   if (!env.TARGET) throw new Error('TARGET is required; use an isolated staging origin');
   const target = new URL(env.TARGET);
   if (!['http:', 'https:'].includes(target.protocol) || target.username || target.password || target.search || target.hash || target.pathname !== '/') throw new Error('TARGET must be an HTTP(S) origin');
-  if (/(^|\.)vocaband\.com$/i.test(target.hostname)) throw new Error('Production target is not allowed');
+  if (/(^|\.)vocaband\.com$/i.test(target.hostname.replace(/\.$/, ''))) throw new Error('Production target is not allowed');
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(target.hostname);
   if (!local && env.STAGING_ORIGIN !== target.origin) throw new Error('STAGING_ORIGIN must match the reviewed target origin');
   if (!env.TEST_JWT) throw new Error('TEST_JWT is required');
@@ -27,6 +27,8 @@ export function configuration(env = process.env) {
 export async function runConnections(config) {
   const sockets = [];
   const times = [];
+  const transportTimes = [];
+  const authenticationTimes = [];
   let current = 0, peak = 0, rejected = 0, drops = 0, closing = false;
   let minHeld = Infinity, holding = false;
   const started = performance.now();
@@ -36,15 +38,22 @@ export async function runConnections(config) {
     const start = performance.now();
     const socket = io(config.target, { autoConnect: false, forceNew: true,
       transports: ['websocket'], auth: { token: config.token },
-      reconnection: false, timeout: config.timeoutMs });
+      agent: config.agent, reconnection: false, timeout: config.timeoutMs });
     sockets.push(socket);
+    let transportOpened;
+    socket.io.once('open', () => { transportOpened = performance.now(); });
     let settled = false, counted = false;
     const settle = (ok) => {
       if (settled) return;
       settled = true;
       clearTimeout(deadline);
       if (ok) {
-        times.push(performance.now() - start);
+        const connectedAt = performance.now();
+        times.push(connectedAt - start);
+        if (transportOpened !== undefined) {
+          transportTimes.push(transportOpened - start);
+          authenticationTimes.push(connectedAt - transportOpened);
+        }
         counted = true;
         current++;
         peak = Math.max(peak, current);
@@ -89,6 +98,10 @@ export async function runConnections(config) {
       minimumConcurrentDuringHold: minHeld, holdSeconds: config.holdMs / 1000,
       durationSeconds: (performance.now()-started)/1000,
       connectMs: { p50: percentile(.5), p95, p99: percentile(.99) },
+      connectionPhasesMs: {
+        transport: summarize(transportTimes),
+        namespaceAuthentication: summarize(authenticationTimes),
+      },
       driver: { eventLoopP99Ms: lag.percentile(99)/1e6, rssBytes: process.memoryUsage().rss },
       checks, pass: Object.values(checks).every(Boolean) };
   } finally {
@@ -96,4 +109,10 @@ export async function runConnections(config) {
     for (const socket of sockets) socket.disconnect();
     lag.disable();
   }
+}
+
+function summarize(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const percentile = p => sorted.length ? sorted[Math.ceil(sorted.length * p) - 1] : null;
+  return { count: sorted.length, p50: percentile(.5), p95: percentile(.95), p99: percentile(.99) };
 }
