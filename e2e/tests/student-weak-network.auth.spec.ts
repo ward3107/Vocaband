@@ -10,6 +10,7 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import { waitForAppLoad } from '../helpers/navigation';
 import { TEST_ASSIGNMENT, TEST_STUDENT_USER } from '../fixtures/test-data';
+import { CLIENT_STORAGE_KEYS, STUDENT_VISIBILITY_VERSION } from '../../src/config/privacy-config';
 
 const BAD_SCHOOL_WIFI = {
   offline: false,
@@ -55,6 +56,13 @@ test.describe('Student game — weak network', () => {
       testInfo.project.name !== 'chromium',
       'Network behavior is engine-level; mobile student layout is covered by the regular auth suite.'
     );
+    // Consent has its own behavior tests. Seed the accepted version before
+    // boot so this test measures the assignment/game path rather than waiting
+    // for the hard-gate audit write under artificial latency.
+    await page.addInitScript(([key, version]) => localStorage.setItem(key, version), [
+      CLIENT_STORAGE_KEYS.studentVisibilityVersion,
+      STUDENT_VISIBILITY_VERSION,
+    ] as const);
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Network.enable');
     await cdp.send('Network.emulateNetworkConditions', BAD_SCHOOL_WIFI);
