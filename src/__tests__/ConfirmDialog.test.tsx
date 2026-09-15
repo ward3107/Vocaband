@@ -6,7 +6,7 @@
 // phrase matches / a required reason is given, and the (trimmed) reason is what
 // reaches onConfirm.
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
 import ConfirmDialog from "../views/developer/ConfirmDialog";
 
 afterEach(cleanup);
@@ -14,6 +14,32 @@ afterEach(cleanup);
 const noop = () => {};
 
 describe("ConfirmDialog", () => {
+  it("names the dialog and fields for assistive technology", () => {
+    render(<ConfirmDialog open title="Delete class" body="Cannot be undone" confirmPhrase="CLASS" reason={{ required: true }} onConfirm={noop} onCancel={noop} />);
+    const dialog = screen.getByRole("dialog", { name: "Delete class" });
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    expect(screen.getByLabelText(/Type CLASS to confirm/)).toBeTruthy();
+    expect(screen.getByRole("textbox", { name: /Reason/ }).getAttribute("aria-required")).toBe("true");
+  });
+
+  it("keeps keyboard focus in the dialog and restores the opener", () => {
+    const opener = document.createElement("button");
+    document.body.append(opener);
+    opener.focus();
+    const { unmount } = render(<ConfirmDialog open title="Delete?" onConfirm={noop} onCancel={noop} />);
+    const dialog = screen.getByRole("dialog");
+    expect(document.activeElement).toBe(dialog);
+    const buttons = within(dialog).getAllByRole("button");
+    buttons[buttons.length - 1].focus();
+    fireEvent.keyDown(document.activeElement!, { key: "Tab" });
+    expect(document.activeElement).toBe(buttons[0]);
+    fireEvent.keyDown(document.activeElement!, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(buttons[buttons.length - 1]);
+    unmount();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+
   it("renders nothing when closed", () => {
     render(<ConfirmDialog open={false} title="Danger Zone" onConfirm={noop} onCancel={noop} />);
     expect(screen.queryByText("Danger Zone")).toBeNull();

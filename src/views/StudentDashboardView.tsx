@@ -7,6 +7,7 @@ import PushOptInCard from "../components/PushOptInCard";
 import JoinGameModal from "../components/JoinGameModal";
 import StudentVisibilityConsent from "../components/StudentVisibilityConsent";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
+import NextUpCard from "../components/dashboard/NextUpCard";
 import StudentWelcomeCard from "../components/dashboard/StudentWelcomeCard";
 import StudentGreetingCard from "../components/dashboard/StudentGreetingCard";
 import { useCompetitionsForClass } from "../hooks/useCompetitions";
@@ -270,6 +271,17 @@ export default function StudentDashboardView({
       )}
       <ArcadeHubLayout
         topBar={<StudentTopBar onRequestLogout={onRequestLogout} />}
+        trophyRoad={!studentDataLoading && (
+          <NextUpCard
+            studentAssignments={studentAssignments}
+            studentProgress={studentProgress}
+            userUid={user.uid}
+            setActiveAssignment={setActiveAssignment}
+            setAssignmentWords={setAssignmentWords}
+            setView={setView}
+            setShowModeSelection={setShowModeSelection}
+          />
+        )}
         statsBar={
           <StudentGreetingCard
             user={user}

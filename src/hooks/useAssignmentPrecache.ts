@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { getWordAudioUrl } from '../utils/audioUrl';
 import { isSlowConnection } from './useEffectiveConnection';
 import type { Word } from '../data/vocabulary';
@@ -24,26 +24,21 @@ export function useAssignmentPrecache(
   words: Word[] | null | undefined,
   opts?: { enabled?: boolean },
 ): void {
-  const ranKeyRef = useRef<string | null>(null);
+  // Depend on membership, not array identity: parent renders must not cancel
+  // and restart work. Ignore invalid IDs before building URLs, and fetch each
+  // recording once even when a word appears several times in the assignment.
+  const key = [...new Set((words ?? []).map(w => w.id).filter(Number.isFinite))]
+    .sort((a, b) => a - b)
+    .join(',');
 
   useEffect(() => {
     if (opts?.enabled === false) return;
-    if (!words || words.length === 0) return;
+    if (!key) return;
     if (typeof window === 'undefined' || typeof fetch === 'undefined') return;
     if (isSlowConnection()) return;
 
-    // Stable identity key — sort word IDs so React Strict Mode double-mounts
-    // or render re-orderings don't re-trigger a duplicate batch.
-    const key = words
-      .map(w => w.id)
-      .filter(id => typeof id === 'number' && !Number.isNaN(id))
-      .sort((a, b) => a - b)
-      .join(',');
-    if (!key || ranKeyRef.current === key) return;
-    ranKeyRef.current = key;
-
-    const urls = words
-      .map(w => getWordAudioUrl(w.id, 'en'))
+    const urls = key.split(',')
+      .map(id => getWordAudioUrl(Number(id), 'en'))
       .filter((u): u is string => typeof u === 'string' && u.length > 0);
     if (urls.length === 0) return;
 
@@ -53,27 +48,37 @@ export function useAssignmentPrecache(
       }
     ).requestIdleCallback;
 
+    const controller = new AbortController();
     const run = () => {
-      void precacheInBatches(urls);
+      if (!controller.signal.aborted) void precacheInBatches(urls, controller.signal);
     };
 
     // Defer to idle so the precache doesn't compete with React's render
     // pass or the very first audio request the student actually triggers.
-    if (typeof ric === 'function') ric(run, { timeout: 4000 });
-    else window.setTimeout(run, 800);
-  }, [words, opts?.enabled]);
+    const idleId = typeof ric === 'function' ? ric.call(window, run, { timeout: 4000 }) : null;
+    const timerId = idleId === null ? window.setTimeout(run, 800) : null;
+    return () => {
+      controller.abort();
+      if (idleId !== null) window.cancelIdleCallback?.(idleId);
+      if (timerId !== null) window.clearTimeout(timerId);
+    };
+  }, [key, opts?.enabled]);
 }
 
-async function precacheInBatches(urls: string[]): Promise<void> {
+async function precacheInBatches(urls: string[], signal: AbortSignal): Promise<void> {
   // Chunk the fetches so we don't fire 50 parallel requests on a school
   // Wi-Fi pipe — that's worse than no precache because it competes with
   // whatever the student is actively trying to load.
   for (let i = 0; i < urls.length; i += PRECACHE_BATCH_SIZE) {
+    if (signal.aborted || isSlowConnection() || navigator.onLine === false) return;
     const batch = urls.slice(i, i + PRECACHE_BATCH_SIZE);
     await Promise.allSettled(
-      batch.map(url =>
-        fetch(url, { method: 'GET', cache: 'force-cache' }).catch(() => null),
-      ),
+      batch.map(async url => {
+        const response = await fetch(url, { method: 'GET', cache: 'force-cache', signal });
+        // fetch resolves at headers; wait for the body too so the next batch
+        // cannot overlap eight unfinished audio downloads on classroom Wi-Fi.
+        await response.arrayBuffer();
+      }),
     );
   }
 }

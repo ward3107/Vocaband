@@ -362,7 +362,12 @@ export function useAppController(initialView?: View): AppViewRouterProps {
   // Warm the audio cache for the active assignment so a student who loses
   // Wi-Fi mid-lesson can still hear the words. Idle-scheduled, skipped on
   // 2G / data-saver. See useAssignmentPrecache for the why.
-  useAssignmentPrecache(assignmentWords);
+  useAssignmentPrecache(assignmentWords, {
+    // This English assignment cache must not run for teacher previews, the
+    // standalone demo, or Hebrew modes (whose numeric word IDs can overlap).
+    enabled: user?.role === "student" && view === "game" &&
+      activeAssignment != null && activeAssignment.subject !== "hebrew",
+  });
 
   // Achievement snapshot — rebuilt whenever xp / streak / progress
   // changes and handed to `recordEvent` to re-evaluate locked
