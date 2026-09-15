@@ -121,6 +121,7 @@ export function useLiveChallengeSocket(
   useEffect(() => {
     let s: Socket | undefined;
     let cancelled = false;
+    let pendingAuthSubscription: { unsubscribe: () => void } | undefined;
 
     const getToken = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -137,13 +138,16 @@ export function useLiveChallengeSocket(
           if (cancelled) { subscription.unsubscribe(); return; }
           if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
             subscription.unsubscribe();
+            pendingAuthSubscription = undefined;
             connectSocket();
           }
         });
+        pendingAuthSubscription = subscription;
         return;
       }
 
       const socketIO = await loadSocketIO();
+      if (cancelled) return;
       const io = socketIO.default || socketIO;
 
       const socketUrl = import.meta.env.VITE_SOCKET_URL || '';
@@ -274,6 +278,7 @@ export function useLiveChallengeSocket(
 
     return () => {
       cancelled = true;
+      pendingAuthSubscription?.unsubscribe();
       socketRef.current = null;
       if (s) s.disconnect();
     };
