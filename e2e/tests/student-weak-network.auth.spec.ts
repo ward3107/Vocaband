@@ -85,10 +85,13 @@ test.describe('Student game — weak network', () => {
         timeout: 30_000,
       });
 
+      // The assignment card itself is the primary control. Its accessible
+      // name includes the assignment title on both desktop and mobile, while
+      // the nested CTA wording varies by viewport.
       await page
-        .getByRole('button', { name: /Start Assignment|Start Learning/i })
+        .getByRole('button', { name: new RegExp(TEST_ASSIGNMENT.title, 'i') })
         .first()
-        .click();
+        .click({ timeout: 15_000 });
       await expect(page.getByRole('heading', { name: /Choose Your Mode/i })).toBeVisible({
         timeout: 30_000,
       });
