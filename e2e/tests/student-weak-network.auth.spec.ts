@@ -85,10 +85,11 @@ test.describe('Student game — weak network', () => {
         timeout: 30_000,
       });
 
-      // The assignment card itself is the primary control. Its accessible
-      // name includes the assignment title on both desktop and mobile, while
-      // the nested CTA wording varies by viewport.
-      await page
+      // Scope the card to the open Tasks sheet. The dashboard's Next Up
+      // card has the same assignment title underneath the modal, so a global
+      // role query can resolve to that covered control.
+      const tasksSheet = page.getByRole('dialog', { name: 'Assignments' });
+      await tasksSheet
         .getByRole('button', { name: new RegExp(TEST_ASSIGNMENT.title, 'i') })
         .first()
         .click({ timeout: 15_000 });
