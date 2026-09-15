@@ -50,7 +50,11 @@ test.describe('Student game — weak network', () => {
 
   test('opens an assignment and keeps the game usable across a network drop', async ({
     studentPage: page,
-  }) => {
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== 'chromium',
+      'Network behavior is engine-level; mobile student layout is covered by the regular auth suite.'
+    );
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Network.enable');
     await cdp.send('Network.emulateNetworkConditions', BAD_SCHOOL_WIFI);
@@ -63,8 +67,12 @@ test.describe('Student game — weak network', () => {
       await expect(
         page.getByText(TEST_STUDENT_USER.display_name, { exact: false }).first()
       ).toBeVisible({ timeout: 45_000 });
+      // On a throttled boot the consent gate can mount after the shell and
+      // identity. Check again at the action boundary so a late modal cannot
+      // intercept the Tasks button.
+      await dismissStudentGates(page);
 
-      await page.getByLabel('Tasks').first().click();
+      await page.getByLabel('Tasks').first().click({ timeout: 15_000 });
       await expect(page.getByText(TEST_ASSIGNMENT.title, { exact: false }).first()).toBeVisible({
         timeout: 30_000,
       });
