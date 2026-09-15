@@ -8,6 +8,7 @@ import { config as loadDotenv } from "dotenv";
 loadDotenv({ path: ".env.local", override: true });
 import * as Sentry from "@sentry/node";
 import { scrubPii } from "./src/utils/scrubPii";
+import { createLiveScoreStore } from "./src/utils/liveScoreStore";
 import { installScrubbingConsole, redactEmail } from "./src/utils/serverLog";
 import { createSign, timingSafeEqual } from "node:crypto";
 
@@ -1446,6 +1447,14 @@ async function startServer() {
   // baseScore: total from all past assignments (fetched from Supabase)
   // currentGameScore: points in the current active game
   const liveSessions: Record<string, Record<string, LeaderboardEntry>> = {};
+  let liveScoreAggregatesSupported = true;
+  // Configured Redis must fail closed rather than creating conflicting VM-local scores.
+  const liveScores = createLiveScoreStore(process.env.REDIS_URL ? {
+    eval: async (script, options) => {
+      if (!redisPubClient?.isReady) throw new Error("Live score store unavailable");
+      return redisPubClient.eval(script, options);
+    },
+  } : undefined);
   // Per-VM id stamped on every LEADERBOARD_UPDATE_V2 broadcast. `liveSessions`
   // is in-memory PER process, and fly.toml runs min_machines_running >= 2, so
   // when a class's students land on different VMs each VM only knows its own
@@ -1687,19 +1696,50 @@ async function startServer() {
       let totalScore = 0;
       try {
         if (!supabaseAdmin) throw new Error("Supabase not configured");
-        const { data, error } = await supabaseAdmin
-          .from("progress")
-          .select("score.sum()")
-          .eq("student_uid", uid)
-          .eq("class_code", classCode)
-          .single();
-        if (!error && data) {
-          totalScore = (data as { sum: number | null }).sum ?? 0;
+        if (liveScoreAggregatesSupported) {
+          const { data, error } = await supabaseAdmin
+            .from("progress")
+            .select("score.sum()")
+            .eq("student_uid", uid)
+            .eq("class_code", classCode)
+            .single();
+          if (error?.code === "PGRST123") {
+            liveScoreAggregatesSupported = false;
+          } else {
+            if (error || !data) throw new Error("Could not read score baseline");
+            totalScore = (data as { sum: number | null }).sum ?? 0;
+          }
+        }
+        if (!liveScoreAggregatesSupported) {
+          // Supabase may disable PostgREST aggregates. Read every page rather
+          // than silently treating an error (or a truncated first page) as zero.
+          totalScore = 0;
+          let offset = 0;
+          while (true) {
+            const { data, error } = await supabaseAdmin.from("progress")
+              .select("score").eq("student_uid", uid).eq("class_code", classCode)
+              .order("id").range(offset, offset + 999);
+            if (error || !data) throw new Error("Could not read score baseline");
+            for (const row of data) totalScore += Number(row.score ?? 0);
+            if (data.length < 1000) break;
+            offset += data.length;
+            if (offset >= 100000) throw new Error("Score baseline exceeds read limit");
+          }
         }
       } catch (err) {
         console.error("Error fetching student score:", err);
+        return rejectChallenge("join_challenge", "score baseline unavailable; retry joining");
       }
 
+      let restoredScore: number | null;
+      try {
+        restoredScore = await liveScores.join(classCode, uid, totalScore);
+      } catch {
+        return rejectChallenge("join_challenge", "score store unavailable; retry joining");
+      }
+      if (!socket.connected || restoredScore === null) return;
+      // Duplicate joins must not inflate the tab count or reset a live score.
+      if (socketSessions[socket.id]) return;
       socket.join(classCode);
       socketSessions[socket.id] = { classCode, uid };
       const refKey = `${classCode}:${uid}`;
@@ -1711,7 +1751,10 @@ async function startServer() {
       // (React-escaped), but bound the length so a tampered client can't
       // stuff an oversized string into the broadcast leaderboard.
       const safeAvatar = typeof avatar === "string" && avatar.length > 0 && avatar.length <= 24 ? avatar : undefined;
-      liveSessions[classCode][uid] = { name, baseScore: totalScore, currentGameScore: 0, avatar: safeAvatar };
+      const existing = liveSessions[classCode][uid];
+      const currentGameScore = existing?.baseScore === totalScore
+        ? Math.max(existing.currentGameScore, restoredScore) : restoredScore;
+      liveSessions[classCode][uid] = { name, baseScore: totalScore, currentGameScore, avatar: safeAvatar };
       io.to(classCode).emit(SOCKET_EVENTS.LEADERBOARD_UPDATE, liveSessions[classCode]);
       io.to(classCode).emit(SOCKET_EVENTS.LEADERBOARD_UPDATE_V2, { serverId: LIVE_SERVER_ID, entries: liveSessions[classCode] });
     });
@@ -1752,7 +1795,7 @@ async function startServer() {
       }
     });
 
-    socket.on(SOCKET_EVENTS.UPDATE_SCORE, ({ classCode, uid, score }) => {
+    socket.on(SOCKET_EVENTS.UPDATE_SCORE, async ({ classCode, uid, score }) => {
       const MAX_LIVE_SCORE = 10000;
       if (!isValidClassCode(classCode) || !isValidUid(uid) || typeof score !== "number" || !isFinite(score) || score < 0 || score > MAX_LIVE_SCORE) return;
 
@@ -1765,11 +1808,16 @@ async function startServer() {
 
       if (liveSessions[classCode] && liveSessions[classCode][uid]) {
         const entry = liveSessions[classCode][uid];
-        // Validate: score can only increase, and by at most 10 points per update (one correct answer)
-        const MAX_SCORE_INCREMENT = 10;
-        if (score < entry.currentGameScore || score > entry.currentGameScore + MAX_SCORE_INCREMENT) return;
-        // Update the current game score (baseScore remains unchanged)
-        entry.currentGameScore = score;
+        // Atomic shared validation survives reconnects to another Fly machine.
+        let accepted: number | null;
+        try {
+          accepted = await liveScores.update(classCode, uid, entry.baseScore, score);
+        } catch {
+          return rejectChallenge("update_score", "score store unavailable; retry score");
+        }
+        if (accepted === null || !socket.connected || socketSessions[socket.id] !== session || liveSessions[classCode]?.[uid] !== entry) return;
+        // An older async response must not overwrite a later accepted score.
+        entry.currentGameScore = Math.max(entry.currentGameScore, accepted);
         // Throttle: batch rapid score updates to avoid flooding sockets
         scheduleBroadcast(classCode);
       }
