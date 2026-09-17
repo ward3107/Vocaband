@@ -190,14 +190,16 @@ These usually sit in the same App-content list; answer and save each:
 - **Health apps** — No.
 - **News app** — No.
 - **COVID-19 contact tracing/status** — No.
-- **Data deletion (account deletion URL)** — use the dedicated page:
-  `https://www.vocaband.com/delete-account.html` (source:
-  `public/delete-account.html`). It documents both the in-app self-service
-  delete (Settings → Privacy Settings → Delete My Account) and the
+- **Data deletion (account deletion URL)** — use the dedicated page at the
+  **clean URL** (returns 200 directly):
+  `https://www.vocaband.com/delete-account` (source:
+  `public/delete-account.html`; the worker serves it at the extensionless path
+  and 307-redirects `/delete-account.html` → `/delete-account`, so paste the
+  clean URL to avoid a redirect hop). It documents both the in-app
+  self-service delete (Settings → Privacy Settings → Delete My Account) and the
   `privacy@vocaband.com` request route, in EN/HE/AR, plus what's deleted vs
-  retained. **Goes live only after this branch merges to `main` and deploys**
-  — confirm `curl -I https://www.vocaband.com/delete-account.html` returns 200
-  before pasting the URL into Play.
+  retained. **Verified live on production** (`curl -I
+  https://www.vocaband.com/delete-account` → `HTTP 200`).
 
 ---
 
