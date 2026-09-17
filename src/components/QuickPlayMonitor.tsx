@@ -2074,9 +2074,16 @@ export default function QuickPlayMonitor({
                 Teacher request from the live session: "students need
                 to see their names". */}
             <div className={
-              compactMode
-                ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 min-[1700px]:grid-cols-6 gap-1.5 max-h-[70vh] overflow-y-auto pr-1"
-                : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-3"
+              // No internal max-height / scroll: the roster grows down the
+              // page and the column count climbs with the class size so the
+              // whole room stays visible without the teacher scrolling.
+              // Teacher feedback: "when lots of kids join it only shows the
+              // top few and I have to scroll."
+              rest.length > 24
+                ? "grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-7 min-[1700px]:grid-cols-8 gap-1"
+                : compactMode
+                  ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 min-[1700px]:grid-cols-6 gap-1.5"
+                  : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-3"
             }>
               <AnimatePresence mode="popLayout">
                 {sorted.slice(3).map((student, idx) => {
