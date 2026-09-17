@@ -17,6 +17,7 @@
  */
 import { useEffect, useRef } from "react";
 import { celebrate } from "../utils/celebrate";
+import { playVictory } from "../utils/raceSfx";
 import { useReducedMotion } from "./useReducedMotion";
 
 /**
@@ -41,9 +42,11 @@ export function useCelebrateOnJoin(count: number, enabled = true): void {
 }
 
 /**
- * Fire a confetti burst when `leaderId` changes to a new student — the big
- * "we have a new leader!" beat. Only the initial mount is skipped, so the
- * first student to top the board still gets their moment.
+ * Fire a confetti burst + a triumphant victory sting when `leaderId` changes
+ * to a new student — the big "we have a new leader!" beat. Only the initial
+ * mount is skipped, so the first student to top the board still gets their
+ * moment. The sound has its own mute (raceSfx / "vb-race-muted") and is gated
+ * on presenting only, not reduced-motion — that governs the visual half.
  */
 export function useCelebrateOnNewLeader(leaderId: string | undefined, enabled = true): void {
   const reduced = useReducedMotion();
@@ -53,7 +56,8 @@ export function useCelebrateOnNewLeader(leaderId: string | undefined, enabled = 
     prev.current = leaderId; // track even when disabled
     if (before === null) return; // skip initial mount
     if (!leaderId || leaderId === before) return; // no leader / unchanged
-    if (!enabled || reduced) return;
-    celebrate("normal");
+    if (!enabled) return;
+    playVictory(); // self-mutes; no-ops until the teacher's start tap unlocks audio
+    if (!reduced) celebrate("normal"); // confetti is the visual half
   }, [leaderId, enabled, reduced]);
 }
