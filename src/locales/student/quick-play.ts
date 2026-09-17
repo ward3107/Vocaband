@@ -31,6 +31,9 @@ export interface QuickPlayStrings {
   // Join form (single screen: avatar + name + language)
   headline: string;
   subheadWords: (count: number) => string;
+  /** One-line "what to do" instruction under the headline, so a student
+   *  on the join screen knows the task is: type a name, then tap Start. */
+  joinInstruction: string;
   yourNameLabel: string;
   namePlaceholder: string;
   /** "You already joined as " — `<strong><bdi>{name}</bdi></strong>` is
@@ -119,6 +122,7 @@ export const quickPlayT: Record<Language, QuickPlayStrings> = {
     cancelAndGoBack: "Cancel and go back",
     headline: "Quick Play!",
     subheadWords: (count) => `${count} words • No login needed`,
+    joinInstruction: "Type your name, then tap Start 👇",
     yourNameLabel: "YOUR NAME",
     namePlaceholder: "Enter your nickname...",
     alreadyJoinedAsPrefix: "You already joined as ",
@@ -181,6 +185,7 @@ export const quickPlayT: Record<Language, QuickPlayStrings> = {
     cancelAndGoBack: "ביטול וחזרה",
     headline: "משחק מהיר!",
     subheadWords: (count) => `${count} מילים · אין צורך בהתחברות`,
+    joinInstruction: "כתבו את השם שלכם ואז לחצו על ״התחלה״ 👇",
     yourNameLabel: "השם שלך",
     namePlaceholder: "הכניסו כינוי...",
     alreadyJoinedAsPrefix: "כבר הצטרפת בשם ",
@@ -243,6 +248,7 @@ export const quickPlayT: Record<Language, QuickPlayStrings> = {
     cancelAndGoBack: "إلغاء والرجوع",
     headline: "لعب سريع!",
     subheadWords: (count) => `${count} كلمات · لا حاجة لتسجيل الدخول`,
+    joinInstruction: "اكتب اسمك، ثم اضغط ابدأ 👇",
     yourNameLabel: "اسمك",
     namePlaceholder: "أدخل اسمك المستعار...",
     alreadyJoinedAsPrefix: "لقد انضممت بالفعل باسم ",

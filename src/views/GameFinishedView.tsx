@@ -8,6 +8,7 @@ import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
 import QuickPlayEndgameCard from "../components/QuickPlayEndgameCard";
 import { EndgameStanding, EndgamePracticeWords, MAX_PRACTICE_WORDS } from "../components/endgame/EndgameParts";
 import RatingPrompt from "../components/RatingPrompt";
+import StudentLangButton from "../components/StudentLangButton";
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlayEndgameBack } from "../hooks/useQuickPlayEndgameBack";
 import { gameFinishedT } from "../locales/student/game-finished";
@@ -200,21 +201,32 @@ export default function GameFinishedView({
   };
 
   return (
-    <div dir={dir} className={`min-h-screen ${t.bg} flex flex-col items-center justify-center p-4 sm:p-6 text-center`}>
+    <div dir={dir} className={`relative h-[100dvh] ${t.bg} flex flex-col overflow-hidden p-4 sm:p-6 text-center`}>
+      {/* Always-reachable language switcher, matching the other student
+          screens so a kid on the "wrong" UI language can fix it here too. */}
+      <div className="absolute top-3 end-3 z-20">
+        <StudentLangButton tone={isDark ? "onDark" : "light"} />
+      </div>
+
+      {/* Celebration — centered in the space above the pinned action panel,
+          and scrollable on short phones so the trophy + score cards never
+          push the "what's next" buttons below the fold (the reported
+          "kids scroll to find the buttons" problem). */}
+      <div className="flex w-full flex-1 min-h-0 flex-col items-center justify-center overflow-y-auto">
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 260, damping: 20 }}
       >
-        <Trophy className="w-20 h-20 sm:w-24 sm:h-24 text-yellow-500 mb-4 mx-auto" />
+        <Trophy className="w-16 h-16 sm:w-24 sm:h-24 text-yellow-500 mb-3 sm:mb-4 mx-auto" />
       </motion.div>
       <h1 className={`text-3xl sm:text-4xl font-bold mb-2 ${t.text}`}>
         {headline}
       </h1>
-      <p className={`text-lg sm:text-xl mb-6 ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>
+      <p className={`text-lg sm:text-xl mb-4 sm:mb-6 ${isDark ? 'text-gray-300' : 'text-stone-600'}`}>
         {subtitle}
       </p>
-      <div className="flex flex-col sm:flex-row gap-4 mb-8 w-full max-w-lg">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-5 sm:mb-8 w-full max-w-lg">
         <div className={`${t.card} p-5 sm:p-8 rounded-2xl shadow-md flex-1 text-center`}>
           <p className={`text-xs sm:text-sm uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-stone-500'} mb-1`}>{tt.finalScore}</p>
           <p className="text-4xl sm:text-6xl font-black text-blue-500">{score}</p>
@@ -275,6 +287,12 @@ export default function GameFinishedView({
           <span className="text-sm">{saveError}</span>
         </div>
       ) : null}
+      </div>{/* end celebration block */}
+
+      {/* Action panel — pinned directly under the celebration so the
+          "what's next" buttons are on screen the moment the game ends, no
+          scrolling required (kids kept missing them below the fold). */}
+      <div className="flex w-full shrink-0 justify-center pt-3 pb-[env(safe-area-inset-bottom)]">
       {/* "What's next?" action panel — designed to feel like a popup card
           so students see their three options at once instead of having
           to scroll through a cramped button stack.  Primary (Try Again)
@@ -423,6 +441,7 @@ export default function GameFinishedView({
           )}
         </div>
       </motion.div>
+      </div>{/* end action panel wrapper */}
 
       {/* Toast Notifications */}
       <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2">

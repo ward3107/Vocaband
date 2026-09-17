@@ -678,6 +678,12 @@ export default function QuickPlayStudentView({
                 <p className="ios-body" style={{ color: "var(--ios-label-secondary)" }}>
                   {qpT.subheadWords(quickPlayActiveSession.words.length)}
                 </p>
+                {/* Plain "what to do" line — kids kept landing here unsure
+                    which field mattered; this points them straight at the
+                    name + Start. */}
+                <p className="ios-body mt-2 font-black" style={{ color: "var(--ios-label)" }}>
+                  {qpT.joinInstruction}
+                </p>
               </div>
 
               <div className="space-y-3 sm:space-y-4">

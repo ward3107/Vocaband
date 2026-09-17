@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Trophy } from "lucide-react";
 import type { View } from "../core/views";
 import { useLanguage } from "../hooks/useLanguage";
+import StudentLangButton from "../components/StudentLangButton";
 
 interface GlobalLeaderboardEntry {
   name: string;
@@ -32,7 +33,10 @@ export default function GlobalLeaderboardView({
   return (
     <div className="min-h-screen bg-[var(--vb-surface-alt)] p-6" dir={dir}>
       <div className="max-w-2xl mx-auto">
-        <button onClick={() => setView((userRole === "teacher" || userRole === "admin") ? "teacher-dashboard" : "student-dashboard")} className="mb-6 signature-gradient text-white px-6 py-3 rounded-lg font-bold hover:scale-105 active:scale-95 transition-all shadow-lg">{backLabel}</button>
+        <div className={`mb-6 flex items-center justify-between gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+          <button onClick={() => setView((userRole === "teacher" || userRole === "admin") ? "teacher-dashboard" : "student-dashboard")} className="signature-gradient text-white px-6 py-3 rounded-lg font-bold hover:scale-105 active:scale-95 transition-all shadow-lg">{backLabel}</button>
+          <StudentLangButton className="shrink-0" />
+        </div>
         <div className="rounded-2xl shadow-xl p-6 sm:p-10 border" style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}>
           <div className="flex items-center gap-4 mb-8">
             <div className="p-4 rounded-2xl" style={{ backgroundColor: 'var(--vb-warning-soft)' }}>

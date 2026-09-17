@@ -13,6 +13,7 @@ import { usePetAccessory } from "../hooks/usePetAccessory";
 import { shopT } from "../locales/student/shop";
 import { catalogName, catalogDesc, catalogDisplay } from "../locales/student/shop-catalog";
 import FloatingButtons from "../components/FloatingButtons";
+import StudentLangButton from "../components/StudentLangButton";
 import CategoryCarousel from "../components/shop/CategoryCarousel";
 import Spotlight from "../components/shop/Spotlight";
 import {
@@ -677,11 +678,14 @@ export default function ShopMarketplaceView({
             <ChevronLeft size={16} className={isRTL ? 'rotate-180' : ''} />
             Dashboard
           </button>
-          <div className="flex items-center gap-2 bg-[var(--ios-grouped-card)] rounded-full ps-2 pe-3 py-1.5 ring-1 ring-[color:var(--ios-separator)] shadow-sm">
-            <span className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-base leading-none">
-              🪙
-            </span>
-            <span className="font-black text-[color:var(--ios-label)] tabular-nums">{coins.toLocaleString()}</span>
+          <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <StudentLangButton />
+            <div className="flex items-center gap-2 bg-[var(--ios-grouped-card)] rounded-full ps-2 pe-3 py-1.5 ring-1 ring-[color:var(--ios-separator)] shadow-sm">
+              <span className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-base leading-none">
+                🪙
+              </span>
+              <span className="font-black text-[color:var(--ios-label)] tabular-nums">{coins.toLocaleString()}</span>
+            </div>
           </div>
         </div>
 

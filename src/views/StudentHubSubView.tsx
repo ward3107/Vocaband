@@ -15,6 +15,7 @@ import type { Language } from "../hooks/useLanguage";
 import { useDailyMissions } from "../hooks/useDailyMissions";
 import { useDueReviews } from "../hooks/useDueReviews";
 import { ARCADE_BUTTON_TOUCH } from "../components/arcade/theme";
+import StudentLangButton from "../components/StudentLangButton";
 import DailyPracticeRow from "../components/dashboard/DailyPracticeRow";
 import DailyMissionsCard from "../components/dashboard/DailyMissionsCard";
 import ActiveBoostersStrip from "../components/dashboard/ActiveBoostersStrip";
@@ -132,10 +133,11 @@ export default function StudentHubSubView({
           >
             <span aria-hidden>{isRTL ? "→" : "←"}</span>
           </button>
-          <h1 className="flex items-center gap-2 text-2xl font-black text-[color:var(--ios-label)]">
+          <h1 className="flex flex-1 items-center gap-2 text-2xl font-black text-[color:var(--ios-label)]">
             <span aria-hidden>{HEAD[section].emoji}</span>
             {title}
           </h1>
+          <StudentLangButton className="shrink-0" />
         </header>
 
         {section === "practice" && (

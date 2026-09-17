@@ -2,12 +2,14 @@ import { LogOut } from "lucide-react";
 import { supabase } from "../../core/supabase";
 import { useLanguage } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
+import StudentLangButton from "../StudentLangButton";
 
 /**
- * Top bar for the student dashboard.  Logout affordance only — the
- * language switcher was removed: students pick their instruction
- * language once at login (StudentAccountLoginView / Quick Play join)
- * and it stays locked, so mid-flow screens no longer offer a change.
+ * Top bar for the student dashboard.  Carries the always-available
+ * language switcher + the logout affordance.  Students can land on the
+ * "wrong" UI language (an HE/AR reader stuck on English, or vice-versa),
+ * so the switcher rides along on every in-app screen — this bar is where
+ * it sits on the home hub.
  *
  * `onRequestLogout` — when supplied, the logout button asks App.tsx
  * to show the friendly student soft-landing modal ("See you tomorrow,
@@ -26,12 +28,11 @@ export default function StudentTopBar({ onRequestLogout }: StudentTopBarProps = 
   const { language } = useLanguage();
   const t = studentDashboardT[language];
 
-  // The language switcher was removed from the dashboard: students pick
-  // their instruction language once at login (StudentAccountLoginView /
-  // Quick Play join) and it stays locked, so mid-flow screens no longer
-  // offer a way to change it. Only the logout affordance remains here.
   return (
     <div className="flex justify-end items-center gap-2">
+      {/* Always-reachable language switcher — the dashboard no longer
+          locks the UI language after login. */}
+      <StudentLangButton />
       <button
         onClick={() => {
           if (onRequestLogout) onRequestLogout();
