@@ -59,11 +59,8 @@ export default function LobbyRoster({
   className = "",
   large = false,
   onKick,
-  theme,
 }: LobbyRosterProps) {
   const empty = players.length === 0;
-  const nameColor = theme ? theme.name : "text-stone-600";
-  const mutedColor = theme ? theme.muted : "text-stone-500";
 
   // Density tiers. In projector (`large`) mode the medallions shrink as the
   // room fills so a whole class fits on the screen at once instead of
@@ -121,15 +118,18 @@ export default function LobbyRoster({
 
   return (
     <div className={`flex flex-col ${className}`}>
-      {/* Live count header — a pulsing dot signals "room is open". */}
-      <div className="flex items-center gap-2 mb-4">
-        <span className="relative flex h-3 w-3">
-          <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-70 animate-ping" />
-          <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
-        </span>
-        <span className={`text-sm sm:text-base font-black uppercase tracking-widest ${mutedColor}`}>
-          {countLabel(players.length)}
-        </span>
+      {/* Live count — a bold, high-contrast gradient pill that reads across
+          the room on a projector, with a pulsing "room is open" dot. */}
+      <div className={`flex ${large ? "justify-center mb-6" : "items-center mb-4"}`}>
+        <div className={`inline-flex items-center gap-2.5 rounded-full bg-gradient-to-r ${accent} text-white shadow-lg ${large ? "px-6 py-2.5 min-[1280px]:px-9 min-[1280px]:py-4" : "px-4 py-1.5"}`}>
+          <span className={`relative flex ${large ? "h-3.5 w-3.5 min-[1280px]:h-4 min-[1280px]:w-4" : "h-3 w-3"}`}>
+            <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-70 animate-ping" />
+            <span className="relative inline-flex h-full w-full rounded-full bg-white" />
+          </span>
+          <span className={`font-black uppercase tracking-wide ${large ? "text-lg sm:text-2xl min-[1280px]:text-4xl" : "text-sm"}`}>
+            {countLabel(players.length)}
+          </span>
+        </div>
       </div>
 
       {empty ? (
@@ -162,7 +162,7 @@ export default function LobbyRoster({
                 className={`relative flex flex-col items-center gap-1 ${s.cell}`}
               >
                 <div
-                  className={`flex items-center justify-center ${s.ring} rounded-full bg-gradient-to-br ${p.team ? TEAM_ACCENT[p.team] : accent} text-white shadow-md`}
+                  className={`flex items-center justify-center ${s.ring} rounded-full bg-gradient-to-br ${p.team ? TEAM_ACCENT[p.team] : accent} text-white shadow-lg ring-2 ring-white/40 ${large ? "min-[1280px]:ring-4" : ""}`}
                 >
                   <span className={`flex items-center justify-center ${s.inner} rounded-full bg-white/90`}>
                     <QPAvatar value={p.avatar} iconSize={s.icon} className="text-fuchsia-600" />
@@ -180,7 +180,12 @@ export default function LobbyRoster({
                     <X size={s.kickIcon} strokeWidth={3} />
                   </button>
                 )}
-                <span className={`max-w-full truncate font-black ${nameColor} ${s.name}`}>
+                {/* Name-tag chip — white on any themed background so it stays
+                    readable from the back of the class. */}
+                <span
+                  dir="auto"
+                  className={`max-w-full truncate rounded-full bg-white/90 font-black text-stone-900 shadow-sm ${s.name} ${large ? "px-3 py-0.5 min-[1280px]:px-4 min-[1280px]:py-1" : "px-2"}`}
+                >
                   {p.nickname}
                 </span>
               </motion.div>
