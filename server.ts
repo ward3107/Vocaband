@@ -4449,7 +4449,18 @@ async function startServer() {
     for (const [code, state] of qpSessions.entries()) {
       const noTeacher = state.teacherSockets.size === 0;
       const teacherGone = now - state.lastTeacherSeenAt > QP_IDLE_SWEEP_MS;
-      if (noTeacher && teacherGone) {
+      // Keep a room alive while students are still around.  This sweep only
+      // watches the TEACHER (lastTeacherSeenAt is never refreshed by student
+      // activity), so a class that just projects the QR — with no live
+      // monitor socket open — used to have its session reaped ~10 min in
+      // while kids were mid-game, bouncing every student out to the QR
+      // screen.  Spare the session if any student socket is still connected,
+      // or any student was seen within the idle window; only a truly empty
+      // orphan (the case this sweep was actually built for) gets cleaned up.
+      const studentsPresent =
+        state.socketToClient.size > 0 ||
+        [...state.students.values()].some((e) => now - e.lastSeen < QP_IDLE_SWEEP_MS);
+      if (noTeacher && teacherGone && !studentsPresent) {
         if (isDev) console.log(`[QuickPlay] sweeping idle session ${code} (students=${state.students.size})`);
         if (state.currentRace?.timer) clearTimeout(state.currentRace.timer);
         if (state.currentSpeed?.timer) clearTimeout(state.currentSpeed.timer);
