@@ -222,11 +222,19 @@ These usually sit in the same App-content list; answer and save each:
 - **Contact email:** `privacy@vocaband.com` (or a support address you monitor
   — it shows publicly on the listing).
 
-Assets still needed for the listing (not the App-content forms): a 512×512
-icon (reuse `public/icon-512.png`), a 1024×500 feature graphic, and 2–8 phone
-screenshots. One iOS-sized shot exists at
-`store-assets/screenshots/student-login-1290x2796.png`; Play wants its own
-phone screenshots (9:16, e.g. 1080×1920).
+### Listing graphics — status
+
+| Asset | File to upload | Status |
+|---|---|---|
+| **App icon** (512×512) | `public/icon-512.png` | ✅ Ready |
+| **Feature graphic** (1024×500) | `store-assets/feature-graphic-v2-1024x500.png` | ✅ **Chosen** (light "flashcards" version; `feature-graphic-1024x500.png` is the dark v1 alternative) |
+| **Phone screenshot #1** (1080×1920) | `store-assets/screenshots/student-login-play-1080x1920.png` | ✅ Ready (real login, reframed 9:16) |
+| **Phone screenshots #2–5** | — | ⏳ **To capture:** dashboard, a game mid-play, results/leaderboard. Shoot in Chrome DevTools at 1080×1920 (or a real phone) logged in as a student. |
+
+Play requires **at least 2** phone screenshots; 4–5 tells the story best.
+The raw iOS-sized login shot (`student-login-1290x2796.png`, 2.17:1) is kept
+for reference but exceeds Play's 2:1 phone limit — use the reframed 1080×1920
+version above instead.
 
 ---
 
