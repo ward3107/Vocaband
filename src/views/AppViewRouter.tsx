@@ -23,7 +23,7 @@ import { TeacherDashboardProvider, type TeacherDashboardSectionDeps } from "./Te
 import { CreateAssignmentSection } from "./CreateAssignmentSection";
 import { CreateAssignmentProvider, type CreateAssignmentSectionDeps } from "./CreateAssignmentContext";
 import { QuickPlaySetupSection, type QuickPlaySetupSectionDeps } from "./QuickPlaySetupSection";
-import { renderClassShowOrWorksheet, type ClassShowAndWorksheetSectionDeps } from "./ClassShowAndWorksheetSection";
+import { ClassShowOrWorksheetBranch, type ClassShowAndWorksheetSectionDeps } from "./ClassShowAndWorksheetSection";
 import { renderTeacherLiveScreens, type RenderTeacherLiveScreensDeps } from "./TeacherLiveScreens";
 import { isStudentHubView, type StudentDashboardSectionDeps } from "./StudentDashboardSection";
 import { renderMiscViews, type RenderMiscViewsDeps } from "./MiscViewSections";
@@ -57,7 +57,7 @@ export type AppViewRouterProps =
   Omit<PrivacySettingsArgs, "onReopenPrivacyReminder"> &
   Omit<RenderHebrewRouteDeps, "quickPlaySocketUpdateScore"> &
   Omit<QuickPlaySetupSectionDeps, "allWords" | "topicPacks" | "onSaveTemplate"> &
-  Omit<ClassShowAndWorksheetSectionDeps, "allWords" | "topicPacks"> &
+  Omit<ClassShowAndWorksheetSectionDeps, "allWords" | "topicPacks" | "savedGroups" | "onRenameSavedGroup" | "onDeleteSavedGroup"> &
   RenderTeacherLiveScreensDeps &
   Omit<RenderMiscViewsDeps, "boostersActivate" | "topicPacks"> & {
     loading: boolean;
@@ -281,18 +281,24 @@ export function AppViewRouter(props: AppViewRouterProps) {
   }
 
 
-  const classShowOrWorksheet = renderClassShowOrWorksheet({
-    view, user, selectedClass, activeVoca, activityNavOrigin,
-    classShowAssignment, worksheetAssignment,
-    setClassShowAssignment, setWorksheetAssignment, setView,
-    allWords: ALL_WORDS, topicPacks: TOPIC_PACKS,
-    translateWord, translateWordsBatch,
-    onPickerOcrUpload, showToast,
-  });
-  if (classShowOrWorksheet) return (
+  // Class Show / Worksheet share one section renderer.  Mounted through
+  // a component wrapper (not an inline call) so its useSavedWordGroups
+  // fetch is scoped to teachers actually on these screens — never every
+  // student session.  Gate on the view: the section only ever produces
+  // output for these two, so this is equivalent to the old null check.
+  if (view === "class-show" || view === "worksheet") return (
     <>
       {view === "class-show" && <GameMusicPlayer language={language} floating />}
-      {classShowOrWorksheet}
+      <ClassShowOrWorksheetBranch
+        view={view} user={user} selectedClass={selectedClass}
+        activeVoca={activeVoca} activityNavOrigin={activityNavOrigin}
+        classShowAssignment={classShowAssignment} worksheetAssignment={worksheetAssignment}
+        setClassShowAssignment={setClassShowAssignment}
+        setWorksheetAssignment={setWorksheetAssignment} setView={setView}
+        allWords={ALL_WORDS} topicPacks={TOPIC_PACKS}
+        translateWord={translateWord} translateWordsBatch={translateWordsBatch}
+        onPickerOcrUpload={onPickerOcrUpload} showToast={showToast}
+      />
     </>
   );
 
