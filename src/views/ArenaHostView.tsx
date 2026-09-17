@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
-import { Play, Users, LogOut, Check, Copy, Maximize2, X, Monitor, Minimize2, Square, Zap } from "lucide-react";
+import { Play, Users, LogOut, Check, Copy, Maximize2, X, Monitor, Minimize2, Square, Zap, Plus } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
@@ -35,7 +35,11 @@ import TeamModeToggle from "../components/game/TeamModeToggle";
 import RoughModeToggle from "../components/game/RoughModeToggle";
 import ArenaCanvas from "../components/game/ArenaCanvas";
 import { ARENA_MAPS, randomArenaMapId } from "../components/game/arenaMaps";
-import SpeedWordPicker from "../components/game/SpeedWordPicker";
+import LiveWordPickerModal, { liveWordPickerT } from "../components/game/LiveWordPickerModal";
+import { useTranslate } from "../hooks/useTranslate";
+import { postOcrImage } from "../utils/postOcrImage";
+import { TOPIC_PACKS } from "../data/vocabulary";
+import type { TranslationLang } from "../components/setup/WordInputStep2026";
 import { primeAudio } from "../utils/primeAudio";
 import { playRoundStart } from "../utils/raceSfx";
 import { shuffle } from "../utils";
@@ -69,6 +73,12 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   const { themeId, theme, setThemeId } = useGameTheme();
 
   const vocab = useVocabularyLazy(true);
+  // Rich bulk word entry (paste / library / saved lists / OCR / AI) — same
+  // picker the rest of the app uses, hosted in a modal so it has room.
+  const { translateWord, translateWordsBatch } = useTranslate();
+  const [wordPickerOpen, setWordPickerOpen] = useState(false);
+  const [translationLang, setTranslationLang] = useState<TranslationLang>(l1 === "ar" ? "arabic" : "hebrew");
+  const lwt = liveWordPickerT[language] ?? liveWordPickerT.en;
 
   const qp = useQuickPlaySocket({ sessionCode, enabled: true });
   const {
@@ -112,21 +122,8 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   const canStart = pickedWords.length >= MIN_WORDS && enabledModes.size > 0;
 
   // The teacher's saved word lists (same saved_word_groups the assignment
-  // wizard writes), resolved to library words — ids that don't resolve
-  // (e.g. custom OCR words) are dropped since they can't form questions.
-  const { groups: savedGroupsRaw } = useSavedWordGroups();
-  const savedGroups = useMemo(() => {
-    const lib = vocab?.ALL_WORDS;
-    if (!lib || savedGroupsRaw.length === 0) return [];
-    const byId = new Map(lib.map((w) => [w.id, w]));
-    return savedGroupsRaw
-      .map((g) => ({
-        id: g.id,
-        name: g.name,
-        words: g.words.map((id) => byId.get(id)).filter((w): w is Word => !!w),
-      }))
-      .filter((g) => g.words.length > 0);
-  }, [vocab, savedGroupsRaw]);
+  // wizard writes). Passed RAW to WordPicker, which resolves the ids itself.
+  const { groups: savedGroupsRaw, renameGroup, deleteGroup } = useSavedWordGroups();
 
   useEffect(() => {
     if (status !== "connected") return;
@@ -451,15 +448,32 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
               {/* The teacher's word list — typed / picked from the library. */}
               <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mb-3`}>{t.wordsHeading}</h2>
-              <SpeedWordPicker
-                library={vocab?.ALL_WORDS ?? null}
-                picked={pickedWords}
-                onChange={setPickedWords}
-                minWords={MIN_WORDS}
-                t={t}
-                chipClass={A.chip}
-                savedGroups={savedGroups}
-              />
+              <button
+                type="button"
+                onClick={() => setWordPickerOpen(true)}
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                className={`w-full inline-flex items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-3 font-black text-sm transition ${
+                  pickedWords.length > 0
+                    ? "border-violet-300 text-violet-700 hover:border-violet-400 hover:bg-violet-50"
+                    : "border-stone-300 text-stone-600 hover:border-violet-400 hover:text-violet-700"
+                }`}
+              >
+                <Plus size={16} />
+                {pickedWords.length > 0 ? `${lwt.words(pickedWords.length)} · ${lwt.edit}` : lwt.addFirst}
+              </button>
+              {pickedWords.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {pickedWords.slice(0, 12).map((w) => (
+                    <span key={w.id} className="rounded-md bg-stone-100 px-2 py-0.5 text-xs font-bold text-stone-600">{w.english}</span>
+                  ))}
+                  {pickedWords.length > 12 && (
+                    <span className="rounded-md px-2 py-0.5 text-xs font-bold text-stone-400">+{pickedWords.length - 12}</span>
+                  )}
+                </div>
+              )}
+              {pickedWords.length < MIN_WORDS && (
+                <p className="mt-2 text-[11px] font-bold text-stone-400">{lwt.need(MIN_WORDS)}</p>
+              )}
 
               {/* Mode mix — multi-toggle, unlike Speed Round's single pick */}
               <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mt-5 mb-3`}>{t.modeHeading}</h2>
@@ -611,6 +625,32 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
           if (confirmKick && tokenRef.current) qp.kickStudent(confirmKick.clientId, tokenRef.current);
           setConfirmKick(null);
         }}
+      />
+
+      {/* Rich word picker (paste / library / saved lists / OCR / AI). */}
+      <LiveWordPickerModal
+        open={wordPickerOpen}
+        onClose={() => setWordPickerOpen(false)}
+        minWords={MIN_WORDS}
+        allWords={vocab?.ALL_WORDS ?? []}
+        selectedWords={pickedWords}
+        onSelectedWordsChange={setPickedWords}
+        translationLang={translationLang}
+        onTranslationLangChange={setTranslationLang}
+        onTranslateWord={translateWord}
+        onTranslateBatch={translateWordsBatch}
+        onOcrUpload={async (file) => {
+          try {
+            const r = await postOcrImage(file, "en");
+            return { words: r.words, success: true };
+          } catch {
+            return { words: [], success: false };
+          }
+        }}
+        topicPacks={TOPIC_PACKS}
+        savedGroups={savedGroupsRaw}
+        onRenameSavedGroup={renameGroup}
+        onDeleteSavedGroup={deleteGroup}
       />
 
       {/* Celebratory results — shown when ending a hunt that has scores. */}
