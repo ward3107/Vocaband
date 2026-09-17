@@ -2087,6 +2087,18 @@ async function startServer() {
   // client-reported x/y as the range-check fallback (mirrors the pickup fanout).
   const QP_ARENA_TACKLE_FANOUT = "qp:internal:arena-tackle";
 
+  // Cross-VM (server-to-server) event for a Word Hunt Arena MOVE that landed on
+  // a VM which doesn't own the arena. Player positions live only on the owner
+  // VM's arena.positions, and the snapshot tick serializes THAT map to the whole
+  // room — so a student whose socket load-balanced to a non-owner VM had their
+  // moves dropped, and the teacher's projector (plus every peer) only ever saw
+  // players co-located with the owner VM: the "map is static / students don't
+  // appear" report. Forward the move to the owner so all positions aggregate in
+  // one place. Higher-frequency than grab/pickup/tackle, but each move is already
+  // per-socket rate-limited (qpMoveLimiter) before it is fanned out, and it only
+  // fans out at all when a Redis adapter is attached (multi-VM).
+  const QP_ARENA_MOVE_FANOUT = "qp:internal:arena-move";
+
   // Rate limiters — sized for a real classroom on a school's NAT'd
   // Wi-Fi where ALL students hit the server from one external IP.
   //
@@ -2930,6 +2942,43 @@ async function startServer() {
     }
   });
 
+  // Cross-VM Word Hunt Arena move (see QP_ARENA_MOVE_FANOUT). Fires on every VM;
+  // only the one that owns the arena writes the position. Unlike grab/pickup/
+  // tackle it doesn't referee anything — it just records the position into the
+  // owner's arena.positions, exactly like the local ARENA_MOVE handler, so the
+  // snapshot tick then serializes EVERY player (all VMs) to the whole room. No
+  // student-map check (the students map is per-VM; a remote student isn't in it)
+  // and no reply — moves are fire-and-forget, batched by the tick.
+  qpIo.on(QP_ARENA_MOVE_FANOUT, (data: {
+    sessionCode: string; clientId: string; x: number; y: number;
+  }) => {
+    try {
+      if (!data || typeof data !== "object") return;
+      if (!isValidClientId(data.clientId)) return;
+      if (typeof data.x !== "number" || !isFinite(data.x)) return;
+      if (typeof data.y !== "number" || !isFinite(data.y)) return;
+      const state = qpSessions.get(data.sessionCode);
+      const arena = state?.currentArena;
+      if (!state || !arena) return; // not the owner
+      const existing = arena.positions.get(data.clientId);
+      // Cap NEW movers — mirrors the local handler so a fanned-out move can't
+      // blow past QP_ARENA_MAX_PLAYERS either.
+      if (!existing && arena.positions.size >= QP_ARENA_MAX_PLAYERS) return;
+      const x = Math.round(Math.min(arena.config.width, Math.max(0, data.x)));
+      const y = Math.round(Math.min(arena.config.height, Math.max(0, data.y)));
+      if (existing) {
+        existing.x = x;
+        existing.y = y;
+        existing.dirty = true;
+        existing.lastMoveTs = Date.now();
+      } else {
+        arena.positions.set(data.clientId, { x, y, dirty: true, lastMoveTs: Date.now() });
+      }
+    } catch (err) {
+      console.warn("[QP ARENA move xvm] handler threw", err);
+    }
+  });
+
   function qpEmitError(
     socket: import("socket.io").Socket,
     event: string,
@@ -3375,6 +3424,16 @@ async function startServer() {
         students: Array.from(state.students.values()),
         serverId: QP_SERVER_ID,
       });
+      // If a Word Hunt is already running ON THIS VM, seed the observer's map
+      // right away (board config + current positions) instead of waiting for
+      // the next snapshot tick — the same courtesy the student JOIN path gets
+      // mid-arena. Guarded by a LOCAL currentArena, so it's a no-op when the
+      // arena is owned by another VM (there the teacher still fills in from the
+      // room's ARENA_SNAPSHOT stream within a tick).
+      if (state.currentArena) {
+        const arenaState = qpArenaStateFor(state);
+        if (arenaState) socket.emit(QP_SERVER_EVENTS.ARENA_STATE, arenaState);
+      }
     });
 
     socket.on(QP_EVENTS.TEACHER_KICK, async (payload: QpTeacherKickPayload) => {
@@ -4229,7 +4288,21 @@ async function startServer() {
 
       const state = qpSessions.get(sessionCode);
       const arena = state?.currentArena;
-      if (!state || !arena) return;
+      if (!state || !arena) {
+        // No local arena — it likely lives on another VM (the student's socket
+        // was load-balanced to a different Fly machine than the teacher who
+        // started the hunt). Forward the move to the owner so every player's
+        // position aggregates in ONE arena.positions and the snapshot tick can
+        // show them all; dropping it here is exactly what made the teacher's
+        // map static / miss players. Single-VM (no adapter) means the arena
+        // simply isn't running, so there's nothing to forward to.
+        if (redisAdapterStatus === "attached") {
+          qpIo.serverSideEmit(QP_ARENA_MOVE_FANOUT, {
+            sessionCode, clientId, x: payload.x, y: payload.y,
+          });
+        }
+        return;
+      }
 
       // Self-heal the socket→client mapping (mirrors SPEED_SUBMIT) in case
       // a reconnect raced the move stream.
@@ -4449,7 +4522,18 @@ async function startServer() {
     for (const [code, state] of qpSessions.entries()) {
       const noTeacher = state.teacherSockets.size === 0;
       const teacherGone = now - state.lastTeacherSeenAt > QP_IDLE_SWEEP_MS;
-      if (noTeacher && teacherGone) {
+      // Keep a room alive while students are still around.  This sweep only
+      // watches the TEACHER (lastTeacherSeenAt is never refreshed by student
+      // activity), so a class that just projects the QR — with no live
+      // monitor socket open — used to have its session reaped ~10 min in
+      // while kids were mid-game, bouncing every student out to the QR
+      // screen.  Spare the session if any student socket is still connected,
+      // or any student was seen within the idle window; only a truly empty
+      // orphan (the case this sweep was actually built for) gets cleaned up.
+      const studentsPresent =
+        state.socketToClient.size > 0 ||
+        [...state.students.values()].some((e) => now - e.lastSeen < QP_IDLE_SWEEP_MS);
+      if (noTeacher && teacherGone && !studentsPresent) {
         if (isDev) console.log(`[QuickPlay] sweeping idle session ${code} (students=${state.students.size})`);
         if (state.currentRace?.timer) clearTimeout(state.currentRace.timer);
         if (state.currentSpeed?.timer) clearTimeout(state.currentSpeed.timer);

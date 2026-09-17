@@ -10,6 +10,10 @@ export default defineConfig({
       VITE_SUPABASE_URL: 'https://test.supabase.co',
       VITE_SUPABASE_ANON_KEY: 'test-anon-key',
     },
+    // Global mocks/stubs (e.g. canvas-confetti, which can't run under jsdom
+    // and otherwise throws an async unhandled error that flakes the run).
+    // Inherited by both projects below via `extends: true`.
+    setupFiles: ['./vitest.setup.ts'],
     projects: [
       {
         extends: true,

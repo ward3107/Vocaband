@@ -17,6 +17,7 @@ import IslandMap, { type MapIsland } from "../components/arcade/IslandMap";
 import IslandDetailSheet, { type IslandSheetMode } from "../components/arcade/IslandDetailSheet";
 import type { IslandState } from "../components/arcade/ModeIsland";
 import PetCompanion from "../components/dashboard/PetCompanion";
+import StudentLangButton from "../components/StudentLangButton";
 
 const MODE_GRADIENTS: Record<string, string> = {
   cyan: "from-cyan-400 to-blue-500", emerald: "from-emerald-400 to-teal-500",
@@ -178,6 +179,7 @@ export default function GameModeSelectionView({
             <span className="block text-[10px] text-[color:var(--ios-label-secondary)]">{qs.round} {currentRound}/{MAX_ASSIGNMENT_ROUNDS}</span>
           </span>
         )}
+        <StudentLangButton className="shrink-0" />
       </header>
 
       <div className="relative z-10 mx-auto max-w-xl sm:max-w-2xl lg:max-w-3xl px-2 pb-20">
