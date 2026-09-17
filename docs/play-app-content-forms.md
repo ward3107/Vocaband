@@ -190,11 +190,14 @@ These usually sit in the same App-content list; answer and save each:
 - **Health apps** — No.
 - **News app** — No.
 - **COVID-19 contact tracing/status** — No.
-- **Data deletion (account deletion URL)** — if Play asks for a web URL where
-  users can request account + data deletion, use
-  `https://www.vocaband.com/privacy.html` (it documents the
-  `privacy@vocaband.com` deletion route). A dedicated
-  `/delete-account` page is a nice-to-have if Play insists on a direct link.
+- **Data deletion (account deletion URL)** — use the dedicated page:
+  `https://www.vocaband.com/delete-account.html` (source:
+  `public/delete-account.html`). It documents both the in-app self-service
+  delete (Settings → Privacy Settings → Delete My Account) and the
+  `privacy@vocaband.com` request route, in EN/HE/AR, plus what's deleted vs
+  retained. **Goes live only after this branch merges to `main` and deploys**
+  — confirm `curl -I https://www.vocaband.com/delete-account.html` returns 200
+  before pasting the URL into Play.
 
 ---
 

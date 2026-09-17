@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<!--
+  Static account-deletion page for the Google Play "Data deletion" requirement
+  and for users who want to delete their Vocaband account + data.
+  Kept in sync by hand with the in-app flow (PrivacySettingsView.tsx ->
+  delete_my_account RPC) and the retention table in privacy.html.
+  Served at /delete-account.html (same static-asset path as /privacy.html).
+-->
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delete Your Account - Vocaband</title>
+  <link rel="canonical" href="https://www.vocaband.com/delete-account.html">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { overflow-x: hidden; }
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; width: 100%; margin: 0 auto; padding: 2rem 1.5rem; color: #1c1917; line-height: 1.7; }
+    .brand { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.25rem; }
+    .brand .mark { width: 40px; height: 40px; border-radius: 9999px; background: linear-gradient(135deg,#8b5cf6,#a855f7,#d946ef); color:#fff; font-weight: 800; font-style: italic; font-size: 26px; display:flex; align-items:center; justify-content:center; }
+    .brand .name { font-weight: 800; font-size: 1.25rem; background: linear-gradient(92deg,#6d28d9,#c026d3); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+    h2 { font-size: 1.25rem; margin-top: 2rem; border-bottom: 1px solid #e7e5e4; padding-bottom: 0.5rem; color: #6d28d9; }
+    .meta { color: #78716c; font-size: 0.875rem; margin-bottom: 1.5rem; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin-bottom: 0.5rem; }
+    a { color: #7c3aed; overflow-wrap: anywhere; }
+    .back { display: inline-block; margin-bottom: 1.5rem; color: #78716c; text-decoration: none; font-size: 0.875rem; }
+    .back:hover { color: #1c1917; }
+    .highlight { background: #f5f3ff; padding: 1rem 1.5rem; border-radius: 0.5rem; border-left: 4px solid #7c3aed; margin: 1rem 0; }
+    .table { width: 100%; max-width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.95rem; }
+    .table th, .table td { border: 1px solid #e5e7eb; padding: 0.75rem; text-align: left; vertical-align: top; overflow-wrap: anywhere; word-break: break-word; }
+    .table th { background: #f9fafb; }
+    .rtl { direction: rtl; text-align: right; }
+    .rtl ol, .rtl ul { padding-right: 1.5rem; padding-left: 0; }
+    .lang-sep { margin-top: 2.5rem; border: 0; border-top: 1px solid #e7e5e4; }
+    .contact { background:#faf5ff; border-radius: 0.5rem; padding: 1rem 1.5rem; margin-top: 2rem; }
+    footer { margin-top: 2.5rem; color:#78716c; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <a href="/" class="back">&larr; Back to Vocaband</a>
+
+  <div class="brand">
+    <div class="mark">V</div>
+    <div class="name">Vocaband</div>
+  </div>
+
+  <h1>Delete your account</h1>
+  <div class="meta">Applies to the Vocaband student and teacher apps (<code>com.vocaband.student</code>, web app at vocaband.com).</div>
+
+  <div class="highlight">
+    You can permanently delete your Vocaband account and its data at any time —
+    either yourself from inside the app, or by asking us. There is no charge.
+  </div>
+
+  <h2>Option 1 — Delete it yourself (immediate)</h2>
+  <ol>
+    <li>Open the Vocaband app (or sign in at <a href="https://www.vocaband.com">vocaband.com</a>).</li>
+    <li>Students: sign in with your class as usual. Teachers: sign in to your account.</li>
+    <li>Go to <strong>Settings &rarr; Privacy Settings</strong>.</li>
+    <li>Tap <strong>&ldquo;Delete My Account&rdquo;</strong> and confirm.</li>
+  </ol>
+  <p>Your account and data are deleted right away and you are signed out.</p>
+
+  <h2>Option 2 — Ask us to delete it</h2>
+  <p>
+    Email <a href="mailto:privacy@vocaband.com">privacy@vocaband.com</a> from the
+    account&rsquo;s email address (or, for a child, a parent or guardian may write
+    on their behalf). Tell us the account email so we can find it. We complete
+    verified deletion requests within <strong>30 days</strong>.
+  </p>
+
+  <h2>What is deleted</h2>
+  <ul>
+    <li>Your profile: display name, email address, and login history.</li>
+    <li>Your game progress: XP, streaks, titles, avatars, and results.</li>
+    <li>Your student or teacher profile record and consent records.</li>
+    <li>For a teacher account: the classes you own, their assignments, and the linked student records cascade with it.</li>
+  </ul>
+
+  <h2>What is kept, and for how long</h2>
+  <p>For security and legal reasons a small amount of data outlives the account, then deletes automatically:</p>
+  <table class="table">
+    <tr><th>Data</th><th>Kept for</th><th>Why</th></tr>
+    <tr><td>Security audit-log entries (e.g. login, deletion events)</td><td>Up to ~2 years (730 days), then auto-deleted</td><td>Legal-retention exemption (GDPR Art. 17(3)(b)/(e))</td></tr>
+    <tr><td>Encrypted database backups</td><td>Up to 30 days, then overwritten</td><td>Provider point-in-time recovery rotation</td></tr>
+    <tr><td>Off-site disaster-recovery archive (encrypted)</td><td>Up to 365 days, then auto-deleted</td><td>Backup lifecycle policy</td></tr>
+  </table>
+  <p>Backup copies are encrypted and are not used except for disaster recovery; they are overwritten or deleted automatically at the end of the windows above.</p>
+
+  <div class="contact">
+    <strong>Questions?</strong> Contact <a href="mailto:privacy@vocaband.com">privacy@vocaband.com</a>.
+    Full details are in our <a href="/privacy.html">Privacy Policy</a>.
+  </div>
+
+  <!-- ===================== Hebrew ===================== -->
+  <hr class="lang-sep">
+  <div class="rtl" lang="he">
+    <h2>מחיקת החשבון</h2>
+    <p>אפשר למחוק את חשבון Vocaband ואת כל הנתונים שלו בכל עת, ללא תשלום.</p>
+    <p><strong>אפשרות 1 — מחיקה עצמית (מיידית):</strong></p>
+    <ol>
+      <li>פותחים את האפליקציה או נכנסים לאתר <a href="https://www.vocaband.com">vocaband.com</a> ומתחברים.</li>
+      <li>עוברים אל <strong>הגדרות &larr; הגדרות פרטיות</strong>.</li>
+      <li>לוחצים על <strong>&rdquo;מחיקת החשבון שלי&ldquo;</strong> ומאשרים.</li>
+    </ol>
+    <p><strong>אפשרות 2 — בקשה מאיתנו:</strong> שולחים מייל אל
+      <a href="mailto:privacy@vocaband.com">privacy@vocaband.com</a> מכתובת המייל של החשבון
+      (הורה יכול לפנות עבור ילדו). נטפל בבקשה תוך <strong>30 יום</strong>.</p>
+    <p>יומני אבטחה נשמרים עד כשנתיים ועותקי גיבוי מוצפנים עד 30–365 יום, ואז נמחקים אוטומטית. פרטים מלאים ב<a href="/privacy.html">מדיניות הפרטיות</a>.</p>
+  </div>
+
+  <!-- ===================== Arabic ===================== -->
+  <hr class="lang-sep">
+  <div class="rtl" lang="ar">
+    <h2>حذف حسابك</h2>
+    <p>يمكنك حذف حساب Vocaband وجميع بياناته في أي وقت ومجانًا.</p>
+    <p><strong>الطريقة 1 — الحذف بنفسك (فوري):</strong></p>
+    <ol>
+      <li>افتح التطبيق أو سجّل الدخول عبر <a href="https://www.vocaband.com">vocaband.com</a>.</li>
+      <li>اذهب إلى <strong>الإعدادات &larr; إعدادات الخصوصية</strong>.</li>
+      <li>اضغط <strong>&rdquo;حذف حسابي&ldquo;</strong> وأكِّد.</li>
+    </ol>
+    <p><strong>الطريقة 2 — اطلب منّا الحذف:</strong> راسِلنا على
+      <a href="mailto:privacy@vocaband.com">privacy@vocaband.com</a> من بريد الحساب
+      (يمكن لوليّ الأمر المراسلة نيابةً عن الطفل). ننفّذ الطلب خلال <strong>30 يومًا</strong>.</p>
+    <p>تُحفَظ سجلات الأمان حتى نحو سنتين والنُّسخ الاحتياطية المشفَّرة حتى 30–365 يومًا ثم تُحذَف تلقائيًا. التفاصيل في <a href="/privacy.html">سياسة الخصوصية</a>.</p>
+  </div>
+
+  <footer>
+    Vocaband &middot; <a href="mailto:privacy@vocaband.com">privacy@vocaband.com</a> &middot;
+    <a href="/privacy.html">Privacy</a> &middot; <a href="/terms.html">Terms</a>
+  </footer>
+</body>
+</html>
