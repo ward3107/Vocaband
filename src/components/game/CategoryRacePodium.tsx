@@ -149,7 +149,7 @@ export default function CategoryRacePodium({ entries, emptyText, large = false, 
                   </span>
                 ) : (
                   <span
-                    className={`inline-flex items-center justify-center rounded-full font-black bg-surface-container text-on-surface-variant ${
+                    className={`inline-flex items-center justify-center rounded-full font-black bg-white text-stone-900 shadow-md ${
                       large ? "w-9 h-9 text-lg min-[1280px]:w-14 min-[1280px]:h-14 min-[1280px]:text-3xl" : "w-6 h-6 text-xs"
                     }`}
                   >
@@ -185,7 +185,7 @@ export default function CategoryRacePodium({ entries, emptyText, large = false, 
                   end of the leader's fill so it travels with whoever
                   is in front. */}
               <div
-                className={`relative rounded-full overflow-hidden ${theme ? theme.track : "bg-surface-container"} ${large ? "h-12 min-[1280px]:h-16" : "h-8"}`}
+                className={`relative rounded-full overflow-hidden ${theme ? theme.track : "bg-surface-container"} ${large ? "h-12 min-[1280px]:h-16" : "h-8"} ${isLeader ? "ring-2 ring-amber-300/70 shadow-lg shadow-amber-400/25" : ""}`}
                 style={gain ? { boxShadow: "0 0 0 2px rgba(16,185,129,0.55)" } : undefined}
               >
                 <motion.div

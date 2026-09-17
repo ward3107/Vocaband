@@ -38,7 +38,9 @@ export const GAME_THEMES: Record<GameThemeId, GameTheme> = {
     id: "dark",
     label: "Dark Clean",
     emoji: "🌑",
-    page: { backgroundImage: "linear-gradient(135deg,#0b1020,#1e1b4b)" },
+    // A magenta "stage spotlight" glows from the top over a deep purple-navy
+    // base — game-show energy while names stay white-on-dark.
+    page: { backgroundImage: "radial-gradient(130% 90% at 50% -15%, #7c2d92 0%, rgba(124,45,146,0) 55%), linear-gradient(135deg,#0b1020,#2e1065 60%,#1e1b4b)" },
     card: "bg-[#111a30]/90 border border-white/10 shadow-lg",
     name: "text-white",
     score: "text-amber-300",
@@ -49,7 +51,8 @@ export const GAME_THEMES: Record<GameThemeId, GameTheme> = {
     id: "glass",
     label: "Glass / Aurora",
     emoji: "❄️",
-    page: { backgroundImage: "linear-gradient(135deg,#0f766e,#6d28d9 55%,#be185d)" },
+    // Hot-pink spotlight over the teal→violet→pink aurora — bolder, still glassy.
+    page: { backgroundImage: "radial-gradient(130% 90% at 50% -15%, rgba(244,63,94,0.55) 0%, rgba(244,63,94,0) 55%), linear-gradient(135deg,#0d9488,#6d28d9 52%,#db2777)" },
     card: "bg-white/15 backdrop-blur-xl border border-white/30 shadow-xl",
     name: "text-white",
     score: "text-white",
@@ -60,7 +63,8 @@ export const GAME_THEMES: Record<GameThemeId, GameTheme> = {
     id: "toy",
     label: "Toy World",
     emoji: "🧸",
-    page: { backgroundImage: "linear-gradient(180deg,#c7d2fe,#fbcfe8)" },
+    // Sunny spotlight over a punchier candy gradient — brighter pop, names stay dark.
+    page: { backgroundImage: "radial-gradient(120% 85% at 50% -10%, #fde047 0%, rgba(253,224,71,0) 48%), linear-gradient(180deg,#a5b4fc,#f9a8d4)" },
     card: "bg-white/85 border border-white shadow-lg",
     name: "text-violet-900",
     score: "text-orange-600",
