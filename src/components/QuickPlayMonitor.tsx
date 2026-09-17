@@ -1960,7 +1960,7 @@ export default function QuickPlayMonitor({
                         <span><TickingScore value={top3[0].score} /> pts<ScoreFloater uid={top3[0].studentUid} floaters={scoreFloaters} /></span>
                         {top3[0].streak !== undefined && <StreakBadge streak={top3[0].streak} size={20} />}
                       </p>
-                      <motion.div initial={{ height: 0 }} animate={{ height: 128 }} transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 15 }} className={`w-24 sm:w-28 2xl:w-32 min-[1700px]:w-48 min-[1700px]:!h-52 bg-gradient-to-b ${t.podium1} rounded-t-lg flex items-center justify-center shadow-2xl overflow-hidden relative`}>
+                      <motion.div initial={{ height: 0 }} animate={{ height: 128 }} transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 15 }} className={`w-24 sm:w-28 2xl:w-32 min-[1700px]:w-48 min-[1700px]:!h-52 bg-gradient-to-b ${t.podium1} rounded-t-lg flex items-center justify-center shadow-2xl ring-2 ring-amber-300/70 overflow-hidden relative`}>
                         <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ repeat: Infinity, duration: 2 }} className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                         <span className="text-white/20 text-6xl 2xl:text-7xl min-[1700px]:text-9xl font-black relative z-10">1</span>
                       </motion.div>

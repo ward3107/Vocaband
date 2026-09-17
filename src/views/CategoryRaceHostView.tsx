@@ -345,8 +345,8 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
     <div className="min-h-[100dvh] transition-colors" dir={dir} style={presenting ? theme.page : { backgroundColor: 'var(--vb-surface-alt)' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
         <header className="flex items-center justify-between gap-2 mb-3">
-          <h1 className={`min-w-0 text-xl sm:text-3xl font-black flex items-center gap-2 ${presenting ? theme.name : headingCls}`}>
-            <span className="text-2xl sm:text-3xl flex-shrink-0">🌍</span>
+          <h1 className={`min-w-0 font-black flex items-center gap-2 ${presenting ? `${theme.name} text-3xl sm:text-5xl min-[1700px]:text-7xl drop-shadow-lg` : `${headingCls} text-xl sm:text-3xl`}`}>
+            <span className={`flex-shrink-0 ${presenting ? "text-4xl sm:text-6xl min-[1700px]:text-8xl" : "text-2xl sm:text-3xl"}`}>🌍</span>
             <span className="truncate">{t.title}</span>
           </h1>
           {phase === "setup" ? (
