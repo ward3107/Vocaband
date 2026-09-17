@@ -13,6 +13,7 @@ import { supabase } from '../core/supabase';
 import type { QpReactionPayload } from '../core/quickPlayProtocol';
 import { useQuickPlaySocket } from '../hooks/useQuickPlaySocket';
 import { useClipboardFeedback } from '../hooks/useClipboardFeedback';
+import { celebrate } from '../utils/celebrate';
 import QPAvatar from './QPAvatar';
 import { useLanguage } from '../hooks/useLanguage';
 import { teacherViewsT } from '../locales/teacher/views';
@@ -1014,6 +1015,10 @@ export default function QuickPlayMonitor({
       newcomers.push({ name: s.name, avatar: s.avatar || '🦊', ts: now + newcomers.length });
     }
     if (newcomers.length > 0) {
+      // A confetti pop to match the online games — one burst per genuine
+      // newcomer batch. The cooldown/name-diff above already filters
+      // reconnect churn, so this never spams on a flapping session.
+      if (!reducedMotion) celebrate('small');
       setRecentJoiners(prev => {
         // Keep at most 3 toasts on screen at once — drop the oldest if
         // a busy class fires faster than the timeout can prune.
@@ -1028,7 +1033,7 @@ export default function QuickPlayMonitor({
       });
     }
     prevStudentNamesRef.current = currentNames;
-  }, [effectiveStudents]);
+  }, [effectiveStudents, reducedMotion]);
 
   // ─── Tier B: achievement toasts ────────────────────────────────────────────
   // Each (studentUid, achievementId) pair fires at most once per session so
@@ -1076,6 +1081,12 @@ export default function QuickPlayMonitor({
       }
     }
     if (newToasts.length > 0) {
+      // Marquee score moments (first to 100 / a perfect round) earn a full
+      // confetti burst on the projector. The quieter streak-5 toast rides on
+      // its own so a whole class hitting a streak doesn't strobe the screen.
+      if (!reducedMotion && newToasts.some(a => a.kind === 'first100' || a.kind === 'perfect')) {
+        celebrate('normal');
+      }
       setAchievements(prev => [...prev, ...newToasts].slice(-3));
       newToasts.forEach(t => {
         setTimeout(() => {
@@ -1083,7 +1094,7 @@ export default function QuickPlayMonitor({
         }, 4500);
       });
     }
-  }, [effectiveStudents]);
+  }, [effectiveStudents, reducedMotion]);
 
   // ─── Score floaters ──────────────────────────────────────────────────────
   // Track previous score per-student so we can render a brief "+N"

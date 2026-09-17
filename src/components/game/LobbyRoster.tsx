@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import QPAvatar from "../QPAvatar";
 import type { GameTheme } from "../../constants/gameThemes";
+import { useCelebrateOnJoin } from "../../hooks/useLiveCelebration";
 
 export interface LobbyPlayer {
   clientId: string;
@@ -59,8 +60,14 @@ export default function LobbyRoster({
   className = "",
   large = false,
   onKick,
+  theme,
 }: LobbyRosterProps) {
   const empty = players.length === 0;
+
+  // Confetti pop when the room grows — only on the projected (presenting)
+  // view, which is the one carrying a `theme`. Keeps the control-panel
+  // preview calm.
+  useCelebrateOnJoin(players.length, !!theme);
 
   // Density tiers. In projector (`large`) mode the medallions shrink as the
   // room fills so a whole class fits on the screen at once instead of
@@ -126,9 +133,17 @@ export default function LobbyRoster({
             <span className="absolute inline-flex h-full w-full rounded-full bg-white opacity-70 animate-ping" />
             <span className="relative inline-flex h-full w-full rounded-full bg-white" />
           </span>
-          <span className={`font-black uppercase tracking-wide ${large ? "text-lg sm:text-2xl min-[1280px]:text-4xl" : "text-sm"}`}>
+          {/* Keyed on the count so the number visibly POPS each time a new
+              student lands — a tiny "+1" heartbeat on the projector. */}
+          <motion.span
+            key={players.length}
+            initial={{ scale: 1.35 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 500, damping: 18 }}
+            className={`font-black uppercase tracking-wide ${large ? "text-lg sm:text-2xl min-[1280px]:text-4xl" : "text-sm"}`}
+          >
             {countLabel(players.length)}
-          </span>
+          </motion.span>
         </div>
       </div>
 

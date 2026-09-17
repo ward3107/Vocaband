@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Trophy, X } from "lucide-react";
 import QPAvatar from "../QPAvatar";
 import type { GameTheme } from "../../constants/gameThemes";
+import { useCelebrateOnNewLeader } from "../../hooks/useLiveCelebration";
 
 export interface PodiumEntry {
   clientId: string;
@@ -67,6 +68,13 @@ function AnimatedScore({ value }: { value: number }) {
 }
 
 export default function CategoryRacePodium({ entries, emptyText, large = false, onKick, theme }: CategoryRacePodiumProps) {
+  // New-leader confetti — the big "someone just took #1!" beat. Fired only on
+  // the projected (theme'd) view, and guarded to a scoring leader so the
+  // all-zeros kickoff shuffle never triggers it. entries are sorted desc, so
+  // entries[0] is always the current front-runner.
+  const leaderId = entries[0] && entries[0].score > 0 ? entries[0].clientId : undefined;
+  useCelebrateOnNewLeader(leaderId, !!theme);
+
   // Detect score increases between renders to fire a "+N" burst.
   const prev = useRef<Map<string, number>>(new Map());
   const gainId = useRef(0);
