@@ -236,6 +236,14 @@ The raw iOS-sized login shot (`student-login-1290x2796.png`, 2.17:1) is kept
 for reference but exceeds Play's 2:1 phone limit — use the reframed 1080×1920
 version above instead.
 
+**Localized listings (optional):** Play lets you add a per-language store
+listing with its own feature graphic. RTL versions of the chosen v2 graphic
+are ready — Hebrew `store-assets/feature-graphic-he-1024x500.png` and Arabic
+`store-assets/feature-graphic-ar-1024x500.png` (translated tagline/chips,
+each flashcard shows the English word with its Hebrew/Arabic translation).
+Upload them under the matching language in **Store listings → Manage
+translations** if you localize the listing; English-only launch is fine too.
+
 ---
 
 ## After the forms are green
