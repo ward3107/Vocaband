@@ -50,6 +50,8 @@ import { postOcrImage } from "../utils/postOcrImage";
 import WordPicker from "../components/setup/WordPicker";
 import { useSavedWordGroups } from "../hooks/useSavedWordGroups";
 import { useTranslate } from "../hooks/useTranslate";
+import { resolveAssignmentWords } from "../utils/resolveAssignmentWords";
+import { mergeWordsById } from "../utils/mergeWordsById";
 import type { Language } from "../hooks/useLanguage";
 import CreationPageShell from "../components/setup/CreationPageShell";
 import ClassRosterPicker, { type RosterClassOption } from "../components/setup/ClassRosterPicker";
@@ -470,19 +472,14 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, cl
   // selection.  Merges (deduped by id) rather than replacing, so it
   // composes with paste / library / topic picks.  The shared picker has
   // no assignment source of its own, so this preserves Hot Seat's.
-  const seedFromAssignment = useCallback((id: string) => {
-    if (!vocab) return;
+  const seedFromAssignment = useCallback(async (id: string) => {
     const a = availableAssignments.find(x => x.id === id);
     if (!a) return;
-    const idSet = new Set(a.wordIds);
-    const known = vocab.ALL_WORDS.filter(w => idSet.has(w.id));
-    const knownIds = new Set(known.map(k => k.id));
-    const incoming = [...known, ...(a.words ?? []).filter(c => !knownIds.has(c.id))];
-    setSelectedWords(prev => {
-      const seen = new Set(prev.map(w => w.id));
-      return [...prev, ...incoming.filter(w => !seen.has(w.id))];
-    });
-  }, [vocab, availableAssignments]);
+    // Go through the canonical resolver (curriculum ids + embedded custom
+    // words), then merge into the current picker selection deduped by id.
+    const incoming = await resolveAssignmentWords(a);
+    setSelectedWords(prev => mergeWordsById(prev, incoming));
+  }, [availableAssignments]);
 
   // Apply teacher edits from the review modal: drop excluded ids and
   // bake translation overrides into the Word objects so everything
@@ -722,7 +719,7 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, cl
               <div className="mb-4">
                 <select
                   defaultValue=""
-                  onChange={e => { if (e.target.value) { seedFromAssignment(e.target.value); e.target.value = ''; } }}
+                  onChange={e => { const v = e.target.value; if (v) { void seedFromAssignment(v); e.target.value = ''; } }}
                   dir={dir}
                   aria-label={t.pickAssignment}
                   className="w-full rounded-xl border-[1.5px] border-stone-200 focus:border-[#8B5CF6] focus:outline-none px-3.5 py-3 text-sm font-semibold text-stone-800 bg-white"

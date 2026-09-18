@@ -26,6 +26,7 @@ import { createSet, addWordsToSet } from "../../core/vocabularyLibrary";
 import { type AppUser } from "../../core/supabase";
 import type { Word } from "../../data/vocabulary";
 import WordPicker from "../../components/setup/WordPicker";
+import { mapPickerWordsToSetRows } from "./setBuildMapping";
 
 interface SetBuildWizardProps {
   user: AppUser;
@@ -75,19 +76,7 @@ export default function SetBuildWizard({
   // custom words (negative synthesized id) store null there but still
   // carry their english/hebrew/arabic straight into the set.
   const handleSave = useCallback(async () => {
-    const words = selectedWords
-      .filter((w) => w.english.trim().length > 0)
-      .map((w, idx) => ({
-        position: idx,
-        english: w.english.trim(),
-        hebrew: (w.hebrew ?? "").trim() || null,
-        arabic: (w.arabic ?? "").trim() || null,
-        partOfSpeech: null,
-        difficulty: null,
-        curriculumWordId: w.id > 0 ? w.id : null,
-        audioUrl: null,
-        metadata: {},
-      }));
+    const words = mapPickerWordsToSetRows(selectedWords);
     if (words.length === 0) {
       showToast(t.errorNoWords, "error");
       return;
