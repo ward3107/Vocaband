@@ -1,46 +1,32 @@
 /**
- * SetBuildWizard — unified "create a vocabulary set" modal flow.
+ * SetBuildWizard — "create a vocabulary set" modal.
  *
- * Phase 4d simplification: two source modes only.
- *   - 📋 Type or paste — one textarea, teacher types or pastes a list
- *   - 📷 Photo or image — file picker (camera, gallery, screenshot…)
- *                          → /api/ocr → auto-translate
+ * Wraps the shared WordPicker so building a Set uses the exact same
+ * word-adding experience as the assignment wizard + Class Show: paste /
+ * type, My Library (other saved Sets), Topic Packs, Saved Groups, and
+ * camera / OCR — with Custom words auto-translated to Hebrew + Arabic.
  *
- * Phases 3's Manual mode was removed (paste already covers typing).
- * Phase 3's "Soon" tiles (Upload, AI from topic, From curriculum) were
- * removed too — Photo + paste already cover every realistic teacher
- * workflow, so the wizard no longer promises features we won't build.
+ * The teacher names the Set, builds the list in the picker, and saves.
+ * The picker hands back an in-memory Word[]; handleSave maps it to the
+ * vocabulary_set_words row shape (curriculum words keep their id link
+ * via curriculumWordId, custom words store null there) and persists it
+ * through createSet + addWordsToSet.
  */
-import { useCallback, useMemo, useRef, useState, type MutableRefObject } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import {
-  X, ArrowLeft, Clipboard, Camera, Sparkles, Trash2, Loader2,
-} from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { motion } from "motion/react";
+import { X, Loader2 } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { useTranslate } from "../../hooks/useTranslate";
+import { useSavedWordGroups } from "../../hooks/useSavedWordGroups";
+import { useVocabularyLazy } from "../../hooks/useVocabularyLazy";
 import { setBuildWizardT } from "../../locales/teacher/vocabulary-library-build";
 import { vocabularyLibraryT } from "../../locales/teacher/vocabulary-library";
-import { postOcrImage, isPostOcrImageError } from "../../utils/postOcrImage";
+import { postOcrImage } from "../../utils/postOcrImage";
 import { createSet, addWordsToSet } from "../../core/vocabularyLibrary";
 import { type AppUser } from "../../core/supabase";
-
-type Step = "pick-source" | "paste" | "photo";
-type ActiveMode = "paste" | "ocr_image";
-
-/** A row in the words-review table. Local-only — gets mapped to the
- *  DB row shape at save time. */
-interface WordRow {
-  // Stable identity for React keys. The editable rows are add/removable, so
-  // keying by array index shifted a row's input state onto its neighbour when
-  // an earlier row was deleted; a per-row id keeps DOM + focus with the row.
-  id: string;
-  english: string;
-  hebrew: string;
-  arabic: string;
-}
-
-const newRowId = (): string =>
-  (globalThis.crypto?.randomUUID?.() ?? `row-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+import type { Word } from "../../data/vocabulary";
+import WordPicker from "../../components/setup/WordPicker";
+import { mapPickerWordsToSetRows } from "./setBuildMapping";
 
 interface SetBuildWizardProps {
   user: AppUser;
@@ -59,129 +45,51 @@ export default function SetBuildWizard({
   onSaved,
   showToast,
 }: SetBuildWizardProps) {
-  const { language, isRTL, dir } = useLanguage();
+  const { language, dir } = useLanguage();
   const t = useMemo(() => setBuildWizardT[language], [language]);
   const libT = useMemo(() => vocabularyLibraryT[language], [language]);
-  const { translateWordsBatch } = useTranslate();
+  const { translateWord, translateWordsBatch } = useTranslate();
+  const { groups: savedGroups, renameGroup, deleteGroup } = useSavedWordGroups();
+  // Load the vocabulary chunk so the picker has the full curriculum to
+  // match paste / OCR against and to browse My Library / Topic Packs.
+  const vocab = useVocabularyLazy(true);
 
-  const [step, setStep] = useState<Step>("pick-source");
   const [setName, setSetName] = useState("");
-  const [pasteText, setPasteText] = useState("");
-  const [extractedWords, setExtractedWords] = useState<WordRow[]>([]);
-  const [extracting, setExtracting] = useState(false);
-  const [photoStatus, setPhotoStatus] = useState("");
+  const [selectedWords, setSelectedWords] = useState<Word[]>([]);
   const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Auto-fill the set name with a sensible default once the teacher
-  // commits to a mode, so saving without typing still produces a
-  // descriptive name. Teacher edits override this.
-  const handlePickMode = useCallback((next: Step) => {
-    const today = new Date().toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    if (!setName.trim()) {
-      if (next === "paste") setSetName(t.defaultSetNamePaste(today));
-      else if (next === "photo") setSetName(t.defaultSetNamePhoto(today));
-    }
-    setStep(next);
-  }, [setName, t]);
-
-  // ─── Mode: Paste ─────────────────────────────────────────────────
-  const handlePasteExtract = useCallback(async () => {
-    if (!pasteText.trim()) return;
-    setExtracting(true);
+  // OCR bridge for the picker's built-in camera / upload flow - wraps the
+  // shared endpoint into the { words } contract, swallowing errors so the
+  // picker surfaces its own "couldn't read that" state.
+  const handlePickerOcr = useCallback(async (file: File): Promise<{ words: string[]; success?: boolean }> => {
     try {
-      const raw = pasteText
-        .split(/[\n,;]+/)
-        .map((w) => w.trim())
-        .filter((w) => w.length > 0 && w.length < 80);
-      const dedup = Array.from(new Set(raw));
-      if (dedup.length === 0) {
-        showToast(t.errorExtract, "error");
-        return;
-      }
-      const translations = await translateWordsBatch(dedup);
-      const rows: WordRow[] = dedup.map((w) => {
-        const tr = translations.get(w.toLowerCase());
-        return { id: newRowId(), english: w, hebrew: tr?.hebrew || "", arabic: tr?.arabic || "" };
-      });
-      setExtractedWords(rows);
-    } catch (err) {
-      console.warn("[SetBuildWizard] paste extract failed:", err);
-      showToast(t.errorExtract, "error");
-    } finally {
-      setExtracting(false);
+      const result = await postOcrImage(file, "en");
+      return { words: result.words, success: true };
+    } catch {
+      return { words: [], success: false };
     }
-  }, [pasteText, translateWordsBatch, showToast, t.errorExtract]);
-
-  // ─── Mode: Photo ─────────────────────────────────────────────────
-  const handlePhotoFile = useCallback(async (file: File) => {
-    setExtracting(true);
-    setPhotoStatus(t.photoStatusCompressing);
-    try {
-      const result = await postOcrImage(file, "en", {
-        onStatus: setPhotoStatus,
-      });
-      if (result.words.length === 0) {
-        showToast(t.photoNoWords, "error");
-        return;
-      }
-      setPhotoStatus(t.photoStatusTranslating);
-      const translations = await translateWordsBatch(result.words);
-      const rows: WordRow[] = result.words.map((w) => {
-        const tr = translations.get(w.toLowerCase().trim());
-        return { id: newRowId(), english: w, hebrew: tr?.hebrew || "", arabic: tr?.arabic || "" };
-      });
-      setExtractedWords(rows);
-    } catch (err) {
-      if (isPostOcrImageError(err)) {
-        showToast(err.message, "error");
-      } else {
-        showToast(t.errorExtract, "error");
-      }
-    } finally {
-      setExtracting(false);
-      setPhotoStatus("");
-    }
-  }, [t, translateWordsBatch, showToast]);
-
-  // Clear extracted words when user goes back to pick-source so they
-  // don't bleed across modes.
-  const backToSource = useCallback(() => {
-    setStep("pick-source");
-    setExtractedWords([]);
-    setPasteText("");
-    setPhotoStatus("");
   }, []);
 
-  // ─── Save ────────────────────────────────────────────────────────
-  const handleSave = useCallback(async (mode: ActiveMode) => {
-    const words = extractedWords
-      .filter((r) => r.english.trim().length > 0)
-      .map((r, idx) => ({
-        position: idx,
-        english: r.english.trim(),
-        hebrew: r.hebrew.trim() || null,
-        arabic: r.arabic.trim() || null,
-        partOfSpeech: null,
-        difficulty: null,
-        curriculumWordId: null,
-        audioUrl: null,
-        metadata: {},
-      }));
+  // --- Save --------------------------------------------------------------
+  // Map the picker's in-memory Word[] to the vocabulary_set_words row
+  // shape.  Curriculum words (positive id) keep their curriculum link;
+  // custom words (negative synthesized id) store null there but still
+  // carry their english/hebrew/arabic straight into the set.
+  const handleSave = useCallback(async () => {
+    const words = mapPickerWordsToSetRows(selectedWords);
     if (words.length === 0) {
       showToast(t.errorNoWords, "error");
       return;
     }
     setSaving(true);
     try {
-      const emoji = mode === "ocr_image" ? "📷" : "📋";
       const set = await createSet({
         teacherUid: user.uid,
         name: setName.trim() || libT.unfiledLabel,
         collectionId,
-        sourceType: mode,
+        sourceType: "paste",
         languagePair: "en-he-ar",
-        emoji,
+        emoji: "📚",
       });
       await addWordsToSet(set.id, words);
       showToast(t.toastSaved(set.name), "success");
@@ -192,17 +100,9 @@ export default function SetBuildWizard({
     } finally {
       setSaving(false);
     }
-  }, [extractedWords, setName, collectionId, user.uid, libT, t, showToast, onSaved]);
+  }, [selectedWords, setName, collectionId, user.uid, libT, t, showToast, onSaved]);
 
-  // ─── Row helpers (review table) ──────────────────────────────────
-  const removeExtractedRow = useCallback((idx: number) => {
-    setExtractedWords((rows) => rows.filter((_, i) => i !== idx));
-  }, []);
-  const updateExtractedRow = useCallback((idx: number, field: keyof WordRow, value: string) => {
-    setExtractedWords((rows) => rows.map((r, i) => (i === idx ? { ...r, [field]: value } : r)));
-  }, []);
-
-  // ─── Render ──────────────────────────────────────────────────────
+  // --- Render ------------------------------------------------------------
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -224,17 +124,6 @@ export default function SetBuildWizard({
       >
         {/* Header */}
         <div className="flex items-center gap-3 px-5 sm:px-6 py-4 border-b" style={{ borderColor: 'var(--vb-border)' }}>
-          {step !== "pick-source" && (
-            <button
-              type="button"
-              onClick={backToSource}
-              aria-label={t.back}
-              className="p-2 -ml-2 rounded-full hover:opacity-80"
-              style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            >
-              <ArrowLeft className={`w-5 h-5 ${isRTL ? "rotate-180" : ""}`} style={{ color: 'var(--vb-text-secondary)' }} />
-            </button>
-          )}
           <h2 className="flex-1 font-bold text-lg" style={{ color: 'var(--vb-text-primary)' }}>{t.modalTitle}</h2>
           <button
             type="button"
@@ -247,130 +136,52 @@ export default function SetBuildWizard({
           </button>
         </div>
 
-        {/* Body — scrollable */}
-        <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={step}
-              initial={{ opacity: 0, x: isRTL ? -12 : 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: isRTL ? 12 : -12 }}
-              transition={{ duration: 0.16 }}
-            >
-              {step === "pick-source" && (
-                <PickSourceStep t={t} onPick={handlePickMode} />
-              )}
-              {step === "paste" && (
-                <PasteStep
-                  t={t}
-                  setName={setName}
-                  setSetName={setSetName}
-                  pasteText={pasteText}
-                  setPasteText={setPasteText}
-                  extractedWords={extractedWords}
-                  extracting={extracting}
-                  onExtract={handlePasteExtract}
-                  onUpdateRow={updateExtractedRow}
-                  onRemoveRow={removeExtractedRow}
-                />
-              )}
-              {step === "photo" && (
-                <PhotoStep
-                  t={t}
-                  setName={setName}
-                  setSetName={setSetName}
-                  fileInputRef={fileInputRef}
-                  onFile={handlePhotoFile}
-                  extracting={extracting}
-                  photoStatus={photoStatus}
-                  extractedWords={extractedWords}
-                  onUpdateRow={updateExtractedRow}
-                  onRemoveRow={removeExtractedRow}
-                />
-              )}
-            </motion.div>
-          </AnimatePresence>
+        {/* Body - the shared word picker (paste, My Library, Topic Packs,
+            Saved Groups, OCR), the same experience as the assignment
+            wizard + Class Show. */}
+        <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 space-y-4">
+          <SetNameField t={t} value={setName} onChange={setSetName} />
+          {vocab ? (
+            <WordPicker
+              allWords={vocab.ALL_WORDS}
+              selectedWords={selectedWords}
+              onSelectedWordsChange={setSelectedWords}
+              onTranslateWord={translateWord}
+              onTranslateBatch={translateWordsBatch}
+              onOcrUpload={handlePickerOcr}
+              showToast={showToast}
+              topicPacks={vocab.TOPIC_PACKS}
+              savedGroups={savedGroups}
+              onRenameSavedGroup={renameGroup}
+              onDeleteSavedGroup={deleteGroup}
+            />
+          ) : (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--vb-text-secondary)' }} />
+            </div>
+          )}
         </div>
 
-        {/* Footer — save button when on a build step */}
-        {step !== "pick-source" && (
-          <div className="border-t px-5 sm:px-6 py-3 flex items-center justify-between gap-3" style={{ borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface-alt)' }}>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              className="text-sm font-semibold hover:underline disabled:opacity-50"
-              style={{ color: 'var(--vb-text-secondary)' }}
-            >
-              {t.cancel}
-            </button>
-            <SaveButton
-              t={t}
-              saving={saving}
-              disabled={saving || extractedWords.length === 0}
-              onClick={() => {
-                const mode: ActiveMode = step === "paste" ? "paste" : "ocr_image";
-                void handleSave(mode);
-              }}
-            />
-          </div>
-        )}
+        {/* Footer */}
+        <div className="border-t px-5 sm:px-6 py-3 flex items-center justify-between gap-3" style={{ borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface-alt)' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="text-sm font-semibold hover:underline disabled:opacity-50"
+            style={{ color: 'var(--vb-text-secondary)' }}
+          >
+            {t.cancel}
+          </button>
+          <SaveButton
+            t={t}
+            saving={saving}
+            disabled={saving || selectedWords.length === 0}
+            onClick={() => { void handleSave(); }}
+          />
+        </div>
       </motion.div>
     </motion.div>
-  );
-}
-
-// ─── Step 1: pick source ─────────────────────────────────────────────
-
-function PickSourceStep({ t, onPick }: { t: typeof setBuildWizardT.en; onPick: (s: Step) => void }) {
-  const tiles = [
-    {
-      step: "paste" as const,
-      icon: <Clipboard className="w-6 h-6" />,
-      title: t.modePasteTitle,
-      blurb: t.modePasteBlurb,
-      accent: "from-emerald-500 to-teal-600",
-    },
-    {
-      step: "photo" as const,
-      icon: <Camera className="w-6 h-6" />,
-      title: t.modePhotoTitle,
-      blurb: t.modePhotoBlurb,
-      accent: "from-indigo-500 to-violet-600",
-    },
-  ];
-
-  return (
-    <div>
-      <h3 className="text-xl font-bold" style={{ color: 'var(--vb-text-primary)' }}>{t.pickSourceHeading}</h3>
-      <p className="text-sm mt-1" style={{ color: 'var(--vb-text-secondary)' }}>{t.pickSourceSubtitle}</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
-        {tiles.map((tile) => (
-          <motion.button
-            key={tile.step}
-            type="button"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => onPick(tile.step)}
-            className="relative text-left rounded-2xl border overflow-hidden hover:shadow-md cursor-pointer"
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
-          >
-            <div className={`h-1.5 bg-gradient-to-r ${tile.accent}`} />
-            <div className="p-4 flex gap-3">
-              <div
-                className={`w-11 h-11 rounded-xl bg-gradient-to-br ${tile.accent} text-white flex items-center justify-center shrink-0`}
-              >
-                {tile.icon}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h4 className="font-bold text-sm" style={{ color: 'var(--vb-text-primary)' }}>{tile.title}</h4>
-                <p className="text-xs mt-0.5 leading-snug" style={{ color: 'var(--vb-text-secondary)' }}>{tile.blurb}</p>
-              </div>
-            </div>
-          </motion.button>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -398,213 +209,6 @@ function SetNameField({
         maxLength={120}
       />
     </label>
-  );
-}
-
-// ─── Step 2A: Paste ──────────────────────────────────────────────────
-
-function PasteStep({
-  t,
-  setName,
-  setSetName,
-  pasteText,
-  setPasteText,
-  extractedWords,
-  extracting,
-  onExtract,
-  onUpdateRow,
-  onRemoveRow,
-}: {
-  t: typeof setBuildWizardT.en;
-  setName: string;
-  setSetName: (s: string) => void;
-  pasteText: string;
-  setPasteText: (s: string) => void;
-  extractedWords: WordRow[];
-  extracting: boolean;
-  onExtract: () => void;
-  onUpdateRow: (i: number, field: keyof WordRow, value: string) => void;
-  onRemoveRow: (i: number) => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-bold" style={{ color: 'var(--vb-text-primary)' }}>{t.pasteHeading}</h3>
-        <p className="text-sm mt-1" style={{ color: 'var(--vb-text-secondary)' }}>{t.pasteSubtitle}</p>
-      </div>
-      <SetNameField t={t} value={setName} onChange={setSetName} />
-      <textarea
-        value={pasteText}
-        onChange={(e) => setPasteText(e.target.value)}
-        placeholder={t.pastePlaceholder}
-        rows={6}
-        style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
-        className="w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500 font-mono"
-        dir="ltr"
-      />
-      <button
-        type="button"
-        onClick={onExtract}
-        disabled={extracting || !pasteText.trim()}
-        className="w-full sm:w-auto px-4 py-2 rounded-lg bg-violet-600 text-white font-semibold text-sm hover:bg-violet-700 disabled:opacity-50 inline-flex items-center justify-center gap-2"
-        style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-      >
-        {extracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-        {extracting ? t.pasteExtracting : t.pasteExtract}
-      </button>
-      {extractedWords.length > 0 ? (
-        <WordsReviewTable
-          t={t}
-          rows={extractedWords}
-          onUpdate={onUpdateRow}
-          onRemove={onRemoveRow}
-          headingOverride={t.pasteExtractedCount(extractedWords.length)}
-        />
-      ) : (
-        <p className="text-xs italic" style={{ color: 'var(--vb-text-muted)' }}>{t.pasteEmpty}</p>
-      )}
-    </div>
-  );
-}
-
-// ─── Step 2C: Photo ──────────────────────────────────────────────────
-
-function PhotoStep({
-  t,
-  setName,
-  setSetName,
-  fileInputRef,
-  onFile,
-  extracting,
-  photoStatus,
-  extractedWords,
-  onUpdateRow,
-  onRemoveRow,
-}: {
-  t: typeof setBuildWizardT.en;
-  setName: string;
-  setSetName: (s: string) => void;
-  fileInputRef: MutableRefObject<HTMLInputElement | null>;
-  onFile: (file: File) => void;
-  extracting: boolean;
-  photoStatus: string;
-  extractedWords: WordRow[];
-  onUpdateRow: (i: number, field: keyof WordRow, value: string) => void;
-  onRemoveRow: (i: number) => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-bold" style={{ color: 'var(--vb-text-primary)' }}>{t.photoHeading}</h3>
-        <p className="text-sm mt-1" style={{ color: 'var(--vb-text-secondary)' }}>{t.photoSubtitle}</p>
-      </div>
-      <SetNameField t={t} value={setName} onChange={setSetName} />
-      <div className="rounded-xl border-2 border-dashed p-6 text-center" style={{ borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface-alt)' }}>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          /* No `capture` attribute — Phase 4d: teachers want to attach
-             gallery photos / screenshots / PDFs-as-image too, not just
-             snap a fresh camera shot. Mobile browsers still offer the
-             camera as one of the options when accept="image/*". */
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) onFile(file);
-            e.target.value = "";
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={extracting}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-sm hover:bg-indigo-700 disabled:opacity-50"
-          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-        >
-          {extracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-          {extracting ? (photoStatus || t.photoProcessing) : t.photoTrigger}
-        </button>
-        <p className="mt-3 text-[11px] italic max-w-sm mx-auto" style={{ color: 'var(--vb-text-muted)' }}>{t.privacyNotice}</p>
-      </div>
-      {extractedWords.length > 0 && (
-        <WordsReviewTable
-          t={t}
-          rows={extractedWords}
-          onUpdate={onUpdateRow}
-          onRemove={onRemoveRow}
-          headingOverride={t.photoExtractedCount(extractedWords.length)}
-        />
-      )}
-    </div>
-  );
-}
-
-// ─── Shared: words-review table (used by paste + photo) ──────────────
-
-function WordsReviewTable({
-  t,
-  rows,
-  onUpdate,
-  onRemove,
-  headingOverride,
-}: {
-  t: typeof setBuildWizardT.en;
-  rows: WordRow[];
-  onUpdate: (i: number, field: keyof WordRow, value: string) => void;
-  onRemove: (i: number) => void;
-  headingOverride?: string;
-}) {
-  return (
-    <div>
-      <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--vb-text-secondary)' }}>
-        {headingOverride ?? t.reviewSubtitle(rows.length)}
-      </p>
-      <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--vb-border)' }}>
-        <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 px-3 py-2 text-[11px] font-bold uppercase tracking-wider" style={{ backgroundColor: 'var(--vb-surface-alt)', color: 'var(--vb-text-secondary)' }}>
-          <div>{t.manualHeaderEnglish}</div>
-          <div>{t.manualHeaderHebrew}</div>
-          <div>{t.manualHeaderArabic}</div>
-          <div />
-        </div>
-        <div className="divide-y max-h-[40vh] overflow-y-auto" style={{ borderColor: 'var(--vb-border)' }}>
-          {rows.map((row, idx) => (
-            <div key={row.id} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 px-3 py-2 items-center">
-              <input
-                type="text"
-                value={row.english}
-                onChange={(e) => onUpdate(idx, "english", e.target.value)}
-                style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
-                className="rounded-lg border px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
-              />
-              <input
-                type="text"
-                value={row.hebrew}
-                onChange={(e) => onUpdate(idx, "hebrew", e.target.value)}
-                style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
-                className="rounded-lg border px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
-              />
-              <input
-                type="text"
-                value={row.arabic}
-                onChange={(e) => onUpdate(idx, "arabic", e.target.value)}
-                style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)', color: 'var(--vb-text-primary)' }}
-                className="rounded-lg border px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500"
-              />
-              <button
-                type="button"
-                onClick={() => onRemove(idx)}
-                aria-label={t.reviewRemoveAria}
-                className="p-1.5 rounded-md hover:text-rose-600 hover:bg-rose-50"
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent", color: 'var(--vb-text-muted)' }}
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
   );
 }
 

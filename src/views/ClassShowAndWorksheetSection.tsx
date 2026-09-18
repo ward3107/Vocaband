@@ -17,6 +17,7 @@ import type { VocaId } from '../core/subject';
 import type { View } from '../core/views';
 import type { TranslationEntry } from '../hooks/useTranslate';
 import ActivityTabsSlot from '../components/setup/ActivityTabsSlot';
+import { useSavedWordGroups } from '../hooks/useSavedWordGroups';
 
 const ClassShowView = lazyWithRetry(() => import('./ClassShowView'));
 const WorksheetView = lazyWithRetry(() => import('./WorksheetView'));
@@ -57,6 +58,13 @@ export interface ClassShowAndWorksheetSectionDeps {
   translateWordsBatch: any;
   onPickerOcrUpload: (file: File) => Promise<{ words: string[]; success?: boolean }>;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+  // Saved word groups — the teacher's reusable named lists.  Threaded
+  // from the App-level router (which owns the useSavedWordGroups hook)
+  // so Class Show + Worksheet get the same "💾 Saved Groups" source as
+  // the assignment wizard, instead of an empty panel.
+  savedGroups: { id: string; name: string; words: number[] }[];
+  onRenameSavedGroup: (id: string, newName: string) => Promise<boolean>;
+  onDeleteSavedGroup: (id: string) => Promise<boolean>;
 }
 
 function buildSourcesFromAssignment(
@@ -86,6 +94,7 @@ export function renderClassShowOrWorksheet(deps: ClassShowAndWorksheetSectionDep
     setClassShowAssignment, setWorksheetAssignment, setView,
     allWords, topicPacks, translateWord, translateWordsBatch,
     onPickerOcrUpload, showToast,
+    savedGroups, onRenameSavedGroup, onDeleteSavedGroup,
   } = deps;
 
   // Shared onExit semantics: if the teacher entered via the wizard's
@@ -135,9 +144,9 @@ export function renderClassShowOrWorksheet(deps: ClassShowAndWorksheetSectionDep
             onTranslateBatch: translateWordsBatch,
             onOcrUpload: onPickerOcrUpload,
             topicPacks,
-            // savedGroups: pass [] for now — wiring useSavedWordGroups
-            // through App-level state is a future PR.
-            savedGroups: [],
+            savedGroups,
+            onRenameSavedGroup,
+            onDeleteSavedGroup,
             showToast,
           }}
           onExit={() => {
@@ -181,7 +190,9 @@ export function renderClassShowOrWorksheet(deps: ClassShowAndWorksheetSectionDep
             onTranslateBatch: translateWordsBatch,
             onOcrUpload: onPickerOcrUpload,
             topicPacks,
-            savedGroups: [],
+            savedGroups,
+            onRenameSavedGroup,
+            onDeleteSavedGroup,
             showToast,
           }}
           onExit={() => {
@@ -194,4 +205,28 @@ export function renderClassShowOrWorksheet(deps: ClassShowAndWorksheetSectionDep
   }
 
   return null;
+}
+
+/**
+ * Thin component wrapper around `renderClassShowOrWorksheet` that owns
+ * the `useSavedWordGroups` hook.  Rendered only when the active view is
+ * `class-show` or `worksheet`, so the saved-groups fetch happens the
+ * moment a teacher opens one of those screens — never on every student
+ * session (which is why the router gates on the view before mounting
+ * this).  The saved-groups trio is injected here; every other dep is
+ * forwarded untouched.
+ */
+export type ClassShowOrWorksheetBranchProps = Omit<
+  ClassShowAndWorksheetSectionDeps,
+  'savedGroups' | 'onRenameSavedGroup' | 'onDeleteSavedGroup'
+>;
+
+export function ClassShowOrWorksheetBranch(props: ClassShowOrWorksheetBranchProps): ReactNode {
+  const { groups, renameGroup, deleteGroup } = useSavedWordGroups();
+  return renderClassShowOrWorksheet({
+    ...props,
+    savedGroups: groups,
+    onRenameSavedGroup: renameGroup,
+    onDeleteSavedGroup: deleteGroup,
+  });
 }

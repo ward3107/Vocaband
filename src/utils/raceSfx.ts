@@ -125,6 +125,25 @@ export function playRoundStart(): void {
   note(c, 1318.51, 0.78, 0.4, "sine", 0.18); // E6 held finish
 }
 
+/**
+ * playVictory — a short triumphant "ta-da!" sting for when a new student
+ * seizes the #1 spot on the projector. A quick two-note lift resolves into a
+ * bright held major triad, so a lead change lands like a game-show reveal.
+ * Deliberately distinct from playFanfare (the whole race is over) and shorter
+ * than playRoundStart. Self-mutes via the shared race mute and no-ops until a
+ * gesture (the teacher's "Start round" tap) has unlocked audio.
+ */
+export function playVictory(): void {
+  const c = audioCtx();
+  if (!c) return;
+  note(c, 659.25, 0, 0.1, "triangle", 0.17); // E5 lift
+  note(c, 783.99, 0.08, 0.1, "triangle", 0.17); // G5 lift
+  // Bright C-major triad "ta-da", held a touch longer than the lift.
+  note(c, 1046.5, 0.18, 0.5, "triangle", 0.18); // C6
+  note(c, 1318.51, 0.18, 0.5, "sine", 0.13); // E6
+  note(c, 1567.98, 0.18, 0.5, "sine", 0.11); // G6
+}
+
 // Note: Word Hunt Arena's looping background music now lives in the shared
 // GameMusicPlayer component (teacher-controlled, track-selectable), the same
 // bar used by Category Race and Speed Round.

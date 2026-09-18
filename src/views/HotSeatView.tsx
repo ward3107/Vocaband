@@ -37,18 +37,21 @@
  *     breaking other modes for a v1.  Worth factoring out in a v2 if
  *     a third pass-around mode shows up.
  */
-import { useCallback, useEffect, useMemo, useState, useRef, type ChangeEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Trophy, Users, ArrowRight, Volume2, X, ChevronRight, Play,
-  Camera, Eye, Loader2, AlertTriangle, Image as ImageIcon,
-  Trash2, Pencil, Check,
+  Eye, Trash2, Pencil, Check,
 } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
 import { useVocabularyLazy } from "../hooks/useVocabularyLazy";
 import type { Word } from "../data/vocabulary";
-import InPageCamera from "../components/InPageCamera";
-import { postOcrImage, isPostOcrImageError } from "../utils/postOcrImage";
+import { postOcrImage } from "../utils/postOcrImage";
+import WordPicker from "../components/setup/WordPicker";
+import { useSavedWordGroups } from "../hooks/useSavedWordGroups";
+import { useTranslate } from "../hooks/useTranslate";
+import { resolveAssignmentWords } from "../utils/resolveAssignmentWords";
+import { mergeWordsById } from "../utils/mergeWordsById";
 import type { Language } from "../hooks/useLanguage";
 import CreationPageShell from "../components/setup/CreationPageShell";
 import ClassRosterPicker, { type RosterClassOption } from "../components/setup/ClassRosterPicker";
@@ -97,8 +100,6 @@ interface HotSeatViewProps {
 
 type Phase = 'setup' | 'interstitial' | 'question' | 'done';
 type TargetLang = 'hebrew' | 'arabic';
-type SourceKind = 'paste' | 'assignment' | 'camera' | 'topic';
-type OcrStatus = 'idle' | 'reading' | 'done' | 'error';
 
 interface PlayerScore {
   name: string;
@@ -403,7 +404,6 @@ const VIOLET_GRAD = 'linear-gradient(110deg,#7B61D6,#9F87F2)';
 const CARD_BORDER = 'rgba(231,229,228,0.8)';
 const CARD_SHADOW =
   '0 1px 0 rgba(255,255,255,0.7) inset, 0 10px 24px -22px rgba(60,40,120,0.18)';
-const OPT_TILE_BG = 'linear-gradient(135deg,#EEF0FF,#F8E8FF)';
 
 /** Section label — small gradient-dot eyebrow used across every
  *  creation surface (see ActivityTypeTabs). */
@@ -434,27 +434,17 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, cl
   );
   const [questionsPerPlayer, setQuestionsPerPlayer] = useState(5);
   const [targetLang, setTargetLang] = useState<TargetLang>('hebrew');
-  const [sourceKind, setSourceKind] = useState<SourceKind>('paste');
-  const [wordsText, setWordsText] = useState('');
-  // Stable reference so the useMemo below doesn't re-run on every parent
-  // re-render — `assignments ?? []` would otherwise produce a fresh
-  // array each pass and bust the memo.
+  // The picker owns the whole word-selection experience now (paste, My
+  // Library, Topic Packs, Saved Groups, OCR) and hands back the chosen
+  // Word[].  Held in local state so the review modal + question pool
+  // derive from it exactly as they did from the old per-source rawPool.
+  const [selectedWords, setSelectedWords] = useState<Word[]>([]);
   const availableAssignments = useMemo(() => assignments ?? [], [assignments]);
   const availableTopics = useMemo(() => topicPacks ?? [], [topicPacks]);
-  const [assignmentId, setAssignmentId] = useState<string | null>(
-    availableAssignments[0]?.id ?? null,
-  );
-  const [topicIdx, setTopicIdx] = useState<number>(0);
-
-  // Camera + OCR state.  ocrWords holds the lowercased English tokens
-  // returned by /api/ocr; rawPool below looks each up in englishLookup
-  // (same path as the paste source) so unknown words are silently
-  // skipped instead of breaking the multi-choice.
-  const [showCamera, setShowCamera] = useState(false);
-  const [ocrWords, setOcrWords] = useState<string[]>([]);
-  const [ocrStatus, setOcrStatus] = useState<OcrStatus>('idle');
-  const [ocrError, setOcrError] = useState<string | null>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
+  // Saved groups + AI translation come straight from the same hooks the
+  // assignment wizard uses, so Hot Seat's picker behaves identically.
+  const { groups: savedGroups, renameGroup, deleteGroup } = useSavedWordGroups();
+  const { translateWord, translateWordsBatch } = useTranslate();
 
   // Review-before-start modal.  After picking a source, teacher taps
   // "Review N words →" to see the matched word list with its target-
@@ -472,78 +462,24 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, cl
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingValue, setEditingValue] = useState('');
 
-  // Build a lowercase-english → Word lookup once per vocab load so the
-  // paste-source pool doesn't scan ALL_WORDS for every typed line.
-  const englishLookup = useMemo(() => {
-    if (!vocab) return null;
-    const map = new Map<string, Word>();
-    for (const w of vocab.ALL_WORDS) {
-      map.set(w.english.toLowerCase().trim(), w);
-    }
-    return map;
-  }, [vocab]);
+  // rawPool is simply the picker's current selection now; the review
+  // modal's edits + the target-language filter below turn it into the
+  // playable question pool, exactly as before.
+  const rawPool: Word[] = selectedWords;
 
-  // Parse the textarea once — both the rawPool and the matched-count
-  // hint need it, and re-splitting inline would re-run on every render.
-  const pastedLines = useMemo(
-    () =>
-      wordsText
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0),
-    [wordsText],
-  );
-
-  // Resolve the raw pool from the picked source.  Paste-sourced pools
-  // match each line against ALL_WORDS by english (case-insensitive);
-  // assignment-sourced pools merge in any teacher-uploaded custom words
-  // (which carry their own hebrew/arabic from the OCR/Gemini pipeline);
-  // camera-sourced pools resolve the OCR-extracted tokens against the
-  // same englishLookup as paste; topic-sourced pools take the whole
-  // pack's id list straight out of ALL_WORDS.
-  const rawPool: Word[] = useMemo(() => {
-    if (!vocab) return [];
-    if (sourceKind === 'assignment') {
-      const a = availableAssignments.find(x => x.id === assignmentId);
-      if (!a) return [];
-      const known = vocab.ALL_WORDS.filter(w => a.wordIds.includes(w.id));
-      const customs = a.words ?? [];
-      return [...known, ...customs.filter(c => !known.some(k => k.id === c.id))];
-    }
-    if (sourceKind === 'topic') {
-      const pack = availableTopics[topicIdx];
-      if (!pack) return [];
-      const idSet = new Set(pack.ids);
-      return vocab.ALL_WORDS.filter(w => idSet.has(w.id));
-    }
-    if (sourceKind === 'camera') {
-      if (!englishLookup) return [];
-      const matched: Word[] = [];
-      const seenIds = new Set<number>();
-      for (const tok of ocrWords) {
-        const hit = englishLookup.get(tok.toLowerCase().trim());
-        if (hit && !seenIds.has(hit.id)) {
-          matched.push(hit);
-          seenIds.add(hit.id);
-        }
-      }
-      return matched;
-    }
-    // sourceKind === 'paste' — look each pasted line up in the vocabulary.
-    // Unknown words are silently skipped; the matched-count hint tells
-    // the teacher how many made it through.
-    if (!englishLookup) return [];
-    const matched: Word[] = [];
-    const seenIds = new Set<number>();
-    for (const line of pastedLines) {
-      const hit = englishLookup.get(line.toLowerCase());
-      if (hit && !seenIds.has(hit.id)) {
-        matched.push(hit);
-        seenIds.add(hit.id);
-      }
-    }
-    return matched;
-  }, [vocab, sourceKind, assignmentId, availableAssignments, pastedLines, englishLookup, topicIdx, availableTopics, ocrWords]);
+  // Assignment convenience seed - pull a saved assignment's words
+  // (curriculum + any custom words it carried) into the current picker
+  // selection.  Merges (deduped by id) rather than replacing, so it
+  // composes with paste / library / topic picks.  The shared picker has
+  // no assignment source of its own, so this preserves Hot Seat's.
+  const seedFromAssignment = useCallback(async (id: string) => {
+    const a = availableAssignments.find(x => x.id === id);
+    if (!a) return;
+    // Go through the canonical resolver (curriculum ids + embedded custom
+    // words), then merge into the current picker selection deduped by id.
+    const incoming = await resolveAssignmentWords(a);
+    setSelectedWords(prev => mergeWordsById(prev, incoming));
+  }, [availableAssignments]);
 
   // Apply teacher edits from the review modal: drop excluded ids and
   // bake translation overrides into the Word objects so everything
@@ -589,38 +525,18 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, cl
     if (advanceTimeoutRef.current) window.clearTimeout(advanceTimeoutRef.current);
   }, []);
 
-  // OCR a captured/uploaded image and stash the resulting English tokens
-  // in ocrWords.  rawPool above resolves them against englishLookup, so
-  // the same "matched/total" hint logic the paste source uses just
-  // works.  Errors land in ocrError; the UI surfaces them inline rather
-  // than via toast because Hot Seat is launched outside the teacher
-  // dashboard's toast portal.
-  const handleOcrFile = useCallback(async (file: File) => {
-    setOcrStatus('reading');
-    setOcrError(null);
+  // OCR bridge for the picker's built-in camera / upload flow - wraps
+  // the shared postOcrImage endpoint into the { words } contract the
+  // picker expects, swallowing errors into an empty result so the picker
+  // can surface its own "couldn't read that" state.
+  const handlePickerOcr = useCallback(async (file: File): Promise<{ words: string[]; success?: boolean }> => {
     try {
       const result = await postOcrImage(file, 'en');
-      setOcrWords(result.words);
-      setOcrStatus('done');
-    } catch (err) {
-      if (isPostOcrImageError(err)) {
-        setOcrError(err.message);
-      } else {
-        setOcrError(t.ocrError);
-      }
-      setOcrStatus('error');
-      setOcrWords([]);
+      return { words: result.words, success: true };
+    } catch {
+      return { words: [], success: false };
     }
-  }, [t.ocrError]);
-
-  const handleGalleryChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) void handleOcrFile(file);
-    // Reset so the same file can be re-picked if the teacher wants to
-    // re-run OCR on it (e.g. they bumped the camera and got a partial
-    // first read).
-    if (e.target) e.target.value = '';
-  }, [handleOcrFile]);
+  }, []);
 
   const handleRemoveWord = useCallback((id: number) => {
     setExcludedIds(prev => {
@@ -796,179 +712,51 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, cl
           <section>
             <SectionEyebrow>{t.wordsLabel}</SectionEyebrow>
 
-            {/* Paste hero — same violet-header card as the Assignment /
-                Class Show word picker.  Hot Seat matches words live (no
-                Analyze step), so the textarea lives in the hero body. */}
-            <div
-              className="rounded-[24px] overflow-hidden border bg-white"
-              style={{ borderColor: CARD_BORDER, boxShadow: '0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.20)' }}
-            >
-              <div className="flex items-center gap-3 px-[22px] py-[18px] text-white" style={{ background: VIOLET_GRAD }}>
-                <div
-                  className="grid h-9 w-9 place-items-center rounded-xl text-[18px]"
-                  style={{ background: 'rgba(255,255,255,0.22)', border: '1px solid rgba(255,255,255,0.35)' }}
-                  aria-hidden
+            {/* Optional: seed the picker from one of the teacher's saved
+                assignments (kept from Hot Seat's original source set - the
+                shared picker has no assignment source of its own). */}
+            {availableAssignments.length > 0 && (
+              <div className="mb-4">
+                <select
+                  defaultValue=""
+                  onChange={e => { const v = e.target.value; if (v) { void seedFromAssignment(v); e.target.value = ''; } }}
+                  dir={dir}
+                  aria-label={t.pickAssignment}
+                  className="w-full rounded-xl border-[1.5px] border-stone-200 focus:border-[#8B5CF6] focus:outline-none px-3.5 py-3 text-sm font-semibold text-stone-800 bg-white"
                 >
-                  ✨
-                </div>
-                <div className="text-[15px] font-extrabold tracking-[-0.01em]">{t.pasteTitle}</div>
-              </div>
-              <div className="px-[22px] py-5">
-                <textarea
-                  value={wordsText}
-                  onChange={e => setWordsText(e.target.value)}
-                  onFocus={() => setSourceKind('paste')}
-                  placeholder={t.wordsPlaceholder}
-                  rows={5}
-                  dir="ltr"
-                  className="block w-full min-h-[96px] resize-y rounded-2xl border-[1.5px] px-[18px] py-3.5 text-[14px] outline-none transition-shadow focus:border-[#8B5CF6] focus:[box-shadow:0_0_0_4px_rgba(139,92,246,0.15)] leading-relaxed text-stone-800 placeholder:text-stone-400"
-                  style={{ borderColor: CARD_BORDER }}
-                />
-                <p className="mt-3 text-sm text-stone-400 flex items-center gap-2">
-                  <span>💡</span>
-                  <span>{t.wordsHint}</span>
-                </p>
-              </div>
-            </div>
-
-            {/* OR */}
-            <div className="flex items-center gap-4 my-6">
-              <div className="flex-1 h-px bg-stone-200" />
-              <span className="text-sm font-semibold text-stone-400 uppercase tracking-wider">{t.or}</span>
-              <div className="flex-1 h-px bg-stone-200" />
-            </div>
-
-            {/* Alternative word sources — restyled as option cards in the
-                same icon language as the Assignment / Class Show grid.
-                Only the sources Hot Seat actually supports appear (Topic
-                Packs + From Assignment stay gated on available data, same
-                as before); the paste hero above is the primary path. */}
-            {(() => {
-              const altSources = ([
-                { kind: 'topic' as SourceKind, emoji: '🧩', label: t.sourceTopic, visible: availableTopics.length > 0 },
-                { kind: 'assignment' as SourceKind, emoji: '📚', label: t.sourceAssignment, visible: availableAssignments.length > 0 },
-                { kind: 'camera' as SourceKind, emoji: '📷', label: t.sourceCamera, visible: true },
-              ]).filter(s => s.visible);
-              const cols = altSources.length >= 3 ? 'grid-cols-3' : altSources.length === 2 ? 'grid-cols-2' : 'grid-cols-1';
-              return (
-                <div className={`grid ${cols} gap-3`}>
-                  {altSources.map(s => {
-                    const active = sourceKind === s.kind;
-                    return (
-                      <button
-                        key={s.kind}
-                        type="button"
-                        onClick={() => setSourceKind(s.kind)}
-                        style={{
-                          touchAction: 'manipulation',
-                          borderColor: active ? '#c4b5fd' : CARD_BORDER,
-                          background: active ? '#f5f3ff' : '#fff',
-                          boxShadow: CARD_SHADOW,
-                        }}
-                        className="rounded-[22px] border px-3.5 pb-4 pt-[16px] text-start transition-[transform,box-shadow] active:scale-[0.98]"
-                      >
-                        <div
-                          className="grid h-11 w-11 place-items-center rounded-[14px] text-[22px] mb-3"
-                          style={{ background: OPT_TILE_BG, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9)' }}
-                          aria-hidden
-                        >
-                          {s.emoji}
-                        </div>
-                        <div className="text-[13px] font-bold text-stone-800">{s.label}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-
-            {/* Active alternative-source panel (paste uses the hero above). */}
-            {sourceKind === 'assignment' && availableAssignments.length > 0 && (
-              <select
-                value={assignmentId ?? ''}
-                onChange={e => setAssignmentId(e.target.value || null)}
-                dir={dir}
-                aria-label={t.pickAssignment}
-                className="mt-3 w-full rounded-xl border-[1.5px] border-stone-200 focus:border-[#8B5CF6] focus:outline-none px-3.5 py-3 text-sm font-semibold text-stone-800 bg-white"
-              >
-                {availableAssignments.map(a => (
-                  <option key={a.id} value={a.id}>{a.title}</option>
-                ))}
-              </select>
-            )}
-            {sourceKind === 'topic' && availableTopics.length > 0 && (
-              <select
-                value={String(topicIdx)}
-                onChange={e => setTopicIdx(Number(e.target.value))}
-                dir={dir}
-                aria-label={t.pickTopic}
-                className="mt-3 w-full rounded-xl border-[1.5px] border-stone-200 focus:border-[#8B5CF6] focus:outline-none px-3.5 py-3 text-sm font-semibold text-stone-800 bg-white"
-              >
-                {availableTopics.map((pack, i) => (
-                  <option key={`${pack.name}-${i}`} value={String(i)}>
-                    {pack.icon} {pack.name}
-                  </option>
-                ))}
-              </select>
-            )}
-            {sourceKind === 'camera' && (
-              <div className="mt-3 space-y-2">
-                <p className="text-xs text-stone-500">{t.cameraHint}</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowCamera(true)}
-                    style={{ touchAction: 'manipulation' }}
-                    className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-stone-900 text-white font-bold text-sm active:scale-[0.98] transition"
-                  >
-                    <Camera size={16} />
-                    {t.cameraBtn}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => galleryInputRef.current?.click()}
-                    style={{ touchAction: 'manipulation' }}
-                    className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white border-[1.5px] border-stone-200 text-stone-700 font-bold text-sm hover:border-violet-200 active:scale-[0.98] transition"
-                  >
-                    <ImageIcon size={16} />
-                    {t.galleryBtn}
-                  </button>
-                </div>
-                <input
-                  ref={galleryInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleGalleryChange}
-                />
-                {ocrStatus === 'reading' && (
-                  <p className="flex items-center gap-1.5 text-xs font-semibold text-stone-600">
-                    <Loader2 size={14} className="animate-spin" />
-                    {t.ocrReading}
-                  </p>
-                )}
-                {ocrStatus === 'error' && ocrError && (
-                  <p className="flex items-start gap-1.5 text-xs font-semibold text-rose-600">
-                    <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                    <span>{ocrError}</span>
-                  </p>
-                )}
-                {ocrStatus === 'done' && ocrWords.length > 0 && (
-                  <p className="text-xs font-semibold text-emerald-700">
-                    {t.ocrFoundCount(ocrWords.length)}
-                  </p>
-                )}
+                  <option value="" disabled>{t.sourceAssignment}</option>
+                  {availableAssignments.map(a => (
+                    <option key={a.id} value={a.id}>{a.title}</option>
+                  ))}
+                </select>
               </div>
             )}
-            {vocab && (sourceKind !== 'camera' || ocrStatus === 'done' || rawPool.length > 0) && (
-              <p className={`mt-2 text-xs font-semibold px-1 ${wordPool.length < 4 ? 'text-rose-600' : 'text-stone-500'}`}>
-                {wordPool.length < 4
-                  ? t.poolTooSmall
-                  : sourceKind === 'paste'
-                  ? t.matchedHint(rawPool.length, pastedLines.length)
-                  : sourceKind === 'camera'
-                  ? t.matchedHint(rawPool.length, ocrWords.length)
-                  : t.poolHint(wordPool.length)}
+
+            {/* The shared word picker - identical experience to the
+                assignment wizard + Class Show (paste, My Library, Topic
+                Packs, Saved Groups, OCR).  Writes straight to selectedWords. */}
+            {vocab ? (
+              <WordPicker
+                allWords={vocab.ALL_WORDS}
+                selectedWords={selectedWords}
+                onSelectedWordsChange={setSelectedWords}
+                onTranslateWord={translateWord}
+                onTranslateBatch={translateWordsBatch}
+                onOcrUpload={handlePickerOcr}
+                topicPacks={availableTopics}
+                savedGroups={savedGroups}
+                onRenameSavedGroup={renameGroup}
+                onDeleteSavedGroup={deleteGroup}
+                translationLang={targetLang}
+                onTranslationLangChange={(lang) => chooseTargetLang(lang === 'arabic' ? 'arabic' : 'hebrew')}
+              />
+            ) : (
+              <p className="text-sm font-semibold text-stone-500 py-6 text-center">{t.loadingWords}</p>
+            )}
+
+            {vocab && selectedWords.length > 0 && (
+              <p className={`mt-3 text-xs font-semibold px-1 ${wordPool.length < 4 ? 'text-rose-600' : 'text-stone-500'}`}>
+                {wordPool.length < 4 ? t.poolTooSmall : t.poolHint(wordPool.length)}
               </p>
             )}
           </section>
@@ -1033,22 +821,6 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, cl
             )}
           </div>
         </div>
-
-        {/* In-page camera modal — only mounted when explicitly opened so the
-            getUserMedia request doesn't fire until the teacher taps. */}
-        {showCamera && (
-          <InPageCamera
-            onCapture={(file) => {
-              setShowCamera(false);
-              void handleOcrFile(file);
-            }}
-            onCancel={() => setShowCamera(false)}
-            onUseGallery={() => {
-              setShowCamera(false);
-              galleryInputRef.current?.click();
-            }}
-          />
-        )}
 
         {/* Review-before-start modal.  Lists every word that will enter
             the question pool with its target-language translation so the
