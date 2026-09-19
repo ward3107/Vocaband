@@ -11,7 +11,10 @@ interface ShareClassLinkModalProps {
   onClose: () => void;
   className: string;
   code: string;
-  /** Optional WhatsApp share — if provided, surfaces a button alongside copy. */
+  /** Optional WhatsApp override. When omitted the modal builds its own
+   *  localized wa.me share, so WhatsApp is ALWAYS offered (previously it
+   *  only appeared when a caller wired this prop — the per-assignment
+   *  share never did, so teachers lost their #1 sharing channel there). */
   onWhatsApp?: () => void;
   /** When set, the share link deep-links the student straight into this
    *  assignment after they log in (URL gets `&assignment=<id>`). */
@@ -68,6 +71,7 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
   const t = teacherDashboardT[language];
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [showMore, setShowMore] = useState(false);
 
   const url = buildJoinUrl(code, assignmentId, playMode);
   const isAssignmentShare = Boolean(assignmentId);
@@ -114,12 +118,46 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
   const assignHeader = assignmentHeaderCopy[language] ?? assignmentHeaderCopy.en;
   const closeAria = language === 'he' ? 'סגירה' : language === 'ar' ? 'إغلاق' : 'Close';
 
-  // Reset copy chips when the modal closes so a re-open shows the
-  // default Copy icons rather than a stale checkmark.
+  // One plain line telling the teacher exactly what happens on the
+  // student's side, so the QR/code/link don't need explaining.
+  const joinHintCopy: Record<Language, string> = {
+    en: 'Students scan the code or open the link — the class code fills in by itself. They just pick their name.',
+    he: 'התלמידים סורקים את הקוד או פותחים את הקישור — קוד הכיתה נכנס לבד. הם רק בוחרים את השם שלהם.',
+    ar: 'يمسح الطلاب الرمز أو يفتحون الرابط — يُدخل رمز الصف تلقائيًا. عليهم فقط اختيار اسمهم.',
+  };
+  const joinHint = joinHintCopy[language] ?? joinHintCopy.en;
+
+  const moreWaysCopy: Record<Language, string> = {
+    en: 'More ways to share',
+    he: 'עוד דרכים לשתף',
+    ar: 'طرق أخرى للمشاركة',
+  };
+  const moreWays = moreWaysCopy[language] ?? moreWaysCopy.en;
+
+  // Student-facing WhatsApp message — localized, because it's read by the
+  // student (or their parent), not the teacher, so the teacher's UI pick
+  // shouldn't leak an English message to a Hebrew/Arabic family.
+  const whatsAppTextCopy: Record<Language, string> = {
+    en: `Join my class on Vocaband 🎓\n${url}\n(class code: ${code})`,
+    he: `הצטרפו לכיתה שלי ב-Vocaband 🎓\n${url}\n(קוד כיתה: ${code})`,
+    ar: `انضموا إلى صفي على Vocaband 🎓\n${url}\n(رمز الصف: ${code})`,
+  };
+  const shareViaWhatsAppInternal = () => {
+    const msg = whatsAppTextCopy[language] ?? whatsAppTextCopy.en;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+  };
+  const handleWhatsApp = () => {
+    (onWhatsApp ?? shareViaWhatsAppInternal)();
+    onClose();
+  };
+
+  // Reset transient UI when the modal closes so a re-open shows the
+  // default Copy icons + collapsed "more ways" rather than stale state.
   useEffect(() => {
     if (!open) {
       setCopiedLink(false);
       setCopiedCode(false);
+      setShowMore(false);
     }
   }, [open]);
 
@@ -179,7 +217,7 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.2, ease: [0.34, 1.56, 0.64, 1] }}
-            className="relative w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-md rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] overflow-y-auto"
             style={{ backgroundColor: "var(--vb-surface)" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -239,111 +277,113 @@ const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
                 </div>
               </div>
 
-              <div className="mt-4 flex items-center gap-2 rounded-xl border bg-[var(--vb-surface-alt)] px-3 py-2.5"
-                   style={{ borderColor: "var(--vb-border)" }}>
-                <Link2 size={16} className="shrink-0 text-indigo-500" />
-                <span
-                  className="flex-1 truncate text-xs font-semibold"
-                  style={{ color: "var(--vb-text-secondary)" }}
-                  title={url}
-                >
-                  {url.replace(/^https?:\/\//, "")}
-                </span>
+              {/* Plain "what the student does" line — the whole point of
+                  the screen in one sentence. */}
+              <p
+                className="mt-4 text-center text-sm font-semibold leading-relaxed"
+                style={{ color: "var(--vb-text-secondary)" }}
+              >
+                {joinHint}
+              </p>
+
+              {/* Primary action: WhatsApp — the channel most teachers here
+                  actually use to reach the class + parents.  Always shown. */}
+              <button
+                onClick={handleWhatsApp}
+                type="button"
+                style={{ touchAction: "manipulation" }}
+                className="mt-4 w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl font-black text-base bg-emerald-500 text-white hover:bg-emerald-600 active:scale-[0.98] transition-all shadow-md shadow-emerald-500/25"
+              >
+                <MessageCircle size={18} />
+                {t.shareWhatsApp}
+              </button>
+
+              {/* Copy link + copy code — the two quick fallbacks. */}
+              <div className="mt-2 grid grid-cols-2 gap-2">
                 <button
                   onClick={() => handleCopy(url, "link")}
                   type="button"
-                  style={{ touchAction: "manipulation" }}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-500 text-white hover:bg-indigo-600 active:scale-[0.97] transition-all"
+                  style={{ touchAction: "manipulation", backgroundColor: "var(--vb-surface-alt)", color: "var(--vb-text-secondary)" }}
+                  className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm hover:opacity-90 active:scale-[0.97] transition-all"
                 >
-                  {copiedLink ? <Check size={14} /> : <Copy size={14} />}
+                  {copiedLink ? <Check size={15} className="text-emerald-500" /> : <Link2 size={15} />}
                   {copiedLink ? t.shareClassLinkCopied : t.shareClassLinkCopy}
                 </button>
-              </div>
-
-              <div className="mt-3 grid grid-cols-2 gap-2">
                 <button
                   onClick={() => handleCopy(code, "code")}
                   type="button"
-                  style={{
-                    touchAction: "manipulation",
-                    backgroundColor: "var(--vb-surface-alt)",
-                    color: "var(--vb-text-secondary)",
-                  }}
+                  style={{ touchAction: "manipulation", backgroundColor: "var(--vb-surface-alt)", color: "var(--vb-text-secondary)" }}
                   className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm hover:opacity-90 active:scale-[0.97] transition-all"
                 >
                   {copiedCode ? <Check size={15} className="text-emerald-500" /> : <Copy size={15} />}
                   {copiedCode ? t.shareClassLinkCopied : t.copyClassCode}
                 </button>
-                {onWhatsApp ? (
-                  <button
-                    onClick={() => {
-                      onWhatsApp();
-                      onClose();
-                    }}
-                    type="button"
-                    style={{ touchAction: "manipulation" }}
-                    className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm bg-emerald-500 text-white hover:bg-emerald-600 active:scale-[0.97] transition-all"
-                  >
-                    <MessageCircle size={15} />
-                    {t.shareWhatsApp}
-                  </button>
-                ) : (
-                  <button
-                    onClick={onClose}
-                    type="button"
-                    style={{ touchAction: "manipulation" }}
-                    className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm bg-indigo-500 text-white hover:bg-indigo-600 active:scale-[0.97] transition-all"
-                  >
-                    {t.shareClassLinkDone}
-                  </button>
-                )}
               </div>
 
-              {/* Post-to-LMS row — Google Classroom + Microsoft Teams.
-                  The primary path for a no-phone computer lab: the link
-                  lands in the app students already have open on their
-                  laptop, so they click straight through to the
-                  code-prefilled login. */}
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => openShare(classroomUrl)}
-                  type="button"
-                  style={{ touchAction: "manipulation" }}
-                  className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.97] transition-all"
-                >
-                  <GraduationCap size={15} />
-                  {t.shareGoogleClassroom}
-                </button>
-                <button
-                  onClick={() => openShare(teamsUrl)}
-                  type="button"
-                  style={{ touchAction: "manipulation" }}
-                  className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 active:scale-[0.97] transition-all"
-                >
-                  <Users size={15} />
-                  {t.shareTeams}
-                </button>
-              </div>
+              {/* Everything else (LMS + printable poster) is tucked behind a
+                  "more ways" toggle so the default screen stays light and
+                  the teacher isn't hunting through six buttons. */}
+              <button
+                onClick={() => setShowMore((v) => !v)}
+                type="button"
+                style={{ touchAction: "manipulation", color: "var(--vb-text-muted)" }}
+                className="mt-4 w-full flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider"
+                aria-expanded={showMore}
+              >
+                <span className="flex-1 h-px" style={{ backgroundColor: "var(--vb-border)" }} />
+                <span>{showMore ? '—' : '+'} {moreWays}</span>
+                <span className="flex-1 h-px" style={{ backgroundColor: "var(--vb-border)" }} />
+              </button>
 
-              {/* Printable poster — only for the canonical class-share
-                  flow. Hidden for assignment shares and Class Minute
-                  sends since those are one-off contexts where a wall
-                  poster doesn't apply. /poster (no .html) sidesteps the
-                  Cloudflare auto-trailing-slash redirect that was
-                  getting cached by the Service Worker. */}
-              {!isAssignmentShare && !isClassMinuteShare && (
-                <button
-                  onClick={() => {
-                    const posterUrl = `/poster?class=${encodeURIComponent(code)}&ref=teacher-${encodeURIComponent(code)}`;
-                    window.open(posterUrl, '_blank', 'noopener');
-                  }}
-                  type="button"
-                  style={{ touchAction: "manipulation", color: "var(--vb-text-secondary)" }}
-                  className="mt-3 w-full inline-flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold hover:bg-[var(--vb-surface-alt)] active:scale-[0.97] transition-all"
-                >
-                  <Printer size={15} className="text-indigo-500" />
-                  {t.printPoster}
-                </button>
+              {showMore && (
+                <div className="mt-3">
+                  {/* Post-to-LMS row — Google Classroom + Microsoft Teams.
+                      The primary path for a no-phone computer lab: the link
+                      lands in the app students already have open on their
+                      laptop, so they click straight through to the
+                      code-prefilled login. */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => openShare(classroomUrl)}
+                      type="button"
+                      style={{ touchAction: "manipulation" }}
+                      className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.97] transition-all"
+                    >
+                      <GraduationCap size={15} />
+                      {t.shareGoogleClassroom}
+                    </button>
+                    <button
+                      onClick={() => openShare(teamsUrl)}
+                      type="button"
+                      style={{ touchAction: "manipulation" }}
+                      className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 active:scale-[0.97] transition-all"
+                    >
+                      <Users size={15} />
+                      {t.shareTeams}
+                    </button>
+                  </div>
+
+                  {/* Printable poster — only for the canonical class-share
+                      flow. Hidden for assignment shares and Class Minute
+                      sends since those are one-off contexts where a wall
+                      poster doesn't apply. /poster (no .html) sidesteps the
+                      Cloudflare auto-trailing-slash redirect that was
+                      getting cached by the Service Worker. */}
+                  {!isAssignmentShare && !isClassMinuteShare && (
+                    <button
+                      onClick={() => {
+                        const posterUrl = `/poster?class=${encodeURIComponent(code)}&ref=teacher-${encodeURIComponent(code)}`;
+                        window.open(posterUrl, '_blank', 'noopener');
+                      }}
+                      type="button"
+                      style={{ touchAction: "manipulation", color: "var(--vb-text-secondary)" }}
+                      className="mt-2 w-full inline-flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold hover:bg-[var(--vb-surface-alt)] active:scale-[0.97] transition-all"
+                    >
+                      <Printer size={15} className="text-indigo-500" />
+                      {t.printPoster}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </motion.div>

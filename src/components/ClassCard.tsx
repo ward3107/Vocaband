@@ -812,6 +812,33 @@ const ClassCard: React.FC<ClassCardProps> = ({
               <span className="hidden sm:inline">{t.rosterShortLabel}</span>
             </button>
           )}
+          <button
+            onClick={() => setShareModalOpen(true)}
+            type="button"
+            style={isPastel
+              ? {
+                  touchAction: 'manipulation',
+                  backgroundColor: 'rgba(255,255,255,0.7)',
+                  color: tintText?.primary ?? 'var(--vb-text-secondary)',
+                  backdropFilter: 'blur(6px)',
+                  WebkitBackdropFilter: 'blur(6px)',
+                }
+              : {
+                  touchAction: 'manipulation',
+                  backgroundColor: 'var(--vb-surface-alt)',
+                  color: 'var(--vb-text-secondary)',
+                }
+            }
+            className={isPastel
+              ? "inline-flex items-center gap-1.5 py-3 px-4 rounded-full font-bold text-sm transition-transform active:scale-95"
+              : "inline-flex items-center gap-1.5 py-2.5 px-3 rounded-lg font-semibold text-sm transition-colors hover:opacity-90"
+            }
+            title={t.shareClassLink}
+            aria-label={t.shareClassLink}
+          >
+            <QrCode size={15} />
+            <span className="hidden sm:inline">{t.shareClassLink}</span>
+          </button>
           {assignments.length > 0 && (
             <button
               onClick={handleToggleAssignments}
