@@ -559,7 +559,20 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
         setSentenceDifficulty(2);
       }
     } catch (error) {
-      handleDbError(error, editingAssignment ? OperationType.UPDATE : OperationType.CREATE, "assignments");
+      // Surface the failure to the teacher AND re-throw so callers never
+      // treat a failed save as a success. `handleDbError` is async: it was
+      // previously called WITHOUT `await`, so its throw floated off as an
+      // unhandled rejection and this function resolved normally — the wizard
+      // then showed a false "Assignment created!" screen while nothing was
+      // actually persisted. Awaiting it logs the full Supabase error
+      // (message | details | hint | code) to the console and rejects.
+      showToast(
+        editingAssignment
+          ? "Couldn't save your changes — please try again."
+          : "Couldn't create the assignment — please try again.",
+        "error",
+      );
+      await handleDbError(error, editingAssignment ? OperationType.UPDATE : OperationType.CREATE, "assignments");
     }
   };
 

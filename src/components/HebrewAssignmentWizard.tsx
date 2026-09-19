@@ -536,7 +536,7 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
             <FooterBar
               primaryDisabled={!canSave}
               primaryLabel={isEditing ? t.saveBtnEdit : t.saveBtnNew}
-              onPrimary={() => handleSaveAssignment()}
+              onPrimary={() => { void Promise.resolve(handleSaveAssignment()).catch(() => {}); }}
               secondaryLabel={t.back}
               onSecondary={() => setStep(2)}
             />
