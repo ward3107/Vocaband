@@ -189,8 +189,15 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
     setSelectedWords(wordIds);
     setAssignmentModes(result.modes);
 
-    // Pass words and modes directly to avoid timing issues with async state updates
-    await handleSaveAssignment(wordIds, result.modes, result.enableCompetition);
+    // Pass words and modes directly to avoid timing issues with async state
+    // updates. Only show the success screen if the save actually succeeded:
+    // the hook now rejects (and toasts) on a failed insert instead of
+    // silently resolving, which used to let us show a false "created!" screen.
+    try {
+      await handleSaveAssignment(wordIds, result.modes, result.enableCompetition);
+    } catch {
+      return; // the hook already surfaced an error toast
+    }
 
     // Show success screen
     setShowSuccess(true);
