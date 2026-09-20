@@ -28,6 +28,12 @@
 import type React from 'react';
 import { useState } from 'react';
 import type { GameRoutesDeps } from '../views/GameRouteContext';
+// Stable per-tab Quick Play clientId — the identity the teacher's leaderboard
+// and raised-hand tracking key on. NEVER socket.id (ephemeral + unknown to the
+// teacher), or the 🆘 "Show my teacher" hand can't be matched or cleared.
+// Imported from the dependency-free util (not useQuickPlaySocket) so this
+// wiring doesn't pull socket.io into its chunk.
+import { readStoredClientId } from '../utils/quickPlayClientId';
 import { useGameRoundOptions } from './useGameRoundOptions';
 import { useFeedbackTracking } from './useFeedbackTracking';
 import { useSpeechVoiceManager } from './useSpeechVoiceManager';
@@ -303,7 +309,7 @@ export function useGameRouteDeps(args: UseGameRouteDepsArgs): GameRoutesDeps {
     speakWord, speak, shuffle,
     // In-game 🆘 help button — feeds QuickPlayHelpButton mounted inside GameActiveView.
     quickPlaySocket: socket,
-    quickPlayStudentUid: socket?.id ?? null,
+    quickPlayStudentUid: readStoredClientId(),
     showTranslation: qpShowTranslation,
     setShowTranslation: setQpShowTranslation,
   };

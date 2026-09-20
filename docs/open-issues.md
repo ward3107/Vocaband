@@ -186,7 +186,7 @@ Items marked **(top-5)** are landing on `claude/quick-play-game-flow-2rpPk`. Eve
 > Reconciled this section against `src/`. Grep + file-inspection findings:
 >
 > - **✅ 11 items already shipped** (with file evidence): A1 dead-session screens (`src/views/QuickPlayExitScreens.tsx`), A3 in-app browser warning (`src/components/InAppBrowserWarning.tsx`), A5 Android keyboard `scrollIntoView` (`QuickPlayStudentView.tsx:711-713`), A6 autocorrect (`QuickPlayStudentView.tsx:696-697`), B1 Get Ready screen (`src/components/QuickPlayGetReady.tsx`), B2 iOS audio unlock (`src/utils/primeAudio.ts`), C5 progress bar (`src/components/game/GameProgress.tsx`), C6 streak indicator (`src/components/game/AnswerStreakBadge.tsx` + `src/hooks/useAnswerStreak.ts`), D1 endgame card (`src/components/QuickPlayEndgameCard.tsx`), E1 kid-speak error toasts (all `showToast(...)` calls in `QuickPlayStudentView.tsx` route through localized keys with emoji), E2 complete locale coverage (`src/locales/student/quick-play.ts` has EN + HE + AR + RU).
-> - **❌ 3 items confirmed truly open** (tagged `**❌ OPEN**` inline below): A4 teacher/class info on join screen, A10 edit-name link on later steps, C1 🆘 in-game help button.
+> - **❌ 2 items still open** (tagged `**❌ OPEN**` inline below): A4 teacher/class info on join screen, A10 edit-name link on later steps. (C1 🆘 in-game help button has since **shipped** — PR #1343 + the raise-hand relay follow-up on `claude/student-interface-improvements-3xunbs`.)
 > - **🟡 2 items explicitly deferred by an earlier decision:** B5 real waiting room, C2 better right/wrong feedback.
 > - Remaining unmarked items (A2, A7, A8, A9, B3, B4, C3, C4, C7, C8, C9, D2, D3, E3, E4, all of section F) were **not** audited — assume "unknown" until re-verified against code.
 >
@@ -215,7 +215,7 @@ Items marked **(top-5)** are landing on `claude/quick-play-game-flow-2rpPk`. Eve
 
 ### C. During gameplay
 
-- **❌ OPEN — No in-game help button** **(top-5)** — Many kids freeze when stuck and don't know how to ask. Add a floating 🆘 button bottom-right that opens: "I can't hear the word" (replays audio + volume tip), "The game looks frozen" (forces reconnect), "I can't read this" (toggles translation), "Show my teacher" (raises flag on teacher dashboard). **Note (2026-08-07 audit):** the only top-5 item that did NOT actually ship on `claude/quick-play-game-flow-2rpPk` — every other top-5 landed.
+- **✅ SHIPPED — In-game help button** **(top-5)** — a floating 🆘 button opens: "I can't hear the word" (replays audio + volume tip), "The game looks frozen" (forces reconnect), "I can't read this" (toggles translation), "Show my teacher" (alerts the teacher monitor). The button + first three (client-only) actions shipped in **PR #1343** (`QuickPlayHelpButton.tsx`, mounted in `GameActiveView.tsx`). **"Show my teacher"** stayed a dead path until the follow-up on `claude/student-interface-improvements-3xunbs`: the client emitted `qp:student:raise-hand` and the teacher monitor listened, but `server.ts` never relayed it, and the student identified itself by the ephemeral `socket.id` instead of the stable `clientId` the teacher keys on. The follow-up adds the **server raise-hand relay** (`STUDENT_RAISE_HAND` → `HAND_RAISED` to a teacher-only room; `TEACHER_ACK_HELP` → `HAND_CLEARED`, incl. clear-all) and fixes the **student identity** (`readStoredClientId()`), so the raised hand now actually reaches — and clears on — the teacher's screen.
 - **Visible correct/wrong feedback boost** — Today's feedback in `GameActiveView.tsx` is a border colour change + framer animation. For 9–13yo, kids need bigger payoff: confetti on correct + a floating "+10 XP!" particle. On wrong: red shake + correct answer highlighted + word re-spoken. Touches every game mode component, so it's a multi-day sweep — not for this session.
 - **Drag-and-drop fights with page scroll** — Sentence Builder + matching modes on mobile. Add `touch-action: none` to draggables + lock body scroll during gameplay.
 - **Double-tap zoom + long-press context menu** — Disable for game surfaces via `touch-action: manipulation` + `user-select: none` + `-webkit-touch-callout: none`. Already partially done; audit every game mode.
@@ -254,7 +254,7 @@ Items marked **(top-5)** are landing on `claude/quick-play-game-flow-2rpPk`. Eve
 
 1. ✅ **SHIPPED** — Friendly full-page error screens for dead sessions (`src/views/QuickPlayExitScreens.tsx`).
 2. ✅ **SHIPPED** — iOS audio unlock + "Get Ready" intro screen (`src/utils/primeAudio.ts` + `src/components/QuickPlayGetReady.tsx`).
-3. ❌ **STILL OPEN** — Floating "🆘 Help" button during Quick Play. Not found in code. **The only top-5 that didn't land** — best next candidate for a new-component mission.
+3. ✅ **SHIPPED** — Floating "🆘 Help" button during Quick Play. The button + 3 self-service actions landed in **PR #1343**; the "Show my teacher" raise-hand path was completed later (server relay + `clientId` identity fix) on `claude/student-interface-improvements-3xunbs`.
 4. 🟡 **DEFERRED** (original decision stands) — Better "right/wrong" feedback + score animation (touches every game mode component; multi-day).
 5. 🟡 **DEFERRED** (original decision stands) — Real waiting room (needs teacher-start gate first).
 
