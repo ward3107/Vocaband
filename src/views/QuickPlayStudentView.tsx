@@ -32,6 +32,11 @@ interface QuickPlaySession {
    *  assignment built at join time is tagged so App.tsx routes the
    *  student to HebrewModeSelectionView + the Hebrew game views. */
   subject?: 'english' | 'hebrew';
+  /** A4 — teacher display info so the join screen can show whose class this
+   *  is (helps a student catch a wrong-QR scan). Null when the server
+   *  couldn't resolve it. */
+  teacherName?: string | null;
+  teacherAvatar?: string | null;
 }
 
 interface QuickPlayStudentViewProps {
@@ -111,7 +116,10 @@ export default function QuickPlayStudentView({
   // English and the translation target keeps its existing default
   // (GameModeIntroView only mirrors HE/AR into targetLanguage), so
   // word translations still show.
-  const [selectedLang, setSelectedLang] = useState<"en" | "he" | "ar">("en");
+  // Init from the current UI language (not hard-coded EN) so the pill
+  // highlight is correct when the student re-enters this screen — e.g. via
+  // the mode-picker "Change name" (A10) after already choosing HE/AR.
+  const [selectedLang, setSelectedLang] = useState<"en" | "he" | "ar">(qpLanguage);
   // Fatal-error gate. When set, the join body is replaced by a
   // friendly full-page error screen instead of a stale form + toast.
   const [fatalError, setFatalError] = useState<QuickPlayErrorKind | null>(null);
@@ -678,6 +686,23 @@ export default function QuickPlayStudentView({
                 <p className="ios-body" style={{ color: "var(--ios-label-secondary)" }}>
                   {qpT.subheadWords(quickPlayActiveSession.words.length)}
                 </p>
+                {/* A4 — whose class this is, so a student who scanned the wrong
+                    QR notices before joining. Shown only when the server could
+                    resolve the teacher (the direct-SELECT path hides it). */}
+                {quickPlayActiveSession.teacherName && (
+                  <div
+                    dir={qpIsRTL ? 'rtl' : 'ltr'}
+                    className={`mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1.5 ${qpIsRTL ? 'flex-row-reverse' : ''}`}
+                    style={{ background: "var(--ios-fill-tertiary)" }}
+                  >
+                    {quickPlayActiveSession.teacherAvatar && (
+                      <span className="text-lg leading-none" aria-hidden>{quickPlayActiveSession.teacherAvatar}</span>
+                    )}
+                    <span className="ios-footnote font-bold" style={{ color: "var(--ios-label)" }}>
+                      {qpT.joinClassOfPrefix}<bdi>{quickPlayActiveSession.teacherName}</bdi>
+                    </span>
+                  </div>
+                )}
                 {/* Plain "what to do" line — kids kept landing here unsure
                     which field mattered; this points them straight at the
                     name + Start. */}

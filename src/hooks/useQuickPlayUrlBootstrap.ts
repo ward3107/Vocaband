@@ -86,6 +86,12 @@ interface QuickPlaySessionShape {
   /** Which corpus the wordIds reference. Default 'english' for sessions
    *  created before the 20260510_quick_play_subject migration ran. */
   subject?: 'english' | 'hebrew';
+  /** A4 — teacher display info, from the service-role join/lookup endpoints,
+   *  so the join screen can show whose class this is. Absent on the direct
+   *  RLS SELECT path (guests can't read the teacher); the UI hides the badge
+   *  when null. */
+  teacherName?: string | null;
+  teacherAvatar?: string | null;
 }
 
 export interface UseQuickPlayUrlBootstrapParams {
@@ -523,6 +529,8 @@ export function useQuickPlayUrlBootstrap(params: UseQuickPlayUrlBootstrapParams)
           sessionCode: data.session_code,
           wordIds: data.word_ids,
           words: allWords,
+          teacherName: typeof data.teacherName === 'string' ? data.teacherName : null,
+          teacherAvatar: typeof data.teacherAvatar === 'string' ? data.teacherAvatar : null,
           allowedModes: data.allowed_modes || undefined,
           // ai_sentences is populated by the teacher's session-create flow
           // (see generateAndStoreQuickPlayAiSentences).  Empty / null here

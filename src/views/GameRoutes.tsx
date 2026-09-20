@@ -84,6 +84,16 @@ export function GameRoute() {
           petNextStage={petNextStage}
           petClaimableMilestone={petClaimableMilestone}
           onClaimPetMilestone={onClaimPetMilestone}
+          onEditName={user?.isGuest ? () => {
+            // A10 — let a Quick Play guest fix a name typo without losing their
+            // avatar (App state) or language (global). Clear the name + the
+            // per-session lock so the join form re-renders editable, then route
+            // back to it.
+            try { localStorage.removeItem('vocaband_qp_guest'); } catch { /* storage unavailable */ }
+            setShowModeSelection(false);
+            setQuickPlayStudentName('');
+            setView('quick-play-student');
+          } : undefined}
         />
       </LazyWrapper>
     );

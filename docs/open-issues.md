@@ -186,7 +186,7 @@ Items marked **(top-5)** are landing on `claude/quick-play-game-flow-2rpPk`. Eve
 > Reconciled this section against `src/`. Grep + file-inspection findings:
 >
 > - **✅ 11 items already shipped** (with file evidence): A1 dead-session screens (`src/views/QuickPlayExitScreens.tsx`), A3 in-app browser warning (`src/components/InAppBrowserWarning.tsx`), A5 Android keyboard `scrollIntoView` (`QuickPlayStudentView.tsx:711-713`), A6 autocorrect (`QuickPlayStudentView.tsx:696-697`), B1 Get Ready screen (`src/components/QuickPlayGetReady.tsx`), B2 iOS audio unlock (`src/utils/primeAudio.ts`), C5 progress bar (`src/components/game/GameProgress.tsx`), C6 streak indicator (`src/components/game/AnswerStreakBadge.tsx` + `src/hooks/useAnswerStreak.ts`), D1 endgame card (`src/components/QuickPlayEndgameCard.tsx`), E1 kid-speak error toasts (all `showToast(...)` calls in `QuickPlayStudentView.tsx` route through localized keys with emoji), E2 complete locale coverage (`src/locales/student/quick-play.ts` has EN + HE + AR + RU).
-> - **❌ 2 items still open** (tagged `**❌ OPEN**` inline below): A4 teacher/class info on join screen, A10 edit-name link on later steps. (C1 🆘 in-game help button has since **shipped** — PR #1343 + the raise-hand relay follow-up on `claude/student-interface-improvements-3xunbs`.)
+> - **✅ 0 items still open** — the last three (A4 teacher/class info on the join screen, A10 edit-name link, C1 🆘 in-game help button) have all **shipped** on `claude/student-interface-improvements-3xunbs` (C1 also needed the raise-hand relay follow-up; A4 needed a server-side teacher enrich).
 > - **🟡 2 items explicitly deferred by an earlier decision:** B5 real waiting room, C2 better right/wrong feedback.
 > - Remaining unmarked items (A2, A7, A8, A9, B3, B4, C3, C4, C7, C8, C9, D2, D3, E3, E4, all of section F) were **not** audited — assume "unknown" until re-verified against code.
 >
@@ -197,13 +197,13 @@ Items marked **(top-5)** are landing on `claude/quick-play-game-flow-2rpPk`. Eve
 - **Friendly error screens for dead sessions** **(top-5)** — `session_not_found` / `session_inactive` today surface as a toast over an empty join form; students see the toast briefly and then a blank page. Need a full-page friendly screen: "🎮 This game already ended. Ask your teacher for a new code." + back button. Path: `src/views/QuickPlayStudentView.tsx:120-139`.
 - **Camera permission denied flow** — Browser default error after they decline. Need a screen showing how to re-grant camera permission, per OS (iOS Safari vs Android Chrome).
 - **In-app browser detection (Facebook/Instagram/TikTok WebView)** — Already exists for the main app via `InAppBrowserWarning.tsx`. Verify it fires on Quick Play join URL too; localStorage isolation in those browsers silently breaks resume + clientId persistence.
-- **❌ OPEN — Two QR codes on the board** — A student scanning the wrong one joins the wrong leaderboard with no indication. The join screen should show the **class name + teacher avatar**, not just the session code.
+- **✅ SHIPPED — Two QR codes on the board** — the student join screen now shows the **teacher's name + avatar** ("Class of …") so a wrong-QR scan is visible before joining. Quick Play sessions aren't linked to a class and guests are RLS-blocked from `public.users`, so the teacher identity is enriched **server-side** (service-role read) on the session-lookup / fast-join endpoints and threaded to the join screen; shown when resolved, hidden otherwise (e.g. the direct-SELECT fallback path).
 - **Keyboard covers the input on small Android screens** — `quick-play-name-input` should `scrollIntoView` on focus + the Continue button should be sticky.
 - **Autocorrect changes their name** — Add `autoCorrect="off" spellCheck="false"` to the input. `autoCapitalize="words"` is already set.
 - **Same-name collision** — Today's check is server-confirm-after-tap. Add a live "✅ Available / ⚠️ Taken" check while typing. Tradeoff: extra socket roundtrips; could debounce.
 - **Avatar grid has no "more below" indicator** — Kids think there are only 6 avatars because the grid scrolls inside the card.
 - **Avatar selected-state is too subtle** — Add a thicker ring + checkmark + small bounce so they know which one is picked.
-- **❌ OPEN — No "edit name" link on later steps** — Once they tap Continue from the name form, they can't go back to fix a typo without losing avatar/language selection.
+- **✅ SHIPPED — "Edit name" on later steps** — the mode-selection screen (where a Quick Play guest lands after Continue) now has an "Edit name" button that returns to the join form with the name field editable, **keeping avatar + language** (avatar is App state, language is global). The language pill also initialises from the current UI language so it's correct on re-entry.
 
 ### B. The "join → game" gap
 
