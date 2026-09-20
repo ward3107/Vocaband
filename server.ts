@@ -6343,6 +6343,33 @@ Quality rules:
   const QP_PUBLIC_SESSION_COLUMNS =
     "id, session_code, word_ids, allowed_modes, ai_sentences, custom_words, subject, is_active";
 
+  // A4 — attach the teacher's display name + avatar so a student can confirm
+  // they scanned the RIGHT class's QR *before* joining. Service-role read of
+  // public.users (anonymous guests are RLS-blocked from that table). The
+  // caller must SELECT teacher_uid alongside the public columns; it is used
+  // only for this lookup and is stripped from the response (never exposed).
+  // Best-effort: on any lookup failure the teacher fields come back null and
+  // the join screen simply omits the badge.
+  async function qpAttachTeacher(row: unknown): Promise<Record<string, unknown> | null> {
+    if (!row || typeof row !== "object") return null;
+    const { teacher_uid, ...pub } = row as { teacher_uid?: string | null } & Record<string, unknown>;
+    let teacherName: string | null = null;
+    let teacherAvatar: string | null = null;
+    if (teacher_uid && supabaseAdmin) {
+      try {
+        const { data: t } = await supabaseAdmin
+          .from("users")
+          .select("display_name, avatar")
+          .eq("uid", teacher_uid)
+          .maybeSingle();
+        const tt = t as { display_name?: string | null; avatar?: string | null } | null;
+        teacherName = tt?.display_name ?? null;
+        teacherAvatar = tt?.avatar ?? null;
+      } catch { /* best-effort — omit teacher info rather than fail the lookup */ }
+    }
+    return { ...pub, teacherName, teacherAvatar };
+  }
+
   // ─── Quick Play session lookup (public, service-role) ─────────────
   // Frontend bootstrap calls this as a fallback when the direct
   // Supabase REST query fails — typically because:
@@ -6420,7 +6447,7 @@ Quality rules:
     try {
       const { data, error } = await supabaseAdmin
         .from("quick_play_sessions")
-        .select(QP_PUBLIC_SESSION_COLUMNS)
+        .select(`${QP_PUBLIC_SESSION_COLUMNS}, teacher_uid`)
         .eq("session_code", code.toUpperCase())
         .eq("is_active", true)
         .maybeSingle();
@@ -6431,7 +6458,7 @@ Quality rules:
       if (!data) {
         return res.status(404).json({ error: "Session not found or no longer active" });
       }
-      return res.json(data);
+      return res.json(await qpAttachTeacher(data));
     } catch (err) {
       console.error("[qp-session-lookup] exception:", err);
       return res.status(500).json({ error: "Internal error" });
@@ -6478,7 +6505,7 @@ Quality rules:
       const [lookup, signIn] = await Promise.all([
         supabaseAdmin
           .from("quick_play_sessions")
-          .select(QP_PUBLIC_SESSION_COLUMNS)
+          .select(`${QP_PUBLIC_SESSION_COLUMNS}, teacher_uid`)
           .eq("session_code", sessionCode)
           .eq("is_active", true)
           .maybeSingle(),
@@ -6505,7 +6532,7 @@ Quality rules:
           expires_in: s.expires_in,
           token_type: s.token_type,
         },
-        qpSession: lookup.data,
+        qpSession: await qpAttachTeacher(lookup.data),
       });
     } catch (err) {
       console.error("[qp-join] exception:", err);

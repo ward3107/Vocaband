@@ -34,6 +34,9 @@ export interface QuickPlayStrings {
   /** One-line "what to do" instruction under the headline, so a student
    *  on the join screen knows the task is: type a name, then tap Start. */
   joinInstruction: string;
+  /** A4 — prefix before the teacher's name on the join screen, e.g.
+   *  "Class of " + <teacher name>. Trailing space is intentional. */
+  joinClassOfPrefix: string;
   yourNameLabel: string;
   namePlaceholder: string;
   /** "You already joined as " — `<strong><bdi>{name}</bdi></strong>` is
@@ -123,6 +126,7 @@ export const quickPlayT: Record<Language, QuickPlayStrings> = {
     headline: "Quick Play!",
     subheadWords: (count) => `${count} words • No login needed`,
     joinInstruction: "Type your name, then tap Start 👇",
+    joinClassOfPrefix: "Class of ",
     yourNameLabel: "YOUR NAME",
     namePlaceholder: "Enter your nickname...",
     alreadyJoinedAsPrefix: "You already joined as ",
@@ -186,6 +190,7 @@ export const quickPlayT: Record<Language, QuickPlayStrings> = {
     headline: "משחק מהיר!",
     subheadWords: (count) => `${count} מילים · אין צורך בהתחברות`,
     joinInstruction: "כתבו את השם שלכם ואז לחצו על ״התחלה״ 👇",
+    joinClassOfPrefix: "כיתה של ",
     yourNameLabel: "השם שלך",
     namePlaceholder: "הכניסו כינוי...",
     alreadyJoinedAsPrefix: "כבר הצטרפת בשם ",
@@ -249,6 +254,7 @@ export const quickPlayT: Record<Language, QuickPlayStrings> = {
     headline: "لعب سريع!",
     subheadWords: (count) => `${count} كلمات · لا حاجة لتسجيل الدخول`,
     joinInstruction: "اكتب اسمك، ثم اضغط ابدأ 👇",
+    joinClassOfPrefix: "صف ",
     yourNameLabel: "اسمك",
     namePlaceholder: "أدخل اسمك المستعار...",
     alreadyJoinedAsPrefix: "لقد انضممت بالفعل باسم ",

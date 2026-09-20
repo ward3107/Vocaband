@@ -50,12 +50,16 @@ interface GameModeSelectionViewProps {
   petNextStage: PetMilestone | null;
   petClaimableMilestone: PetMilestone | null;
   onClaimPetMilestone: (milestone: PetMilestone) => void;
+  /** A10 — Quick Play only: return to the join screen to fix a name typo,
+   *  keeping avatar + language. Undefined for logged-in students. */
+  onEditName?: () => void;
 }
 
 export default function GameModeSelectionView({
   activeAssignment, studentProgress, isQuickPlayGuest, quickPlayCompletedModes,
   setGameMode, setShowModeSelection, setShowModeIntro, handleExitGame,
   petDisplayName, petXp, petCurrentStage, petNextStage, petClaimableMilestone, onClaimPetMilestone,
+  onEditName,
 }: GameModeSelectionViewProps) {
   const { language, dir, isRTL } = useLanguage();
   const reduced = useReducedMotion();
@@ -178,6 +182,18 @@ export default function GameModeSelectionView({
             {completedCount}/{totalModes} {qs.modesDone}
             <span className="block text-[10px] text-[color:var(--ios-label-secondary)]">{qs.round} {currentRound}/{MAX_ASSIGNMENT_ROUNDS}</span>
           </span>
+        )}
+        {isQuickPlayGuest && onEditName && (
+          <button
+            type="button"
+            onClick={onEditName}
+            title={t.editName}
+            aria-label={t.editName}
+            className={`${ARCADE_BUTTON_TOUCH} flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-[var(--ios-fill-tertiary)] px-3 text-[color:var(--ios-label)]`}
+          >
+            <Edit3 size={16} />
+            <span className="text-xs font-bold">{t.editName}</span>
+          </button>
         )}
         <StudentLangButton className="shrink-0" />
       </header>

@@ -46,6 +46,8 @@ export interface GameModesT {
   startHereBadge: string;
   thenPractiseWith: string;
   closeAria: string;
+  /** A10 — Quick Play "return to the join screen to fix my name" button. */
+  editName: string;
   modes: Record<GameModeId, GameModeStrings>;
 }
 
@@ -56,6 +58,7 @@ export const gameModesT: Record<Language, GameModesT> = {
     startHereBadge: "Start here · Learn first",
     thenPractiseWith: "Then practise with",
     closeAria: "Close mode selection",
+    editName: "Edit name",
     modes: {
       flashcards: {
         name: "Flashcards",
@@ -131,6 +134,7 @@ export const gameModesT: Record<Language, GameModesT> = {
     startHereBadge: "התחל כאן · קודם לומדים",
     thenPractiseWith: "ואז תרגל עם",
     closeAria: "סגור בחירת מצב",
+    editName: "עריכת שם",
     modes: {
       flashcards: {
         name: "כרטיסיות",
@@ -206,6 +210,7 @@ export const gameModesT: Record<Language, GameModesT> = {
     startHereBadge: "ابدأ هنا · تعلم أولاً",
     thenPractiseWith: "ثم تدرب مع",
     closeAria: "إغلاق اختيار الوضع",
+    editName: "تعديل الاسم",
     modes: {
       flashcards: {
         name: "البطاقات",
