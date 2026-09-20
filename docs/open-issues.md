@@ -4,6 +4,58 @@ Tracking known issues with their diagnosis status.
 
 ---
 
+## Bug — assignment "created" but never saved (false success on DB error) — ✅ FIXED 2026-09-19 (PR #1400)
+
+**Status:** Fixed client-side and **live in prod** (verified: commit `6ce28c7`,
+"Deploy to Cloudflare Workers" green at 21:35, bundle `index-BH7tgGT5.js` serving).
+The teacher tapped "Create", saw the success screen, but the assignment was never
+persisted — so it never appeared for the teacher **or** the students.
+
+**Root cause:** `handleSaveAssignment` (`src/hooks/useTeacherActions.ts`) called
+the async `handleDbError(...)` **without `await`** inside its `catch`. On a DB / RLS
+failure the insert rejected, but the un-awaited `handleDbError` promise threw
+*after* the `catch` had already returned — the rejection floated off as an unhandled
+rejection and the caller resolved as if the save had succeeded. The wizard then
+showed its "Created!" screen unconditionally.
+
+**Fix (client only — no `src/core/` or `supabase/` changes):**
+- `useTeacherActions.ts` — `await handleDbError(...)` so a DB failure propagates,
+  and a real error toast fires ("Couldn't create the assignment — please try again.").
+- `CreateAssignmentWizard.tsx` — `handleWizardComplete` wraps the save in try/catch
+  and shows the success screen only when the save resolved.
+- `HebrewAssignmentWizard.tsx` — same guard on its save call.
+
+**Note:** this fixes the *false success*. Live DB / RLS / migrations were verified
+healthy (read-only), so the visible bug was the fake-success. If a specific account
+still hits a genuine insert failure, it now surfaces as a real error toast instead of
+a silent no-op — capture that toast text to diagnose any residual cause (a server-side
+fix there would touch PROTECTED `supabase/` and needs owner approval).
+
+---
+
+## UX — class-code create/share window redesigned (WhatsApp-first + QR) — ✅ SHIPPED 2026-09-19 (PR #1400)
+
+**Status:** Shipped + live in prod. The share flow already existed (QR, copy-code,
+student auto-prefill) but was buried and WhatsApp was conditional. Redesigned for
+discoverability, and WhatsApp is now always available.
+
+What landed (all client-side):
+- **"Invite students" button** on the class card (`ClassCard.tsx`) opens the share
+  modal directly — previously reachable only indirectly.
+- **WhatsApp-first `ShareClassLinkModal.tsx`** — a prominent full-width WhatsApp share
+  as the primary action, always available (an internal localized `wa.me` builder is
+  used when no external handler is passed, including per-assignment shares); a one-line
+  "how students join" explainer (scan → code auto-fills); a copy-link / copy-code row;
+  and Google Classroom / Teams / poster tucked behind a "more ways to share" toggle.
+- **Student auto-join** — a scanned `/student?class=CODE` deep-link prefills the code
+  automatically; removed a duplicated `?class=` prefill effect in
+  `StudentAccountLoginView.tsx`.
+
+**⚠️ This reverses the 2026-05-19 "WhatsApp-first homework links — REJECTED" decision**
+(Beat-Kahoot Tier 2 #4 below) — done at the owner's explicit request in this session.
+
+---
+
 ## Non-issue — CSP "inline script blocked" + `cf-cache-status: HIT` on the shell (2026-09-13) — ✅ HARMLESS, working as designed
 
 **If a teacher (or you) sees this in the browser console, it is not a bug — no action needed:**
@@ -275,7 +327,7 @@ Strategic roadmap for making Vocaband structurally beat Kahoot in Israeli school
 - **QR / nickname join** — Quick Play already exists.
 - **Curriculum labelling structure** — `Set 1 / Set 2 / Set 3 / Custom` type already in place across the codebase.
 - **Class Minute — daily 60-second drill** (PR #587, follow-up class-switch race fix #588, shipped 2026-05-12; tile re-enabled in prod 2026-05-19) — `ClassMinuteCard.tsx` dashboard tile + `?play=class-minute` teacher share link via `ShareClassLinkModal`. SRS-first word source, falls back to assignments then `SET_2_WORDS`. Saves with `mode='class-minute'`; dashboard derives `doneToday` + streak from `studentProgress` with no extra round-trip. The card now renders unflagged on both the legacy and STRUCTURE_UX render branches of `StudentDashboardView.tsx`, gated only on the `onStartClassMinute` callback (wired from `StudentDashboardSection.tsx`). `ReviewQueueCard` is also unflagged on the same wiring.
-- **Hot Seat — single-device pass-around mode** (PR #589, shipped 2026-05-12) — `HotSeatView.tsx` owns setup → interstitial → question → podium phases. Reuses Classic-style multi-choice mechanics, in-memory scoring (no DB writes — players aren't logged-in students). v1 uses `SET_2_WORDS` only; per-assignment word picker is a deferred v2. Tile is gated `!isHebrew` (mirrors Vocabagrut precedent).
+- **Hot Seat — single-device pass-around mode** (PR #589, shipped 2026-05-12) — `HotSeatView.tsx` owns setup → interstitial → question → podium phases. Reuses Classic-style multi-choice mechanics, in-memory scoring (no DB writes — players aren't logged-in students). ~~v1 uses `SET_2_WORDS` only; per-assignment word picker is a deferred v2.~~ **✅ v2 shipped 2026-09-19 (PR #1399):** Hot Seat's bespoke word UI was replaced with the shared `WordPicker`, and `seedFromAssignment` now seeds from any assignment via `resolveAssignmentWords` + `mergeWordsById` — so the full picker (and per-assignment words) is available, matching Vocabulary set-builder and Class Show. Tile is gated `!isHebrew` (mirrors Vocabagrut precedent).
 
 These items are DONE. Don't rebuild them — surface and market them.
 
@@ -294,8 +346,12 @@ These items are DONE. Don't rebuild them — surface and market them.
 
 ### Tier 2 — Distribution moats
 
-**4. WhatsApp-first homework links — REJECTED 2026-05-19**
-- Decided not to ship.  Existing share-link flow (commits 829bcae +
+**4. WhatsApp-first homework links — ~~REJECTED 2026-05-19~~ → ✅ SHIPPED 2026-09-19 (PR #1400)**
+- **UPDATE 2026-09-19:** the rejection below was **overridden by the owner** and
+  shipped in PR #1400 — WhatsApp is now the primary full-width share action on the
+  class-code modal (and always available). See the "class-code … WhatsApp-first"
+  entry at the top of this file. The original rejection is kept for the record.
+- ~~Decided not to ship.~~  Existing share-link flow (commits 829bcae +
   594fc76) is the floor; no "Send on WhatsApp" primary button planned.
 - Original framing kept below for the historical record / future-you:
   Audit existing share-link flow.  Verify: does the WhatsApp deep-link
