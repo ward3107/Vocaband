@@ -144,6 +144,10 @@ import {
   type QpStudentJoinPayload,
   type QpScoreUpdatePayload,
   type QpReactionSendPayload,
+  type StudentRaiseHandPayload,
+  type HandRaisedPayload,
+  type TeacherAckHelpPayload,
+  type HandClearedPayload,
   type QpStudentLeavePayload,
   type QpTeacherObservePayload,
   type QpTeacherKickPayload,
@@ -1913,6 +1917,10 @@ async function startServer() {
     // the leaderboard reincarnated them.  Lives only as long as the
     // in-memory session does (cleared on TEACHER_END / idle sweep).
     kickedClientIds: Set<string>;
+    // In-game 🆘 help: clientIds with an outstanding raised hand. Best-effort
+    // (the client owns the 60s auto-expire); lets TEACHER_ACK_HELP "all" know
+    // whom to clear. A stale entry at most causes a harmless redundant clear.
+    raisedHands: Set<string>;
     // Red vs Blue team mode. Off by default — when off the engine behaves
     // exactly as before (no team stamped, no team signal sent). Toggled
     // live by the teacher; in-memory only, like the round config.
@@ -2123,8 +2131,16 @@ async function startServer() {
   // 15/sec leaves headroom for timer jitter without letting a tampered
   // client flood the room's position state.
   const qpMoveLimiter       = createSocketRateLimiter(1_000,   15, 5 * 60_000); //  15 moves/s/socket
+  // In-game 🆘 "raise hand": max 5 emits/60s/socket. Excess silently dropped
+  // (never errored back to the kid), same discipline as the reaction floor.
+  const qpRaiseHandLimiter  = createSocketRateLimiter(60_000,   5, 5 * 60_000); //   5 raises/min/socket
 
   const qpIo = io.of(QUICK_PLAY_NS);
+
+  // Teacher-only sub-room. HAND_RAISED carries a student's NAME, so it must
+  // reach the session's teacher(s) — across VMs via the Redis adapter —
+  // without landing on peer students' sockets (who only join `sessionCode`).
+  const qpTeacherRoom = (sessionCode: string) => `${sessionCode}::teachers`;
 
   // Namespace-level auth middleware — unlike `/`, this one is permissive:
   // it only rate-limits the handshake so one box can't flood the server
@@ -3027,6 +3043,7 @@ async function startServer() {
         teacherSockets: new Set(),
         lastTeacherSeenAt: Date.now(),
         kickedClientIds: new Set(),
+        raisedHands: new Set(),
         teamMode: false,
         currentRace: null,
         currentSpeed: null,
@@ -3398,6 +3415,69 @@ async function startServer() {
       });
     });
 
+    // ─── In-game 🆘 help button ──────────────────────────────────────────
+    // Student "Show my teacher": raise a hand for help. The emit comes from
+    // the App-level game socket, which may not have called STUDENT_JOIN, so
+    // self-heal the socket→clientId mapping exactly like REACTION_SEND above.
+    // HAND_RAISED carries the student's name → teacher sub-room ONLY (never
+    // peer students); record the raise so a later "clear all" knows whom to clear.
+    socket.on(QP_EVENTS.STUDENT_RAISE_HAND, (payload: StudentRaiseHandPayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, studentUid } = payload;
+      if (!isValidSessionCode(sessionCode) || !isValidClientId(studentUid)) return;
+
+      const state = qpSessions.get(sessionCode);
+      if (!state) return;
+
+      const owned = state.socketToClient.get(socket.id);
+      if (owned !== studentUid) {
+        if (state.students.has(studentUid)) {
+          state.socketToClient.set(socket.id, studentUid);
+          socket.join(sessionCode);
+        } else {
+          return;
+        }
+      }
+
+      const entry = state.students.get(studentUid);
+      if (!entry) return;
+
+      // Per-socket throttle (5/60s) — spam silently dropped, never errored.
+      if (!qpRaiseHandLimiter.checkLimit(socket.id)) return;
+
+      state.raisedHands.add(studentUid);
+      const raised: HandRaisedPayload = {
+        studentUid,
+        name: entry.nickname,
+        raisedAt: Date.now(),
+      };
+      qpIo.to(qpTeacherRoom(sessionCode)).emit(QP_SERVER_EVENTS.HAND_RAISED, raised);
+    });
+
+    // Teacher acknowledges a raised hand — one clientId, or "all". Authorized
+    // by prior TEACHER_OBSERVE (this socket is in teacherSockets, which the
+    // observe path token-verified), so no token rides this payload. HAND_CLEARED
+    // carries only a clientId (no PII) → broadcast to the room; each student's
+    // hook clears only its own hand (the WHEEL_ASK cross-VM filter pattern).
+    socket.on(QP_EVENTS.TEACHER_ACK_HELP, (payload: TeacherAckHelpPayload) => {
+      if (!payload || typeof payload !== "object") return;
+      const { sessionCode, studentUid } = payload;
+      if (!isValidSessionCode(sessionCode)) return;
+      if (studentUid !== "all" && !isValidClientId(studentUid)) return;
+
+      const state = qpSessions.get(sessionCode);
+      if (!state) return;
+      if (!state.teacherSockets.has(socket.id)) return;
+      if (!qpTeacherLimiter.checkLimit(socket.id)) return;
+
+      const targets = studentUid === "all" ? [...state.raisedHands] : [studentUid];
+      for (const uid of targets) {
+        state.raisedHands.delete(uid);
+        const cleared: HandClearedPayload = { studentUid: uid };
+        qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.HAND_CLEARED, cleared);
+      }
+    });
+
     // Teacher observe — grants receipt of leaderboard broadcasts + kick
     // authority. Token is verified against the session's teacher_uid.
     socket.on(QP_EVENTS.TEACHER_OBSERVE, async (payload: QpTeacherObservePayload) => {
@@ -3419,6 +3499,9 @@ async function startServer() {
       // the cross-VM `fetchSockets()`) doesn't mistake an observer for a player.
       socket.data.qpRole = "teacher";
       socket.join(sessionCode);
+      // Also join the teacher-only room so raised-hand alerts (which include a
+      // student's name) reach this teacher without leaking to peer students.
+      socket.join(qpTeacherRoom(sessionCode));
       socket.emit(QP_SERVER_EVENTS.LEADERBOARD, {
         sessionCode,
         students: Array.from(state.students.values()),

@@ -62,8 +62,12 @@ import {
   type QpArenaTackledPayload,
   type QpRoughModePayload,
 } from "../core/quickPlayProtocol";
+import { QP_CLIENT_ID_STORAGE_KEY, readStoredClientId } from "../utils/quickPlayClientId";
+// Re-exported for existing importers (e.g. QuickPlayEndgameCard) that read "me"
+// from the leaderboard; the canonical definition lives in the util so read-only
+// consumers don't pull this socket-heavy module into their chunk.
+export { readStoredClientId };
 
-const CLIENT_ID_STORAGE_KEY = "vocaband_qp_client_id";
 const CLIENT_ID_NICK_STORAGE_KEY = "vocaband_qp_client_id_nickname";
 
 // clientId persistence uses sessionStorage instead of localStorage.
@@ -91,23 +95,9 @@ function generateUuid(): string {
   });
 }
 
-// Exported so the game-finished screen can locate "me" in the session
-// leaderboard.  sessionStorage is the source of truth for the tab's
-// clientId (NOT any hook instance's state) — see the updateScore comment
-// below for why the two hook instances can disagree.
-export function readStoredClientId(): string | null {
-  try {
-    const existing = sessionStorage.getItem(CLIENT_ID_STORAGE_KEY);
-    if (existing && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(existing)) {
-      return existing;
-    }
-  } catch { /* private mode etc. */ }
-  return null;
-}
-
 function writeStoredClientId(id: string, nickname: string | null) {
   try {
-    sessionStorage.setItem(CLIENT_ID_STORAGE_KEY, id);
+    sessionStorage.setItem(QP_CLIENT_ID_STORAGE_KEY, id);
     if (nickname) sessionStorage.setItem(CLIENT_ID_NICK_STORAGE_KEY, nickname.toLowerCase());
   } catch { /* fall through — in-memory still works for the tab */ }
 }
