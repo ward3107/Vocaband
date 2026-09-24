@@ -415,6 +415,18 @@ async function getSocket(): Promise<Socket> {
     // occur. Modern browsers (incl. iOS Safari) all support WS over
     // TLS reliably through Cloudflare's edge.
     transports: ["websocket"],
+    // SECURITY (pentest F3): send the logged-in student's Supabase JWT on every
+    // (re)connect so the server can VERIFY identity and attribute Quick Play
+    // progress to the real account. Guests have no session → empty token → the
+    // server treats them as anonymous (`qp:<clientId>`). Fetched fresh per
+    // connect so a refreshed/rotated token is always current; the server never
+    // rejects on a missing/invalid token, so this can't break the connection.
+    auth: (cb: (data: { token: string }) => void) => {
+      import("../core/supabase")
+        .then(({ supabase }) => supabase.auth.getSession())
+        .then(({ data }) => cb({ token: data.session?.access_token ?? "" }))
+        .catch(() => cb({ token: "" }));
+    },
   }) as Socket;
 
   cachedSocket = socket;

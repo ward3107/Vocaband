@@ -306,9 +306,27 @@ async function handleAudioPack(request: Request, env: Env): Promise<Response> {
  * The client sends STRUCTURED DATA, never HTML; we build + escape the HTML
  * here (worksheetTemplate) so a malicious word/title can't inject markup.
  */
+// SECURITY (pentest F4): each /api/pdf call launches a real Chromium via
+// Browser Rendering (metered, far heavier than a proxied request). The endpoint
+// is edge-handled, so it bypasses the Fly per-IP limiters. Cap CONCURRENT renders
+// per isolate and shed excess load with 429 — a defence-in-depth cost bound that
+// can never break legitimate rendering (fonts/bidi are untouched). NOTE: the
+// authoritative per-IP throttle is a Cloudflare WAF Rate Limiting Rule on
+// `POST /api/pdf` (see docs/pentest-2026-09-23.md) — a binding-based limiter was
+// intentionally NOT added to this site-wide proxy to avoid deploy risk.
+const PDF_MAX_CONCURRENT = 4;
+let pdfInFlight = 0;
+
 async function handlePdf(request: Request, env: Env): Promise<Response> {
   if (!env.BROWSER) {
     return new Response("PDF rendering not configured", { status: 503 });
+  }
+
+  if (pdfInFlight >= PDF_MAX_CONCURRENT) {
+    return new Response("Too many PDF renders in progress — retry shortly", {
+      status: 429,
+      headers: { "Retry-After": "5", "Access-Control-Allow-Origin": "*" },
+    });
   }
 
   // Cap the payload and validate shape — never trust client input, and bound
@@ -335,8 +353,14 @@ async function handlePdf(request: Request, env: Env): Promise<Response> {
     return new Response("Invalid document data", { status: 400 });
   }
 
-  const browser = await puppeteer.launch(env.BROWSER as never);
+  pdfInFlight++;
+  // `browser` is declared out here (and close guarded on it) so the outer
+  // finally ALWAYS runs `pdfInFlight--`, even if `puppeteer.launch` itself
+  // throws — otherwise a launch failure would leak the counter and eventually
+  // wedge the endpoint at the concurrency cap.
+  let browser: Awaited<ReturnType<typeof puppeteer.launch>> | undefined;
   try {
+    browser = await puppeteer.launch(env.BROWSER as never);
     const page = await browser.newPage();
     // For client-provided HTML (kind:"html") disable JavaScript so any
     // embedded <script> can't run — robust engine-level neutralisation
@@ -368,7 +392,8 @@ async function handlePdf(request: Request, env: Env): Promise<Response> {
       },
     });
   } finally {
-    await browser.close();
+    if (browser) await browser.close();
+    pdfInFlight--;
   }
 }
 

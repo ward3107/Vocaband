@@ -2145,10 +2145,27 @@ async function startServer() {
   // Namespace-level auth middleware — unlike `/`, this one is permissive:
   // it only rate-limits the handshake so one box can't flood the server
   // with connection churn.
-  qpIo.use((socket, next) => {
+  qpIo.use(async (socket, next) => {
     const clientIp = getSocketIp(socket);
     if (!qpJoinLimiter.checkLimit(clientIp)) {
       return next(new Error("rate_limited"));
+    }
+    // SECURITY (pentest F3): the QP namespace is intentionally anonymous — guests
+    // join via QR with no account. But a LOGGED-IN student may present their
+    // Supabase JWT in the handshake so their session score can be persisted to
+    // their real progress row at game end. Verify that token here (when present)
+    // and attach the VERIFIED uid; a missing/invalid token simply means "guest"
+    // and is NEVER rejected. STUDENT_JOIN then reads socket.data.uid rather than
+    // any client-claimed authUid, so a score can only ever be attributed to the
+    // account whose JWT the caller actually holds.
+    const token = socket.handshake.auth?.token;
+    if (typeof token === "string" && token.length > 0) {
+      try {
+        const uid = await verifyToken(token);
+        if (uid) (socket.data as { uid?: string }).uid = uid;
+      } catch {
+        /* ignore — treat as anonymous guest */
+      }
     }
     next();
   });
@@ -3195,8 +3212,14 @@ async function startServer() {
       // Capture the optional authUid the client may have included so
       // TEACHER_END can persist a real progress row.  Held privately —
       // never echoed back to peers (LEADERBOARD payload type omits it).
-      const incomingAuthUid = typeof payload.authUid === "string" && /^[0-9a-f-]{36}$/i.test(payload.authUid)
-        ? payload.authUid
+      // SECURITY (pentest F3): NEVER trust payload.authUid — a client could set
+      // it to any account's UUID and, via the service-role save_student_progress
+      // QUICK_PLAY carve-out, write progress under a victim's identity. The only
+      // trustworthy identity is the uid the qpIo middleware verified from the
+      // handshake JWT. Guests have none -> undefined -> `qp:<clientId>` fallback.
+      const verifiedUid = (socket.data as { uid?: string }).uid;
+      const incomingAuthUid = typeof verifiedUid === "string" && verifiedUid.length > 0
+        ? verifiedUid
         : undefined;
       // Re-joining (refresh / reconnect) keeps score; truly new joiner starts at 0.
       state.students.set(clientId, {
@@ -6175,10 +6198,20 @@ Quality rules:
       return res.status(400).json({ error: "Body must be { words: [{id, english}] }" });
     }
 
+    // SECURITY (pentest F1): the `<id>.mp3` object key is client-supplied and
+    // shares the public `sound/` bucket with CORE vocabulary audio (ids ≤ ~9448)
+    // and other teachers' custom audio. The client mints custom ids as
+    // `100_000_000 + |hash|` (see useTeacherActions.ts / LibrarySetsPanel), so a
+    // legitimate custom id is always ≥ 100_000_000. Enforce that floor here so a
+    // teacher can never write audio for a core word id (poisoning pronunciation
+    // served to every student). Sub-floor ids are dropped, not processed.
+    const CUSTOM_ID_FLOOR = 100_000_000;
     const words = rawWords
       .filter((w: unknown): w is { id: number; english: string } =>
         typeof w === "object" && w !== null &&
         typeof (w as any).id === "number" &&
+        Number.isInteger((w as any).id) &&
+        (w as any).id >= CUSTOM_ID_FLOOR &&
         typeof (w as any).english === "string" &&
         (w as any).english.trim().length > 0 &&
         (w as any).english.length <= 100
