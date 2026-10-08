@@ -94,7 +94,7 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
 
       - name: Install Android platform 36
         run: yes | sdkmanager "platforms;android-36"
