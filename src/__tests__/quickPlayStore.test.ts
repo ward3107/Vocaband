@@ -11,7 +11,7 @@ const player = (clientId: string = randomUUID()): QpStudentEntry => ({ clientId,
 for (const mode of ['memory', ...(redis ? ['redis'] : [])]) describe(`shared scores (${mode})`, () => {
   function setup() {
     const code = `test-${randomUUID()}`;
-    for (const suffix of ['meta', 'players', 'kicked', 'operations']) keys.push(`qp-state:v1:{${code}}:${suffix}`);
+    for (const suffix of ['meta', 'players', 'kicked', 'operations', 'engine', 'positions']) keys.push(`qp-state:v1:{${code}}:${suffix}`);
     return { code, store: createQuickPlayStore(mode === 'redis' ? { eval: (s,o) => redis!.eval(s,o) } : undefined) };
   }
   it('adds regular progress independently of awards and ignores duplicate/lower totals', async () => {
@@ -66,6 +66,42 @@ for (const mode of ['memory', ...(redis ? ['redis'] : [])]) describe(`shared sco
     await store.score(code,p.clientId,'a',20,{perfectRound:true}); await store.award(code,p.clientId,5,'bonus');
     expect((await store.score(code,p.clientId,'a',20,{perfectRound:true})).entry).toMatchObject({score:25,perfectRoundScore:20});
   });
+  it('commits the question state and awards together and fences a competing server', async () => {
+    const {store,code}=setup(), p=player(); await store.join(code,p,'a');
+    const results=await Promise.all([
+      store.engineCommit(code,0,'winner-a',[{id:p.clientId,amount:20,operationId:'answer:round'}],{id:p.clientId,owner:'a'}),
+      store.engineCommit(code,0,'winner-b',[{id:p.clientId,amount:50,operationId:'answer:round'}],{id:p.clientId,owner:'a'}),
+    ]);
+    expect(results.filter(r => r.status==='ok')).toHaveLength(1);
+    const snapshot=await store.engineRead(code);
+    expect(snapshot.engineRevision).toBe(1);
+    expect(snapshot.students?.[0].score).toBe(snapshot.engine==='winner-a'?20:50);
+    await store.engineCommit(code,1,'receipt-replay',[{id:p.clientId,amount:999,operationId:'answer:round'}]);
+    expect((await store.snapshot(code)).students?.[0].score).toBe(snapshot.students?.[0].score);
+  });
+  it('rejects revoked player transitions and rolls back the entire award batch before any write', async () => {
+    const {store,code}=setup(), p=player(); await store.join(code,p,'a'); await store.join(code,p,'b');
+    expect((await store.engineCommit(code,0,'bad',[],{id:p.clientId,owner:'a'})).status).toBe('unauthorized');
+    const result=await store.engineCommit(code,0,'partial',[
+      {id:p.clientId,amount:50,operationId:'one'}, {id:'unknown',amount:30,operationId:'two'},
+    ]);
+    expect(result.status).toBe('conflict');
+    expect((await store.engineRead(code))).toMatchObject({engineRevision:0,students:[{score:0}]});
+    await store.close(code);
+    expect((await store.engineCommit(code,0,'late',[])).status).toBe('session_inactive');
+  });
+  it('preserves independent movement while transitions race and revokes old movers', async () => {
+    const {store,code}=setup(), p=player(); await store.join(code,p,'a');
+    await store.engineCommit(code,0,'arena',[]);
+    await store.move(code,p.clientId,'a',{x:10,y:20,lastMoveTs:30});
+    await store.engineCommit(code,1,'locked',[]);
+    expect((await store.engineRead(code)).positions?.[p.clientId]).toMatchObject({x:10,y:20});
+    await store.join(code,p,'b');
+    expect((await store.move(code,p.clientId,'a',{x:0,y:0,lastMoveTs:40})).status).toBe('unauthorized');
+    await store.engineCommit(code,2,'new arena',[],undefined,true);
+    expect(Object.keys((await store.engineRead(code)).positions ?? {})).toHaveLength(0);
+  });
+
 });
 it('fails closed when configured Redis is unavailable', async () => {
   const store = createQuickPlayStore({ eval: async () => { throw new Error('redis offline'); } });
