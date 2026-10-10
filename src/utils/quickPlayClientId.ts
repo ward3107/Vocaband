@@ -12,6 +12,8 @@
 // test tabs — each get their own id instead of collapsing into a single
 // server-side leaderboard row.
 
+let memoryClientId: string | null = null;
+
 export const QP_CLIENT_ID_STORAGE_KEY = "vocaband_qp_client_id";
 
 /** Read the current tab's Quick Play clientId, or null when none is stored yet
@@ -23,6 +25,12 @@ export function readStoredClientId(): string | null {
     if (existing && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(existing)) {
       return existing;
     }
-  } catch { /* private mode etc. */ }
+  } catch { return memoryClientId; }
   return null;
+}
+
+/** Keep one tab identity even when browser storage is blocked. */
+export function writeQuickPlayClientId(id: string): void {
+  memoryClientId = id;
+  try { sessionStorage.setItem(QP_CLIENT_ID_STORAGE_KEY, id); } catch { /* in-memory fallback */ }
 }

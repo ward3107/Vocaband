@@ -51,6 +51,29 @@ describe('direct student assignment action', () => {
     await act(async () => { fireEvent.click(screen.getByRole('button')); });
     expect(p.setView).not.toHaveBeenCalled();
     expect(p.setAssignmentWords).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert').textContent).toBe(studentDashboardT.en.assignmentLoadError);
+  });
+
+  it('shows a recoverable error when loading fails', async () => {
+    mocks.resolve.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce([{ id: 91, english: 'assigned' }]);
+    const p = props();
+    render(<NextUpCard {...p} />);
+    await act(async () => { fireEvent.click(screen.getByRole('button')); });
+    expect(screen.getByRole('alert')).toBeTruthy();
+    await act(async () => { fireEvent.click(screen.getByRole('button')); });
+    expect(p.setView).toHaveBeenCalledWith('game');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('does not launch twice while the activity is loading', async () => {
+    let finish!: (value: unknown[]) => void;
+    mocks.resolve.mockReturnValue(new Promise(resolve => { finish = resolve; }));
+    render(<NextUpCard {...props()} />);
+    fireEvent.click(screen.getByRole('button'));
+    fireEvent.click(screen.getByRole('button'));
+    expect(mocks.resolve).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button').getAttribute('aria-busy')).toBe('true');
+    await act(async () => finish([{ id: 91 }]));
   });
 
   it('renders no action when all assignments are unavailable or locked', () => {

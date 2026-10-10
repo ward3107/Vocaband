@@ -74,6 +74,9 @@ export default function NextUpCard({
   const { language, isRTL } = useLanguage();
   const reduced = useReducedMotion();
   const t = studentDashboardT[language];
+  const [loading, setLoading] = React.useState(false);
+  const [failed, setFailed] = React.useState(false);
+  const loadingRef = React.useRef(false);
 
   const candidate = pickNextAssignment(studentAssignments, studentProgress, userUid);
   if (!candidate) return null;
@@ -87,6 +90,11 @@ export default function NextUpCard({
         : t.startAssignment;
 
   const handleStart = async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    setLoading(true);
+    setFailed(false);
+    try {
     const filteredWords = await resolveAssignmentWords(assignment);
     // See StudentAssignmentCard: refuse to launch an assignment that
     // resolves to no words rather than letting the game substitute a
@@ -97,6 +105,7 @@ export default function NextUpCard({
         "assignment-empty-on-launch",
         { assignmentId: assignment.id, wordIdCount: assignment.wordIds?.length ?? 0 },
       );
+      setFailed(true);
       return;
     }
     setActiveAssignment(assignment);
@@ -108,13 +117,23 @@ export default function NextUpCard({
     if (typeof window !== "undefined") {
       requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
     }
+    } catch (error) {
+      setFailed(true);
+      trackAutoError(error instanceof Error ? error : new Error(String(error)), "assignment-load-failed", { assignmentId: assignment.id });
+    } finally {
+      loadingRef.current = false;
+      setLoading(false);
+    }
   };
 
   return (
+    <div className="w-full">
     <motion.button
       type="button"
       aria-label={`${ctaLabel}: ${assignment.title}`}
       onClick={handleStart}
+      disabled={loading}
+      aria-busy={loading}
       initial={reduced ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={reduced ? undefined : { scale: 1.01 }}
@@ -154,11 +173,13 @@ export default function NextUpCard({
 
         <div className="w-full shrink-0 sm:w-auto">
           <div className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-white/20 px-4 py-2.5 font-black text-base border border-white/30">
-            {ctaLabel}
+            {loading ? t.assignmentLoading : ctaLabel}
             <ArrowRight size={16} className={isRTL ? "rotate-180" : ""} />
           </div>
         </div>
       </div>
     </motion.button>
+    {failed && <p role="alert" className="mt-3 text-base font-semibold text-red-700 dark:text-red-300" dir={isRTL ? "rtl" : "ltr"}>{t.assignmentLoadError}</p>}
+    </div>
   );
 }

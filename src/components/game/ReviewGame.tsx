@@ -88,11 +88,13 @@ export default function ReviewGame({
   // Most callers (dashboard widget) won't — Review mode spans the
   // entire word universe rather than an assignment's word pool.
   const vocab = useVocabularyLazy(!passedWords);
-  const allWords: Word[] = passedWords ?? vocab?.ALL_WORDS ?? [];
+  const allWords = useMemo<Word[]>(() => passedWords ?? vocab?.ALL_WORDS ?? [], [passedWords, vocab?.ALL_WORDS]);
 
   // Self-fetch the due-words queue on mount.  Keeps ReviewGame fully
   // self-contained — App.tsx doesn't need to know about the SRS data
   // layer.
+  const [dueError, setDueError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [dueWords, setDueWords] = useState<ReviewScheduleRow[] | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +108,7 @@ export default function ReviewGame({
         if (cancelled) return;
         if (error) {
           console.error('[srs] get_due_reviews failed:', error);
+          setDueError(true);
           setDueWords([]);
           return;
         }
@@ -113,12 +116,13 @@ export default function ReviewGame({
       } catch (err) {
         if (!cancelled) {
           console.error('[srs] get_due_reviews threw:', err);
+          setDueError(true);
           setDueWords([]);
         }
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [loadAttempt]);
 
   // Materialise the queue: hydrate ReviewScheduleRow → Word objects
   // by looking up word_id in allWords.  Filter out any that no longer
@@ -135,6 +139,29 @@ export default function ReviewGame({
   const [correct, setCorrect] = useState(0);
   const [picked, setPicked] = useState<Word | null>(null);
   const submittedRef = useRef(false);
+  const mountedRef = useRef(true);
+  const advanceTimer = useRef<number | undefined>(undefined);
+  const pendingSaves = useRef(new Set<Promise<void>>());
+  const failedSave = useRef(false);
+  const finishingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const [saveFailure, setSaveFailure] = useState(false);
+  const [finishResult, setFinishResult] = useState<{ correct: number; total: number } | null>(null);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; window.clearTimeout(advanceTimer.current); };
+  }, []);
+  const finishReview = async (correctCount: number, totalCount: number) => {
+    if (finishingRef.current) return;
+    finishingRef.current = true;
+    window.clearTimeout(advanceTimer.current);
+    setSaving(true);
+    await Promise.all(pendingSaves.current);
+    if (!mountedRef.current) return;
+    setSaving(false);
+    if (failedSave.current) setFinishResult({ correct: correctCount, total: totalCount });
+    else onFinish(correctCount, totalCount);
+  };
 
   // Current question + its multiple-choice options, and the speak-on-load
   // effect. Both MUST run on every render, so they sit ABOVE the loading /
@@ -163,6 +190,13 @@ export default function ReviewGame({
       </div>
     );
   }
+
+  if (dueError) return (
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4" dir={dir}>
+      <p role="alert" className="text-center text-lg font-bold">{language === 'he' ? 'לא הצלחנו לטעון את המילים לחזרה.' : language === 'ar' ? 'تعذّر تحميل كلمات المراجعة.' : 'We couldn’t load your review words.'}</p>
+      <button type="button" className="min-h-11 rounded-xl bg-violet-700 px-5 font-bold text-white" onClick={() => { setDueError(false); setDueWords(null); setLoadAttempt(a => a + 1); }}>{language === 'he' ? 'נסה שוב' : language === 'ar' ? 'حاول مجددًا' : 'Try again'}</button>
+    </div>
+  );
 
   // Empty-state: the queue is empty when the component mounts.  This
   // shouldn't happen via normal navigation (the dashboard widget
@@ -206,46 +240,55 @@ export default function ReviewGame({
   }
 
   const handlePick = (opt: Word) => {
-    if (picked || submittedRef.current) return;
+    if (picked || submittedRef.current || finishingRef.current) return;
     submittedRef.current = true;
     setPicked(opt);
     const isCorrect = opt.id === question.word.id;
     if (isCorrect) setCorrect(c => c + 1);
 
-    // Fire-and-forget the server-side interval update.  We don't
-    // await it because the next-question UX shouldn't wait on a
-    // network round-trip; if the call fails the student can still
-    // play through, and the same word will resurface in tomorrow's
-    // queue (worst case = the interval doesn't advance).
-    // Wrap in an async IIFE — supabase.rpc returns a PostgrestBuilder
-    // which is thenable but not a true Promise (no .catch).  The IIFE
-    // gives us a real Promise we can attach error handling to.
-    void (async () => {
+    // Keep play responsive, but never finish claiming success while a save
+    // is pending or unconfirmed. Do not auto-retry this non-idempotent RPC.
+    const save = (async () => {
+      const controller = new AbortController();
+      const deadline = window.setTimeout(() => controller.abort(), 8000);
       try {
-        await supabase.rpc('record_review_result', {
+        const { error } = await supabase.rpc('record_review_result', {
           p_word_id: question.word.id,
           p_is_correct: isCorrect,
-        });
+        }).abortSignal(controller.signal);
+        if (error) throw error;
       } catch (err) {
-        console.error('[srs] record_review_result failed:', err);
+        failedSave.current = true;
+        if (mountedRef.current) setSaveFailure(true);
+        console.error('[srs] record_review_result unconfirmed:', err);
+      } finally {
+        window.clearTimeout(deadline);
       }
     })();
+    pendingSaves.current.add(save);
+    void save.finally(() => pendingSaves.current.delete(save));
 
     // Reveal flash for 700ms then advance.
-    window.setTimeout(() => {
+    advanceTimer.current = window.setTimeout(() => {
+      if (!mountedRef.current || finishingRef.current) return;
       submittedRef.current = false;
       if (questionIdx + 1 >= queue.length) {
-        onFinish(isCorrect ? correct + 1 : correct, queue.length);
+        void finishReview(isCorrect ? correct + 1 : correct, queue.length);
       } else {
         setQuestionIdx(i => i + 1);
       }
     }, 700);
   };
 
-  const handleEnd = () => onFinish(correct, queue.length);
+  const handleEnd = () => { void finishReview(correct, queue.length); };
 
   return (
     <div className="flex flex-col items-center px-4 py-6 sm:py-10 w-full" dir="ltr">
+      {saveFailure && <div role="alert" dir={dir} className="mb-4 w-full max-w-2xl rounded-xl border border-amber-500 bg-amber-50 p-4 text-base font-semibold text-amber-950">
+        {language === 'he' ? 'לא הצלחנו לאשר שכל התשובות נשמרו. ייתכן שחלק מהמילים יופיעו שוב לתרגול.' : language === 'ar' ? 'لم نتمكّن من تأكيد حفظ جميع الإجابات. قد تظهر بعض الكلمات مجددًا للمراجعة.' : 'We couldn’t confirm that every answer was saved. Some words may appear again for review.'}
+      </div>}
+      {saving && <p role="status" className="mb-3 font-bold" dir={dir}>{language === 'he' ? 'בודקים את השמירה…' : language === 'ar' ? 'جارٍ التحقّق من الحفظ…' : 'Checking saved answers…'}</p>}
+      {finishResult && <button type="button" className="mb-4 min-h-11 rounded-xl bg-violet-700 px-5 text-base font-bold text-white" onClick={() => onFinish(finishResult.correct, finishResult.total)}>{language === 'he' ? 'המשך לתוצאות' : language === 'ar' ? 'المتابعة إلى النتائج' : 'Continue to results'}</button>}
       {/* Top status row: progress + score */}
       <div className="w-full max-w-2xl flex items-center justify-between gap-3 mb-4">
         <div className={`px-4 py-2 rounded-full font-black text-sm ${theme.pillBg} ${theme.pillText} shadow-md flex items-center gap-1.5`}>
@@ -324,7 +367,7 @@ export default function ReviewGame({
               key={`${opt.id}-${i}`}
               whileTap={!showResult ? { scale: 0.98 } : undefined}
               onClick={() => handlePick(opt)}
-              disabled={showResult}
+              disabled={showResult || saving || !!finishResult}
               type="button"
               dir={optDir}
               style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}

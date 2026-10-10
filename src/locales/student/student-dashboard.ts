@@ -139,6 +139,8 @@ export interface StudentDashboardStrings {
   // NextUpCard — primary CTA above the assignments list
   nextUp: string;
   continueAction: string;
+  assignmentLoadError: string;
+  assignmentLoading: string;
 
   // StudentWelcomeCard — empty-state when student has zero assignments
   welcomeEyebrow: string;
@@ -240,6 +242,8 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     lockedRoundsFull: (max) => `You've completed all ${max} rounds of this assignment. Great practice! Check your other assignments.`,
     nextUp: "Next up",
     continueAction: "Continue",
+    assignmentLoadError: "We couldn’t load this activity. Please try again, or ask your teacher for help.",
+    assignmentLoading: "Loading activity…",
     welcomeEyebrow: "Welcome aboard",
     welcomeTitle: (name) => `Hi ${name}! 👋`,
     welcomeSubtitle: "Your teacher hasn't shared an assignment yet — they'll show up here as soon as they do.",
@@ -335,6 +339,8 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     lockedRoundsFull: (max) => `השלמת את כל ${max} הסבבים של המטלה הזו. תרגול מצוין! בדוק את שאר המטלות שלך.`,
     nextUp: "הבא בתור",
     continueAction: "המשך",
+    assignmentLoadError: "לא הצלחנו לטעון את הפעילות. נסה שוב, או בקש עזרה מהמורה.",
+    assignmentLoading: "טוען פעילות…",
     welcomeEyebrow: "ברוכים הבאים",
     welcomeTitle: (name) => `שלום ${name}! 👋`,
     welcomeSubtitle: "המורה שלך עדיין לא שיתף מטלה — היא תופיע כאן ברגע שהיא תיווצר.",
@@ -430,6 +436,8 @@ export const studentDashboardT: Record<Language, StudentDashboardStrings> = {
     lockedRoundsFull: (max) => `لقد أكملت كل الجولات الـ${max} لهذه المهمة. تدريب رائع! تفقّد مهامك الأخرى.`,
     nextUp: "التالي",
     continueAction: "متابعة",
+    assignmentLoadError: "تعذّر تحميل النشاط. حاول مجددًا أو اطلب المساعدة من المعلّم.",
+    assignmentLoading: "جارٍ تحميل النشاط…",
     welcomeEyebrow: "أهلاً بك",
     welcomeTitle: (name) => `أهلاً ${name}! 👋`,
     welcomeSubtitle: "لم يشارك معلمك مهمة بعد — ستظهر هنا فور إضافتها.",

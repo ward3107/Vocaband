@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { createQuickPlayIdentity, publicQuickPlayStudent, ownsQuickPlayStudent } from "./src/utils/quickPlayIdentity.server";
 // `dotenv/config` only loads `.env`. Vite reads `.env.local` automatically;
 // mirror that here so a single dev .env.local file feeds both the frontend
 // (Vite) and the backend (this server). Override so .env.local wins on
@@ -2181,7 +2182,7 @@ async function startServer() {
         if (s) {
           qpIo.to(code).emit(QP_SERVER_EVENTS.LEADERBOARD, {
             sessionCode: code,
-            students: Array.from(s.students.values()),
+            students: Array.from(s.students.values(), publicQuickPlayStudent),
             serverId: QP_SERVER_ID,
           });
           // Clear the one-shot perfectRound flag after each broadcast so
@@ -3099,10 +3100,39 @@ async function startServer() {
     }
   }
 
+  const qpIdentity = createQuickPlayIdentity(
+    process.env.QUICK_PLAY_REJOIN_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || randomBytes(32).toString("hex"),
+  );
+  const qpStudentActions = new Set<string>([
+    QP_EVENTS.SCORE_UPDATE, QP_EVENTS.STUDENT_LEAVE, QP_EVENTS.REACTION_SEND,
+    QP_EVENTS.STUDENT_RAISE_HAND, QP_EVENTS.TEAM_SWITCH, QP_EVENTS.WHEEL_ANSWER,
+    QP_EVENTS.RACE_SUBMIT, QP_EVENTS.SPEED_SUBMIT, QP_EVENTS.ARENA_MOVE,
+    QP_EVENTS.ARENA_GRAB, QP_EVENTS.ARENA_PICKUP, QP_EVENTS.ARENA_TACKLE,
+  ]);
+
   // ─── Connection handler ─────────────────────────────────────────────
 
   qpIo.on("connection", (socket) => {
     if (isDev) console.log(`[QuickPlay] connected socket=${socket.id} ip=${getSocketIp(socket)}`);
+
+    // Check ownership BEFORE any handler, including cross-VM forwarding.
+    // Public client IDs, nicknames and room membership are not credentials.
+    socket.use(([event, payload], next) => {
+      if (qpStudentActions.has(event)) {
+        const state = typeof payload?.sessionCode === "string" ? qpSessions.get(payload.sessionCode) : undefined;
+        // Wheel answers normally omit clientId: the handler stamps the
+        // admitted socket identity. An explicitly claimed ID must still match.
+        const clientId = event === QP_EVENTS.STUDENT_RAISE_HAND ? payload?.studentUid
+          : event === QP_EVENTS.WHEEL_ANSWER ? payload?.clientId ?? state?.socketToClient.get(socket.id)
+          : payload?.clientId;
+        if (!ownsQuickPlayStudent(state, socket.id, clientId)) {
+          qpEmitError(socket, event, "unauthorized", "join this session before sending player actions");
+          return;
+        }
+      }
+      next();
+    });
+    let joinPending = false;
 
     // Student join — validates payload and session existence, then
     // inserts into the in-memory leaderboard and broadcasts.
@@ -3111,159 +3141,113 @@ async function startServer() {
         return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "invalid_payload", "missing payload");
       }
       const sessionCode = payload.sessionCode;
-      const clientId = payload.clientId;
+      const requestedClientId = payload.clientId;
       const nickname = typeof payload.nickname === "string" ? payload.nickname.trim().slice(0, QP_MAX_NICKNAME) : "";
       const avatar = typeof payload.avatar === "string" && payload.avatar.length > 0 && payload.avatar.length <= 8
         ? payload.avatar : "🦊";
 
       if (!isValidSessionCode(sessionCode)) return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "invalid_payload", "bad session code");
-      if (!isValidClientId(clientId))      return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "invalid_payload", "bad clientId");
+      if (!isValidClientId(requestedClientId)) return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "invalid_payload", "bad clientId");
       if (!isValidNickname(nickname))      return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "invalid_payload", "bad nickname");
       // Defense-in-depth profanity gate — the client also blocks but
       // a determined student could bypass via direct socket payload.
       // Filter covers EN/HE/AR best-effort.
       if (containsProfanity(nickname))     return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "invalid_payload", "Please pick a different name.");
 
-      // Session must exist and be active in the DB. Cheap single-row read.
-      if (!(await qpSessionIsActive(sessionCode))) {
-        return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "session_inactive", "session is not active");
-      }
-
-      const state = qpGetOrCreateSession(sessionCode);
-
-      // Reject kicked clientIds — sticky for the lifetime of the in-
-      // memory session.  Without this guard, force-disconnecting the
-      // kicked socket only sticks until socket.io's auto-reconnect
-      // fires and the client replays STUDENT_JOIN with the same
-      // clientId.  Also re-emit KICKED so the client tab flips back
-      // to the kicked screen if it was somehow reset.
-      if (state.kickedClientIds.has(clientId)) {
-        socket.emit(QP_SERVER_EVENTS.KICKED, { sessionCode });
-        return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "kicked", "you were removed from this session");
-      }
-
-      // Nickname adoption — same-nickname re-join.
-      //
-      // Before this change: a student who lost connection (back button,
-      // tab close, network blip) and re-scanned the QR with the SAME
-      // nickname was rejected with "nickname_taken" because they
-      // arrived with a fresh clientId (sessionStorage doesn't survive
-      // a closed tab) and the old slot was still in state.students.
-      //
-      // After: same-nickname re-joiners ADOPT the existing slot.
-      // Their score / avatar / authUid carry over.  The old socket
-      // (if still connected) is force-disconnected so two devices
-      // can't play as the same nickname simultaneously.
-      //
-      // Kick still wins.  If the old clientId was kicked, the new
-      // clientId inherits the kick — kicks are per-PLAYER, not
-      // per-DEVICE, so a teacher's removal sticks across reconnects.
-      // The teacher must explicitly un-kick (end session + restart)
-      // to let the player back in.
-      let adoptedFrom: string | null = null;
-      for (const [oldClientId, entry] of state.students.entries()) {
-        if (oldClientId !== clientId && entry.nickname.toLowerCase() === nickname.toLowerCase()) {
-          if (state.kickedClientIds.has(oldClientId)) {
-            // Old slot was kicked — the new clientId is just a fresh
-            // device for the same kicked player.  Mark them too so
-            // re-scanning won't bypass the kick.
-            state.kickedClientIds.add(clientId);
-            socket.emit(QP_SERVER_EVENTS.KICKED, { sessionCode });
-            return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "kicked", "you were removed from this session");
-          }
-          adoptedFrom = oldClientId;
-          break;
+      if (joinPending) return;
+      joinPending = true;
+      try {
+        if (!(await qpSessionIsActive(sessionCode)) || !socket.connected) {
+          return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "session_inactive", "session is not active");
         }
-      }
+        const state = qpGetOrCreateSession(sessionCode);
+        const verifiedUid = typeof socket.data.uid === "string" ? socket.data.uid : undefined;
+        const alreadyOwned = ownsQuickPlayStudent(state, socket.id, requestedClientId);
+        const validRejoin = qpIdentity.verify(payload.rejoinToken, sessionCode, requestedClientId, verifiedUid);
+        if (payload.rejoinToken && !validRejoin) {
+          return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "unauthorized", "rejoin credential is invalid or expired");
+        }
+        // A lost JOINED reply may trigger a retry carrying the original request
+        // ID. Reuse only this socket's already-admitted identity, never a name.
+        const repeatedRequest = socket.data.qpRequestedClientId === requestedClientId
+          && socket.data.qpSessionCode === sessionCode
+          && ownsQuickPlayStudent(state, socket.id, socket.data.qpClientId);
+        const clientId = validRejoin || alreadyOwned ? requestedClientId
+          : repeatedRequest ? socket.data.qpClientId as string : qpIdentity.newClientId();
+        if (state.kickedClientIds.has(clientId)) {
+          socket.emit(QP_SERVER_EVENTS.KICKED, { sessionCode });
+          return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "kicked", "you were removed from this session");
+        }
 
-      if (adoptedFrom) {
-        const oldEntry = state.students.get(adoptedFrom)!;
-        // Lift the old slot into the new clientId, preserving
-        // gameplay state.  Avatar from the new payload wins (kid
-        // may have re-picked it on the join screen) but score and
-        // authUid carry forward.
-        state.students.delete(adoptedFrom);
+        if (!state.students.has(clientId) && state.students.size >= QP_MAX_STUDENTS_PER_SESSION) {
+          return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "session_full", "this session is full");
+        }
+
+        const now = Date.now();
+        const prev = state.students.get(clientId);
+        // Re-joining (refresh / reconnect) keeps score; truly new joiner starts at 0.
         state.students.set(clientId, {
           clientId,
-          nickname: oldEntry.nickname,
-          avatar: avatar || oldEntry.avatar,
-          score: oldEntry.score,
-          lastSeen: Date.now(),
-          authUid: oldEntry.authUid,
+          nickname,
+          avatar,
+          score: prev?.score ?? 0,
+          lastSeen: now,
+          authUid: verifiedUid,
         });
-        // Boot the OLD socket if it's still hanging around so the
-        // ghost device doesn't keep playing under the same name.
-        for (const [sockId, cId] of Array.from(state.socketToClient.entries())) {
-          if (cId === adoptedFrom) {
-            const oldSock = qpIo.sockets.get(sockId);
-            if (oldSock) oldSock.disconnect(true);
-            state.socketToClient.delete(sockId);
+        // Team mode: honour a team the client carries (a switch surviving a
+        // refresh) or their previous team, else auto-balance onto the
+        // smaller side. No-op when team mode is off.
+        if (state.teamMode) {
+          const joined = state.students.get(clientId)!;
+          const carried: QpTeam | undefined =
+            payload.team === "red" || payload.team === "blue" ? payload.team : prev?.team;
+          joined.team = carried ?? qpBalancedTeam(state);
+        }
+        // Superseded connections lose their authority immediately on this VM.
+        for (const [otherSocket, id] of state.socketToClient) {
+          if (id === clientId && otherSocket !== socket.id) state.socketToClient.delete(otherSocket);
+        }
+        // One socket cannot retain authority in an earlier session.
+        for (const other of qpSessions.values()) {
+          if (other !== state && other.socketToClient.delete(socket.id)) socket.leave(other.sessionCode);
+        }
+        const playerRoom = `qp-player:${sessionCode}:${clientId}`;
+        qpIo.in(playerRoom).except(socket.id).disconnectSockets(true);
+        socket.join(playerRoom);
+        state.socketToClient.set(socket.id, clientId);
+        // Stamp role + clientId on the socket so the adapter-aware
+        // `fetchSockets()` (whole room, across VMs) can count connected
+        // students for the Category Race all-submitted auto-end.
+        socket.data.qpRole = "student";
+        socket.data.qpClientId = clientId;
+        socket.data.qpSessionCode = sessionCode;
+        socket.data.qpRequestedClientId = requestedClientId;
+        socket.join(sessionCode);
+
+        socket.emit(QP_SERVER_EVENTS.JOINED, {
+          clientId, sessionCode, requestedClientId,
+          rejoinToken: qpIdentity.issue(sessionCode, clientId, verifiedUid),
+          leaderboard: Array.from(state.students.values(), publicQuickPlayStudent),
+          serverId: QP_SERVER_ID,
+        });
+        // Mid-arena (re)join: spawn them onto the map and hand THIS socket
+        // the full arena picture (design §8.4) — without it a refreshed
+        // student lands in an empty void with no words to chase.
+        if (state.currentArena) {
+          const arena = state.currentArena;
+          if (!arena.positions.has(clientId) && arena.positions.size < QP_ARENA_MAX_PLAYERS) {
+            arena.positions.set(clientId, { ...qpArenaSpawnPos(), dirty: true, lastMoveTs: now });
           }
+          const arenaState = qpArenaStateFor(state);
+          if (arenaState) socket.emit(QP_SERVER_EVENTS.ARENA_STATE, arenaState);
         }
-        console.log(`[QP JOIN adopt] session=${sessionCode} nickname=${nickname} oldClient=${adoptedFrom.slice(0, 8)} newClient=${clientId.slice(0, 8)} score=${oldEntry.score}`);
+        qpScheduleBroadcast(sessionCode);
+      } catch (error) {
+        console.error("[QP join failed]", error);
+        qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "internal_error", "could not join session");
+      } finally {
+        joinPending = false;
       }
-
-      if (!state.students.has(clientId) && state.students.size >= QP_MAX_STUDENTS_PER_SESSION) {
-        return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "session_full", "this session is full");
-      }
-
-      const now = Date.now();
-      const prev = state.students.get(clientId);
-      // Capture the optional authUid the client may have included so
-      // TEACHER_END can persist a real progress row.  Held privately —
-      // never echoed back to peers (LEADERBOARD payload type omits it).
-      // SECURITY (pentest F3): NEVER trust payload.authUid — a client could set
-      // it to any account's UUID and, via the service-role save_student_progress
-      // QUICK_PLAY carve-out, write progress under a victim's identity. The only
-      // trustworthy identity is the uid the qpIo middleware verified from the
-      // handshake JWT. Guests have none -> undefined -> `qp:<clientId>` fallback.
-      const verifiedUid = (socket.data as { uid?: string }).uid;
-      const incomingAuthUid = typeof verifiedUid === "string" && verifiedUid.length > 0
-        ? verifiedUid
-        : undefined;
-      // Re-joining (refresh / reconnect) keeps score; truly new joiner starts at 0.
-      state.students.set(clientId, {
-        clientId,
-        nickname,
-        avatar,
-        score: prev?.score ?? 0,
-        lastSeen: now,
-        authUid: incomingAuthUid ?? prev?.authUid,
-      });
-      // Team mode: honour a team the client carries (a switch surviving a
-      // refresh) or their previous team, else auto-balance onto the
-      // smaller side. No-op when team mode is off.
-      if (state.teamMode) {
-        const joined = state.students.get(clientId)!;
-        const carried: QpTeam | undefined =
-          payload.team === "red" || payload.team === "blue" ? payload.team : prev?.team;
-        joined.team = carried ?? qpBalancedTeam(state);
-      }
-      state.socketToClient.set(socket.id, clientId);
-      // Stamp role + clientId on the socket so the adapter-aware
-      // `fetchSockets()` (whole room, across VMs) can count connected
-      // students for the Category Race all-submitted auto-end.
-      socket.data.qpRole = "student";
-      socket.data.qpClientId = clientId;
-      socket.join(sessionCode);
-
-      socket.emit(QP_SERVER_EVENTS.JOINED, {
-        clientId,
-        leaderboard: Array.from(state.students.values()),
-        serverId: QP_SERVER_ID,
-      });
-      // Mid-arena (re)join: spawn them onto the map and hand THIS socket
-      // the full arena picture (design §8.4) — without it a refreshed
-      // student lands in an empty void with no words to chase.
-      if (state.currentArena) {
-        const arena = state.currentArena;
-        if (!arena.positions.has(clientId) && arena.positions.size < QP_ARENA_MAX_PLAYERS) {
-          arena.positions.set(clientId, { ...qpArenaSpawnPos(), dirty: true, lastMoveTs: now });
-        }
-        const arenaState = qpArenaStateFor(state);
-        if (arenaState) socket.emit(QP_SERVER_EVENTS.ARENA_STATE, arenaState);
-      }
-      qpScheduleBroadcast(sessionCode);
     });
 
     // Score update — only accepted from the socket that owns the
@@ -3291,36 +3275,7 @@ async function startServer() {
         return;
       }
       const owned = state.socketToClient.get(socket.id);
-      if (owned !== clientId) {
-        // Self-heal level 1 only: known clientId, just re-attach the
-        // socket→client mapping (post-reconnect race).
-        if (state.students.has(clientId)) {
-          state.socketToClient.set(socket.id, clientId);
-          socket.data.qpRole = "student";
-          socket.data.qpClientId = clientId;
-          socket.join(sessionCode);
-          console.log(
-            `[QP SCORE self-heal] reattached socket=${socket.id} ` +
-            `to client=${clientId} session=${sessionCode}`,
-          );
-        } else {
-          // Unknown clientId.  Previously we created a placeholder
-          // row here, but that produced phantom students on the
-          // teacher's podium ('?' avatar with the score, alongside
-          // the real student showing 0 pts) when the client raced a
-          // score emit ahead of the JOIN packet.  Better behaviour:
-          // log + drop.  The actual fix is on the client (use a ref
-          // for clientId so updateScore can never see a stale state
-          // value).
-          console.warn(
-            `[QP SCORE owner-mismatch] socket=${socket.id} ` +
-            `claimedClient=${clientId} socketOwnsClient=${owned ?? "<none>"} ` +
-            `session=${sessionCode} score=${score} ` +
-            `mapSize=${state.socketToClient.size} students=${state.students.size}`,
-          );
-          return;
-        }
-      }
+      if (owned !== clientId) return;
       const entry = state.students.get(clientId);
       if (!entry) {
         console.warn(`[QP SCORE no entry] session=${sessionCode} client=${clientId}`);
@@ -3400,22 +3355,9 @@ async function startServer() {
       const state = qpSessions.get(sessionCode);
       if (!state) return;
 
-      // Self-heal the socket→client mapping if it isn't there yet —
-      // App.tsx and QuickPlayStudentView each open their own socket,
-      // and only the StudentView one called STUDENT_JOIN. Reactions
-      // emit from App.tsx's socket once the student is in the game
-      // view, so without this rebind the server would see an
-      // owner-mismatch and silently drop every reaction. Same pattern
-      // SCORE_UPDATE uses just above.
+      // Reconnects must complete STUDENT_JOIN before sending actions.
       const owned = state.socketToClient.get(socket.id);
-      if (owned !== clientId) {
-        if (state.students.has(clientId)) {
-          state.socketToClient.set(socket.id, clientId);
-          socket.join(sessionCode);
-        } else {
-          return;
-        }
-      }
+      if (owned !== clientId) return;
 
       const entry = state.students.get(clientId);
       if (!entry) return;
@@ -3441,7 +3383,7 @@ async function startServer() {
     // ─── In-game 🆘 help button ──────────────────────────────────────────
     // Student "Show my teacher": raise a hand for help. The emit comes from
     // the App-level game socket, which may not have called STUDENT_JOIN, so
-    // self-heal the socket→clientId mapping exactly like REACTION_SEND above.
+    // require the same admitted socket identity as REACTION_SEND above.
     // HAND_RAISED carries the student's name → teacher sub-room ONLY (never
     // peer students); record the raise so a later "clear all" knows whom to clear.
     socket.on(QP_EVENTS.STUDENT_RAISE_HAND, (payload: StudentRaiseHandPayload) => {
@@ -3453,14 +3395,7 @@ async function startServer() {
       if (!state) return;
 
       const owned = state.socketToClient.get(socket.id);
-      if (owned !== studentUid) {
-        if (state.students.has(studentUid)) {
-          state.socketToClient.set(socket.id, studentUid);
-          socket.join(sessionCode);
-        } else {
-          return;
-        }
-      }
+      if (owned !== studentUid) return;
 
       const entry = state.students.get(studentUid);
       if (!entry) return;
@@ -3527,7 +3462,7 @@ async function startServer() {
       socket.join(qpTeacherRoom(sessionCode));
       socket.emit(QP_SERVER_EVENTS.LEADERBOARD, {
         sessionCode,
-        students: Array.from(state.students.values()),
+        students: Array.from(state.students.values(), publicQuickPlayStudent),
         serverId: QP_SERVER_ID,
       });
       // If a Word Hunt is already running ON THIS VM, seed the observer's map
@@ -3953,19 +3888,9 @@ async function startServer() {
         if (Date.now() > race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) { dropLog("too_late", { lateMs: Date.now() - (race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) }); return; }
         if (race.submitted.has(clientId)) { dropLog("already_submitted"); return; }
 
-        // Self-heal the socket→client mapping (mirrors SCORE_UPDATE) in case a
-        // reconnect raced the submit.
+        // Only the admitted socket may submit this player’s answer.
         const owned = state.socketToClient.get(socket.id);
-        if (owned !== clientId) {
-          if (state.students.has(clientId)) {
-            state.socketToClient.set(socket.id, clientId);
-            socket.data.qpClientId = clientId;
-            socket.join(sessionCode);
-          } else {
-            dropLog("not_in_students", { owned: owned ?? null, knownClients: state.students.size });
-            return;
-          }
-        }
+        if (owned !== clientId) return;
         const entry = state.students.get(clientId);
         if (!entry) { dropLog("no_entry"); return; }
 
@@ -4129,18 +4054,9 @@ async function startServer() {
         if (Date.now() > speed.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) { dropLog("too_late"); return; }
         if (speed.submitted.has(clientId)) { dropLog("already_submitted"); return; }
 
-        // Self-heal the socket→client mapping in case a reconnect raced the tap.
+        // A reconnect must rejoin before submitting answers.
         const owned = state.socketToClient.get(socket.id);
-        if (owned !== clientId) {
-          if (state.students.has(clientId)) {
-            state.socketToClient.set(socket.id, clientId);
-            socket.data.qpClientId = clientId;
-            socket.join(sessionCode);
-          } else {
-            dropLog("not_in_students", { owned: owned ?? null, knownClients: state.students.size });
-            return;
-          }
-        }
+        if (owned !== clientId) return;
         const entry = state.students.get(clientId);
         if (!entry) { dropLog("no_entry"); return; }
 
@@ -4161,14 +4077,9 @@ async function startServer() {
       // embedded activeRound. Checked BEFORE the cross-VM fanout because the
       // common case (single VM, arena local) must not pay a relay hop.
       if (state?.currentArena) {
-        // Self-heal the socket→client mapping in case a reconnect raced the
-        // tap — same pattern as the speed branch above.
+        // A reconnect must rejoin before submitting answers.
         const owned = state.socketToClient.get(socket.id);
-        if (owned !== clientId && state.students.has(clientId)) {
-          state.socketToClient.set(socket.id, clientId);
-          socket.data.qpClientId = clientId;
-          socket.join(sessionCode);
-        }
+        if (owned !== clientId) return;
         const entry = state.students.get(clientId);
         const arenaResult = qpApplyArenaAnswer(state, roundId, {
           clientId, choiceIndex,
@@ -4410,19 +4321,9 @@ async function startServer() {
         return;
       }
 
-      // Self-heal the socket→client mapping (mirrors SPEED_SUBMIT) in case
-      // a reconnect raced the move stream.
+      // A reconnect must rejoin before moving this player.
       const owned = state.socketToClient.get(socket.id);
-      if (owned !== clientId) {
-        if (state.students.has(clientId)) {
-          state.socketToClient.set(socket.id, clientId);
-          socket.data.qpRole = "student";
-          socket.data.qpClientId = clientId;
-          socket.join(sessionCode);
-        } else {
-          return;
-        }
-      }
+      if (owned !== clientId) return;
 
       const existing = arena.positions.get(clientId);
       // Cap NEW movers — every extra avatar multiplies snapshot bytes.
