@@ -126,3 +126,26 @@ jobs:
           name: playwright-report-auth
           path: playwright-report/
           retention-days: 14
+
+  quick-play-board:
+    name: Quick Play projector + WebKit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Test real board at projector and mobile sizes
+        run: npx playwright test --config e2e/playwright.board.config.ts
+      - name: Preserve board screenshots and traces
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: quick-play-board-visuals
+          path: e2e/test-results/quick-play-board/
+          retention-days: 14

@@ -191,6 +191,7 @@ export function AppViewRouter(props: AppViewRouterProps) {
   // Student auth / Quick Play join screens (account login, Category Race,
   // quick-play-student) bundled into renderStudentAuthRoute.
   const studentAuthRoute = renderStudentAuthRoute({
+    qpCumulativeScoreRef,
     view, user, setView, setUser, showToast, cookieBannerOverlay,
     error, setError,
     studentLoginClassCode, setStudentLoginClassCode,

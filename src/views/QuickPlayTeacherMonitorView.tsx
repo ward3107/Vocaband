@@ -1,6 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
 import QuickPlayMonitor from "../components/QuickPlayMonitor";
-import { supabase } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
 
@@ -51,14 +50,6 @@ export default function QuickPlayTeacherMonitorView({
         try { localStorage.removeItem('vocaband_quick_play_session'); } catch { /* best-effort */ }
       }}
       onEndSession={async () => {
-        showToast("Ending session...", "info");
-        const { error } = await supabase.rpc('end_quick_play_session', {
-          p_session_code: quickPlayActiveSession.sessionCode
-        });
-        if (error) {
-          showToast("Failed to end session: " + error.message, "error");
-          return;
-        }
         cleanupSessionData(); // Clear save queue and timers
         setView("teacher-dashboard");
         setQuickPlayActiveSession(null);

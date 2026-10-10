@@ -71,6 +71,7 @@ interface Student {
   streak?: number;
   roundProgress?: { done: number; total: number };
   perfectRound?: boolean;
+  perfectRoundScore?: number;
   /** In-game 🆘 help button — timestamp when the student raised their
    *  hand, or null when not raised / cleared by teacher / auto-expired. */
   handRaisedAt: number | null;
@@ -377,11 +378,15 @@ function SessionResultsModal({
   totalStudents,
   classTotal,
   onDone,
+  saving,
+  savingLabel,
 }: {
   topStudents: SessionStudent[];
   totalStudents: number;
   classTotal: number;
   onDone: () => void;
+  saving: boolean;
+  savingLabel: string;
 }) {
   const order: Array<{ idx: number; height: string; emphasis: string; medal: React.ReactNode }> = [
     { idx: 1, height: "h-32", emphasis: "scale-95",  medal: <Medal className="text-slate-300" size={26} fill="currentColor" /> },
@@ -558,6 +563,8 @@ function SessionResultsModal({
         <motion.button
           type="button"
           onClick={onDone}
+          disabled={saving}
+          aria-busy={saving}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.5, duration: 0.4 }}
@@ -569,7 +576,7 @@ function SessionResultsModal({
             boxShadow: "0 14px 30px -14px rgba(139,92,246,0.6)",
           }}
         >
-          Close Session
+          {saving ? savingLabel : "Close Session"}
         </motion.button>
       </motion.div>
     </motion.div>
@@ -932,6 +939,7 @@ export default function QuickPlayMonitor({
       streak: s.streak,
       roundProgress: s.roundProgress,
       perfectRound: s.perfectRound,
+      perfectRoundScore: s.perfectRoundScore,
       handRaisedAt: raisedHands.get(s.clientId) ?? null,
     }));
   }, [socket.leaderboard, raisedHands]);
@@ -1040,8 +1048,8 @@ export default function QuickPlayMonitor({
   // ─── Tier B: achievement toasts ────────────────────────────────────────────
   // Each (studentUid, achievementId) pair fires at most once per session so
   // the projector doesn't spam the same toast every leaderboard tick.
-  // perfectRound is the exception — the server clears its own flag after one
-  // broadcast, so we react to its presence directly without bookkeeping.
+  // Perfect rounds carry a durable score cursor so retries and snapshots
+  // from another VM cannot replay a celebration.
   const firedAchievementsRef = useRef<Set<string>>(new Set());
   type Achievement = {
     id: string;            // unique key: `${kind}:${studentUid}:${ts}`
@@ -1076,9 +1084,10 @@ export default function QuickPlayMonitor({
         newToasts.push({ id: `${streak5Key}:${Date.now()}`, kind: 'streak5', name: s.name, avatar, ts: Date.now() });
       }
 
-      // PERFECT ROUND — server-flagged one-shot, no need to dedupe; the
-      // server clears the flag itself after broadcasting.
-      if (s.perfectRound) {
+      // PERFECT ROUND — dedupe the durable event, including after bonus awards.
+      const perfectKey = `perfect:${uid}:${s.perfectRoundScore ?? s.score}`;
+      if (s.perfectRound && !firedAchievementsRef.current.has(perfectKey)) {
+        firedAchievementsRef.current.add(perfectKey);
         newToasts.push({ id: `perfect:${uid}:${Date.now()}`, kind: 'perfect', name: s.name, avatar, ts: Date.now() });
       }
     }
@@ -1261,9 +1270,13 @@ export default function QuickPlayMonitor({
       setConfirmKick(null);
       return;
     }
-    socket.kickStudent(target.studentUid, token);
-    showToast(`${target.name} removed from session`, 'info');
-    setConfirmKick(null);
+    try {
+      await socket.kickStudent(target.studentUid, token);
+      showToast(`${target.name} removed from session`, 'info');
+      setConfirmKick(null);
+    } catch {
+      showToast(language === 'he' ? 'ההסרה לא אושרה. יש להתחבר מחדש ולנסות שוב.' : language === 'ar' ? 'لم يتم تأكيد الإزالة. أعد الاتصال وحاول مرة أخرى.' : 'Could not confirm removal. Please reconnect and try again.', 'error');
+    }
   };
 
   // End-of-session results overlay. When the teacher confirms End
@@ -1293,13 +1306,23 @@ export default function QuickPlayMonitor({
   // button.  Emits TEACHER_END on the socket so the server tears down
   // the session for all observers, then the parent callback handles
   // navigation + DB cleanup.
+  const endingRef = useRef(false);
+  const [endingSession, setEndingSession] = useState(false);
   const finishEndSession = useCallback(async () => {
-    const { data: { session: authSession } } = await supabase.auth.getSession();
-    const token = authSession?.access_token;
-    if (token) socket.endSession(token);
-    setResultsSnapshot(null);
-    onEndSession();
-  }, [socket, onEndSession]);
+    if (endingRef.current) return;
+    endingRef.current = true; setEndingSession(true);
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) throw new Error('Please sign in again.');
+      await socket.endSession(authSession.access_token);
+      setResultsSnapshot(null);
+      onEndSession();
+    } catch {
+      showToast(language === 'he' ? 'שמירת התוצאות לא אושרה. יש להתחבר מחדש ולנסות לסגור את המפגש שוב.' : language === 'ar' ? 'لم يتم تأكيد حفظ النتائج. أعد الاتصال وحاول إغلاق الجلسة مرة أخرى.' : 'Results could not be saved yet. Please reconnect and try Close Session again.', 'error');
+    } finally {
+      endingRef.current = false; setEndingSession(false);
+    }
+  }, [socket, onEndSession, showToast, language]);
 
   // ─── Sorted students ──────────────────────────────────────────────────────
   const sorted = useMemo(() =>
@@ -1487,6 +1510,8 @@ export default function QuickPlayMonitor({
             totalStudents={resultsSnapshot.totalStudents}
             classTotal={resultsSnapshot.classTotal}
             onDone={finishEndSession}
+            saving={endingSession}
+            savingLabel={language === "he" ? "שומר תוצאות…" : language === "ar" ? "جارٍ حفظ النتائج…" : "Saving results…"}
           />
         )}
       </AnimatePresence>

@@ -40,6 +40,7 @@ interface QuickPlaySession {
 }
 
 interface QuickPlayStudentViewProps {
+  qpCumulativeScoreRef: React.MutableRefObject<number>;
   quickPlayActiveSession: QuickPlaySession | null;
   setQuickPlayActiveSession: (s: QuickPlaySession | null) => void;
   quickPlayStudentName: string;
@@ -73,6 +74,7 @@ interface QuickPlayStudentViewProps {
 }
 
 export default function QuickPlayStudentView({
+  qpCumulativeScoreRef,
   quickPlayActiveSession,
   setQuickPlayActiveSession,
   quickPlayStudentName,
@@ -318,6 +320,7 @@ export default function QuickPlayStudentView({
     // server confirms JOIN (deferred via pendingJoinRef + the useEffect
     // on joinedSessionCode above).
     const applyJoinedState = () => {
+      qpCumulativeScoreRef.current = quickPlaySocket.getScoreBaseline();
       setQuickPlayStudentName(trimmedName);
       const guestUser = createGuestUser(trimmedName, "quickplay", quickPlayAvatar);
       setUser(guestUser);
@@ -371,7 +374,7 @@ export default function QuickPlayStudentView({
           sessionCode: quickPlayActiveSession.sessionCode,
           name: trimmedName,
           avatar: quickPlayAvatar,
-          lastScore: 0,
+          lastScore: qpCumulativeScoreRef.current,
           joinedAt: Date.now(),
         }));
       } catch {}
@@ -593,6 +596,7 @@ export default function QuickPlayStudentView({
                       // the first-time join — otherwise we'd render the
                       // game screen before the server knows we're back.
                       const advance = () => {
+                        qpCumulativeScoreRef.current = quickPlaySocket.getScoreBaseline();
                         setResuming(false);
                         // Re-seed the word list before re-entering the game.
                         // The back-button / resume path can land here after

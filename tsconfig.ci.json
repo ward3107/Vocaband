@@ -5,11 +5,6 @@
   // `noUnusedParameters` from the root tsconfig now apply in CI too,
   // and e2e/ + scripts/ are part of the checked set.
   //
-  // server.ts is intentionally NOT a root here: it carries a handful of
-  // known errors (Redis generics, Gemini schema typing) inside protected-
-  // zone code that needs its owner's review to touch.  Those leftovers
-  // plus one in src/core/supabase.ts are tracked by `.typecheck-baseline`
-  // — see scripts/typecheck-ratchet.sh.  Once they're fixed, the baseline
-  // hits 0 and the ratchet behaves as a plain hard gate.
-  "include": ["src", "e2e", "scripts", "vite.config.ts", "vitest.config.ts"]
+  // Backend score-store and Socket.IO changes are checked in CI too.
+  "include": ["server.ts", "src", "e2e", "scripts", "vite.config.ts", "vitest.config.ts"]
 }

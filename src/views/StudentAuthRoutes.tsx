@@ -45,6 +45,7 @@ export interface StudentAuthRoutesDeps {
   onTier2Login?: (email: string, pin: string) => Promise<'ok' | 'invalid' | 'fallback'>;
 
   // Quick Play student join
+  qpCumulativeScoreRef: React.MutableRefObject<number>;
   quickPlayActiveSession: {
     id: string;
     sessionCode: string;
@@ -91,7 +92,7 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
     studentLoginClassCode, setStudentLoginClassCode,
     onTier2Login,
     quickPlayActiveSession, setQuickPlayActiveSession,
-    quickPlayStudentName, setQuickPlayStudentName,
+    quickPlayStudentName, setQuickPlayStudentName, qpCumulativeScoreRef,
     quickPlayAvatar, setQuickPlayAvatar,
     setAssignmentWords, setActiveAssignment, setCurrentIndex,
     setScore, setFeedback, setIsFinished, setMistakes, setShowModeSelection,
@@ -194,6 +195,7 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
     return (
       <LazyWrapper loadingMessage="Loading quick play...">
         <QuickPlayStudentView
+          qpCumulativeScoreRef={qpCumulativeScoreRef}
           quickPlayActiveSession={quickPlayActiveSession}
           setQuickPlayActiveSession={setQuickPlayActiveSession}
           quickPlayStudentName={quickPlayStudentName}

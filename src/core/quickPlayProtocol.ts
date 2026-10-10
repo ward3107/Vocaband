@@ -368,6 +368,7 @@ export interface QpTeacherKickPayload {
  * skewing the leaderboard.
  */
 export interface QpTeacherBonusPayload {
+  requestId?: string;
   sessionCode: string;
   clientId: string;
   amount: number;
@@ -409,10 +410,10 @@ export interface QpStudentEntry {
    *  toasts from the leaderboard snapshot alone. */
   streak?: number;
   roundProgress?: { done: number; total: number };
-  /** True for exactly one leaderboard tick — set when the last score
-   *  update was a mode-finish with zero mistakes, cleared by the server
-   *  immediately after the next broadcast. */
+  /** Perfect-round signal, deduplicated by perfectRoundScore across snapshots. */
   perfectRound?: boolean;
+  /** Durable event cursor; duplicate snapshots must not replay celebrations. */
+  perfectRoundScore?: number;
   /** Red vs Blue team mode: which team this student is on, or undefined
    *  when team mode is off. Broadcast so the host can sum each side and
    *  tint medallions; the host computes totals from the unioned roster. */
@@ -431,6 +432,8 @@ export interface QpTeamModePayload {
 }
 
 export interface QpJoinedPayload {
+  revision?: number;
+  acceptedScore?: number;
   sessionCode?: string;
   requestedClientId?: string;
   /** Private, session-scoped proof for reconnecting this player. */
@@ -445,24 +448,11 @@ export interface QpJoinedPayload {
 }
 
 export interface QpLeaderboardPayload {
+  revision?: number;
   sessionCode: string;
   students: QpStudentEntry[];
-  /** Opaque id of the Fly VM that produced this snapshot.
-   *
-   *  In-memory session state (`qpSessions`) is per-process, so once the
-   *  app runs on more than one VM a single session's students are split
-   *  across machines: each VM only knows the students whose sockets
-   *  landed on it, and the Redis adapter forwards every VM's broadcast
-   *  to the whole room.  If the client just replaced its leaderboard on
-   *  each broadcast it would flip-flop between per-VM subsets (and, for
-   *  Category Race, show a remote student's stale score=0 from their own
-   *  VM clobbering the authoritative score the round-owner VM computed).
-   *
-   *  The client keeps the LATEST snapshot per serverId and renders their
-   *  union (max score wins per clientId).  Per-VM replacement preserves
-   *  removals (a kicked / departed student drops out of their VM's next
-   *  snapshot), while the union aggregates the whole class.  Single-VM
-   *  deployments send one serverId, so behaviour is unchanged there. */
+  /** "shared" identifies a complete Redis snapshot ordered by revision.
+   * Older deployments may still send per-VM snapshots during rollout. */
   serverId?: string;
 }
 
