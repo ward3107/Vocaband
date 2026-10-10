@@ -147,5 +147,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: quick-play-board-visuals
-          path: test-results/quick-play-board/
+          path: e2e/test-results/quick-play-board/
           retention-days: 14

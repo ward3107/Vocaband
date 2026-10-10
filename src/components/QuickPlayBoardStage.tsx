@@ -34,7 +34,7 @@ export default function QuickPlayBoardStage({ students, language, onRemove, onBo
   return (
     <div ref={ref} className="min-h-0 flex-1 overflow-y-auto" aria-label={t.players} data-testid="qp-board">
       {students.length === 0 ? <p className="flex h-full items-center justify-center text-2xl font-bold">{t.waiting}</p> :
-        <div role="list" className="grid gap-2" style={{ gridTemplateColumns: `repeat(${layout.columns}, minmax(0, 1fr))`, gridAutoRows: `${layout.cardHeight}px`, fontSize: layout.fontSize }}>
+        <div role="list" className="grid gap-[8px]" style={{ gridTemplateColumns: `repeat(${layout.columns}, minmax(0, 1fr))`, gridAutoRows: `${layout.cardHeight}px`, fontSize: layout.fontSize }}>
           {students.map((student, index) => (
             <div role="listitem" data-qp-uid={student.studentUid} key={student.studentUid}
               className={`group relative flex min-h-0 flex-col justify-center overflow-hidden rounded-xl border bg-white/10 px-2 py-1 ${index < 3 ? 'border-amber-400/70' : 'border-current/15'}`}>
