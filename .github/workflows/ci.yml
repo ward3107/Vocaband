@@ -209,7 +209,8 @@ jobs:
         env:
           SUPABASE_URL: 'https://auth.vocaband.com'
           ANON_KEY: 'sb_publishable_Pw-mQ9L76U5T-wLdKjOkpg_GnG99XDF'
-          APP_URL: 'https://www.vocaband.com'
+          # The www host redirects before reaching the application's auth gates.
+          APP_URL: 'https://vocaband.com'
         run: |
           chmod +x scripts/security-pen-test.sh
           # Capture output so we can promote FAIL lines to GitHub Actions

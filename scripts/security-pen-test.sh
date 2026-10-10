@@ -384,6 +384,7 @@ if [[ -n "${APP_URL:-}" ]]; then
   echo "[16] CSP hardening on /"
   csp=$(curl -sI "$APP_URL/" | grep -i '^content-security-policy:' | tr -d '\r')
   script_directive=$(echo "$csp" | grep -oE "script-src[^;]*" | head -1)
+  check "CSP script-src is present" 'script-src' "$script_directive"
 
   if echo "$script_directive" | grep -q "'unsafe-inline'"; then
     echo "  FAIL  script-src has 'unsafe-inline'"; FAIL=$((FAIL+1))

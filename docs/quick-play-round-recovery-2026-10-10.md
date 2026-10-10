@@ -57,6 +57,12 @@ The existing Fly configuration keeps two application machines running.
   exactly one first-correct winner and totals matching Redis.
 - Store tests verify atomic competing commits, no partial award batch,
   revoked socket rejection, closure fencing and independent movement.
+- CI's production auth/header probe now targets the canonical apex host;
+  the www redirect previously produced six false failures. The CSP probe
+  also requires a script-src directive, rather than passing an absent header.
+  The canonical-host run passed **11 HTTP auth/header checks**. The script's
+  14 database probes remain skipped with the configured publishable key;
+  authenticated RLS/isolation checks still require dedicated test accounts.
 
 The fixtures use no production credentials or student data. A cold-start timing
 test initially exceeded its test timeout under concurrent compilation; isolated
