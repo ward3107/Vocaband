@@ -50,6 +50,14 @@ for (const mode of ['memory', ...(redis ? ['redis'] : [])]) describe(`shared sco
     expect(snap.students?.filter(x => x.team === 'blue')).toHaveLength(30);
     const p = snap.students![0];
     expect((await store.team(code,p.clientId,p.owner,p.team === 'red' ? 'blue' : 'red')).status).toBe('invalid_payload');
+    await store.leave(code,p.clientId,p.owner);
+    expect((await store.join(code,player('replacement'),'next')).status).toBe('ok');
+    expect((await store.join(code,p,'returning')).status).toBe('session_full');
+    expect((await store.close(code)).students).toHaveLength(61);
+  });
+  it('clears teams when disabled', async () => {
+    const { store, code } = setup(); await store.join(code,player(),'a');
+    await store.teams(code,true);
     await store.teams(code,false);
     expect((await store.snapshot(code)).students?.every(p => !p.team)).toBe(true);
   });

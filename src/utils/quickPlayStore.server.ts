@@ -84,8 +84,14 @@ if redis.call('SISMEMBER', KEYS[3], c.id) == 1 then return result('kicked') end
 local raw = redis.call('HGET', KEYS[2], c.id)
 local p = raw and cjson.decode(raw) or nil
 if c.op == 'join' then
+  if not p or p.left then
+    local active=0
+    for _,raw in ipairs(redis.call('HVALS', KEYS[2])) do
+      if not cjson.decode(raw).left then active=active+1 end
+    end
+    if active >= tonumber(ARGV[4]) or (not p and redis.call('HLEN', KEYS[2]) >= 600) then return result('session_full') end
+  end
   if not p then
-    if redis.call('HLEN', KEYS[2]) >= tonumber(ARGV[4]) then return result('session_full') end
     p = c.entry; p.score=0; p.reportedScore=0
   end
   if (p.authUid or '') ~= (c.entry.authUid or '') then return result('unauthorized') end
@@ -177,7 +183,8 @@ export function createQuickPlayStore(redis?: LiveScoreRedis, now = Date.now) {
     if (s.kicked.has(id)) return result('kicked');
     let p = s.players.get(id);
     if (command.op === 'join') {
-      if (!p && s.players.size >= QP_MAX_STUDENTS_PER_SESSION) return result('session_full');
+      if ((!p || p.left) && [...s.players.values()].filter(row => !row.left).length >= QP_MAX_STUDENTS_PER_SESSION) return result('session_full');
+      if (!p && s.players.size >= 600) return result('session_full');
       p ??= { ...command.entry!, score: 0, reportedScore: 0, owner: command.owner! };
       if ((p.authUid ?? '') !== (command.entry!.authUid ?? '')) return result('unauthorized');
       Object.assign(p, { nickname: command.entry!.nickname, avatar: command.entry!.avatar, owner: command.owner });
