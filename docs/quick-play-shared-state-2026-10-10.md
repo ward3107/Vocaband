@@ -1,5 +1,8 @@
 # Quick Play shared state — phase 2, 2026-10-10
 
+Follow-up: [phase 3 round recovery and background finalization](quick-play-round-recovery-2026-10-10.md)
+supersedes this historical report's active-round and finalization limitations.
+
 Phase 1 shipped in PR #1411 (`e52c461`). This follow-up replaces the remaining
 per-process scoreboard authority with a Redis-backed session store. No database
 migration or new secret is required.

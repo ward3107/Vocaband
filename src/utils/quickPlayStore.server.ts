@@ -7,19 +7,27 @@ import type { LiveScoreRedis } from './liveScoreStore';
 const TTL = 24 * 60 * 60;
 export type StoredPlayer = QpStudentEntry & { owner: string; reportedScore: number; left?: boolean };
 export type StoreResult = {
-  status: 'ok' | 'session_inactive' | 'kicked' | 'session_full' | 'unauthorized' | 'invalid_payload';
+  status: 'ok' | 'session_inactive' | 'kicked' | 'session_full' | 'unauthorized' | 'invalid_payload' | 'conflict';
   revision: number;
   entry?: StoredPlayer;
   students?: StoredPlayer[];
   closed?: boolean;
   teamMode?: boolean;
+  engine?: string;
+  engineRevision?: number;
+  due?: boolean;
+  positions?: Record<string, { x: number; y: number; lastMoveTs: number }>;
 };
 type Command = {
-  op: 'join' | 'score' | 'award' | 'leave' | 'kick' | 'close' | 'snapshot' | 'teams' | 'team';
+  op: 'join' | 'score' | 'award' | 'leave' | 'kick' | 'close' | 'snapshot' | 'teams' | 'team' | 'engineRead' | 'engineCommit' | 'move' | 'finalized' | 'engineDue';
   id?: string; owner?: string; entry?: QpStudentEntry; score?: number;
   amount?: number; operationId?: string; extras?: Partial<QpStudentEntry>;
   enabled?: boolean; team?: 'red' | 'blue';
+  engine?: string; expected?: number; nextAt?: number; awards?: EngineAward[];
+  position?: { x: number; y: number; lastMoveTs: number }; resetPositions?: boolean; retain?: boolean;
 };
+
+export type EngineAward = { id: string; amount: number; operationId: string };
 
 // All keys share one Redis Cluster hash tag. No read/modify/write operation
 // is split across network round trips: capacity, revocation and scores race
@@ -35,7 +43,9 @@ local function result(status, entry)
 end
 local function touch()
   revision = redis.call('HINCRBY', KEYS[1], 'revision', 1)
-  for _,key in ipairs(KEYS) do redis.call('EXPIRE', key, ttl) end
+  for _,key in ipairs(KEYS) do
+    if redis.call('HGET', KEYS[1], 'pendingFinalization') == '1' then redis.call('PERSIST', key) else redis.call('EXPIRE', key, ttl) end
+  end
 end
 local function snapshot(includeLeft)
   local values = redis.call('HVALS', KEYS[2])
@@ -46,12 +56,62 @@ local function snapshot(includeLeft)
   end
   return cjson.encode({status='ok', revision=revision, closed=closed, teamMode=teamMode, students=students})
 end
+if c.op == 'engineDue' then
+  local at=tonumber(redis.call('HGET', KEYS[1], 'engineNextAt') or '0')
+  return cjson.encode({status='ok', revision=revision, due=not closed and at>0 and at<=now})
+end
+if c.op == 'engineRead' then
+  local out=cjson.decode(snapshot(false))
+  out.engine=redis.call('GET', KEYS[5]) or nil
+  out.engineRevision=tonumber(redis.call('HGET', KEYS[1], 'engineRevision') or '0')
+  out.positions={}
+  local positions=redis.call('HGETALL', KEYS[6])
+  for i=1,#positions,2 do out.positions[positions[i]]=cjson.decode(positions[i+1]) end
+  return cjson.encode(out)
+end
 if c.op == 'snapshot' then return snapshot(false) end
+if c.op == 'finalized' then redis.call('HDEL', KEYS[1], 'pendingFinalization'); touch(); return result('ok') end
 if c.op == 'close' then
+  if c.retain then redis.call('HSET', KEYS[1], 'pendingFinalization', '1'); for _,key in ipairs(KEYS) do redis.call('PERSIST', key) end end
   if not closed then redis.call('HSET', KEYS[1], 'closed', '1'); closed=true; touch() end
   return snapshot(true)
 end
 if closed then return result('session_inactive') end
+if c.op == 'engineCommit' then
+  if tonumber(redis.call('HGET', KEYS[1], 'engineRevision') or '0') ~= c.expected then return result('conflict') end
+  if c.id then
+    local raw=redis.call('HGET', KEYS[2], c.id)
+    local p=raw and cjson.decode(raw) or nil
+    if not p or p.left or p.owner ~= c.owner then return result('unauthorized') end
+  end
+  if redis.call('HLEN', KEYS[4]) + #c.awards > 100000 then return redis.error_reply('award capacity reached') end
+  -- Validate all recipients before any write: Redis Lua errors do not roll back.
+  for _,a in ipairs(c.awards) do
+    local raw=redis.call('HGET', KEYS[2], a.id)
+    if not raw or cjson.decode(raw).left then return result('conflict') end
+  end
+  for _,a in ipairs(c.awards) do
+    local p=cjson.decode(redis.call('HGET', KEYS[2], a.id))
+    local op=a.id..':'..a.operationId
+    if redis.call('HSETNX', KEYS[4], op, '1') == 1 then
+      p.score=math.min(tonumber(ARGV[6]), p.score+a.amount); p.lastSeen=now
+      redis.call('HSET', KEYS[2], a.id, cjson.encode(p))
+    end
+  end
+  redis.call('SET', KEYS[5], c.engine)
+  redis.call('HINCRBY', KEYS[1], 'engineRevision', 1)
+  redis.call('HSET', KEYS[1], 'engineNextAt', c.nextAt or 0)
+  if c.resetPositions then redis.call('DEL', KEYS[6]) end
+  touch(); return snapshot(false)
+end
+if c.op == 'move' then
+  local raw=redis.call('HGET', KEYS[2], c.id)
+  local p=raw and cjson.decode(raw) or nil
+  if not p or p.left or p.owner ~= c.owner then return result('unauthorized') end
+  redis.call('HSET', KEYS[6], c.id, cjson.encode(c.position))
+  redis.call('EXPIRE', KEYS[6], ttl)
+  return result('ok')
+end
 if c.op == 'teams' then
   teamMode=c.enabled
   redis.call('HSET', KEYS[1], 'teams', teamMode and '1' or '0')
@@ -137,14 +197,14 @@ touch()
 return result('ok', p)
 `;
 
-type MemorySession = { players: Map<string, StoredPlayer>; kicked: Set<string>; operations: Set<string>; revision: number; closed: boolean; teamMode: boolean; expires: number };
+type MemorySession = { players: Map<string, StoredPlayer>; kicked: Set<string>; operations: Set<string>; revision: number; closed: boolean; teamMode: boolean; expires: number; engine?: string; engineRevision: number; engineNextAt?: number; positions: Map<string, { x: number; y: number; lastMoveTs: number }> };
 export function createQuickPlayStore(redis?: LiveScoreRedis, now = Date.now) {
   const memory = new Map<string, MemorySession>();
   async function apply(code: string, command: Command): Promise<StoreResult> {
     if (redis) {
       const prefix = `qp-state:v1:{${code}}`;
       const raw = await redis.eval(script, {
-        keys: ['meta', 'players', 'kicked', 'operations'].map(k => `${prefix}:${k}`),
+        keys: ['meta', 'players', 'kicked', 'operations', 'engine', 'positions'].map(k => `${prefix}:${k}`),
         arguments: [JSON.stringify(command), String(now()), String(TTL), String(QP_MAX_STUDENTS_PER_SESSION), String(QP_MAX_SCORE_DELTA), String(QP_MAX_SESSION_SCORE)],
       });
       const result = JSON.parse(String(raw)) as StoreResult;
@@ -157,16 +217,41 @@ export function createQuickPlayStore(redis?: LiveScoreRedis, now = Date.now) {
     let s = memory.get(code);
     if (!s) {
       if (memory.size >= 10000) throw new Error('Quick Play capacity reached');
-      s = { players: new Map(), kicked: new Set(), operations: new Set(), revision: 0, closed: false, teamMode: false, expires: now() + TTL * 1000 };
+      s = { players: new Map(), kicked: new Set(), operations: new Set(), revision: 0, closed: false, teamMode: false, engineRevision: 0, positions: new Map(), expires: now() + TTL * 1000 };
       memory.set(code, s);
     }
     const result = (status: StoreResult['status'], entry?: StoredPlayer): StoreResult => ({ status, revision: s.revision, teamMode: s.teamMode, ...(entry ? { entry: structuredClone(entry) } : {}) });
-    const touch = () => { s.revision++; s.expires = now() + TTL * 1000; };
+    const touch = () => { s.revision++; if (s.expires !== Infinity) s.expires = now() + TTL * 1000; };
+    if (command.op === 'engineDue') return { ...result('ok'), due: !s.closed && !!s.engineNextAt && s.engineNextAt <= now() };
+    if (command.op === 'engineRead') return { ...result('ok'), closed: s.closed, engine: s.engine,
+      engineRevision: s.engineRevision, positions: Object.fromEntries(s.positions),
+      students: structuredClone([...s.players.values()].filter(p => !p.left)) };
+    if (command.op === 'finalized') { s.expires = now() + TTL * 1000; touch(); return result('ok'); }
     if (command.op === 'close' || command.op === 'snapshot') {
+      if (command.retain) s.expires = Infinity;
       if (command.op === 'close' && !s.closed) { s.closed = true; touch(); }
       return { ...result('ok'), closed: s.closed, students: structuredClone([...s.players.values()].filter(p => command.op === 'close' || !p.left)) };
     }
     if (s.closed) return result('session_inactive');
+    if (command.op === 'engineCommit') {
+      if (s.engineRevision !== command.expected) return result('conflict');
+      const actor = command.id ? s.players.get(command.id) : undefined;
+      if (command.id && (!actor || actor.left || actor.owner !== command.owner)) return result('unauthorized');
+      if (s.operations.size + command.awards!.length > 100000) throw new Error('Quick Play award capacity reached');
+      if (command.awards!.some(a => !s.players.has(a.id) || s.players.get(a.id)!.left)) return result('conflict');
+      for (const a of command.awards!) {
+        const op = `${a.id}:${a.operationId}`, p = s.players.get(a.id)!;
+        if (!s.operations.has(op)) { s.operations.add(op); p.score = Math.min(QP_MAX_SESSION_SCORE, p.score + a.amount); p.lastSeen = now(); }
+      }
+      s.engine = command.engine; s.engineRevision++; s.engineNextAt = command.nextAt;
+      if (command.resetPositions) s.positions.clear();
+      touch(); return { ...result('ok'), students: structuredClone([...s.players.values()].filter(p => !p.left)) };
+    }
+    if (command.op === 'move') {
+      const p = s.players.get(command.id!);
+      if (!p || p.left || p.owner !== command.owner) return result('unauthorized');
+      s.positions.set(command.id!, command.position!); return result('ok');
+    }
     if (command.op === 'teams') {
       s.teamMode = command.enabled!;
       [...s.players.keys()].sort().forEach((id, i) => {
@@ -232,7 +317,14 @@ export function createQuickPlayStore(redis?: LiveScoreRedis, now = Date.now) {
     team: (code: string, id: string, owner: string, team: 'red' | 'blue') => apply(code, { op: 'team', id, owner, team }),
     leave: (code: string, id: string, owner: string) => apply(code, { op: 'leave', id, owner }),
     kick: (code: string, id: string) => apply(code, { op: 'kick', id }),
-    close: (code: string) => apply(code, { op: 'close' }),
+    close: (code: string, retain = false) => apply(code, { op: 'close', retain }),
+    finalized: (code: string) => apply(code, { op: 'finalized' }),
     snapshot: (code: string) => apply(code, { op: 'snapshot' }),
+    engineDue: (code: string) => apply(code, { op: 'engineDue' }),
+    engineRead: (code: string) => apply(code, { op: 'engineRead' }),
+    engineCommit: (code: string, expected: number, engine: string, awards: EngineAward[], actor?: { id: string; owner: string }, resetPositions = false, nextAt = 0) =>
+      apply(code, { op: 'engineCommit', expected, engine, awards, ...actor, resetPositions, nextAt }),
+    move: (code: string, id: string, owner: string, position: { x: number; y: number; lastMoveTs: number }) =>
+      apply(code, { op: 'move', id, owner, position }),
   };
 }

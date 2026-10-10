@@ -9,6 +9,9 @@ import { config as loadDotenv } from "dotenv";
 loadDotenv({ path: ".env.local", override: true });
 import * as Sentry from "@sentry/node";
 import { scrubPii } from "./src/utils/scrubPii";
+import { createQuickPlayEngine, encodeRoundState, decodeRoundState } from "./src/utils/quickPlayEngine.server";
+import { createQuickPlayFinalizer } from "./src/utils/quickPlayFinalizer.server";
+import type { LiveScoreRedis } from "./src/utils/liveScoreStore";
 import { createQuickPlayStore } from "./src/utils/quickPlayStore.server";
 import { createLiveScoreStore } from "./src/utils/liveScoreStore";
 import { installScrubbingConsole, redactEmail } from "./src/utils/serverLog";
@@ -1897,8 +1900,8 @@ async function startServer() {
   //
   // State is in-memory here; survives as long as the Node process
   // does. The `quick_play_sessions` row in Postgres remains the source
-  // of truth for "does this session exist at all + what words/modes"
-  // — the in-memory map only tracks live leaderboard.
+  // of truth for "does this session exist at all + what words/modes".
+  // Redis owns scores and active rounds; local maps track socket presence.
   // ──────────────────────────────────────────────────────────────────────
 
   interface QpSessionState {
@@ -1907,14 +1910,7 @@ async function startServer() {
     socketToClient: Map<string, string>;              // socket.id → clientId
     teacherSockets: Set<string>;                      // socket.id of observers
     lastTeacherSeenAt: number;                        // epoch ms
-    // clientIds the teacher has KICKED in this session.  STUDENT_JOIN
-    // checks against this set and refuses to re-add a kicked student
-    // even if their socket auto-reconnects (which socket.io does by
-    // default).  Without this, the kick "didn't stick" — server
-    // disconnected the kicked student's socket, the client
-    // reconnected, replayed STUDENT_JOIN with the same clientId, and
-    // the leaderboard reincarnated them.  Lives only as long as the
-    // in-memory session does (cleared on TEACHER_END / idle sweep).
+    // Local revocation cache; the shared store enforces durable kicks.
     kickedClientIds: Set<string>;
     // In-game 🆘 help: clientIds with an outstanding raised hand. Best-effort
     // (the client owns the 60s auto-expire); lets TEACHER_ACK_HELP "all" know
@@ -1922,22 +1918,23 @@ async function startServer() {
     raisedHands: Set<string>;
     // Red vs Blue team mode. Off by default — when off the engine behaves
     // exactly as before (no team stamped, no team signal sent). Toggled
-    // live by the teacher; in-memory only, like the round config.
+    // live by the teacher; loaded from the shared store for every transition.
     teamMode: boolean;
     // Active Category Race round, if any. Only set for race sessions
     // (allowed_modes === ['category-race']); regular vocab sessions
     // never touch it. Holds the shared letter + categories + the single
     // server-authoritative deadline so every student scores the same
     // round, the set of clientIds that already submitted (one submit per
-    // round), and the close timer.
+    // round), and durable result receipts.
     currentRace: {
       roundId: string;
+      ended?: boolean;
+      results: Map<string, QpRaceResultPayload>;
       letter: string;
       categories: RaceCategoryId[];
       roundSeconds: number;
       deadlineTs: number;
       submitted: Set<string>;
-      timer: ReturnType<typeof setTimeout> | null;
       /** Relaxed mode — no countdown; ends on all-submitted or teacher. */
       untimed: boolean;
       /** Round start epoch ms — basis for the speed bonus. */
@@ -1948,9 +1945,14 @@ async function startServer() {
     // the teacher-authored correctIndex PRIVATELY — it is never broadcast,
     // so a tampered client can't read the answer off the wire. Tracks who
     // already tapped (one submit per word) + the FIRST correct answerer
-    // (the per-word winner) + the close timer.
+    // (the per-word winner), including after server restarts.
     currentSpeed: {
       roundId: string;
+      ended?: boolean;
+      results: Map<string, QpSpeedResultPayload>;
+      prompt: string;
+      promptKind: QpSpeedPromptKind;
+      options: string[];
       mode: QpSpeedMode;
       /** Server-private — the index that scores. Never broadcast. */
       correctIndex: number;
@@ -1963,17 +1965,17 @@ async function startServer() {
       submitted: Set<string>;
       /** clientId of the first student to answer correctly, or null. */
       firstCorrectClientId: string | null;
-      timer: ReturnType<typeof setTimeout> | null;
     } | null;
     // Active Word Hunt Arena, if any. Only set for arena sessions
     // (allowed_modes === ['word-hunt-arena']). Holds the host's whole
     // pre-authored question batch (each correctIndex PRIVATE — never
     // broadcast), client positions (client-authoritative, batched out by
     // the snapshot tick — never relayed per-move), per-student grab
-    // cooldowns, and the snapshot tick timer. A locked word carries an
+    // cooldowns, and absolute respawn deadlines. A locked word carries an
     // embedded Speed-Round-style activeRound so answering rides the
     // existing SPEED_SUBMIT scoring core. See docs/word-hunt-arena-design.md §4.
     currentArena: {
+      results: Map<string, QpSpeedResultPayload>;
       config: {
         width: number;
         height: number;
@@ -2011,27 +2013,21 @@ async function startServer() {
           startTs: number;
           submitted: Set<string>;
           firstCorrectClientId: string | null;
-          timer: ReturnType<typeof setTimeout> | null;
         } | null;
       }>;
       positions: Map<string, { x: number; y: number; dirty: boolean; lastMoveTs: number }>;
       grabCooldownUntil: Map<string, number>;
-      tickTimer: ReturnType<typeof setInterval> | null;
       // Scattered game elements (Speed Boost / Bonus Star / Double Points /
       // Hurricane). All four flip to "collected" on pickup then respawn;
       // the hurricane stuns its collector (client effect) instead of paying
-      // out. Refereed here (the owning VM) exactly like word grabs so points +
+      // out. Committed atomically with word grabs so points +
       // the double flag stay server-authoritative.
-      pickups: Map<string, { kind: QpArenaPickupKind; pos: QpArenaPos; state: "available" | "collected" }>;
+      pickups: Map<string, { kind: QpArenaPickupKind; pos: QpArenaPos; state: "available" | "collected"; respawnAt?: number }>;
       // clientIds whose NEXT correct arena answer scores ×2 (set by a Double
       // Points pickup, cleared the moment it's applied). Server-side so a
       // tampered client can't grant itself the multiplier.
       doubleNext: Set<string>;
-      // Pickup respawn timers — cleared on teardown so a recycled consumable
-      // can't fire into a dead/replaced arena (same leak class as word timers).
-      pickupRespawnTimers: Set<ReturnType<typeof setTimeout>>;
-      // Rough mode (dash-tackle PvP) — teacher-toggled, in-memory only (like
-      // teamMode). Default off; a tackle is rejected outright unless this is on.
+      // Rough mode is persisted with the arena; tackles require it to be on.
       roughMode: boolean;
       // Per-dasher tackle cooldown (epoch ms) — server-side sanity so a
       // tampered client can't chain-tackle faster than the dash cooldown.
@@ -2049,62 +2045,7 @@ async function startServer() {
   const qpPendingBroadcasts = new Set<string>();
   let qpBroadcastTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Opaque per-process id stamped onto every leaderboard snapshot. `qpSessions`
-  // is per-VM, so once Fly runs >1 machine a single session's students are
-  // split across processes and each VM broadcasts only the subset it knows.
-  // The client keeps the latest snapshot PER serverId and renders their union
-  // (max score per clientId) — see QpLeaderboardPayload.serverId.
   const QP_SERVER_ID = randomUUID();
-
-  // Cross-VM (server-to-server) event for a Category Race submit that landed
-  // on a VM which doesn't own the active round. The round + its scoring live
-  // only on the VM where the teacher pressed Start; with ≥2 Fly machines a
-  // student's socket can land elsewhere. serverSideEmit (Redis-adapter backed)
-  // forwards this to every OTHER VM; the owner scores it and replies straight
-  // to the student's socket. Plain string — serverSideEmit forbids reserved
-  // names. (2026-06: fixes "submit dropped, no podium points, stuck on lobby".)
-  const QP_RACE_SUBMIT_FANOUT = "qp:internal:race-submit";
-
-  // Cross-VM (server-to-server) event for a Speed Round submit that landed
-  // on a VM which doesn't own the active word. Same multi-VM rationale as
-  // QP_RACE_SUBMIT_FANOUT above — the word + its scoring live only on the VM
-  // where the teacher pressed Start. The owner scores by index and replies
-  // straight to the student's socket.
-  const QP_SPEED_SUBMIT_FANOUT = "qp:internal:speed-submit";
-
-  // Cross-VM (server-to-server) event for a Word Hunt Arena GRAB that landed
-  // on a VM which doesn't own the arena. The word map + lock state live only
-  // on the VM where the teacher pressed Start, and grabs must be refereed
-  // there (single event loop ⇒ no double-grab race). Carries the student's
-  // client-reported x/y because the owner VM may never have seen their
-  // ARENA_MOVE stream — that's the range-check fallback.
-  const QP_ARENA_GRAB_FANOUT = "qp:internal:arena-grab";
-
-  // Cross-VM (server-to-server) event for a Word Hunt Arena PICKUP that landed
-  // on a VM which doesn't own the arena. Same rationale as QP_ARENA_GRAB_FANOUT:
-  // the pickup map + the star points + the double flag live only on the owner
-  // VM and must be refereed there. Carries the student's client-reported x/y
-  // as the range-check fallback.
-  const QP_ARENA_PICKUP_FANOUT = "qp:internal:arena-pickup";
-
-  // Cross-VM (server-to-server) event for a Word Hunt Arena TACKLE that landed
-  // on a VM which doesn't own the arena. The rough-mode flag, the teams, the
-  // tackle cooldown, and both students' last-known positions all live only on
-  // the owner VM, so the tackle must be refereed there. Carries the dasher's
-  // client-reported x/y as the range-check fallback (mirrors the pickup fanout).
-  const QP_ARENA_TACKLE_FANOUT = "qp:internal:arena-tackle";
-
-  // Cross-VM (server-to-server) event for a Word Hunt Arena MOVE that landed on
-  // a VM which doesn't own the arena. Player positions live only on the owner
-  // VM's arena.positions, and the snapshot tick serializes THAT map to the whole
-  // room — so a student whose socket load-balanced to a non-owner VM had their
-  // moves dropped, and the teacher's projector (plus every peer) only ever saw
-  // players co-located with the owner VM: the "map is static / students don't
-  // appear" report. Forward the move to the owner so all positions aggregate in
-  // one place. Higher-frequency than grab/pickup/tackle, but each move is already
-  // per-socket rate-limited (qpMoveLimiter) before it is fanned out, and it only
-  // fans out at all when a Redis adapter is attached (multi-VM).
-  const QP_ARENA_MOVE_FANOUT = "qp:internal:arena-move";
 
   // Rate limiters — sized for a real classroom on a school's NAT'd
   // Wi-Fi where ALL students hit the server from one external IP.
@@ -2135,12 +2076,42 @@ async function startServer() {
   const qpRaiseHandLimiter  = createSocketRateLimiter(60_000,   5, 5 * 60_000); //   5 raises/min/socket
 
   const qpIo = io.of(QUICK_PLAY_NS);
-  const qpStore = createQuickPlayStore(process.env.REDIS_URL ? {
+  const qpRedis: LiveScoreRedis | undefined = process.env.REDIS_URL ? {
     eval: async (script, options) => {
       if (!redisPubClient?.isReady) throw new Error("Quick Play store unavailable");
       return redisPubClient.eval(script, options);
     },
-  } : undefined);
+  } : undefined;
+  const qpStore = createQuickPlayStore(qpRedis);
+  const qpEngine = createQuickPlayEngine<QpSessionState>({
+    store: qpStore,
+    local: qpGetOrCreateSession,
+    hydrate: (state, saved, positions) => {
+      Object.assign(state, saved ? decodeRoundState(saved) : { currentRace: null, currentSpeed: null, currentArena: null });
+      if (state.currentArena) {
+        for (const id of state.currentArena.positions.keys()) if (!state.students.has(id)) state.currentArena.positions.delete(id);
+        for (const [id, pos] of Object.entries(positions ?? {})) {
+          if (state.students.has(id)) state.currentArena.positions.set(id, { ...pos, dirty: true });
+        }
+      }
+    },
+    nextAt: state => {
+      const due: number[] = [];
+      if (state.currentRace && !state.currentRace.ended) due.push(state.currentRace.deadlineTs + QP_RACE_SUBMIT_GRACE_MS + 1);
+      if (state.currentSpeed && !state.currentSpeed.ended) due.push(state.currentSpeed.deadlineTs + QP_RACE_SUBMIT_GRACE_MS + 1);
+      if (state.currentArena) {
+        for (const word of state.currentArena.words.values()) if (word.activeRound) due.push(word.activeRound.deadlineTs + QP_RACE_SUBMIT_GRACE_MS + 1);
+        for (const pickup of state.currentArena.pickups.values()) if (pickup.respawnAt) due.push(pickup.respawnAt);
+      }
+      return due.length ? Math.min(...due) : 0;
+    },
+    serialize: state => encodeRoundState({ currentRace: state.currentRace, currentSpeed: state.currentSpeed, currentArena: state.currentArena }),
+    emit: ({ room, event, payload }) => { qpIo.to(room).emit(event, payload); },
+    broadcast: code => qpScheduleBroadcast(code),
+  });
+  const qpSend = qpEngine.emit;
+  const qpRoundState = (code: string) => qpEngine.state(code) ?? qpSessions.get(code);
+
   const QP_CONTROL_FANOUT = "qp:internal:control";
   function qpApplyControl(code: string, clientId?: string) {
     const state = qpSessions.get(code);
@@ -2150,8 +2121,6 @@ async function startServer() {
       state.students.delete(clientId);
       for (const [id, client] of state.socketToClient) if (client === clientId) state.socketToClient.delete(id);
     } else {
-      if (state.currentRace?.timer) clearTimeout(state.currentRace.timer);
-      if (state.currentSpeed?.timer) clearTimeout(state.currentSpeed.timer);
       qpClearArena(state);
       state.socketToClient.clear();
       qpSessions.delete(code);
@@ -2161,12 +2130,48 @@ async function startServer() {
   qpIo.on(QP_CONTROL_FANOUT, (data: { sessionCode: string; clientId?: string }) => {
     if (data && isValidSessionCode(data.sessionCode)) qpApplyControl(data.sessionCode, data.clientId);
   });
+  const qpFinalizer = createQuickPlayFinalizer({
+    redis: qpRedis, store: qpStore,
+    closed: sessionCode => {
+      qpApplyControl(sessionCode);
+      if (redisAdapterStatus === "attached") qpIo.serverSideEmit(QP_CONTROL_FANOUT, { sessionCode });
+      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.SESSION_ENDED, { sessionCode });
+    },
+    warn: error => console.warn("[QP finalization retry]", error),
+    persist: async (job, players) => {
+      if (!supabaseAdmin) throw new Error("Quick Play persistence unavailable");
+      const { data: session, error: lookupError } = await supabaseAdmin.from("quick_play_sessions")
+        .select("id").eq("session_code", job.code).eq("teacher_uid", job.teacherUid).eq("id", job.sessionId)
+        .abortSignal(AbortSignal.timeout(10000)).single();
+      if (lookupError || session?.id !== job.sessionId) throw new Error("Quick Play finalization session mismatch");
+      // Multiple tabs signed in as one account share one progress row. Keep
+      // that account's highest score, as the historical progress RPC did.
+      const rows = new Map<string, Record<string, unknown>>();
+      for (const player of players) {
+        if (player.score <= 0) continue;
+        const uid = player.authUid || `qp:${player.clientId}`;
+        const score = Math.min(1000, Math.round(player.score));
+        if (Number(rows.get(uid)?.score ?? -1) >= score) continue;
+        rows.set(uid, { student_uid: uid, student_name: player.nickname, avatar: player.avatar,
+          assignment_id: job.sessionId, class_code: "QUICK_PLAY", mode: "quickplay",
+          score, mistakes: [], play_count: 1, completed_at: job.endedAt });
+      }
+      if (rows.size) {
+        const { error } = await supabaseAdmin.from("progress").upsert([...rows.values()], {
+          onConflict: "assignment_id,student_uid,mode,class_code", ignoreDuplicates: true,
+        }).abortSignal(AbortSignal.timeout(10000));
+        if (error) throw new Error(`Could not persist Quick Play results: ${error.code}`);
+      }
+      const { error } = await supabaseAdmin.from("quick_play_sessions")
+        .update({ is_active: false, ended_at: job.endedAt })
+        .eq("session_code", job.code).eq("teacher_uid", job.teacherUid).eq("id", job.sessionId).abortSignal(AbortSignal.timeout(10000));
+      if (error) throw new Error(`Could not close Quick Play session: ${error.code}`);
+    },
+  });
+
   async function qpAward(state: QpSessionState, clientId: string, amount: number, operationId: string) {
-    const result = await qpStore.award(state.sessionCode, clientId, amount, operationId);
-    if (!result.entry) return null;
-    const entry = { ...state.students.get(clientId), ...result.entry };
-    state.students.set(clientId, entry);
-    return entry;
+    if (qpEngine.state(state.sessionCode) !== state) throw new Error("Round award outside transaction");
+    return qpEngine.award(clientId, amount, operationId);
   }
 
 
@@ -2206,6 +2211,8 @@ async function startServer() {
   // ─── Broadcast helpers ──────────────────────────────────────────────
 
   function qpScheduleBroadcast(sessionCode: string) {
+    const tx = qpEngine.current();
+    if (tx) { tx.broadcast = true; return; }
     qpPendingBroadcasts.add(sessionCode);
     if (qpBroadcastTimer) return;
     qpBroadcastTimer = setTimeout(() => {
@@ -2252,18 +2259,15 @@ async function startServer() {
     return { cells, roundPoints: cells.reduce((sum, c) => sum + c.points, 0) };
   }
 
-  // Apply a submission to the session that owns the round. Used by BOTH the
-  // local handler (student co-located with the round owner) and the cross-VM
-  // fanout handler (student on another VM). Creates the student's leaderboard
-  // entry if this VM never saw their JOIN — the round owner is authoritative
-  // for the race score, so a remote student's row is born here from the
-  // nickname/avatar carried on the submit. Returns the RACE_RESULT payload to
-  // deliver, or null when the submit must be ignored (too late / duplicate).
+  // The transaction records the receipt and award together. Replays return
+  // the original evaluation, even if the second request changes its answer.
   async function qpApplyRaceSubmission(
     state: QpSessionState,
     race: NonNullable<QpSessionState["currentRace"]>,
     args: { clientId: string; nickname: string; avatar: string; answers: Record<string, unknown>; helped: string[] },
   ): Promise<QpRaceResultPayload | null> {
+    if (race.results.has(args.clientId)) return race.results.get(args.clientId)!;
+    if (race.ended) return null;
     if (race.submitted.has(args.clientId)) return null;                       // one submit per round
     if (Date.now() > race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) return null;  // too late
 
@@ -2288,7 +2292,9 @@ async function startServer() {
     }
     if (!entry) return null;
 
-    return { sessionCode: state.sessionCode, roundId: race.roundId, cells, roundPoints, speedBonus, totalScore: entry.score };
+    const result = { sessionCode: state.sessionCode, roundId: race.roundId, cells, roundPoints, speedBonus, totalScore: entry.score };
+    race.results.set(args.clientId, result);
+    return result;
   }
 
   // Auto-end the round once EVERY connected student has submitted, so a quick
@@ -2301,6 +2307,7 @@ async function startServer() {
     sessionCode: string,
     race: NonNullable<QpSessionState["currentRace"]>,
   ): Promise<void> {
+    if (race.ended) return;
     let connectedStudentIds: Set<string>;
     try {
       const sockets = await qpIo.in(sessionCode).fetchSockets();
@@ -2312,60 +2319,19 @@ async function startServer() {
     } catch {
       // Redis mid-reconnect — fall back to the local map so single-VM still
       // auto-ends; multi-VM just waits out the clock this round.
-      const local = qpSessions.get(sessionCode);
+      const local = qpRoundState(sessionCode);
       connectedStudentIds = new Set(local ? local.socketToClient.values() : []);
     }
     if (connectedStudentIds.size === 0) return;
     if (![...connectedStudentIds].every((id) => race.submitted.has(id))) return;
     // Re-check we still own this exact round before announcing the close.
-    const state = qpSessions.get(sessionCode);
+    const state = qpRoundState(sessionCode);
     if (!state?.currentRace || state.currentRace.roundId !== race.roundId) return;
-    if (state.currentRace.timer) { clearTimeout(state.currentRace.timer); state.currentRace.timer = null; }
-    qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.RACE_ENDED, { sessionCode, roundId: race.roundId });
+    race.ended = true;
+    qpSend(sessionCode, QP_SERVER_EVENTS.RACE_ENDED, { sessionCode, roundId: race.roundId });
   }
 
-  // Cross-VM Category Race submit (see QP_RACE_SUBMIT_FANOUT). Fires on every
-  // VM; only the one that owns the round acts. serverSideEmit delivers to all
-  // OTHER instances (never the sender), so the sending VM already handled the
-  // "round is local" case before fanning out.
-  qpIo.on(QP_RACE_SUBMIT_FANOUT, async (data: {
-    sessionCode: string; roundId: string; clientId: string;
-    nickname: string; avatar: string; socketId: string;
-    answers: Record<string, unknown>; helped: string[];
-  }) => {
-    try {
-      if (!data || typeof data !== "object") return;
-      const state = qpSessions.get(data.sessionCode);
-      if (!state?.currentRace || state.currentRace.roundId !== data.roundId) return; // not the owner
-      const race = state.currentRace;
-      const result = await qpApplyRaceSubmission(state, race, {
-        clientId: data.clientId, nickname: data.nickname, avatar: data.avatar,
-        answers: data.answers, helped: Array.isArray(data.helped) ? data.helped : [],
-      });
-      if (!result) return; // too late / duplicate
-      // Reply straight to the student's socket on its own VM — the Redis
-      // adapter routes `to(socketId)` across machines.
-      qpIo.to(data.socketId).emit(QP_SERVER_EVENTS.RACE_RESULT, result);
-      qpScheduleBroadcast(data.sessionCode);
-      console.log(`[QP RACE submit xvm] session=${data.sessionCode} client=${data.clientId.slice(0, 8)} round=${data.roundId.slice(0, 8)} → ${result.totalScore}`);
-      void qpMaybeAutoEndRace(data.sessionCode, race);
-    } catch (err) {
-      console.warn("[QP RACE submit xvm] handler threw", err);
-    }
-  });
-
-  // ─── Index-choice scoring core (Speed Round + Word Hunt Arena) ─────────
-  // Students send an INDEX, never a score — the server compares it to the
-  // teacher-authored correctIndex it holds privately, so a tampered client
-  // can't claim points it didn't earn. One core for BOTH index-scored modes
-  // so the anti-cheat guards (duplicate, late, bounds) can never drift apart:
-  // the Speed Round word and an arena word's embedded activeRound share this
-  // exact shape, only the point constants differ (arena words come many per
-  // game, so they pay less each — see QP_ARENA_BASE_POINTS).
-  // Mirrors qpApplyRaceSubmission: guards duplicate + late submits, mints a
-  // leaderboard row if this VM never saw the student's JOIN (the round owner
-  // is authoritative), and returns the scored fields — or null when the
-  // submit must be ignored.
+  // Shared scoring core for Speed Round and the arena's private questions.
   async function qpScoreChoice(
     state: QpSessionState,
     round: {
@@ -2436,9 +2402,13 @@ async function startServer() {
     speed: NonNullable<QpSessionState["currentSpeed"]>,
     args: { clientId: string; choiceIndex: number; nickname: string; avatar: string },
   ): Promise<QpSpeedResultPayload | null> {
+    if (speed.results.has(args.clientId)) return speed.results.get(args.clientId)!;
+    if (speed.ended) return null;
     const scored = await qpScoreChoice(state, speed, args, QP_SPEED_BASE_POINTS, QP_SPEED_BONUS_MAX);
     if (!scored) return null;
-    return { sessionCode: state.sessionCode, roundId: speed.roundId, ...scored };
+    const result = { sessionCode: state.sessionCode, roundId: speed.roundId, ...scored };
+    speed.results.set(args.clientId, result);
+    return result;
   }
 
   // Auto-end the word once EVERY connected student has tapped, so a quick
@@ -2448,6 +2418,7 @@ async function startServer() {
     sessionCode: string,
     speed: NonNullable<QpSessionState["currentSpeed"]>,
   ): Promise<void> {
+    if (speed.ended) return;
     let connectedStudentIds: Set<string>;
     try {
       const sockets = await qpIo.in(sessionCode).fetchSockets();
@@ -2457,65 +2428,21 @@ async function startServer() {
           .map((s) => s.data.qpClientId as string),
       );
     } catch {
-      const local = qpSessions.get(sessionCode);
+      const local = qpRoundState(sessionCode);
       connectedStudentIds = new Set(local ? local.socketToClient.values() : []);
     }
     if (connectedStudentIds.size === 0) return;
     if (![...connectedStudentIds].every((id) => speed.submitted.has(id))) return;
-    const state = qpSessions.get(sessionCode);
+    const state = qpRoundState(sessionCode);
     if (!state?.currentSpeed || state.currentSpeed.roundId !== speed.roundId) return;
-    if (state.currentSpeed.timer) { clearTimeout(state.currentSpeed.timer); state.currentSpeed.timer = null; }
-    qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.SPEED_ENDED, {
+    speed.ended = true;
+    qpSend(sessionCode, QP_SERVER_EVENTS.SPEED_ENDED, {
       sessionCode, roundId: speed.roundId,
       correctIndex: speed.correctIndex,
       winnerClientId: speed.firstCorrectClientId,
     });
   }
 
-  // Cross-VM Speed Round submit (see QP_SPEED_SUBMIT_FANOUT). Fires on every
-  // VM; only the one that owns the word acts. Mirrors the race fanout above.
-  // Also resolves Word Hunt Arena answers — the arena's grab grant rides the
-  // SPEED_ROUND payload shape, so the student's answer arrives as a normal
-  // SPEED_SUBMIT and may fan out here when the arena lives on another VM.
-  qpIo.on(QP_SPEED_SUBMIT_FANOUT, async (data: {
-    sessionCode: string; roundId: string; clientId: string;
-    nickname: string; avatar: string; socketId: string; choiceIndex: number;
-  }) => {
-    try {
-      if (!data || typeof data !== "object") return;
-      const state = qpSessions.get(data.sessionCode);
-      if (!state) return;
-      if (state.currentSpeed && state.currentSpeed.roundId === data.roundId) {
-        const speed = state.currentSpeed;
-        const result = await qpApplySpeedSubmission(state, speed, {
-          clientId: data.clientId, choiceIndex: data.choiceIndex,
-          nickname: data.nickname, avatar: data.avatar,
-        });
-        if (!result) return; // too late / duplicate
-        qpIo.to(data.socketId).emit(QP_SERVER_EVENTS.SPEED_RESULT, result);
-        qpScheduleBroadcast(data.sessionCode);
-        console.log(`[QP SPEED submit xvm] session=${data.sessionCode} client=${data.clientId.slice(0, 8)} round=${data.roundId.slice(0, 8)} → ${result.totalScore}`);
-        void qpMaybeAutoEndSpeed(data.sessionCode, speed);
-        return;
-      }
-      // Not a Speed Round word on this VM — maybe an arena answer we own.
-      const arenaResult = await qpApplyArenaAnswer(state, data.roundId, {
-        clientId: data.clientId, choiceIndex: data.choiceIndex,
-        nickname: data.nickname, avatar: data.avatar,
-      });
-      if (!arenaResult) return; // not the owner / stale / duplicate
-      qpIo.to(data.socketId).emit(QP_SERVER_EVENTS.SPEED_RESULT, arenaResult);
-      qpScheduleBroadcast(data.sessionCode);
-      console.log(`[QP ARENA answer xvm] session=${data.sessionCode} client=${data.clientId.slice(0, 8)} round=${data.roundId.slice(0, 8)} → ${arenaResult.totalScore}`);
-    } catch (err) {
-      console.warn("[QP SPEED submit xvm] handler threw", err);
-    }
-  });
-
-  // ─── Word Hunt Arena helpers (see docs/word-hunt-arena-design.md §4) ───
-
-  /** Random spawn point, kept off the very edge so a fresh avatar isn't
-   *  half-clipped by the arena border. */
   function qpArenaSpawnPos(): { x: number; y: number } {
     return {
       x: 80 + Math.floor(Math.random() * (QP_ARENA_WIDTH - 160)),
@@ -2618,27 +2545,16 @@ async function startServer() {
     };
   }
 
-  /** Stop the snapshot tick + every word's fumble timer and drop the arena.
-   *  Called by ARENA_START (replacing a previous arena), ARENA_END,
-   *  TEACHER_END, and the idle sweep — leaked interval timers were exactly
-   *  the class of bug the currentSpeed teardown comments warn about. */
+  /** Clearing durable arena state also invalidates its deadlines and positions. */
   function qpClearArena(state: QpSessionState): void {
     const arena = state.currentArena;
     if (!arena) return;
-    if (arena.tickTimer) clearInterval(arena.tickTimer);
-    for (const w of arena.words.values()) {
-      if (w.activeRound?.timer) clearTimeout(w.activeRound.timer);
-    }
-    for (const t of arena.pickupRespawnTimers) clearTimeout(t);
-    arena.pickupRespawnTimers.clear();
     state.currentArena = null;
+    const tx = qpEngine.current();
+    if (tx) tx.resetPositions = true;
   }
 
-  /** Referee one grab attempt against the arena THIS VM owns. Synchronous
-   *  on purpose: between the availability check and the lock write nothing
-   *  else can run on the event loop, so two simultaneous grabs can never
-   *  both win. Used by the local ARENA_GRAB handler and the cross-VM
-   *  fanout; the caller routes the granted/denied reply to the right socket. */
+  /** The enclosing compare-and-swap transition makes competing grabs exclusive. */
   function qpApplyArenaGrab(
     state: QpSessionState,
     args: { clientId: string; wordId: string; x?: unknown; y?: unknown },
@@ -2682,28 +2598,9 @@ async function startServer() {
       optionCount: word.optionCount,
       submitted: new Set(),
       firstCorrectClientId: null,
-      timer: null,
     };
-    // Fumble-release: if the grabber never answers, the word floats back to
-    // available for everyone else and the grabber eats the cooldown —
-    // holding a word hostage has to cost something.
-    word.activeRound.timer = setTimeout(() => {
-      const s = qpSessions.get(state.sessionCode);
-      const a = s?.currentArena;
-      const w = a?.words.get(args.wordId);
-      if (!s || !a || !w || w.activeRound?.roundId !== roundId || w.activeRound.submitted.has(args.clientId)) return;
-      w.state = "available";
-      w.lockedBy = null;
-      w.activeRound = null;
-      a.grabCooldownUntil.set(args.clientId, Date.now() + QP_ARENA_GRAB_COOLDOWN_MS);
-      qpIo.to(state.sessionCode).emit(QP_SERVER_EVENTS.ARENA_WORD, {
-        sessionCode: state.sessionCode,
-        word: qpArenaPublicWord(args.wordId, w),
-      });
-    }, arena.config.roundSeconds * 1000 + QP_RACE_SUBMIT_GRACE_MS);
-
     // The room learns the word is taken; ONLY the grabber gets the question.
-    qpIo.to(state.sessionCode).emit(QP_SERVER_EVENTS.ARENA_WORD, {
+    qpSend(state.sessionCode, QP_SERVER_EVENTS.ARENA_WORD, {
       sessionCode: state.sessionCode,
       word: qpArenaPublicWord(args.wordId, word),
     });
@@ -2723,11 +2620,7 @@ async function startServer() {
     };
   }
 
-  /** Resolve a SPEED_SUBMIT against the arena this VM owns: find the word
-   *  whose activeRound matches the roundId AND is locked by this student,
-   *  score through the shared core (arena point constants), retire the word,
-   *  and patch the room. Returns the SPEED_RESULT payload, or null when this
-   *  VM has no matching arena round (caller falls through / drops). */
+  /** Only the word's lock owner can answer; retire the word with its score. */
   async function qpApplyArenaAnswer(
     state: QpSessionState,
     roundId: string,
@@ -2735,17 +2628,17 @@ async function startServer() {
   ): Promise<QpSpeedResultPayload | null> {
     const arena = state.currentArena;
     if (!arena) return null;
+    const previous = arena.results.get(args.clientId);
+    if (previous?.roundId === roundId) return previous;
     for (const [wordId, word] of arena.words) {
       const round = word.activeRound;
       if (!round || round.roundId !== roundId) continue;
       if (word.lockedBy !== args.clientId) return null; // someone else's lock — never score it
-      // Reserve the answer before awaiting Redis; its fumble timer must not
-      // release the same word while a committed score is awaiting a reply.
+      // Consuming the multiplier, retiring the word and awarding points share one commit.
       const multiplier = arena.doubleNext.has(args.clientId) ? 2 : 1;
       const scored = await qpScoreChoice(state, round, args, QP_ARENA_BASE_POINTS, QP_ARENA_BONUS_MAX, multiplier);
       if (!scored) return null;
       if (scored.correct) arena.doubleNext.delete(args.clientId);
-      if (round.timer) clearTimeout(round.timer);
       word.activeRound = null;
       // An answered word stays answered — it's REMOVED from play (no reserve /
       // respawn cycling). The whole batch is on the map from the start, so the
@@ -2754,11 +2647,13 @@ async function startServer() {
       // for the brief "who took it" highlight.
       word.state = "answered";
       arena.grabCooldownUntil.set(args.clientId, Date.now() + QP_ARENA_GRAB_COOLDOWN_MS);
-      qpIo.to(state.sessionCode).emit(QP_SERVER_EVENTS.ARENA_WORD, {
+      qpSend(state.sessionCode, QP_SERVER_EVENTS.ARENA_WORD, {
         sessionCode: state.sessionCode,
         word: qpArenaPublicWord(wordId, word),
       });
-      return { sessionCode: state.sessionCode, roundId, ...scored };
+      const result = { sessionCode: state.sessionCode, roundId, ...scored };
+      arena.results.set(args.clientId, result);
+      return result;
     }
     return null;
   }
@@ -2771,37 +2666,11 @@ async function startServer() {
    *  position clear of words + other pickups, same kind. All four kinds recycle
    *  now. No-ops if the arena/pickup is gone or already back in play. */
   function qpArenaSchedulePickupRespawn(sessionCode: string, pickupId: string): void {
-    const owner = qpSessions.get(sessionCode);
-    const ownerArena = owner?.currentArena;
-    if (!ownerArena) return;
-    const timer = setTimeout(() => {
-      const s = qpSessions.get(sessionCode);
-      const a = s?.currentArena;
-      const p = a?.pickups.get(pickupId);
-      if (a) a.pickupRespawnTimers.delete(timer);
-      if (!s || !a || !p || p.state !== "collected") return;
-      const occupied: QpArenaPos[] = [];
-      for (const w of a.words.values()) if (w.pos) occupied.push(w.pos);
-      for (const [id, o] of a.pickups) if (id !== pickupId && o.state === "available") occupied.push(o.pos);
-      p.pos = qpArenaScatterPositions(1, occupied)[0] ?? p.pos;
-      p.state = "available";
-      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ARENA_PICKUP_SPAWN, {
-        sessionCode,
-        pickup: qpArenaPublicPickup(pickupId, p),
-      });
-    }, QP_ARENA_PICKUP_RESPAWN_MS);
-    ownerArena.pickupRespawnTimers.add(timer);
+    const pickup = qpRoundState(sessionCode)?.currentArena?.pickups.get(pickupId);
+    if (pickup) pickup.respawnAt = Date.now() + QP_ARENA_PICKUP_RESPAWN_MS;
   }
 
-  /** Referee one pickup-collect against the arena THIS VM owns. Synchronous
-   *  like qpApplyArenaGrab: nothing else runs on the event loop between the
-   *  availability check and the state write, so two simultaneous collects of
-   *  the same pickup can't both win. All four kinds are collectible now. On a
-   *  successful collect it applies the effect (star → points + leaderboard
-   *  rebroadcast; double → set the flag; speed → nothing server-side; mud
-   *  hurricane → nothing server-side, the collector's client self-stuns),
-   *  broadcasts ARENA_PICKUP_GONE, and schedules the respawn. Returns the gone
-   *  payload to broadcast, or null when ignored. */
+  /** Pickup state, award and respawn deadline commit together on any server. */
   async function qpApplyArenaPickup(
     state: QpSessionState,
     args: { clientId: string; pickupId: string; x?: unknown; y?: unknown },
@@ -2826,8 +2695,7 @@ async function startServer() {
     if (pickup.kind === "star") {
       // Bonus Star — server-authoritative points (mirrors TEACHER_BONUS), then
       // a fresh leaderboard tick so the podium reflects it.
-      // The consumed pickup is reserved before the await, so one collection
-      // can win. Each respawn is a fresh award; a store failure is fail-closed.
+      // Each respawn is a fresh award; a failed commit consumes neither item nor points.
       const entry = await qpAward(state, args.clientId, QP_ARENA_PICKUP_BONUS_POINTS, `pickup:${randomUUID()}`);
       if (!entry) return null;
       qpScheduleBroadcast(state.sessionCode);
@@ -2905,120 +2773,6 @@ async function startServer() {
     };
   }
 
-  // Cross-VM Word Hunt Arena grab (see QP_ARENA_GRAB_FANOUT). Fires on every
-  // VM; only the one that owns the arena referees. Mirrors the speed fanout.
-  qpIo.on(QP_ARENA_GRAB_FANOUT, (data: {
-    sessionCode: string; wordId: string; clientId: string;
-    socketId: string; x?: number; y?: number;
-  }) => {
-    try {
-      if (!data || typeof data !== "object") return;
-      if (typeof data.wordId !== "string" || !isValidClientId(data.clientId)) return;
-      const state = qpSessions.get(data.sessionCode);
-      if (!state?.currentArena) return; // not the owner
-      const result = qpApplyArenaGrab(state, {
-        clientId: data.clientId, wordId: data.wordId, x: data.x, y: data.y,
-      });
-      if ("granted" in result) {
-        qpIo.to(data.socketId).emit(QP_SERVER_EVENTS.ARENA_GRAB_GRANTED, result.granted);
-        console.log(`[QP ARENA grab xvm] session=${data.sessionCode} client=${data.clientId.slice(0, 8)} word=${data.wordId.slice(0, 8)} granted`);
-      } else {
-        qpIo.to(data.socketId).emit(QP_SERVER_EVENTS.ARENA_GRAB_DENIED, result.denied);
-      }
-    } catch (err) {
-      console.warn("[QP ARENA grab xvm] handler threw", err);
-    }
-  });
-
-  // Cross-VM Word Hunt Arena pickup (see QP_ARENA_PICKUP_FANOUT). Fires on
-  // every VM; only the one that owns the arena referees. On a successful
-  // collect the gone event is broadcast to the WHOLE room (so every client
-  // drops the medallion + the collector applies the effect). A failed collect
-  // (range/already-taken) is silently dropped — the medallion just stays.
-  qpIo.on(QP_ARENA_PICKUP_FANOUT, async (data: {
-    sessionCode: string; pickupId: string; clientId: string;
-    socketId: string; x?: number; y?: number;
-  }) => {
-    try {
-      if (!data || typeof data !== "object") return;
-      if (typeof data.pickupId !== "string" || !isValidClientId(data.clientId)) return;
-      const state = qpSessions.get(data.sessionCode);
-      if (!state?.currentArena) return; // not the owner
-      const gone = await qpApplyArenaPickup(state, {
-        clientId: data.clientId, pickupId: data.pickupId, x: data.x, y: data.y,
-      });
-      if (gone) {
-        qpIo.to(data.sessionCode).emit(QP_SERVER_EVENTS.ARENA_PICKUP_GONE, gone);
-        console.log(`[QP ARENA pickup xvm] session=${data.sessionCode} client=${data.clientId.slice(0, 8)} kind=${gone.kind}`);
-      }
-    } catch (err) {
-      console.warn("[QP ARENA pickup xvm] handler threw", err);
-    }
-  });
-
-  // Cross-VM Word Hunt Arena tackle (see QP_ARENA_TACKLE_FANOUT). Fires on
-  // every VM; only the owner referees. A valid tackle broadcasts ARENA_TACKLED
-  // to the WHOLE room (every client spins the victim, the victim self-stuns +
-  // knocks back). A rejected tackle (rough off / range / friendly fire /
-  // cooldown) is silently dropped — same discipline as the pickup fanout.
-  qpIo.on(QP_ARENA_TACKLE_FANOUT, (data: {
-    sessionCode: string; clientId: string; targetClientId: string;
-    x?: number; y?: number;
-  }) => {
-    try {
-      if (!data || typeof data !== "object") return;
-      if (!isValidClientId(data.clientId) || !isValidClientId(data.targetClientId)) return;
-      const state = qpSessions.get(data.sessionCode);
-      if (!state?.currentArena) return; // not the owner
-      const tackled = qpApplyArenaTackle(state, {
-        clientId: data.clientId, targetClientId: data.targetClientId, x: data.x, y: data.y,
-      });
-      if (tackled) {
-        qpIo.to(data.sessionCode).emit(QP_SERVER_EVENTS.ARENA_TACKLED, tackled);
-        console.log(`[QP ARENA tackle xvm] session=${data.sessionCode} by=${data.clientId.slice(0, 8)} target=${data.targetClientId.slice(0, 8)}`);
-      }
-    } catch (err) {
-      console.warn("[QP ARENA tackle xvm] handler threw", err);
-    }
-  });
-
-  // Cross-VM Word Hunt Arena move (see QP_ARENA_MOVE_FANOUT). Fires on every VM;
-  // only the one that owns the arena writes the position. Unlike grab/pickup/
-  // tackle it doesn't referee anything — it just records the position into the
-  // owner's arena.positions, exactly like the local ARENA_MOVE handler, so the
-  // snapshot tick then serializes EVERY player (all VMs) to the whole room. No
-  // student-map check (the students map is per-VM; a remote student isn't in it)
-  // and no reply — moves are fire-and-forget, batched by the tick.
-  qpIo.on(QP_ARENA_MOVE_FANOUT, (data: {
-    sessionCode: string; clientId: string; x: number; y: number;
-  }) => {
-    try {
-      if (!data || typeof data !== "object") return;
-      if (!isValidClientId(data.clientId)) return;
-      if (typeof data.x !== "number" || !isFinite(data.x)) return;
-      if (typeof data.y !== "number" || !isFinite(data.y)) return;
-      const state = qpSessions.get(data.sessionCode);
-      const arena = state?.currentArena;
-      if (!state || !arena) return; // not the owner
-      const existing = arena.positions.get(data.clientId);
-      // Cap NEW movers — mirrors the local handler so a fanned-out move can't
-      // blow past QP_ARENA_MAX_PLAYERS either.
-      if (!existing && arena.positions.size >= QP_ARENA_MAX_PLAYERS) return;
-      const x = Math.round(Math.min(arena.config.width, Math.max(0, data.x)));
-      const y = Math.round(Math.min(arena.config.height, Math.max(0, data.y)));
-      if (existing) {
-        existing.x = x;
-        existing.y = y;
-        existing.dirty = true;
-        existing.lastMoveTs = Date.now();
-      } else {
-        arena.positions.set(data.clientId, { x, y, dirty: true, lastMoveTs: Date.now() });
-      }
-    } catch (err) {
-      console.warn("[QP ARENA move xvm] handler threw", err);
-    }
-  });
-
   function qpEmitError(
     socket: import("socket.io").Socket,
     event: string,
@@ -3064,6 +2818,8 @@ async function startServer() {
   }
 
   function qpGetOrCreateSession(sessionCode: string): QpSessionState {
+    const transactional = qpEngine.state(sessionCode);
+    if (transactional) return transactional;
     let s = qpSessions.get(sessionCode);
     if (!s) {
       s = {
@@ -3083,6 +2839,109 @@ async function startServer() {
     }
     return s;
   }
+
+  const qpRoundEvents = new Set<string>([
+    QP_EVENTS.RACE_START, QP_EVENTS.RACE_SUBMIT, QP_EVENTS.RACE_END_ROUND,
+    QP_EVENTS.SPEED_START, QP_EVENTS.SPEED_SUBMIT, QP_EVENTS.SPEED_END_ROUND,
+    QP_EVENTS.ARENA_START, QP_EVENTS.ARENA_GRAB, QP_EVENTS.ARENA_PICKUP,
+    QP_EVENTS.ARENA_TACKLE, QP_EVENTS.ARENA_END, QP_EVENTS.TEACHER_ROUGH_MODE,
+  ]);
+  function qpAdvanceRound(code: string) {
+    const state = qpRoundState(code);
+    if (!state) return;
+    const now = Date.now(), race = state.currentRace, speed = state.currentSpeed, arena = state.currentArena;
+    if (race && !race.ended && now > race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) {
+      race.ended = true;
+      qpSend(code, QP_SERVER_EVENTS.RACE_ENDED, { sessionCode: code, roundId: race.roundId });
+    }
+    if (speed && !speed.ended && now > speed.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) {
+      speed.ended = true;
+      qpSend(code, QP_SERVER_EVENTS.SPEED_ENDED, { sessionCode: code, roundId: speed.roundId,
+        correctIndex: speed.correctIndex, winnerClientId: speed.firstCorrectClientId });
+    }
+    if (!arena) return;
+    for (const [id, word] of arena.words) {
+      if (!word.activeRound || (now <= word.activeRound.deadlineTs + QP_RACE_SUBMIT_GRACE_MS && word.lockedBy && state.students.has(word.lockedBy))) continue;
+      if (word.lockedBy) arena.grabCooldownUntil.set(word.lockedBy, now + QP_ARENA_GRAB_COOLDOWN_MS);
+      word.state = "available"; word.lockedBy = null; word.activeRound = null;
+      qpSend(code, QP_SERVER_EVENTS.ARENA_WORD, { sessionCode: code, word: qpArenaPublicWord(id, word) });
+    }
+    for (const [id, pickup] of arena.pickups) {
+      if (pickup.state !== "collected" || !pickup.respawnAt || now < pickup.respawnAt) continue;
+      const occupied = [...arena.words.values()].flatMap(w => w.pos ? [w.pos] : []);
+      for (const p of arena.pickups.values()) if (p.state === "available") occupied.push(p.pos);
+      pickup.pos = qpArenaScatterPositions(1, occupied)[0] ?? pickup.pos;
+      pickup.state = "available"; delete pickup.respawnAt;
+      qpSend(code, QP_SERVER_EVENTS.ARENA_PICKUP_SPAWN, { sessionCode: code, pickup: qpArenaPublicPickup(id, pickup) });
+    }
+  }
+  async function qpResumeRound(code: string, socketId: string, clientId?: string) {
+    await qpEngine.run(code, () => {
+      qpAdvanceRound(code);
+      const state = qpRoundState(code)!;
+      const race = state.currentRace, speed = state.currentSpeed, arena = state.currentArena;
+      const totalScore = clientId ? state.students.get(clientId)?.score : undefined;
+      if (race) {
+        if (!race.ended) qpSend(socketId, QP_SERVER_EVENTS.RACE_ROUND, {
+          sessionCode: code, roundId: race.roundId, letter: race.letter, categories: race.categories,
+          roundSeconds: race.roundSeconds, deadlineTs: race.deadlineTs, serverTs: Date.now(), untimed: race.untimed,
+        });
+        const receipt = clientId ? race.results.get(clientId) : undefined;
+        if (receipt) qpSend(socketId, QP_SERVER_EVENTS.RACE_RESULT, { ...receipt, totalScore });
+        if (race.ended) qpSend(socketId, QP_SERVER_EVENTS.RACE_ENDED, { sessionCode: code, roundId: race.roundId });
+      }
+      if (speed) {
+        if (!speed.ended) qpSend(socketId, QP_SERVER_EVENTS.SPEED_ROUND, {
+          sessionCode: code, roundId: speed.roundId, mode: speed.mode, prompt: speed.prompt,
+          promptKind: speed.promptKind, options: speed.options, roundSeconds: speed.roundSeconds,
+          deadlineTs: speed.deadlineTs, serverTs: Date.now(),
+        });
+        const receipt = clientId ? speed.results.get(clientId) : undefined;
+        if (receipt) qpSend(socketId, QP_SERVER_EVENTS.SPEED_RESULT, { ...receipt, totalScore });
+        if (speed.ended) qpSend(socketId, QP_SERVER_EVENTS.SPEED_ENDED, { sessionCode: code, roundId: speed.roundId,
+          correctIndex: speed.correctIndex, winnerClientId: speed.firstCorrectClientId });
+      }
+      if (arena) {
+        if (clientId && !arena.positions.has(clientId) && arena.positions.size < QP_ARENA_MAX_PLAYERS) {
+          arena.positions.set(clientId, { ...qpArenaSpawnPos(), dirty: true, lastMoveTs: Date.now() });
+        }
+        qpSend(socketId, QP_SERVER_EVENTS.ARENA_STATE, qpArenaStateFor(state));
+        qpSend(socketId, QP_SERVER_EVENTS.ROUGH_MODE, { sessionCode: code, enabled: arena.roughMode });
+        let activeGrant = false;
+        for (const [wordId, word] of arena.words) {
+          if (!clientId || word.lockedBy !== clientId || !word.activeRound) continue;
+          activeGrant = true;
+          qpSend(socketId, QP_SERVER_EVENTS.ARENA_GRAB_GRANTED, {
+            sessionCode: code, wordId, roundId: word.activeRound.roundId, mode: word.mode,
+            prompt: word.prompt, promptKind: word.promptKind, options: word.options,
+            roundSeconds: arena.config.roundSeconds, deadlineTs: word.activeRound.deadlineTs, serverTs: Date.now(),
+          });
+        }
+        const receipt = clientId && !activeGrant ? arena.results.get(clientId) : undefined;
+        if (receipt) qpSend(socketId, QP_SERVER_EVENTS.SPEED_RESULT, { ...receipt, totalScore });
+      }
+    }, clientId ? { id: clientId, owner: socketId } : undefined);
+  }
+  const qpMoves = new Map<string, Map<string, { x: number; y: number; lastMoveTs: number }>>();
+  const qpMoveInterval = setInterval(() => {
+    for (const [code, moves] of qpMoves) {
+      qpIo.to(code).emit(QP_SERVER_EVENTS.ARENA_SNAPSHOT, { sessionCode: code, serverTs: Date.now(),
+        ids: [...moves.keys()], xs: [...moves.values()].map(p => p.x), ys: [...moves.values()].map(p => p.y), serverId: QP_SERVER_ID });
+    }
+    qpMoves.clear();
+  }, QP_ARENA_TICK_MS);
+  // Every machine with room members can advance an expired deadline. CAS allows
+  // only one to commit; no elected host has to survive for timers to progress.
+  const qpTicking = new Set<string>();
+  const qpRoundInterval = setInterval(() => {
+    for (const [code, state] of qpSessions) {
+      if (qpTicking.has(code) || (!state.teacherSockets.size && !state.socketToClient.size)) continue;
+      qpTicking.add(code);
+      void qpStore.engineDue(code).then(result => result.due ? qpEngine.run(code, () => qpAdvanceRound(code)) : undefined).catch(error => {
+        if (!String(error).includes("session has ended")) console.warn("[QP round timer]", String(error));
+      }).finally(() => qpTicking.delete(code));
+    }
+  }, 250);
 
   const qpIdentity = createQuickPlayIdentity(
     process.env.QUICK_PLAY_REJOIN_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || randomBytes(32).toString("hex"),
@@ -3124,7 +2983,12 @@ async function startServer() {
     function qpOn<T>(event: string, handler: (payload: T, ack: ActionAck) => void | Promise<void>) {
       socket.on(event, (payload: T, callback?: ActionAck) => {
         const ack: ActionAck = typeof callback === "function" ? callback : () => {};
-        void Promise.resolve().then(() => handler(payload, ack)).catch(error => {
+        const run = () => handler(payload, ack);
+        const data = payload as { sessionCode?: string; clientId?: string } | null;
+        const transactional = qpRoundEvents.has(event) && data && isValidSessionCode(data.sessionCode);
+        void Promise.resolve().then(() => transactional
+          ? qpEngine.run(data.sessionCode!, run, qpStudentActions.has(event) ? { id: data.clientId!, owner: socket.id } : undefined)
+          : run()).catch(error => {
           console.error(`[QP ${event} failed]`, error);
           qpEmitError(socket, event, "internal_error", "could not confirm this action; please retry");
           ack({ ok: false, code: "internal_error" });
@@ -3182,7 +3046,7 @@ async function startServer() {
         const joined = await qpStore.join(sessionCode, { clientId, nickname, avatar, score: 0, lastSeen: now, authUid: verifiedUid }, socket.id);
         if (joined.status !== "ok" || !joined.entry) {
           if (joined.status === "kicked") socket.emit(QP_SERVER_EVENTS.KICKED, { sessionCode });
-          return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, joined.status === "ok" ? "internal_error" : joined.status, "could not join this session");
+          return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, joined.status === "ok" || joined.status === "conflict" ? "internal_error" : joined.status, "could not join this session");
         }
         if (!socket.connected) return;
         state.students.set(clientId, joined.entry);
@@ -3217,17 +3081,7 @@ async function startServer() {
           leaderboard: (snapshot.students ?? []).map(publicQuickPlayStudent),
           serverId: "shared", revision: snapshot.revision, acceptedScore: joined.entry.reportedScore,
         });
-        // Mid-arena (re)join: spawn them onto the map and hand THIS socket
-        // the full arena picture (design §8.4) — without it a refreshed
-        // student lands in an empty void with no words to chase.
-        if (state.currentArena) {
-          const arena = state.currentArena;
-          if (!arena.positions.has(clientId) && arena.positions.size < QP_ARENA_MAX_PLAYERS) {
-            arena.positions.set(clientId, { ...qpArenaSpawnPos(), dirty: true, lastMoveTs: now });
-          }
-          const arenaState = qpArenaStateFor(state);
-          if (arenaState) socket.emit(QP_SERVER_EVENTS.ARENA_STATE, arenaState);
-        }
+        await qpResumeRound(sessionCode, socket.id, clientId);
         qpScheduleBroadcast(sessionCode);
       } catch (error) {
         console.error("[QP join failed]", error);
@@ -3422,16 +3276,7 @@ async function startServer() {
         sessionCode, students: (snapshot.students ?? []).map(publicQuickPlayStudent),
         serverId: "shared", revision: snapshot.revision,
       });
-      // If a Word Hunt is already running ON THIS VM, seed the observer's map
-      // right away (board config + current positions) instead of waiting for
-      // the next snapshot tick — the same courtesy the student JOIN path gets
-      // mid-arena. Guarded by a LOCAL currentArena, so it's a no-op when the
-      // arena is owned by another VM (there the teacher still fills in from the
-      // room's ARENA_SNAPSHOT stream within a tick).
-      if (state.currentArena) {
-        const arenaState = qpArenaStateFor(state);
-        if (arenaState) socket.emit(QP_SERVER_EVENTS.ARENA_STATE, arenaState);
-      }
+      await qpResumeRound(sessionCode, socket.id);
     });
 
     qpOn(QP_EVENTS.TEACHER_KICK, async (payload: QpTeacherKickPayload, ack) => {
@@ -3587,37 +3432,10 @@ async function startServer() {
       if (!verify.ok) return ack({ ok: false, code: verify.reason });
 
       if (!supabaseAdmin) return ack({ ok: false, code: "internal_error" });
-      // Freeze globally before persisting. Retry on ANY server reuses exactly
-      // this snapshot; duplicate END requests cannot increment play_count.
-      const final = await qpStore.close(sessionCode);
-      qpApplyControl(sessionCode);
-      if (redisAdapterStatus === "attached") qpIo.serverSideEmit(QP_CONTROL_FANOUT, { sessionCode });
-      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.SESSION_ENDED, { sessionCode });
-      const { data: session, error: lookupError } = await supabaseAdmin
-        .from("quick_play_sessions").select("id").eq("session_code", sessionCode).eq("teacher_uid", verify.uid).single();
-      if (lookupError || !session?.id) throw new Error("Session lookup failed during finalization");
-      // Multiple tabs signed in as one account share one progress row. Keep
-      // that account's highest score, as the historical progress RPC did.
-      const rows = new Map<string, Record<string, unknown>>();
-      for (const player of final.students ?? []) {
-        if (player.score <= 0) continue;
-        const uid = player.authUid || `qp:${player.clientId}`;
-        const score = Math.min(1000, Math.round(player.score));
-        if (Number(rows.get(uid)?.score ?? -1) >= score) continue;
-        rows.set(uid, { student_uid: uid, student_name: player.nickname, avatar: player.avatar,
-          assignment_id: session.id, class_code: "QUICK_PLAY", mode: "quickplay",
-          score, mistakes: [], play_count: 1, completed_at: new Date().toISOString() });
-      }
-      if (rows.size) {
-        const { error } = await supabaseAdmin.from("progress").upsert([...rows.values()], {
-          onConflict: "assignment_id,student_uid,mode,class_code", ignoreDuplicates: true,
-        });
-        if (error) throw new Error(`Could not persist Quick Play results: ${error.code}`);
-      }
-      const { error } = await supabaseAdmin.from("quick_play_sessions")
-        .update({ is_active: false, ended_at: new Date().toISOString() })
-        .eq("session_code", sessionCode).eq("teacher_uid", verify.uid);
-      if (error) throw new Error(`Could not close Quick Play session: ${error.code}`);
+      const { data: session, error } = await supabaseAdmin.from("quick_play_sessions")
+        .select("id").eq("session_code", sessionCode).eq("teacher_uid", verify.uid).single();
+      if (error || !session?.id) throw new Error("Session lookup failed during finalization");
+      await qpFinalizer.request({ code: sessionCode, sessionId: session.id, teacherUid: verify.uid, endedAt: new Date().toISOString() });
       ack({ ok: true });
     });
 
@@ -3626,7 +3444,7 @@ async function startServer() {
     // sets a single deadline, so every student answers the same prompt
     // on the same clock. Config (categories, timer) rides the event —
     // nothing race-specific is persisted in the DB.
-    socket.on(QP_EVENTS.RACE_START, async (payload: QpRaceStartPayload) => {
+    qpOn(QP_EVENTS.RACE_START, async (payload: QpRaceStartPayload) => {
       if (!payload || typeof payload !== "object") return;
       const { sessionCode, token, roundSeconds } = payload;
       if (!isValidSessionCode(sessionCode)) {
@@ -3645,16 +3463,13 @@ async function startServer() {
       if (uniqueCategories.length === 0) {
         return qpEmitError(socket, QP_EVENTS.RACE_START, "invalid_payload", "pick at least one category");
       }
-      if (!qpTeacherLimiter.checkLimit(socket.id)) {
+      if (!qpEngine.current()?.attempt && !qpTeacherLimiter.checkLimit(socket.id)) {
         return qpEmitError(socket, QP_EVENTS.RACE_START, "rate_limited", "too many teacher actions");
       }
       const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
       if (!verify.ok) return qpEmitError(socket, QP_EVENTS.RACE_START, verify.reason, "access denied");
 
       const state = qpGetOrCreateSession(sessionCode);
-      // Clear any previous round's close timer so a stale one can't fire
-      // RACE_ENDED for the round we're about to start.
-      if (state.currentRace?.timer) clearTimeout(state.currentRace.timer);
 
       const untimed = payload.untimed === true;
       const roundId = randomUUID();
@@ -3665,29 +3480,19 @@ async function startServer() {
       // and the round ends on all-submitted / teacher "end round".
       const effectiveSeconds = untimed ? QP_RACE_UNTIMED_SAFETY_SECONDS : roundSeconds;
       const deadlineTs = now + effectiveSeconds * 1000;
+      state.currentSpeed = null; qpClearArena(state);
       state.currentRace = {
         roundId,
+        results: new Map(),
         letter,
         categories: uniqueCategories,
         roundSeconds,
         deadlineTs,
         submitted: new Set(),
-        timer: null,
         untimed,
         startTs: now,
       };
-      // Close the round server-side at the deadline (+grace) so late or
-      // silent students get locked out and "round over" is unambiguous
-      // even if nobody submits.
-      state.currentRace.timer = setTimeout(() => {
-        const s = qpSessions.get(sessionCode);
-        if (s?.currentRace && s.currentRace.roundId === roundId) {
-          qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.RACE_ENDED, { sessionCode, roundId });
-          s.currentRace.timer = null;
-        }
-      }, effectiveSeconds * 1000 + QP_RACE_SUBMIT_GRACE_MS);
-
-      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.RACE_ROUND, {
+      qpSend(sessionCode, QP_SERVER_EVENTS.RACE_ROUND, {
         sessionCode, roundId, letter,
         categories: uniqueCategories,
         roundSeconds, deadlineTs, serverTs: now, untimed,
@@ -3713,26 +3518,18 @@ async function startServer() {
       if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) { dropLog("bad_session_or_client"); return; }
       if (typeof roundId !== "string" || !roundId) { dropLog("bad_roundId"); return; }
       if (!answers || typeof answers !== "object") { dropLog("bad_answers"); return; }
-      if (!qpScoreLimiter.checkLimit(socket.id)) { dropLog("rate_limited"); return; }
+      if (!qpEngine.current()?.attempt && !qpScoreLimiter.checkLimit(socket.id)) { dropLog("rate_limited"); return; }
 
       const helped = Array.isArray(payload.helped)
         ? payload.helped.filter((c): c is string => typeof c === "string")
         : [];
-      const state = qpSessions.get(sessionCode);
+      const state = qpRoundState(sessionCode);
 
-      // Does THIS VM own the active round? `qpSessions` is per-process and Fly
-      // runs ≥2 machines, so the round (created where the teacher pressed
-      // Start) often lives on a DIFFERENT VM than the student's socket.
-      //   • Local match → score here, reply on this socket (single-VM, or the
-      //     student happens to share the teacher's VM).
-      //   • No local match → fan the submit out to every VM (serverSideEmit);
-      //     the owner scores it and replies to this socket cross-VM. This
-      //     replaces the old silent "no_session_or_race"/"stale_round" drop
-      //     that left split-class students unscored and stranded on the lobby.
+      // The transaction loaded the current shared round, regardless of socket location.
       if (state?.currentRace && state.currentRace.roundId === roundId) {
         const race = state.currentRace;
         if (Date.now() > race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) { dropLog("too_late", { lateMs: Date.now() - (race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) }); return; }
-        if (race.submitted.has(clientId)) { dropLog("already_submitted"); return; }
+
 
         // Only the admitted socket may submit this player’s answer.
         const owned = state.socketToClient.get(socket.id);
@@ -3745,48 +3542,27 @@ async function startServer() {
           answers: answers as Record<string, unknown>, helped,
         });
         if (!result) return; // too late / duplicate (already screened above)
-        socket.emit(QP_SERVER_EVENTS.RACE_RESULT, result);
+        qpSend(socket.id, QP_SERVER_EVENTS.RACE_RESULT, result);
         qpScheduleBroadcast(sessionCode);
         console.log(`[QP RACE submit] session=${sessionCode} client=${clientId.slice(0, 8)} round=${roundId.slice(0, 8)} +${result.roundPoints}${result.speedBonus ? `+${result.speedBonus}⚡` : ""} → ${result.totalScore}`);
-        void qpMaybeAutoEndRace(sessionCode, race);
+        await qpMaybeAutoEndRace(sessionCode, race);
         return;
       }
 
-      // No local round for this roundId. With the Redis adapter attached the
-      // round may simply live on another VM → fan the submit out so the owner
-      // can score it. Without the adapter there are no other VMs, so this is a
-      // genuinely stale / unknown round → drop it exactly as before (the
-      // default adapter's serverSideEmit is a no-op + warning anyway).
-      if (redisAdapterStatus !== "attached") {
-        dropLog(state ? "stale_round" : "no_session_or_race", { hasState: !!state });
-        return;
-      }
-      // Send the student's nickname/avatar from this VM's roster (they joined
-      // here) so the owner can mint their leaderboard row if it never saw their
-      // JOIN.
-      const local = state?.students.get(clientId);
-      qpIo.serverSideEmit(QP_RACE_SUBMIT_FANOUT, {
-        sessionCode, roundId, clientId,
-        nickname: local?.nickname ?? "Player",
-        avatar: local?.avatar ?? "🦊",
-        socketId: socket.id,
-        answers: answers as Record<string, unknown>,
-        helped,
-      });
     });
 
     // ─── Category Race: teacher ends the active round early ────────────
-    socket.on(QP_EVENTS.RACE_END_ROUND, async (payload: QpRaceEndRoundPayload) => {
+    qpOn(QP_EVENTS.RACE_END_ROUND, async (payload: QpRaceEndRoundPayload) => {
       if (!payload || typeof payload !== "object") return;
       const { sessionCode, token, roundId } = payload;
       if (!isValidSessionCode(sessionCode) || typeof roundId !== "string" || !roundId) return;
-      if (!qpTeacherLimiter.checkLimit(socket.id)) return;
+      if (!qpEngine.current()?.attempt && !qpTeacherLimiter.checkLimit(socket.id)) return;
       const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
       if (!verify.ok) return qpEmitError(socket, QP_EVENTS.RACE_END_ROUND, verify.reason, "access denied");
-      const state = qpSessions.get(sessionCode);
+      const state = qpRoundState(sessionCode);
       if (!state?.currentRace || state.currentRace.roundId !== roundId) return;
-      if (state.currentRace.timer) { clearTimeout(state.currentRace.timer); state.currentRace.timer = null; }
-      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.RACE_ENDED, { sessionCode, roundId });
+      state.currentRace.ended = true;
+      qpSend(sessionCode, QP_SERVER_EVENTS.RACE_ENDED, { sessionCode, roundId });
       console.log(`[QP RACE end-round] session=${sessionCode} round=${roundId.slice(0, 8)} (teacher)`);
     });
 
@@ -3795,7 +3571,7 @@ async function startServer() {
     // vocabulary) — it carries {prompt, options, correctIndex}. The server
     // stores correctIndex PRIVATELY and broadcasts only the options, so a
     // student can't read the answer off the wire. See design §3.
-    socket.on(QP_EVENTS.SPEED_START, async (payload: QpSpeedStartPayload) => {
+    qpOn(QP_EVENTS.SPEED_START, async (payload: QpSpeedStartPayload) => {
       if (!payload || typeof payload !== "object") return;
       const { sessionCode, token, mode, prompt, options, correctIndex, roundSeconds } = payload;
       if (!isValidSessionCode(sessionCode)) {
@@ -3824,46 +3600,29 @@ async function startServer() {
         return qpEmitError(socket, QP_EVENTS.SPEED_START, "invalid_payload", "empty prompt");
       }
       const promptKind: QpSpeedPromptKind = payload.promptKind === "audio" ? "audio" : "text";
-      if (!qpTeacherLimiter.checkLimit(socket.id)) {
+      if (!qpEngine.current()?.attempt && !qpTeacherLimiter.checkLimit(socket.id)) {
         return qpEmitError(socket, QP_EVENTS.SPEED_START, "rate_limited", "too many teacher actions");
       }
       const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
       if (!verify.ok) return qpEmitError(socket, QP_EVENTS.SPEED_START, verify.reason, "access denied");
 
       const state = qpGetOrCreateSession(sessionCode);
-      // Clear any previous word's close timer so a stale one can't fire
-      // SPEED_ENDED for the word we're about to start.
-      if (state.currentSpeed?.timer) clearTimeout(state.currentSpeed.timer);
 
       const roundId = randomUUID();
       const now = Date.now();
       const deadlineTs = now + roundSeconds * 1000;
+      state.currentRace = null; qpClearArena(state);
       state.currentSpeed = {
         roundId, mode,
+        results: new Map(), prompt: cleanPrompt, promptKind, options: cleanOptions,
         correctIndex,
         optionCount: cleanOptions.length,
         roundSeconds, deadlineTs, startTs: now,
         submitted: new Set(),
         firstCorrectClientId: null,
-        timer: null,
       };
-      // Close the word server-side at the deadline (+grace) so late or silent
-      // students get locked out and "word over" is unambiguous even if nobody
-      // taps. The reveal carries the answer + winner.
-      state.currentSpeed.timer = setTimeout(() => {
-        const s = qpSessions.get(sessionCode);
-        if (s?.currentSpeed && s.currentSpeed.roundId === roundId) {
-          qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.SPEED_ENDED, {
-            sessionCode, roundId,
-            correctIndex: s.currentSpeed.correctIndex,
-            winnerClientId: s.currentSpeed.firstCorrectClientId,
-          });
-          s.currentSpeed.timer = null;
-        }
-      }, roundSeconds * 1000 + QP_RACE_SUBMIT_GRACE_MS);
-
       // Broadcast WITHOUT correctIndex — students get only the options.
-      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.SPEED_ROUND, {
+      qpSend(sessionCode, QP_SERVER_EVENTS.SPEED_ROUND, {
         sessionCode, roundId, mode,
         prompt: cleanPrompt, promptKind,
         options: cleanOptions,
@@ -3890,15 +3649,15 @@ async function startServer() {
       if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) { dropLog("bad_session_or_client"); return; }
       if (typeof roundId !== "string" || !roundId) { dropLog("bad_roundId"); return; }
       if (!Number.isInteger(choiceIndex)) { dropLog("bad_choiceIndex"); return; }
-      if (!qpScoreLimiter.checkLimit(socket.id)) { dropLog("rate_limited"); return; }
+      if (!qpEngine.current()?.attempt && !qpScoreLimiter.checkLimit(socket.id)) { dropLog("rate_limited"); return; }
 
-      const state = qpSessions.get(sessionCode);
+      const state = qpRoundState(sessionCode);
 
-      // Does THIS VM own the active word? Same multi-VM logic as RACE_SUBMIT.
+      // Match the shared round loaded by this transaction.
       if (state?.currentSpeed && state.currentSpeed.roundId === roundId) {
         const speed = state.currentSpeed;
         if (Date.now() > speed.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) { dropLog("too_late"); return; }
-        if (speed.submitted.has(clientId)) { dropLog("already_submitted"); return; }
+
 
         // A reconnect must rejoin before submitting answers.
         const owned = state.socketToClient.get(socket.id);
@@ -3910,18 +3669,17 @@ async function startServer() {
           clientId, choiceIndex, nickname: entry.nickname, avatar: entry.avatar,
         });
         if (!result) return; // too late / duplicate (already screened above)
-        socket.emit(QP_SERVER_EVENTS.SPEED_RESULT, result);
+        qpSend(socket.id, QP_SERVER_EVENTS.SPEED_RESULT, result);
         qpScheduleBroadcast(sessionCode);
         console.log(`[QP SPEED submit] session=${sessionCode} client=${clientId.slice(0, 8)} round=${roundId.slice(0, 8)} ${result.correct ? `+${result.roundPoints}${result.speedBonus ? `+${result.speedBonus}⚡` : ""}${result.firstCorrect ? " 🥇" : ""}` : "✗"} → ${result.totalScore}`);
-        void qpMaybeAutoEndSpeed(sessionCode, speed);
+        await qpMaybeAutoEndSpeed(sessionCode, speed);
         return;
       }
 
       // Not the active Speed Round word — maybe a Word Hunt Arena answer.
       // The arena's grab grant rides the SPEED_ROUND payload shape, so the
       // buzzer answers through this same event; match by the locked word's
-      // embedded activeRound. Checked BEFORE the cross-VM fanout because the
-      // common case (single VM, arena local) must not pay a relay hop.
+      // embedded activeRound, including locks created by another server.
       if (state?.currentArena) {
         // A reconnect must rejoin before submitting answers.
         const owned = state.socketToClient.get(socket.id);
@@ -3933,7 +3691,7 @@ async function startServer() {
           avatar: entry?.avatar ?? "🦊",
         });
         if (arenaResult) {
-          socket.emit(QP_SERVER_EVENTS.SPEED_RESULT, arenaResult);
+          qpSend(socket.id, QP_SERVER_EVENTS.SPEED_RESULT, arenaResult);
           qpScheduleBroadcast(sessionCode);
           console.log(`[QP ARENA answer] session=${sessionCode} client=${clientId.slice(0, 8)} round=${roundId.slice(0, 8)} ${arenaResult.correct ? `+${arenaResult.roundPoints}${arenaResult.speedBonus ? `+${arenaResult.speedBonus}⚡` : ""}` : "✗"} → ${arenaResult.totalScore}`);
           return;
@@ -3941,34 +3699,20 @@ async function startServer() {
         // Fall through — the roundId wasn't an arena round on this VM either.
       }
 
-      // No local word for this roundId — it may live on another VM. Fan the
-      // submit out so the owner can score by index (same as RACE_SUBMIT).
-      if (redisAdapterStatus !== "attached") {
-        dropLog(state ? "stale_round" : "no_session_or_speed", { hasState: !!state });
-        return;
-      }
-      const local = state?.students.get(clientId);
-      qpIo.serverSideEmit(QP_SPEED_SUBMIT_FANOUT, {
-        sessionCode, roundId, clientId,
-        nickname: local?.nickname ?? "Player",
-        avatar: local?.avatar ?? "🦊",
-        socketId: socket.id,
-        choiceIndex,
-      });
     });
 
     // ─── Speed Round: teacher ends the active word early ───────────────
-    socket.on(QP_EVENTS.SPEED_END_ROUND, async (payload: QpSpeedEndRoundPayload) => {
+    qpOn(QP_EVENTS.SPEED_END_ROUND, async (payload: QpSpeedEndRoundPayload) => {
       if (!payload || typeof payload !== "object") return;
       const { sessionCode, token, roundId } = payload;
       if (!isValidSessionCode(sessionCode) || typeof roundId !== "string" || !roundId) return;
-      if (!qpTeacherLimiter.checkLimit(socket.id)) return;
+      if (!qpEngine.current()?.attempt && !qpTeacherLimiter.checkLimit(socket.id)) return;
       const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
       if (!verify.ok) return qpEmitError(socket, QP_EVENTS.SPEED_END_ROUND, verify.reason, "access denied");
-      const state = qpSessions.get(sessionCode);
+      const state = qpRoundState(sessionCode);
       if (!state?.currentSpeed || state.currentSpeed.roundId !== roundId) return;
-      if (state.currentSpeed.timer) { clearTimeout(state.currentSpeed.timer); state.currentSpeed.timer = null; }
-      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.SPEED_ENDED, {
+      state.currentSpeed.ended = true;
+      qpSend(sessionCode, QP_SERVER_EVENTS.SPEED_ENDED, {
         sessionCode, roundId,
         correctIndex: state.currentSpeed.correctIndex,
         winnerClientId: state.currentSpeed.firstCorrectClientId,
@@ -3981,7 +3725,7 @@ async function startServer() {
     // no vocabulary) so grabs can be granted instantly from memory — no
     // host round-trip in the latency-critical grab moment. Each word's
     // correctIndex is stored PRIVATELY, exactly like SPEED_START.
-    socket.on(QP_EVENTS.ARENA_START, async (payload: QpArenaStartPayload) => {
+    qpOn(QP_EVENTS.ARENA_START, async (payload: QpArenaStartPayload) => {
       if (!payload || typeof payload !== "object") return;
       const { sessionCode, token } = payload;
       if (!isValidSessionCode(sessionCode)) {
@@ -4017,7 +3761,7 @@ async function startServer() {
       if (cleanSeeds.length === 0) {
         return qpEmitError(socket, QP_EVENTS.ARENA_START, "invalid_payload", "need at least one valid word");
       }
-      if (!qpTeacherLimiter.checkLimit(socket.id)) {
+      if (!qpEngine.current()?.attempt && !qpTeacherLimiter.checkLimit(socket.id)) {
         return qpEmitError(socket, QP_EVENTS.ARENA_START, "rate_limited", "too many teacher actions");
       }
       const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
@@ -4025,8 +3769,7 @@ async function startServer() {
 
       const state = qpGetOrCreateSession(sessionCode);
       // Replacing a previous arena: remember its rough-mode flag (so auto-play
-      // restarts keep the teacher's choice), then stop its tick + word timers
-      // so a stale fumble timer can't release a word into the new arena.
+      // restarts keep the teacher's choice), then replace the previous state.
       const prevRoughMode = state.currentArena?.roughMode ?? false;
       qpClearArena(state);
 
@@ -4065,7 +3808,7 @@ async function startServer() {
       // first ARENA_STATE already shows the class on the map.
       const positions = new Map<string, { x: number; y: number; dirty: boolean; lastMoveTs: number }>();
       const now = Date.now();
-      for (const clientId of new Set(state.socketToClient.values())) {
+      for (const clientId of state.students.keys()) {
         if (positions.size >= QP_ARENA_MAX_PLAYERS) break;
         positions.set(clientId, { ...qpArenaSpawnPos(), dirty: true, lastMoveTs: now });
       }
@@ -4073,7 +3816,7 @@ async function startServer() {
       // Scatter the game elements (Speed Boost / Bonus Star / Double Points /
       // Mud). Seed the scatter with the word positions so a pickup never lands
       // on a token; the default per-kind counts come from the protocol.
-      const pickups = new Map<string, { kind: QpArenaPickupKind; pos: QpArenaPos; state: "available" | "collected" }>();
+      const pickups = new Map<string, { kind: QpArenaPickupKind; pos: QpArenaPos; state: "available" | "collected"; respawnAt?: number }>();
       const pickupOccupied: QpArenaPos[] = scatter.slice();
       for (const kind of QP_ARENA_PICKUP_KINDS) {
         const n = QP_ARENA_PICKUP_DEFAULTS[kind];
@@ -4085,104 +3828,46 @@ async function startServer() {
       }
 
       const arena: NonNullable<QpSessionState["currentArena"]> = {
+        results: new Map(),
         config: { width: QP_ARENA_WIDTH, height: QP_ARENA_HEIGHT, grabRadius, roundSeconds, visibleWords, mapId },
         words,
         positions,
         grabCooldownUntil: new Map(),
-        tickTimer: null,
         pickups,
         doubleNext: new Set(),
-        pickupRespawnTimers: new Set(),
         // Carry the teacher's rough-mode choice across auto-play restarts (the
         // previous arena was just cleared above) so they don't have to re-toggle
         // it every hunt — same intent as teamMode persisting on the session.
         roughMode: prevRoughMode,
         tackleCooldownUntil: new Map(),
       };
+      state.currentRace = null; state.currentSpeed = null;
       state.currentArena = arena;
+      qpEngine.current()!.resetPositions = true;
       // Re-announce rough mode so a student who joined between hunts (or whose
       // ROUGH_MODE broadcast was missed) sees the Dash button on the new arena.
       if (prevRoughMode) {
-        qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ROUGH_MODE, { sessionCode, enabled: true });
+        qpSend(sessionCode, QP_SERVER_EVENTS.ROUGH_MODE, { sessionCode, enabled: true });
       }
 
-      // Snapshot tick — ONE compact room broadcast per tick of everyone who
-      // moved, never a per-move relay. Idle arena (nobody moving for >1s)
-      // emits nothing at all, so a parked room costs zero egress.
-      arena.tickTimer = setInterval(() => {
-        const s = qpSessions.get(sessionCode);
-        const a = s?.currentArena;
-        if (!s || !a || a !== arena) return;
-        const tickNow = Date.now();
-        const ids: string[] = [];
-        const xs: number[] = [];
-        const ys: number[] = [];
-        for (const [cId, p] of a.positions) {
-          if (!p.dirty && tickNow - p.lastMoveTs > 1000) continue;
-          ids.push(cId);
-          xs.push(Math.round(p.x));
-          ys.push(Math.round(p.y));
-          p.dirty = false;
-        }
-        if (ids.length === 0) return;
-        qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ARENA_SNAPSHOT, {
-          sessionCode, serverTs: tickNow, ids, xs, ys, serverId: QP_SERVER_ID,
-        });
-      }, QP_ARENA_TICK_MS);
-
       const statePayload = qpArenaStateFor(state);
-      if (statePayload) qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ARENA_STATE, statePayload);
+      if (statePayload) qpSend(sessionCode, QP_SERVER_EVENTS.ARENA_STATE, statePayload);
       console.log(`[QP ARENA start] session=${sessionCode} words=${words.size} radius=${grabRadius} secs=${roundSeconds}`);
     });
 
     // ─── Word Hunt Arena: student avatar movement ──────────────────────
-    // Client-authoritative by design (position cheating is low-harm — the
-    // question still gates the points). Clamp to bounds, write, mark dirty;
-    // the snapshot tick batches it out. NO emit here, ever.
-    socket.on(QP_EVENTS.ARENA_MOVE, (payload: QpArenaMovePayload) => {
-      if (!payload || typeof payload !== "object") return;
-      const { sessionCode, clientId } = payload;
-      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) return;
-      if (typeof payload.x !== "number" || !isFinite(payload.x)) return;
-      if (typeof payload.y !== "number" || !isFinite(payload.y)) return;
-      // Silently drop over-rate moves — an error toast 15×/sec would be
-      // worse than a briefly frozen remote avatar.
-      if (!qpMoveLimiter.checkLimit(socket.id)) return;
-
-      const state = qpSessions.get(sessionCode);
-      const arena = state?.currentArena;
-      if (!state || !arena) {
-        // No local arena — it likely lives on another VM (the student's socket
-        // was load-balanced to a different Fly machine than the teacher who
-        // started the hunt). Forward the move to the owner so every player's
-        // position aggregates in ONE arena.positions and the snapshot tick can
-        // show them all; dropping it here is exactly what made the teacher's
-        // map static / miss players. Single-VM (no adapter) means the arena
-        // simply isn't running, so there's nothing to forward to.
-        if (redisAdapterStatus === "attached") {
-          qpIo.serverSideEmit(QP_ARENA_MOVE_FANOUT, {
-            sessionCode, clientId, x: payload.x, y: payload.y,
-          });
-        }
-        return;
-      }
-
-      // A reconnect must rejoin before moving this player.
-      const owned = state.socketToClient.get(socket.id);
-      if (owned !== clientId) return;
-
-      const existing = arena.positions.get(clientId);
-      // Cap NEW movers — every extra avatar multiplies snapshot bytes.
-      if (!existing && arena.positions.size >= QP_ARENA_MAX_PLAYERS) return;
-      const x = Math.round(Math.min(arena.config.width, Math.max(0, payload.x)));
-      const y = Math.round(Math.min(arena.config.height, Math.max(0, payload.y)));
-      if (existing) {
-        existing.x = x;
-        existing.y = y;
-        existing.dirty = true;
-        existing.lastMoveTs = Date.now();
-      } else {
-        arena.positions.set(clientId, { x, y, dirty: true, lastMoveTs: Date.now() });
+    // Persist positions separately so frequent moves cannot conflict with answers.
+    // Broadcast only acknowledged writes, coalesced at the existing tick cadence.
+    qpOn(QP_EVENTS.ARENA_MOVE, async (payload: QpArenaMovePayload) => {
+      if (!payload || !isValidSessionCode(payload.sessionCode) || !isValidClientId(payload.clientId)) return;
+      if (!Number.isFinite(payload.x) || !Number.isFinite(payload.y) || !qpMoveLimiter.checkLimit(socket.id)) return;
+      const position = { x: Math.round(Math.min(QP_ARENA_WIDTH, Math.max(0, payload.x))),
+        y: Math.round(Math.min(QP_ARENA_HEIGHT, Math.max(0, payload.y))), lastMoveTs: Date.now() };
+      const result = await qpStore.move(payload.sessionCode, payload.clientId, socket.id, position);
+      if (result.status === "ok") {
+        let pending = qpMoves.get(payload.sessionCode);
+        if (!pending) { pending = new Map(); qpMoves.set(payload.sessionCode, pending); }
+        pending.set(payload.clientId, position);
       }
     });
 
@@ -4190,45 +3875,31 @@ async function startServer() {
     // The server is the referee — cooldown → availability → range → lock.
     // Grant goes to this socket only (with the question); the room just
     // sees the word flip to "locked" via ARENA_WORD.
-    socket.on(QP_EVENTS.ARENA_GRAB, (payload: QpArenaGrabPayload) => {
+    qpOn(QP_EVENTS.ARENA_GRAB, (payload: QpArenaGrabPayload) => {
       if (!payload || typeof payload !== "object") return;
       const { sessionCode, clientId, wordId } = payload;
       if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) return;
       if (typeof wordId !== "string" || !wordId) return;
-      if (!qpScoreLimiter.checkLimit(socket.id)) return;
+      if (!qpEngine.current()?.attempt && !qpScoreLimiter.checkLimit(socket.id)) return;
 
-      const state = qpSessions.get(sessionCode);
+      const state = qpRoundState(sessionCode);
       if (state?.currentArena) {
         const result = qpApplyArenaGrab(state, { clientId, wordId, x: payload.x, y: payload.y });
         if ("granted" in result) {
-          socket.emit(QP_SERVER_EVENTS.ARENA_GRAB_GRANTED, result.granted);
+          qpSend(socket.id, QP_SERVER_EVENTS.ARENA_GRAB_GRANTED, result.granted);
           console.log(`[QP ARENA grab] session=${sessionCode} client=${clientId.slice(0, 8)} word=${wordId.slice(0, 8)} granted`);
         } else {
-          socket.emit(QP_SERVER_EVENTS.ARENA_GRAB_DENIED, result.denied);
+          qpSend(socket.id, QP_SERVER_EVENTS.ARENA_GRAB_DENIED, result.denied);
         }
         return;
       }
 
-      // No local arena — it may live on another VM. Fan the grab out so the
-      // owner can referee it (same pattern as SPEED_SUBMIT's fanout). The
-      // client-reported x/y rides along as the owner's range-check fallback.
-      if (redisAdapterStatus !== "attached") {
-        socket.emit(QP_SERVER_EVENTS.ARENA_GRAB_DENIED, {
-          sessionCode, wordId, reason: "not_active",
-        });
-        return;
-      }
-      qpIo.serverSideEmit(QP_ARENA_GRAB_FANOUT, {
-        sessionCode, wordId, clientId,
-        socketId: socket.id,
-        x: typeof payload.x === "number" ? payload.x : undefined,
-        y: typeof payload.y === "number" ? payload.y : undefined,
-      });
+      qpSend(socket.id, QP_SERVER_EVENTS.ARENA_GRAB_DENIED, { sessionCode, wordId, reason: "not_active" });
     });
 
     // ─── Word Hunt Arena: student collects a game element ──────────────
     // Same referee discipline as ARENA_GRAB — range-checked, single-threaded
-    // (no double-collect race), routed to the owning VM (or fanned out). The
+    // (no double-collect race), committed against shared state. The
     // gone event broadcasts to the WHOLE room so every client drops the
     // medallion and the collector applies the effect (including the hurricane
     // self-stun — all four kinds produce a gone event now).
@@ -4237,27 +3908,18 @@ async function startServer() {
       const { sessionCode, clientId, pickupId } = payload;
       if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) return;
       if (typeof pickupId !== "string" || !pickupId) return;
-      if (!qpScoreLimiter.checkLimit(socket.id)) return;
+      if (!qpEngine.current()?.attempt && !qpScoreLimiter.checkLimit(socket.id)) return;
 
-      const state = qpSessions.get(sessionCode);
+      const state = qpRoundState(sessionCode);
       if (state?.currentArena) {
         const gone = await qpApplyArenaPickup(state, { clientId, pickupId, x: payload.x, y: payload.y });
         if (gone) {
-          qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ARENA_PICKUP_GONE, gone);
+          qpSend(sessionCode, QP_SERVER_EVENTS.ARENA_PICKUP_GONE, gone);
           console.log(`[QP ARENA pickup] session=${sessionCode} client=${clientId.slice(0, 8)} kind=${gone.kind}`);
         }
         return;
       }
 
-      // No local arena — it may live on another VM. Fan the collect out so the
-      // owner can referee it (same pattern as ARENA_GRAB's fanout).
-      if (redisAdapterStatus !== "attached") return;
-      qpIo.serverSideEmit(QP_ARENA_PICKUP_FANOUT, {
-        sessionCode, pickupId, clientId,
-        socketId: socket.id,
-        x: typeof payload.x === "number" ? payload.x : undefined,
-        y: typeof payload.y === "number" ? payload.y : undefined,
-      });
     });
 
     // ─── Word Hunt Arena: dash-tackle PvP ──────────────────────────────
@@ -4266,71 +3928,63 @@ async function startServer() {
     // qpApplyArenaTackle); NO score ever changes. On a valid tackle the
     // ARENA_TACKLED broadcast goes to the WHOLE room so every client spins the
     // victim and the victim self-stuns + knocks back.
-    socket.on(QP_EVENTS.ARENA_TACKLE, (payload: QpArenaTacklePayload) => {
+    qpOn(QP_EVENTS.ARENA_TACKLE, (payload: QpArenaTacklePayload) => {
       if (!payload || typeof payload !== "object") return;
       const { sessionCode, clientId, targetClientId } = payload;
       if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) return;
       if (!isValidClientId(targetClientId)) return;
-      if (!qpScoreLimiter.checkLimit(socket.id)) return;
+      if (!qpEngine.current()?.attempt && !qpScoreLimiter.checkLimit(socket.id)) return;
 
-      const state = qpSessions.get(sessionCode);
+      const state = qpRoundState(sessionCode);
       if (state?.currentArena) {
         const tackled = qpApplyArenaTackle(state, { clientId, targetClientId, x: payload.x, y: payload.y });
         if (tackled) {
-          qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ARENA_TACKLED, tackled);
+          qpSend(sessionCode, QP_SERVER_EVENTS.ARENA_TACKLED, tackled);
           console.log(`[QP ARENA tackle] session=${sessionCode} by=${clientId.slice(0, 8)} target=${targetClientId.slice(0, 8)}`);
         }
         return;
       }
 
-      // No local arena — fan the tackle out so the owner VM can referee it
-      // (same pattern as ARENA_PICKUP's fanout).
-      if (redisAdapterStatus !== "attached") return;
-      qpIo.serverSideEmit(QP_ARENA_TACKLE_FANOUT, {
-        sessionCode, clientId, targetClientId,
-        x: typeof payload.x === "number" ? payload.x : undefined,
-        y: typeof payload.y === "number" ? payload.y : undefined,
-      });
     });
 
     // ─── Word Hunt Arena: teacher toggles rough mode (dash-tackle PvP) ──
-    // In-memory flag on the arena, validated by the teacher token exactly like
+    // Shared flag on the arena, validated by the teacher token exactly like
     // TEACHER_TEAM_MODE. Default off; students gate the Dash button on the
     // ROUGH_MODE broadcast.
-    socket.on(QP_EVENTS.TEACHER_ROUGH_MODE, async (payload: QpTeacherRoughModePayload) => {
+    qpOn(QP_EVENTS.TEACHER_ROUGH_MODE, async (payload: QpTeacherRoughModePayload) => {
       if (!payload || typeof payload !== "object") return;
       const { sessionCode, token, enabled } = payload;
       if (!isValidSessionCode(sessionCode) || typeof enabled !== "boolean") {
         return qpEmitError(socket, QP_EVENTS.TEACHER_ROUGH_MODE, "invalid_payload", "bad payload");
       }
-      if (!qpTeacherLimiter.checkLimit(socket.id)) {
+      if (!qpEngine.current()?.attempt && !qpTeacherLimiter.checkLimit(socket.id)) {
         return qpEmitError(socket, QP_EVENTS.TEACHER_ROUGH_MODE, "rate_limited", "too many teacher actions");
       }
       const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
       if (!verify.ok) return qpEmitError(socket, QP_EVENTS.TEACHER_ROUGH_MODE, verify.reason, "access denied");
 
-      const state = qpSessions.get(sessionCode);
+      const state = qpRoundState(sessionCode);
       if (!state?.currentArena) return; // rough mode only means something with a live arena
       state.currentArena.roughMode = enabled;
       // Clearing rough mode wipes pending tackle cooldowns so re-enabling later
       // doesn't carry a stale block (and tidies the map for the GC).
       if (!enabled) state.currentArena.tackleCooldownUntil.clear();
       console.log(`[QP ROUGH_MODE] session=${sessionCode} enabled=${enabled}`);
-      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ROUGH_MODE, { sessionCode, enabled });
+      qpSend(sessionCode, QP_SERVER_EVENTS.ROUGH_MODE, { sessionCode, enabled });
     });
 
     // ─── Word Hunt Arena: teacher ends the arena ───────────────────────
-    socket.on(QP_EVENTS.ARENA_END, async (payload: QpArenaEndPayload) => {
+    qpOn(QP_EVENTS.ARENA_END, async (payload: QpArenaEndPayload) => {
       if (!payload || typeof payload !== "object") return;
       const { sessionCode, token } = payload;
       if (!isValidSessionCode(sessionCode)) return;
-      if (!qpTeacherLimiter.checkLimit(socket.id)) return;
+      if (!qpEngine.current()?.attempt && !qpTeacherLimiter.checkLimit(socket.id)) return;
       const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
       if (!verify.ok) return qpEmitError(socket, QP_EVENTS.ARENA_END, verify.reason, "access denied");
-      const state = qpSessions.get(sessionCode);
+      const state = qpRoundState(sessionCode);
       if (!state?.currentArena) return;
       qpClearArena(state);
-      qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ARENA_ENDED, { sessionCode });
+      qpSend(sessionCode, QP_SERVER_EVENTS.ARENA_ENDED, { sessionCode });
       console.log(`[QP ARENA end] session=${sessionCode} (teacher)`);
     });
 
@@ -4388,8 +4042,6 @@ async function startServer() {
         [...state.students.values()].some((e) => now - e.lastSeen < QP_IDLE_SWEEP_MS);
       if (noTeacher && teacherGone && !studentsPresent) {
         if (isDev) console.log(`[QuickPlay] sweeping idle session ${code} (students=${state.students.size})`);
-        if (state.currentRace?.timer) clearTimeout(state.currentRace.timer);
-        if (state.currentSpeed?.timer) clearTimeout(state.currentSpeed.timer);
         qpClearArena(state); // tick + per-word fumble timers
         qpSessions.delete(code);
       }
@@ -4429,6 +4081,9 @@ async function startServer() {
     console.log(`[shutdown] ${signal} received — draining`);
 
     clearInterval(qpSweepInterval);
+    qpFinalizer.stop();
+    clearInterval(qpMoveInterval);
+    clearInterval(qpRoundInterval);
     if (broadcastTimer) {
       clearInterval(broadcastTimer);
       broadcastTimer = null;
