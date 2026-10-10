@@ -7,9 +7,9 @@
 // becomes a TypeScript compile error.
 //
 // Design:
-//   * Students join by session code + client-generated clientId + nickname.
-//     No Supabase auth, no JWT, no anonymous user row. Just an opaque
-//     browser-side UUID (persisted in localStorage so refresh = rejoin).
+//   * Students may join as guests using a session code and nickname.
+//     The server returns a canonical ID plus a private rejoin credential,
+//     stored per tab. Verified Supabase accounts bind the credential to uid.
 //   * Teachers observe via the same namespace, authenticated by their
 //     own Supabase session token — validated server-side before they're
 //     allowed to kick / end.
@@ -283,10 +283,12 @@ export type QpTeam = "red" | "blue";
 // ─── Client → server payloads ───────────────────────────────────────────
 
 export interface QpStudentJoinPayload {
+  /** Private proof returned by JOINED; never share with other players. */
+  rejoinToken?: string;
   /** 6-char code from quick_play_sessions.session_code (A-Z, 2-9). */
   sessionCode: string;
-  /** Browser-generated UUID, persisted in localStorage so refresh and
-   *  reconnection land the same identity back on the leaderboard. */
+  /** Proposed UUID on first join; canonical server ID on rejoin.
+   * Reusing a player requires the private rejoinToken, not just this ID. */
   clientId: string;
   /** Display name the student typed. Trimmed client-side; server
    *  trims + length-caps again defensively. */
@@ -294,13 +296,8 @@ export interface QpStudentJoinPayload {
   /** Emoji chosen on the join screen. Falls back to the fox on the
    *  server if omitted. */
   avatar?: string;
-  /** Supabase auth user id (anon or real).  Optional — older clients
-   *  skip this — but when present the server stamps it onto the
-   *  in-memory leaderboard row so TEACHER_END can persist a real
-   *  progress row at session end (without it the leaderboard data
-   *  vanishes when the in-memory state is torn down, which is what
-   *  V2 teachers reported as "I ended the session and nothing landed
-   *  in the database"). */
+  /** Legacy field ignored by the server. Account identity is taken only
+   * from the verified handshake token. */
   authUid?: string;
   /** Team mode: the team this client wants (carried across reconnects so
    *  a refresh keeps a switched team). Ignored when team mode is off. */
@@ -434,9 +431,12 @@ export interface QpTeamModePayload {
 }
 
 export interface QpJoinedPayload {
-  /** Echoes back the clientId the caller asked to register — lets the
-   *  client confirm the server accepted the payload without having to
-   *  diff the leaderboard. */
+  sessionCode?: string;
+  requestedClientId?: string;
+  /** Private, session-scoped proof for reconnecting this player. */
+  rejoinToken?: string;
+  /** Canonical ID accepted by the server; clients must adopt this before
+   * sending player actions. It may differ from requestedClientId. */
   clientId: string;
   leaderboard: QpStudentEntry[];
   /** Opaque id of the Fly VM that produced this snapshot — see

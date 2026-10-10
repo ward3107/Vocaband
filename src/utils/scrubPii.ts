@@ -27,7 +27,7 @@
 // match.  Pattern names chosen to cover both HTTP header conventions
 // (`authorization`, `cookie`) and form-field conventions (`password`,
 // `secret`, `token`, `api_key`).
-const REDACT_KEY_RE = /^(authorization|cookie|set-cookie|x-api-key|x-auth-token|apikey|api[_-]?key|password|passwd|secret|token|access[_-]?token|refresh[_-]?token|session[_-]?id)$/i;
+const REDACT_KEY_RE = /^(authorization|cookie|set-cookie|x-api-key|x-auth-token|apikey|api[_-]?key|password|passwd|secret|token|access[_-]?token|refresh[_-]?token|rejoin[_-]?token|session[_-]?id)$/i;
 
 // Email-ish — RFC 5322 is overkill; this pattern catches the
 // `user@host.tld` shape that Gmail / school addresses hit.

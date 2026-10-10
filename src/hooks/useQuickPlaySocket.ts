@@ -19,8 +19,8 @@
  *   - The hook caches the last successful join payload so that on
  *     reconnect the caller can opt to re-emit the join without the
  *     student having to retype their name.
- *   - clientId is persisted in localStorage so a full page refresh
- *     lands the same identity back on the leaderboard.
+ *   - The accepted ID and private rejoin credential live in sessionStorage
+ *     so a refresh of this tab can reclaim its player identity.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { Socket } from "socket.io-client";
@@ -62,12 +62,13 @@ import {
   type QpArenaTackledPayload,
   type QpRoughModePayload,
 } from "../core/quickPlayProtocol";
-import { QP_CLIENT_ID_STORAGE_KEY, readStoredClientId } from "../utils/quickPlayClientId";
+import { writeQuickPlayClientId, readStoredClientId } from "../utils/quickPlayClientId";
 // Re-exported for existing importers (e.g. QuickPlayEndgameCard) that read "me"
 // from the leaderboard; the canonical definition lives in the util so read-only
 // consumers don't pull this socket-heavy module into their chunk.
 export { readStoredClientId };
 
+let memoryNickname: string | null = null;
 const CLIENT_ID_NICK_STORAGE_KEY = "vocaband_qp_client_id_nickname";
 
 // clientId persistence uses sessionStorage instead of localStorage.
@@ -96,8 +97,9 @@ function generateUuid(): string {
 }
 
 function writeStoredClientId(id: string, nickname: string | null) {
+  writeQuickPlayClientId(id);
+  if (nickname) memoryNickname = nickname.toLowerCase();
   try {
-    sessionStorage.setItem(QP_CLIENT_ID_STORAGE_KEY, id);
     if (nickname) sessionStorage.setItem(CLIENT_ID_NICK_STORAGE_KEY, nickname.toLowerCase());
   } catch { /* fall through — in-memory still works for the tab */ }
 }
@@ -119,13 +121,13 @@ function getOrCreateClientId(): string {
  *  different students collapse into one row.  Same nickname keeps the
  *  previous id (refresh / reconnect should not zero the score). */
 function clientIdForJoin(nickname: string): string {
-  let lastNick: string | null = null;
+  let lastNick: string | null;
   // Read lastNick from sessionStorage (per-tab) to match where
   // writeStoredClientId persists it.  Reading from localStorage here
   // (the previous behaviour) meant a fresh tab's sessionStorage value
   // didn't pair with the localStorage name, so the cached-id path
   // never short-circuited and we burned a fresh UUID on every join.
-  try { lastNick = sessionStorage.getItem(CLIENT_ID_NICK_STORAGE_KEY); } catch { /* ignore */ }
+  try { lastNick = sessionStorage.getItem(CLIENT_ID_NICK_STORAGE_KEY); } catch { lastNick = memoryNickname; }
   const cached = readStoredClientId();
   const norm = nickname.trim().toLowerCase();
   if (cached && lastNick === norm) return cached;
@@ -181,8 +183,7 @@ export interface QuickPlaySocketOptions {
 
 export interface QuickPlaySocketApi {
   status: QuickPlaySocketStatus;
-  /** Persistent per-browser UUID. Lives across sessions, refreshes,
-   *  and reconnects. Same kid = same id. */
+  /** Server-accepted player ID, persisted per tab for authenticated rejoin. */
   clientId: string;
   /** Live leaderboard snapshot for the session. Empty array until the
    *  first LEADERBOARD broadcast arrives. */
@@ -358,6 +359,23 @@ export interface QuickPlaySocketApi {
  */
 let cachedSocket: Socket | null = null;
 let cachedSocketUrl: string | null = null;
+let pendingSocket: Promise<Socket> | null = null;
+let socketGeneration = 0;
+const studentJoinIntents = new Map<string, { nickname: string; avatar: string }>();
+let socketMembership: { sessionCode: string; clientId: string } | null = null;
+const rejoinCredentials = new Map<string, string>();
+const pendingScores = new Map<string, { clientId: string; score: number; streak?: number; roundProgress?: { done: number; total: number }; perfectRound?: boolean }>();
+function credentialKey(sessionCode: string, clientId: string) { return `vocaband_qp_rejoin:${sessionCode}:${clientId}`; }
+function readRejoinToken(sessionCode: string, clientId: string): string | undefined {
+  const key = credentialKey(sessionCode, clientId);
+  try { return sessionStorage.getItem(key) ?? rejoinCredentials.get(key); }
+  catch { return rejoinCredentials.get(key); }
+}
+function storeRejoinToken(sessionCode: string, clientId: string, token: string) {
+  const key = credentialKey(sessionCode, clientId);
+  rejoinCredentials.set(key, token);
+  try { sessionStorage.setItem(key, token); } catch { /* private mode: keep in memory */ }
+}
 
 /**
  * Tear down the module-level socket explicitly.  Used by the SIGNED_OUT
@@ -368,6 +386,12 @@ let cachedSocketUrl: string | null = null;
  * memory holds the previous socket forever.
  */
 export function disconnectQuickPlaySocket(): void {
+  socketGeneration++;
+  pendingSocket = null;
+  socketMembership = null;
+  studentJoinIntents.clear();
+  pendingScores.clear();
+  rejoinCredentials.clear();
   try {
     cachedSocket?.disconnect();
   } catch { /* best-effort */ }
@@ -375,7 +399,16 @@ export function disconnectQuickPlaySocket(): void {
   cachedSocketUrl = null;
 }
 
-async function getSocket(): Promise<Socket> {
+function getSocket(): Promise<Socket> {
+  if (pendingSocket) return pendingSocket;
+  const generation = socketGeneration;
+  const request = createQuickPlaySocket(generation);
+  pendingSocket = request;
+  void request.finally(() => { if (pendingSocket === request) pendingSocket = null; }).catch(() => {});
+  return request;
+}
+
+async function createQuickPlaySocket(generation: number): Promise<Socket> {
   // VITE_SOCKET_URL is "" in production (post-Render→Fly migration) so
   // socket.io connects to the same origin (vocaband.com) and the
   // Cloudflare Worker proxies /socket.io/* through to Fly.  When url
@@ -398,6 +431,7 @@ async function getSocket(): Promise<Socket> {
 
   // New (or URL changed) — lazy-load and wire fresh.
   const mod = await loadSocketIO();
+  if (generation !== socketGeneration) throw new Error("Quick Play connection cancelled");
   const io = mod.default || mod;
 
   const socket = io(target, {
@@ -473,6 +507,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     myTeamRef.current = undefined;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- clears stale board when the session changes; matches existing convention in this hook
     setLeaderboard([]);
+    setJoinedSessionCode(null);
     setTeamModeState(false);
     setRoughModeState(false);
   }, [sessionCode]);
@@ -538,7 +573,10 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         // a join fired before the socket finished connecting (e.g. a
         // user resuming via QuickPlayResumeBanner taps Start playing
         // immediately on a fresh page load), replay it now.
-        if (lastJoinRef.current && sessionCode) {
+        socketMembership = null;
+        setJoinedSessionCode(null);
+        const joinIntent = sessionCode ? studentJoinIntents.get(sessionCode) : undefined;
+        if (joinIntent && sessionCode) {
           // Use clientIdForJoin so the replayed STUDENT_JOIN goes out
           // with a proper nickname-scoped UUID — NOT the outer-scope
           // `clientId` state, which on a brand-new tab can still be
@@ -546,32 +584,41 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
           // cached uuid so a real reconnect (sessionStorage already
           // populated) preserves the score.  Mirrors what
           // joinAsStudent does on the synchronous path.
-          const replayClientId = clientIdForJoin(lastJoinRef.current.nickname);
+          const replayClientId = clientIdForJoin(joinIntent.nickname);
           clientIdRef.current = replayClientId;
-          if (replayClientId !== clientId) setClientId(replayClientId);
-          // Refetch the auth uid each reconnect — anon sessions can
-          // get refreshed during the gap.  Falls through silently if
-          // it can't (older clients / private mode).
-          let authUid: string | undefined;
-          try {
-            const { supabase: sb } = await import("../core/supabase");
-            const { data: { session: s } } = await sb.auth.getSession();
-            authUid = s?.user?.id;
-          } catch { /* best-effort */ }
+          setClientId(replayClientId);
           socket.emit(QP_EVENTS.STUDENT_JOIN, {
             sessionCode,
             clientId: replayClientId,
-            nickname: lastJoinRef.current.nickname,
-            avatar: lastJoinRef.current.avatar,
-            authUid,
+            nickname: joinIntent.nickname,
+            avatar: joinIntent.avatar,
+            rejoinToken: readRejoinToken(sessionCode, replayClientId),
             ...(myTeamRef.current ? { team: myTeamRef.current } : {}),
           });
         }
       };
-      const onDisconnect = () => setStatus("disconnected");
+      const onDisconnect = () => {
+        socketMembership = null;
+        setJoinedSessionCode(null);
+        setStatus("disconnected");
+      };
       const onConnectError = () => setStatus("error");
 
       const onJoined = (p: QpJoinedPayload) => {
+        if (!sessionCode || (p.sessionCode && p.sessionCode !== sessionCode)) return;
+        const intent = studentJoinIntents.get(sessionCode);
+        if (!intent) return;
+        if (p.rejoinToken) storeRejoinToken(sessionCode, p.clientId, p.rejoinToken);
+        writeStoredClientId(p.clientId, intent.nickname);
+        clientIdRef.current = p.clientId;
+        setClientId(p.clientId);
+        socketMembership = { sessionCode, clientId: p.clientId };
+        setLastError(null);
+        const pending = pendingScores.get(sessionCode);
+        if (pending) {
+          pendingScores.delete(sessionCode);
+          if (pending.clientId === p.clientId) socket.emit(QP_EVENTS.SCORE_UPDATE, { sessionCode, ...pending });
+        }
         if (p?.leaderboard) {
           leaderboardBySourceRef.current.set(p.serverId ?? "default", p.leaderboard);
           setLeaderboard(mergeLeaderboardSources(leaderboardBySourceRef.current));
@@ -593,6 +640,10 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         }
       };
       const onKicked = (p: QpKickedPayload) => {
+        if (p.sessionCode !== sessionCode) return;
+        studentJoinIntents.delete(p.sessionCode);
+        pendingScores.delete(p.sessionCode);
+        socketMembership = null;
         // Once the server tells this client they've been kicked, drop
         // the cached lastJoin so socket.io's auto-reconnect doesn't
         // immediately replay STUDENT_JOIN and put the kicked student
@@ -612,6 +663,11 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         handRaisedRef.current?.(p);
       };
       const onSessionEnded = (p: QpSessionEndedPayload) => {
+        if (p.sessionCode !== sessionCode) return;
+        studentJoinIntents.delete(p.sessionCode);
+        pendingScores.delete(p.sessionCode);
+        socketMembership = null;
+        lastJoinRef.current = null;
         setJoinedSessionCode(null);
         setTeamModeState(false);
         setRoughModeState(false);
@@ -628,7 +684,14 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         // STUDENT_JOIN errors mean the server refused to add us to the
         // session — clear any prior joined-state so the UI knows we're
         // NOT in.  Errors on other events leave joinedSessionCode alone.
-        if (p.event === QP_EVENTS.STUDENT_JOIN) setJoinedSessionCode(null);
+        if (p.event === QP_EVENTS.STUDENT_JOIN) {
+          setJoinedSessionCode(null);
+          if (p.code === "unauthorized" && sessionCode) {
+            const key = credentialKey(sessionCode, clientIdRef.current);
+            rejoinCredentials.delete(key);
+            try { sessionStorage.removeItem(key); } catch { /* unavailable */ }
+          }
+        }
       };
 
       const onReaction = (p: QpReactionPayload) => {
@@ -819,13 +882,13 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         socket.off(QP_SERVER_EVENTS.WHEEL_QUESTION,     onWheelQuestion);
         socket.off(QP_SERVER_EVENTS.WHEEL_ANSWER,       onWheelAnswer);
       };
-    });
+    }).catch(() => { if (!cancelled) setStatus("error"); });
 
     return () => {
       cancelled = true;
       removeListeners?.();
     };
-  }, [shouldConnect, sessionCode, clientId]);
+  }, [shouldConnect, sessionCode]);
 
   // ─── Imperative actions ────────────────────────────────────────────
 
@@ -841,6 +904,9 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     // run yet, and the click does literally nothing.  Reported by
     // the teacher 2026-04-30.
     lastJoinRef.current = { nickname, avatar };
+    if (sessionCode) studentJoinIntents.set(sessionCode, { nickname, avatar });
+    setJoinedSessionCode(null);
+    setLastError(null);
     if (!sessionCode || !socketRef.current) {
       // Diagnostic — surfaces in DevTools so we see the queued path
       // fire instead of silently disappearing.
@@ -865,16 +931,9 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     clientIdRef.current = idForThisJoin;
     if (idForThisJoin !== clientId) setClientId(idForThisJoin);
 
-    // Include the Supabase auth uid so the server can persist a real
-    // progress row on TEACHER_END.  Optional — older server builds
-    // simply ignore the field and the leaderboard still works in
-    // memory; newer ones use it to write the post-session gradebook
-    // entry that V2 was previously dropping on the floor.
-    const { supabase } = await import("../core/supabase");
-    const { data: { session } } = await supabase.auth.getSession();
-    const authUid = session?.user?.id;
     socketRef.current.emit(QP_EVENTS.STUDENT_JOIN, {
-      sessionCode, clientId: idForThisJoin, nickname, avatar, authUid,
+      sessionCode, clientId: idForThisJoin, nickname, avatar,
+      rejoinToken: readRejoinToken(sessionCode, idForThisJoin),
       ...(myTeamRef.current ? { team: myTeamRef.current } : {}),
     });
   }, [sessionCode, clientId]);
@@ -908,7 +967,13 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     // sessionStorage here closes the gap — both instances see the same
     // current value because there's only one tab-scoped storage.
     const id = readStoredClientId() ?? clientIdRef.current;
-    console.log('[QP updateScore] emit', { sessionCode, clientId: id, score, extras });
+    if (!socketRef.current.connected || socketMembership?.sessionCode !== sessionCode || socketMembership.clientId !== id) {
+      const previous = pendingScores.get(sessionCode);
+      if (!previous || previous.clientId !== id || score >= previous.score) {
+        pendingScores.set(sessionCode, { clientId: id, score, ...extras });
+      }
+      return;
+    }
     socketRef.current.emit(QP_EVENTS.SCORE_UPDATE, {
       sessionCode,
       clientId: id,
@@ -932,9 +997,14 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   }, [sessionCode]);
 
   const leaveAsStudent = useCallback(() => {
-    if (!sessionCode || !socketRef.current) return;
+    if (!sessionCode) return;
+    studentJoinIntents.delete(sessionCode);
+    pendingScores.delete(sessionCode);
+    socketMembership = null;
+    setJoinedSessionCode(null);
+    if (!socketRef.current) return;
     socketRef.current.emit(QP_EVENTS.STUDENT_LEAVE, {
-      sessionCode, clientId: clientIdRef.current,
+      sessionCode, clientId: readStoredClientId() ?? clientIdRef.current,
     });
     lastJoinRef.current = null;
   }, [sessionCode]);

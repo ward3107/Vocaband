@@ -15,6 +15,7 @@ import { useQuickPlaySocket } from '../hooks/useQuickPlaySocket';
 import { useClipboardFeedback } from '../hooks/useClipboardFeedback';
 import { celebrate } from '../utils/celebrate';
 import QPAvatar from './QPAvatar';
+import QuickPlayBoardStage from './QuickPlayBoardStage';
 import { useLanguage } from '../hooks/useLanguage';
 import { teacherViewsT } from '../locales/teacher/views';
 import { useFirstTimeGuide } from '../hooks/useFirstTimeGuide';
@@ -770,6 +771,7 @@ export default function QuickPlayMonitor({
   const tT = teacherViewsT[language];
   const guide = useFirstTimeGuide('quick-play-monitor');
   const guideStrings = teacherGuidesT[language].quickPlayMonitor;
+  const [showAllPlayers, setShowAllPlayers] = useState(true);
   const [qrEnlarged, setQrEnlarged] = useState(false);
   // Collapsed-by-default QR card.  Per teacher request the inline
   // QR/code/share strip eats too much podium real estate after the
@@ -998,17 +1000,17 @@ export default function QuickPlayMonitor({
   const JOIN_TOAST_COOLDOWN_MS = 15000;
   useEffect(() => {
     prevStudentCountRef.current = effectiveStudents.length;
-    const currentNames = new Set(effectiveStudents.map(s => s.name));
+    const currentNames = new Set(effectiveStudents.map(s => s.studentUid));
     const now = Date.now();
     const newcomers: { name: string; avatar: string; ts: number }[] = [];
     const seen = new Set<string>();
     for (const s of effectiveStudents) {
-      if (prevStudentNamesRef.current.has(s.name)) continue; // already on the board
-      if (seen.has(s.name)) continue;                        // duplicate in same payload
-      const lastShown = joinerCooldownRef.current.get(s.name) ?? 0;
+      if (prevStudentNamesRef.current.has(s.studentUid)) continue; // already on the board
+      if (seen.has(s.studentUid)) continue;                        // duplicate in same payload
+      const lastShown = joinerCooldownRef.current.get(s.studentUid) ?? 0;
       if (now - lastShown < JOIN_TOAST_COOLDOWN_MS) continue; // re-joined too soon — skip
-      seen.add(s.name);
-      joinerCooldownRef.current.set(s.name, now);
+      seen.add(s.studentUid);
+      joinerCooldownRef.current.set(s.studentUid, now);
       // Inline the avatar fallback rather than calling getStudentAvatar
       // (declared further down in the file, would TDZ).  Unique ts per
       // toast (now + index) so each dismisses independently.
@@ -1242,13 +1244,13 @@ export default function QuickPlayMonitor({
     socket.bonusStudent(studentUid, amount, token);
   }, [socket, showToast]);
 
-  const removeStudent = async (name: string) => {
+  const removeStudent = async (studentUid: string) => {
     // Kick via socket.  The server finds the clientId, removes them
     // from the in-memory leaderboard, emits KICKED to their socket,
     // and broadcasts the refreshed leaderboard.  No DB writes.
-    const target = effectiveStudents.find(s => s.name === name);
+    const target = effectiveStudents.find(s => s.studentUid === studentUid);
     if (!target) {
-      showToast(`Couldn't find ${name} in the live list.`, 'error');
+      showToast('This player is no longer in the live list.', 'error');
       setConfirmKick(null);
       return;
     }
@@ -1260,15 +1262,7 @@ export default function QuickPlayMonitor({
       return;
     }
     socket.kickStudent(target.studentUid, token);
-    // Cache kicked name locally to defeat any rejoin attempt from a
-    // stale tab that didn't see the KICKED event.
-    try {
-      const key = `vocaband_kicked_${session.id}`;
-      const kicked: string[] = JSON.parse(localStorage.getItem(key) || '[]');
-      if (!kicked.includes(name)) kicked.push(name);
-      localStorage.setItem(key, JSON.stringify(kicked));
-    } catch { /* best-effort */ }
-    showToast(`${name} removed from session`, 'info');
+    showToast(`${target.name} removed from session`, 'info');
     setConfirmKick(null);
   };
 
@@ -1401,7 +1395,7 @@ export default function QuickPlayMonitor({
   return (
     <div
       data-qp-reduced-motion={reducedMotion ? "true" : "false"}
-      className={`min-h-screen ${t.bg} ${t.text} flex flex-col overflow-x-hidden overflow-y-auto transition-colors duration-500`}
+      className={`${showAllPlayers ? "h-dvh min-h-0" : "min-h-screen"} ${t.bg} ${t.text} flex flex-col overflow-x-hidden overflow-y-auto transition-colors duration-500`}
     >
       <style>{floatStyle}</style>
 
@@ -1412,7 +1406,7 @@ export default function QuickPlayMonitor({
           overlay so it sits above the TopAppBar without pushing layout. */}
       <div className="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 pointer-events-none">
         <AnimatePresence>
-          {recentJoiners.map(j => (
+          {(!showAllPlayers ? recentJoiners : []).map(j => (
             <motion.div
               key={j.ts}
               initial={{ y: -20, opacity: 0, scale: 0.85 }}
@@ -1436,7 +1430,7 @@ export default function QuickPlayMonitor({
           Persistent fixed pill in the top-left showing how many students
           have raised their hand right now. Tapping clears all. Individual
           🙋 badges appear on each raised student's leaderboard card too. */}
-      <div className="fixed top-16 sm:top-20 left-3 sm:left-6 z-[60]">
+      <div className={showAllPlayers ? "hidden" : "fixed top-16 sm:top-20 left-3 sm:left-6 z-[60]"}>
         <RaisedHandBadge
           count={handRaisedCount(effectiveStudents)}
           onClear={clearAllHands}
@@ -1450,7 +1444,7 @@ export default function QuickPlayMonitor({
           side of the screen, longer dwell time. */}
       <div className="fixed top-24 sm:top-32 right-3 sm:right-6 z-[60] flex flex-col items-end gap-2 pointer-events-none">
         <AnimatePresence>
-          {achievements.map(a => {
+          {(!showAllPlayers ? achievements : []).map(a => {
             const style = a.kind === 'first100'
               ? { bg: 'from-amber-400 via-yellow-500 to-orange-500', icon: '🥇', kicker: tT.qpAchievementFirst100Kicker }
               : a.kind === 'streak5'
@@ -1502,10 +1496,10 @@ export default function QuickPlayMonitor({
           projector. The layer is full-screen + pointer-events:none, so
           it doesn't interfere with teacher controls. Bounded to 30
           concurrent particles inside the component. */}
-      <ReactionParticleLayer lastReaction={socket.lastReaction} disabled={reducedMotion} />
+      <ReactionParticleLayer lastReaction={socket.lastReaction} disabled={reducedMotion || showAllPlayers} />
 
       {/* ─── TopAppBar (glass header) ─────────────────────────────────────── */}
-      <header className={`${t.headerBg} backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.06)] w-full sticky top-0 z-50 px-3 sm:px-8 py-2 sm:py-4 transition-colors duration-500`}>
+      <header className={`${t.headerBg} backdrop-blur-xl shadow-[0_4px_30px_rgba(0,0,0,0.06)] w-full shrink-0 sticky top-0 z-50 px-3 sm:px-8 py-2 sm:py-4 transition-colors duration-500`}>
         {/* Top row: logo + theme dots.  Wraps on narrow phones so the
             theme-picker pill drops to its own line instead of being
             clipped off the right edge. */}
@@ -1651,7 +1645,20 @@ export default function QuickPlayMonitor({
       </header>
 
       {/* ─── Main content ──────────────────────────────────────────────────── */}
-      <main id="main-content" className="flex-1 overflow-y-auto p-4 sm:p-8 pb-8">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 py-2">
+        <button type="button" onClick={() => setShowAllPlayers(v => !v)} aria-pressed={showAllPlayers} className="min-h-11 rounded-xl border border-current/20 px-4 text-base font-bold">
+          {showAllPlayers ? (language === 'he' ? 'תצוגת פודיום' : language === 'ar' ? 'عرض المنصة' : 'Podium view') : (language === 'he' ? 'הצג את כולם' : language === 'ar' ? 'عرض الجميع' : 'Show everyone')}
+        </button>
+        {showAllPlayers && <div className="flex flex-wrap items-center gap-2">
+          <RaisedHandBadge count={handRaisedCount(effectiveStudents)} onClear={clearAllHands} /><span className="text-base font-bold">{sorted.length} / 60</span>
+          <button type="button" className="min-h-11 rounded-xl border border-current/20 px-3 font-bold" onClick={() => setQrEnlarged(true)}><span dir="ltr">{session.sessionCode}</span> · QR</button>
+          <button type="button" className="min-h-11 rounded-xl border border-current/20 px-3" onClick={() => setShowWordsModal(true)}>{tT.qpSelectedWords}</button>
+          <button type="button" className="min-h-11 rounded-xl bg-red-700 px-3 font-bold text-white" onClick={() => setEndModal(true)}>{language === 'he' ? 'סיום שיעור' : language === 'ar' ? 'إنهاء الدرس' : 'End session'}</button>
+        </div>}
+      </div>
+      {showAllPlayers ? <main id="main-content" className="flex min-h-0 flex-1 px-3 pb-3">
+        <QuickPlayBoardStage students={sorted} language={language} onRemove={setConfirmKick} onBonus={giveBonus} onHelp={clearOneHand} />
+      </main> : <main id="main-content" className="flex-1 overflow-y-auto p-4 sm:p-8 pb-8">
         {/* ─── Hero: QR + Podium row ──────────────────────────────────────────
             When qrCollapsed is true the QR shrinks to a small floating
             icon button anchored to the right of this row, leaving the
@@ -1860,7 +1867,7 @@ export default function QuickPlayMonitor({
                             behaviour warrants it (per teacher request
                             2026-04-30). */}
                         <button
-                          onClick={(e) => { e.stopPropagation(); setConfirmKick(top3[1].name); }}
+                          onClick={(e) => { e.stopPropagation(); setConfirmKick(top3[1].studentUid); }}
                           aria-label={tT.qpRemovePlayerAria(top3[1].name)}
                           title={tT.qpRemovePlayerAria(top3[1].name)}
                           className="absolute -top-2 -left-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/90 text-on-error transition-opacity z-20 shadow-md"
@@ -1945,7 +1952,7 @@ export default function QuickPlayMonitor({
                         />
                         <div className={`w-18 h-18 sm:w-20 sm:h-20 2xl:w-24 2xl:h-24 min-[1700px]:w-44 min-[1700px]:h-44 rounded-full bg-surface-container-high flex items-center justify-center text-3xl sm:text-4xl 2xl:text-5xl min-[1700px]:text-8xl border-4 min-[1700px]:border-8 border-amber-400 shadow-2xl scale-110 relative`} style={{ boxShadow: '0 0 30px rgba(251,191,36,0.45), 0 10px 20px rgba(0,0,0,0.25)' }}><QPAvatar value={getStudentAvatar(top3[0])} iconSize={56} className="text-3xl sm:text-4xl 2xl:text-5xl min-[1700px]:text-8xl" /></div>
                         <button
-                          onClick={(e) => { e.stopPropagation(); setConfirmKick(top3[0].name); }}
+                          onClick={(e) => { e.stopPropagation(); setConfirmKick(top3[0].studentUid); }}
                           aria-label={tT.qpRemovePlayerAria(top3[0].name)}
                           title={tT.qpRemovePlayerAria(top3[0].name)}
                           className="absolute -top-2 -left-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/90 text-on-error transition-opacity z-20 shadow-md"
@@ -1997,7 +2004,7 @@ export default function QuickPlayMonitor({
                         />
                         <div className="w-14 h-14 sm:w-16 sm:h-16 2xl:w-20 2xl:h-20 min-[1700px]:w-32 min-[1700px]:h-32 rounded-full bg-surface-container-high flex items-center justify-center text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl border-4 border-orange-400 shadow-lg"><QPAvatar value={getStudentAvatar(top3[2])} iconSize={48} className="text-2xl sm:text-3xl 2xl:text-4xl min-[1700px]:text-6xl" /></div>
                         <button
-                          onClick={(e) => { e.stopPropagation(); setConfirmKick(top3[2].name); }}
+                          onClick={(e) => { e.stopPropagation(); setConfirmKick(top3[2].studentUid); }}
                           aria-label={tT.qpRemovePlayerAria(top3[2].name)}
                           title={tT.qpRemovePlayerAria(top3[2].name)}
                           className="absolute -top-2 -left-2 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/90 text-on-error transition-opacity z-20 shadow-md"
@@ -2096,7 +2103,6 @@ export default function QuickPlayMonitor({
                   ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 min-[1700px]:grid-cols-6 gap-1.5"
                   : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-3"
             }>
-              <AnimatePresence mode="popLayout">
                 {sorted.slice(3).map((student, idx) => {
                   const rank = idx + 4;
                   const isOnline = (Date.now() - new Date(student.lastSeen).getTime()) < 60000;
@@ -2106,7 +2112,7 @@ export default function QuickPlayMonitor({
                   const justJoined = recentJoiners.some(j => j.name === student.name);
                   return (
                     <motion.div
-                      key={student.name}
+                      key={student.studentUid}
                       layout
                       onClick={() => setSpotlightStudent(student)}
                       initial={justJoined
@@ -2152,7 +2158,7 @@ export default function QuickPlayMonitor({
                       </button>
                       {/* Kick on hover */}
                       <button
-                        onClick={(e) => { e.stopPropagation(); setConfirmKick(student.name); }}
+                        onClick={(e) => { e.stopPropagation(); setConfirmKick(student.studentUid); }}
                         className="absolute top-1 right-1 p-1 rounded-full opacity-0 group-hover:opacity-100 bg-error/80 text-on-error transition-all z-10"
                         title={tT.qpRemovePlayerAria(student.name)}
                       >
@@ -2202,11 +2208,10 @@ export default function QuickPlayMonitor({
                     </motion.div>
                   );
                 })}
-              </AnimatePresence>
             </div>
           </section>
         )}
-      </main>
+      </main>}
 
       {/* Bottom nav bar removed per teacher request — Words + End
           Session moved into the QR card so every action lives in one
@@ -2350,7 +2355,7 @@ export default function QuickPlayMonitor({
               </div>
               <h2 className="text-xl font-black text-gray-900 mb-2">{tT.qpRemovePlayerTitle}</h2>
               <p className="text-gray-500 mb-6">
-                {tT.qpConfirmKickBefore}<strong>{confirmKick}</strong>{tT.qpConfirmKickAfter}
+                {tT.qpConfirmKickBefore}<strong>{effectiveStudents.find(s => s.studentUid === confirmKick)?.name ?? ""}</strong>{tT.qpConfirmKickAfter}
               </p>
               <div className="flex gap-3">
                 <button
