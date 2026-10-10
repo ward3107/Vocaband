@@ -58,8 +58,16 @@ describe('classroom reconnect', () => {
     expect(mocks.socket.emit).toHaveBeenCalledWith(QP_EVENTS.STUDENT_JOIN, expect.objectContaining({ clientId, rejoinToken: 'private-proof' }));
     expect(mocks.socket.emit.mock.calls.some(([event]) => event === QP_EVENTS.SCORE_UPDATE)).toBe(false);
     act(() => receive(QP_SERVER_EVENTS.JOINED, { sessionCode: 'ABC234', clientId, rejoinToken: 'renewed-proof', leaderboard: [] }));
-    expect(mocks.socket.emit).toHaveBeenCalledWith(QP_EVENTS.SCORE_UPDATE, expect.objectContaining({ clientId, score: 40 }));
+    expect(mocks.socket.emit).toHaveBeenCalledWith(QP_EVENTS.SCORE_UPDATE, expect.objectContaining({ clientId, score: 40 }), expect.any(Function));
     expect(app.result.current.joinedSessionCode).toBe('ABC234');
+  });
+  it('ignores stale shared snapshots and old per-server boards', async () => {
+    const hook = renderHook(() => useQuickPlaySocket({ sessionCode: 'ABC234' }));
+    await waitFor(() => expect(hook.result.current.status).toBe('connected'));
+    act(() => receive(QP_SERVER_EVENTS.LEADERBOARD, { sessionCode: 'ABC234', serverId: 'shared', revision: 4, students: [] }));
+    act(() => receive(QP_SERVER_EVENTS.LEADERBOARD, { sessionCode: 'ABC234', serverId: 'shared', revision: 3, students: [{ clientId, score: 100 }] }));
+    act(() => receive(QP_SERVER_EVENTS.LEADERBOARD, { sessionCode: 'ABC234', serverId: 'old-vm', students: [{ clientId, score: 100 }] }));
+    expect(hook.result.current.leaderboard).toEqual([]);
   });
   it('never rejoins a session after it has ended', async () => {
     const hook = renderHook(() => useQuickPlaySocket({ sessionCode: 'ABC234' }));

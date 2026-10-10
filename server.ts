@@ -9,6 +9,7 @@ import { config as loadDotenv } from "dotenv";
 loadDotenv({ path: ".env.local", override: true });
 import * as Sentry from "@sentry/node";
 import { scrubPii } from "./src/utils/scrubPii";
+import { createQuickPlayStore } from "./src/utils/quickPlayStore.server";
 import { createLiveScoreStore } from "./src/utils/liveScoreStore";
 import { installScrubbingConsole, redactEmail } from "./src/utils/serverLog";
 import { createSign, timingSafeEqual } from "node:crypto";
@@ -102,9 +103,7 @@ import {
   QUICK_PLAY_NS,
   QP_EVENTS,
   QP_SERVER_EVENTS,
-  QP_MAX_STUDENTS_PER_SESSION,
   QP_MAX_NICKNAME,
-  QP_MAX_SCORE_DELTA,
   QP_MAX_SESSION_SCORE,
   QP_BROADCAST_INTERVAL_MS,
   QP_IDLE_SWEEP_MS,
@@ -158,7 +157,6 @@ import {
   type QpTeacherEndPayload,
   type QpTeacherTeamModePayload,
   type QpTeamSwitchPayload,
-  type QpTeam,
   type QpStudentEntry,
   type QpErrorCode,
   type QpRaceStartPayload,
@@ -2137,6 +2135,40 @@ async function startServer() {
   const qpRaiseHandLimiter  = createSocketRateLimiter(60_000,   5, 5 * 60_000); //   5 raises/min/socket
 
   const qpIo = io.of(QUICK_PLAY_NS);
+  const qpStore = createQuickPlayStore(process.env.REDIS_URL ? {
+    eval: async (script, options) => {
+      if (!redisPubClient?.isReady) throw new Error("Quick Play store unavailable");
+      return redisPubClient.eval(script, options);
+    },
+  } : undefined);
+  const QP_CONTROL_FANOUT = "qp:internal:control";
+  function qpApplyControl(code: string, clientId?: string) {
+    const state = qpSessions.get(code);
+    if (!state) return;
+    if (clientId) {
+      state.kickedClientIds.add(clientId);
+      state.students.delete(clientId);
+      for (const [id, client] of state.socketToClient) if (client === clientId) state.socketToClient.delete(id);
+    } else {
+      if (state.currentRace?.timer) clearTimeout(state.currentRace.timer);
+      if (state.currentSpeed?.timer) clearTimeout(state.currentSpeed.timer);
+      qpClearArena(state);
+      state.socketToClient.clear();
+      qpSessions.delete(code);
+      qpPendingBroadcasts.delete(code);
+    }
+  }
+  qpIo.on(QP_CONTROL_FANOUT, (data: { sessionCode: string; clientId?: string }) => {
+    if (data && isValidSessionCode(data.sessionCode)) qpApplyControl(data.sessionCode, data.clientId);
+  });
+  async function qpAward(state: QpSessionState, clientId: string, amount: number, operationId: string) {
+    const result = await qpStore.award(state.sessionCode, clientId, amount, operationId);
+    if (!result.entry) return null;
+    const entry = { ...state.students.get(clientId), ...result.entry };
+    state.students.set(clientId, entry);
+    return entry;
+  }
+
 
   // Teacher-only sub-room. HAND_RAISED carries a student's NAME, so it must
   // reach the session's teacher(s) — across VMs via the Redis adapter —
@@ -2177,24 +2209,18 @@ async function startServer() {
     qpPendingBroadcasts.add(sessionCode);
     if (qpBroadcastTimer) return;
     qpBroadcastTimer = setTimeout(() => {
-      for (const code of qpPendingBroadcasts) {
-        const s = qpSessions.get(code);
-        if (s) {
-          qpIo.to(code).emit(QP_SERVER_EVENTS.LEADERBOARD, {
-            sessionCode: code,
-            students: Array.from(s.students.values(), publicQuickPlayStudent),
-            serverId: QP_SERVER_ID,
-          });
-          // Clear the one-shot perfectRound flag after each broadcast so
-          // the next leaderboard tick doesn't re-fire the achievement
-          // toast for the same round.
-          for (const entry of s.students.values()) {
-            if (entry.perfectRound) entry.perfectRound = false;
-          }
-        }
-      }
+      const codes = [...qpPendingBroadcasts];
       qpPendingBroadcasts.clear();
       qpBroadcastTimer = null;
+      for (const code of codes) {
+        void qpStore.snapshot(code).then(snapshot => {
+          if (snapshot.closed) return;
+          qpIo.to(code).emit(QP_SERVER_EVENTS.LEADERBOARD, {
+            sessionCode: code, students: (snapshot.students ?? []).map(publicQuickPlayStudent),
+            serverId: "shared", revision: snapshot.revision,
+          });
+        }).catch(error => console.error("[QP broadcast store unavailable]", error));
+      }
     }, QP_BROADCAST_INTERVAL_MS);
   }
 
@@ -2233,11 +2259,11 @@ async function startServer() {
   // for the race score, so a remote student's row is born here from the
   // nickname/avatar carried on the submit. Returns the RACE_RESULT payload to
   // deliver, or null when the submit must be ignored (too late / duplicate).
-  function qpApplyRaceSubmission(
+  async function qpApplyRaceSubmission(
     state: QpSessionState,
     race: NonNullable<QpSessionState["currentRace"]>,
     args: { clientId: string; nickname: string; avatar: string; answers: Record<string, unknown>; helped: string[] },
-  ): QpRaceResultPayload | null {
+  ): Promise<QpRaceResultPayload | null> {
     if (race.submitted.has(args.clientId)) return null;                       // one submit per round
     if (Date.now() > race.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) return null;  // too late
 
@@ -2252,14 +2278,15 @@ async function startServer() {
       speedBonus = Math.round(QP_RACE_SPEED_BONUS_MAX * Math.max(0, Math.min(1, remainingMs / totalMs)));
     }
 
-    let entry = state.students.get(args.clientId);
-    if (!entry) {
-      entry = { clientId: args.clientId, nickname: args.nickname, avatar: args.avatar || "🦊", score: 0, lastSeen: Date.now() };
-      state.students.set(args.clientId, entry);
-    }
     race.submitted.add(args.clientId);
-    entry.score = Math.min(QP_MAX_SESSION_SCORE, entry.score + roundPoints + speedBonus);
-    entry.lastSeen = Date.now();
+    let entry;
+    try {
+      entry = await qpAward(state, args.clientId, roundPoints + speedBonus, `answer:${race.roundId}`);
+    } catch (error) {
+      race.submitted.delete(args.clientId);
+      throw error;
+    }
+    if (!entry) return null;
 
     return { sessionCode: state.sessionCode, roundId: race.roundId, cells, roundPoints, speedBonus, totalScore: entry.score };
   }
@@ -2301,7 +2328,7 @@ async function startServer() {
   // VM; only the one that owns the round acts. serverSideEmit delivers to all
   // OTHER instances (never the sender), so the sending VM already handled the
   // "round is local" case before fanning out.
-  qpIo.on(QP_RACE_SUBMIT_FANOUT, (data: {
+  qpIo.on(QP_RACE_SUBMIT_FANOUT, async (data: {
     sessionCode: string; roundId: string; clientId: string;
     nickname: string; avatar: string; socketId: string;
     answers: Record<string, unknown>; helped: string[];
@@ -2311,7 +2338,7 @@ async function startServer() {
       const state = qpSessions.get(data.sessionCode);
       if (!state?.currentRace || state.currentRace.roundId !== data.roundId) return; // not the owner
       const race = state.currentRace;
-      const result = qpApplyRaceSubmission(state, race, {
+      const result = await qpApplyRaceSubmission(state, race, {
         clientId: data.clientId, nickname: data.nickname, avatar: data.avatar,
         answers: data.answers, helped: Array.isArray(data.helped) ? data.helped : [],
       });
@@ -2339,9 +2366,10 @@ async function startServer() {
   // leaderboard row if this VM never saw the student's JOIN (the round owner
   // is authoritative), and returns the scored fields — or null when the
   // submit must be ignored.
-  function qpScoreChoice(
+  async function qpScoreChoice(
     state: QpSessionState,
     round: {
+      roundId: string;
       correctIndex: number;
       optionCount: number;
       deadlineTs: number;
@@ -2352,7 +2380,8 @@ async function startServer() {
     args: { clientId: string; choiceIndex: number; nickname: string; avatar: string },
     basePoints: number,
     bonusMax: number,
-  ): Omit<QpSpeedResultPayload, "sessionCode" | "roundId"> | null {
+    multiplier = 1,
+  ): Promise<Omit<QpSpeedResultPayload, "sessionCode" | "roundId"> | null> {
     if (round.submitted.has(args.clientId)) return null;                       // one submit per round
     if (Date.now() > round.deadlineTs + QP_RACE_SUBMIT_GRACE_MS) return null;  // too late
 
@@ -2361,7 +2390,7 @@ async function startServer() {
       args.choiceIndex >= 0 &&
       args.choiceIndex < round.optionCount &&
       args.choiceIndex === round.correctIndex;
-    const roundPoints = correct ? basePoints : 0;
+    const roundPoints = correct ? basePoints * multiplier : 0;
 
     // Speed bonus — reward decisive answers. Scales from bonusMax (instant)
     // to 0 (clock expired); only awarded when they answered correctly. Same
@@ -2370,7 +2399,7 @@ async function startServer() {
     if (correct) {
       const totalMs = Math.max(1, round.deadlineTs - round.startTs);
       const remainingMs = Math.max(0, round.deadlineTs - Date.now());
-      speedBonus = Math.round(bonusMax * Math.max(0, Math.min(1, remainingMs / totalMs)));
+      speedBonus = Math.round(bonusMax * multiplier * Math.max(0, Math.min(1, remainingMs / totalMs)));
     }
 
     // First-correct wins the round. Recorded before the score write so the
@@ -2381,14 +2410,16 @@ async function startServer() {
       firstCorrect = true;
     }
 
-    let entry = state.students.get(args.clientId);
-    if (!entry) {
-      entry = { clientId: args.clientId, nickname: args.nickname, avatar: args.avatar || "🦊", score: 0, lastSeen: Date.now() };
-      state.students.set(args.clientId, entry);
-    }
     round.submitted.add(args.clientId);
-    entry.score = Math.min(QP_MAX_SESSION_SCORE, entry.score + roundPoints + speedBonus);
-    entry.lastSeen = Date.now();
+    let entry;
+    try {
+      entry = await qpAward(state, args.clientId, roundPoints + speedBonus, `answer:${round.roundId}`);
+    } catch (error) {
+      round.submitted.delete(args.clientId);
+      if (firstCorrect) round.firstCorrectClientId = null;
+      throw error;
+    }
+    if (!entry) return null;
 
     return {
       correct, correctIndex: round.correctIndex,
@@ -2400,12 +2431,12 @@ async function startServer() {
   // ─── Speed Round scoring (shared by the local + cross-VM submit paths) ──
   // Thin wrapper over qpScoreChoice — external behaviour unchanged from the
   // pre-arena implementation.
-  function qpApplySpeedSubmission(
+  async function qpApplySpeedSubmission(
     state: QpSessionState,
     speed: NonNullable<QpSessionState["currentSpeed"]>,
     args: { clientId: string; choiceIndex: number; nickname: string; avatar: string },
-  ): QpSpeedResultPayload | null {
-    const scored = qpScoreChoice(state, speed, args, QP_SPEED_BASE_POINTS, QP_SPEED_BONUS_MAX);
+  ): Promise<QpSpeedResultPayload | null> {
+    const scored = await qpScoreChoice(state, speed, args, QP_SPEED_BASE_POINTS, QP_SPEED_BONUS_MAX);
     if (!scored) return null;
     return { sessionCode: state.sessionCode, roundId: speed.roundId, ...scored };
   }
@@ -2446,7 +2477,7 @@ async function startServer() {
   // Also resolves Word Hunt Arena answers — the arena's grab grant rides the
   // SPEED_ROUND payload shape, so the student's answer arrives as a normal
   // SPEED_SUBMIT and may fan out here when the arena lives on another VM.
-  qpIo.on(QP_SPEED_SUBMIT_FANOUT, (data: {
+  qpIo.on(QP_SPEED_SUBMIT_FANOUT, async (data: {
     sessionCode: string; roundId: string; clientId: string;
     nickname: string; avatar: string; socketId: string; choiceIndex: number;
   }) => {
@@ -2456,7 +2487,7 @@ async function startServer() {
       if (!state) return;
       if (state.currentSpeed && state.currentSpeed.roundId === data.roundId) {
         const speed = state.currentSpeed;
-        const result = qpApplySpeedSubmission(state, speed, {
+        const result = await qpApplySpeedSubmission(state, speed, {
           clientId: data.clientId, choiceIndex: data.choiceIndex,
           nickname: data.nickname, avatar: data.avatar,
         });
@@ -2468,7 +2499,7 @@ async function startServer() {
         return;
       }
       // Not a Speed Round word on this VM — maybe an arena answer we own.
-      const arenaResult = qpApplyArenaAnswer(state, data.roundId, {
+      const arenaResult = await qpApplyArenaAnswer(state, data.roundId, {
         clientId: data.clientId, choiceIndex: data.choiceIndex,
         nickname: data.nickname, avatar: data.avatar,
       });
@@ -2660,7 +2691,7 @@ async function startServer() {
       const s = qpSessions.get(state.sessionCode);
       const a = s?.currentArena;
       const w = a?.words.get(args.wordId);
-      if (!s || !a || !w || w.activeRound?.roundId !== roundId) return;
+      if (!s || !a || !w || w.activeRound?.roundId !== roundId || w.activeRound.submitted.has(args.clientId)) return;
       w.state = "available";
       w.lockedBy = null;
       w.activeRound = null;
@@ -2697,45 +2728,23 @@ async function startServer() {
    *  score through the shared core (arena point constants), retire the word,
    *  and patch the room. Returns the SPEED_RESULT payload, or null when this
    *  VM has no matching arena round (caller falls through / drops). */
-  function qpApplyArenaAnswer(
+  async function qpApplyArenaAnswer(
     state: QpSessionState,
     roundId: string,
     args: { clientId: string; choiceIndex: number; nickname: string; avatar: string },
-  ): QpSpeedResultPayload | null {
+  ): Promise<QpSpeedResultPayload | null> {
     const arena = state.currentArena;
     if (!arena) return null;
     for (const [wordId, word] of arena.words) {
       const round = word.activeRound;
       if (!round || round.roundId !== roundId) continue;
       if (word.lockedBy !== args.clientId) return null; // someone else's lock — never score it
-      const scored = qpScoreChoice(state, round, args, QP_ARENA_BASE_POINTS, QP_ARENA_BONUS_MAX);
-      if (!scored) return null; // duplicate / too late — the fumble timer releases the word
-
-      // Double Points: a previously-collected ✌️ pickup doubles the NEXT
-      // correct answer. qpScoreChoice already added roundPoints+speedBonus to
-      // the leaderboard; add the SAME amount again so the total is ×2, and
-      // reflect the doubled figures in the SPEED_RESULT so the buzzer
-      // celebrates the right number. Consumed whether or not it lands a flag
-      // (the student "spent" it on this answer) — and only on a correct hit,
-      // so a wrong answer doesn't waste the boost. Server-side flag ⇒ a
-      // tampered client can't fake the multiplier.
-      let scoredOut = scored;
-      if (scored.correct && arena.doubleNext.has(args.clientId)) {
-        arena.doubleNext.delete(args.clientId);
-        const extra = scored.roundPoints + scored.speedBonus;
-        const entry = state.students.get(args.clientId);
-        if (entry && extra > 0) {
-          entry.score = Math.min(QP_MAX_SESSION_SCORE, entry.score + extra);
-          entry.lastSeen = Date.now();
-          scoredOut = {
-            ...scored,
-            roundPoints: scored.roundPoints * 2,
-            speedBonus: scored.speedBonus * 2,
-            totalScore: entry.score,
-          };
-        }
-      }
-
+      // Reserve the answer before awaiting Redis; its fumble timer must not
+      // release the same word while a committed score is awaiting a reply.
+      const multiplier = arena.doubleNext.has(args.clientId) ? 2 : 1;
+      const scored = await qpScoreChoice(state, round, args, QP_ARENA_BASE_POINTS, QP_ARENA_BONUS_MAX, multiplier);
+      if (!scored) return null;
+      if (scored.correct) arena.doubleNext.delete(args.clientId);
       if (round.timer) clearTimeout(round.timer);
       word.activeRound = null;
       // An answered word stays answered — it's REMOVED from play (no reserve /
@@ -2749,7 +2758,7 @@ async function startServer() {
         sessionCode: state.sessionCode,
         word: qpArenaPublicWord(wordId, word),
       });
-      return { sessionCode: state.sessionCode, roundId, ...scoredOut };
+      return { sessionCode: state.sessionCode, roundId, ...scored };
     }
     return null;
   }
@@ -2793,10 +2802,10 @@ async function startServer() {
    *  hurricane → nothing server-side, the collector's client self-stuns),
    *  broadcasts ARENA_PICKUP_GONE, and schedules the respawn. Returns the gone
    *  payload to broadcast, or null when ignored. */
-  function qpApplyArenaPickup(
+  async function qpApplyArenaPickup(
     state: QpSessionState,
     args: { clientId: string; pickupId: string; x?: unknown; y?: unknown },
-  ): QpArenaPickupGonePayload | null {
+  ): Promise<QpArenaPickupGonePayload | null> {
     const arena = state.currentArena;
     if (!arena) return null;
     const pickup = arena.pickups.get(args.pickupId);
@@ -2817,13 +2826,10 @@ async function startServer() {
     if (pickup.kind === "star") {
       // Bonus Star — server-authoritative points (mirrors TEACHER_BONUS), then
       // a fresh leaderboard tick so the podium reflects it.
-      let entry = state.students.get(args.clientId);
-      if (!entry) {
-        entry = { clientId: args.clientId, nickname: "Player", avatar: "🦊", score: 0, lastSeen: Date.now() };
-        state.students.set(args.clientId, entry);
-      }
-      entry.score = Math.min(QP_MAX_SESSION_SCORE, entry.score + QP_ARENA_PICKUP_BONUS_POINTS);
-      entry.lastSeen = Date.now();
+      // The consumed pickup is reserved before the await, so one collection
+      // can win. Each respawn is a fresh award; a store failure is fail-closed.
+      const entry = await qpAward(state, args.clientId, QP_ARENA_PICKUP_BONUS_POINTS, `pickup:${randomUUID()}`);
+      if (!entry) return null;
       qpScheduleBroadcast(state.sessionCode);
     } else if (pickup.kind === "double") {
       // Double Points — flag the NEXT correct answer for ×2 (applied in
@@ -2929,7 +2935,7 @@ async function startServer() {
   // collect the gone event is broadcast to the WHOLE room (so every client
   // drops the medallion + the collector applies the effect). A failed collect
   // (range/already-taken) is silently dropped — the medallion just stays.
-  qpIo.on(QP_ARENA_PICKUP_FANOUT, (data: {
+  qpIo.on(QP_ARENA_PICKUP_FANOUT, async (data: {
     sessionCode: string; pickupId: string; clientId: string;
     socketId: string; x?: number; y?: number;
   }) => {
@@ -2938,7 +2944,7 @@ async function startServer() {
       if (typeof data.pickupId !== "string" || !isValidClientId(data.clientId)) return;
       const state = qpSessions.get(data.sessionCode);
       if (!state?.currentArena) return; // not the owner
-      const gone = qpApplyArenaPickup(state, {
+      const gone = await qpApplyArenaPickup(state, {
         clientId: data.clientId, pickupId: data.pickupId, x: data.x, y: data.y,
       });
       if (gone) {
@@ -3026,6 +3032,7 @@ async function startServer() {
   async function qpVerifyTeacherOwnsSession(
     token: string,
     sessionCode: string,
+    allowEnded = false,
   ): Promise<{ ok: true; uid: string } | { ok: false; reason: QpErrorCode }> {
     if (!isValidToken(token)) return { ok: false, reason: "unauthorized" };
     const uid = await verifyToken(token);
@@ -3038,6 +3045,11 @@ async function startServer() {
       .maybeSingle();
     if (error || !data) return { ok: false, reason: "session_not_found" };
     if (data.teacher_uid !== uid) return { ok: false, reason: "unauthorized" };
+    if (!allowEnded) {
+      try {
+        if (!data.is_active || (await qpStore.snapshot(sessionCode)).closed) return { ok: false, reason: "session_inactive" };
+      } catch { return { ok: false, reason: "internal_error" }; }
+    }
     return { ok: true, uid };
   }
 
@@ -3072,34 +3084,6 @@ async function startServer() {
     return s;
   }
 
-  // ─── Red vs Blue team helpers ───────────────────────────────────────
-  /** Per-team head count on THIS VM. Single-VM classrooms (the common
-   *  case) see the whole class; across VMs each side is approximate,
-   *  which only nudges balance and never affects scoring. */
-  function qpTeamCounts(state: QpSessionState): { red: number; blue: number } {
-    let red = 0, blue = 0;
-    for (const e of state.students.values()) {
-      if (e.team === "red") red++;
-      else if (e.team === "blue") blue++;
-    }
-    return { red, blue };
-  }
-
-  /** The team a joiner should land on to keep teams balanced — the
-   *  smaller side, ties go to Red. */
-  function qpBalancedTeam(state: QpSessionState): QpTeam {
-    const { red, blue } = qpTeamCounts(state);
-    return red <= blue ? "red" : "blue";
-  }
-
-  /** Stamp a balanced team on every student missing one — used when the
-   *  teacher flips team mode ON mid-session. */
-  function qpAssignTeamsToAll(state: QpSessionState): void {
-    for (const e of state.students.values()) {
-      if (e.team !== "red" && e.team !== "blue") e.team = qpBalancedTeam(state);
-    }
-  }
-
   const qpIdentity = createQuickPlayIdentity(
     process.env.QUICK_PLAY_REJOIN_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || randomBytes(32).toString("hex"),
   );
@@ -3117,7 +3101,7 @@ async function startServer() {
 
     // Check ownership BEFORE any handler, including cross-VM forwarding.
     // Public client IDs, nicknames and room membership are not credentials.
-    socket.use(([event, payload], next) => {
+    socket.use(([event, payload, ack], next) => {
       if (qpStudentActions.has(event)) {
         const state = typeof payload?.sessionCode === "string" ? qpSessions.get(payload.sessionCode) : undefined;
         // Wheel answers normally omit clientId: the handler stamps the
@@ -3126,6 +3110,7 @@ async function startServer() {
           : event === QP_EVENTS.WHEEL_ANSWER ? payload?.clientId ?? state?.socketToClient.get(socket.id)
           : payload?.clientId;
         if (!ownsQuickPlayStudent(state, socket.id, clientId)) {
+          if (typeof ack === "function") ack({ ok: false, code: "unauthorized" });
           qpEmitError(socket, event, "unauthorized", "join this session before sending player actions");
           return;
         }
@@ -3133,6 +3118,20 @@ async function startServer() {
       next();
     });
     let joinPending = false;
+    type ActionAck = (result: { ok: boolean; code?: string; score?: number; totalScore?: number }) => void;
+    // Socket.IO does not catch rejected async listeners. Storage failures must
+    // produce a retryable response, never an unhandled server rejection.
+    function qpOn<T>(event: string, handler: (payload: T, ack: ActionAck) => void | Promise<void>) {
+      socket.on(event, (payload: T, callback?: ActionAck) => {
+        const ack: ActionAck = typeof callback === "function" ? callback : () => {};
+        void Promise.resolve().then(() => handler(payload, ack)).catch(error => {
+          console.error(`[QP ${event} failed]`, error);
+          qpEmitError(socket, event, "internal_error", "could not confirm this action; please retry");
+          ack({ ok: false, code: "internal_error" });
+        });
+      });
+    }
+
 
     // Student join — validates payload and session existence, then
     // inserts into the in-memory leaderboard and broadcasts.
@@ -3179,30 +3178,16 @@ async function startServer() {
           return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "kicked", "you were removed from this session");
         }
 
-        if (!state.students.has(clientId) && state.students.size >= QP_MAX_STUDENTS_PER_SESSION) {
-          return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "session_full", "this session is full");
-        }
-
         const now = Date.now();
-        const prev = state.students.get(clientId);
-        // Re-joining (refresh / reconnect) keeps score; truly new joiner starts at 0.
-        state.students.set(clientId, {
-          clientId,
-          nickname,
-          avatar,
-          score: prev?.score ?? 0,
-          lastSeen: now,
-          authUid: verifiedUid,
-        });
-        // Team mode: honour a team the client carries (a switch surviving a
-        // refresh) or their previous team, else auto-balance onto the
-        // smaller side. No-op when team mode is off.
-        if (state.teamMode) {
-          const joined = state.students.get(clientId)!;
-          const carried: QpTeam | undefined =
-            payload.team === "red" || payload.team === "blue" ? payload.team : prev?.team;
-          joined.team = carried ?? qpBalancedTeam(state);
+        const joined = await qpStore.join(sessionCode, { clientId, nickname, avatar, score: 0, lastSeen: now, authUid: verifiedUid }, socket.id);
+        if (joined.status !== "ok" || !joined.entry) {
+          if (joined.status === "kicked") socket.emit(QP_SERVER_EVENTS.KICKED, { sessionCode });
+          return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, joined.status === "ok" ? "internal_error" : joined.status, "could not join this session");
         }
+        if (!socket.connected) return;
+        state.students.set(clientId, joined.entry);
+        state.teamMode = !!joined.teamMode;
+        socket.emit(QP_SERVER_EVENTS.TEAM_MODE, { sessionCode, enabled: state.teamMode });
         // Superseded connections lose their authority immediately on this VM.
         for (const [otherSocket, id] of state.socketToClient) {
           if (id === clientId && otherSocket !== socket.id) state.socketToClient.delete(otherSocket);
@@ -3224,11 +3209,13 @@ async function startServer() {
         socket.data.qpRequestedClientId = requestedClientId;
         socket.join(sessionCode);
 
+        const snapshot = await qpStore.snapshot(sessionCode);
+        if (snapshot.closed) { qpApplyControl(sessionCode); return qpEmitError(socket, QP_EVENTS.STUDENT_JOIN, "session_inactive", "session has ended"); }
         socket.emit(QP_SERVER_EVENTS.JOINED, {
           clientId, sessionCode, requestedClientId,
           rejoinToken: qpIdentity.issue(sessionCode, clientId, verifiedUid),
-          leaderboard: Array.from(state.students.values(), publicQuickPlayStudent),
-          serverId: QP_SERVER_ID,
+          leaderboard: (snapshot.students ?? []).map(publicQuickPlayStudent),
+          serverId: "shared", revision: snapshot.revision, acceptedScore: joined.entry.reportedScore,
         });
         // Mid-arena (re)join: spawn them onto the map and hand THIS socket
         // the full arena picture (design §8.4) — without it a refreshed
@@ -3253,80 +3240,46 @@ async function startServer() {
     // Score update — only accepted from the socket that owns the
     // clientId, score must be monotonically non-decreasing, and deltas
     // are bounded so a pasted value can't blow the leaderboard.
-    socket.on(QP_EVENTS.SCORE_UPDATE, (payload: QpScoreUpdatePayload) => {
-      if (!payload || typeof payload !== "object") return;
+    qpOn(QP_EVENTS.SCORE_UPDATE, async (payload: QpScoreUpdatePayload, ack) => {
+      if (!payload || typeof payload !== "object") return ack({ ok: false, code: "invalid_payload" });
       const { sessionCode, clientId, score } = payload;
-      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) {
-        console.warn(`[QP SCORE bad payload] session=${sessionCode} client=${clientId} score=${score}`);
-        return;
-      }
-      if (typeof score !== "number" || !isFinite(score) || score < 0 || score > QP_MAX_SESSION_SCORE) {
-        console.warn(`[QP SCORE bad score] session=${sessionCode} score=${score}`);
-        return;
-      }
-
-      if (!qpScoreLimiter.checkLimit(socket.id)) {
-        console.warn(`[QP SCORE rate-limited] socket=${socket.id} session=${sessionCode}`);
-        return;
-      }
+      if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId) || !Number.isFinite(score) || score < 0 || score > QP_MAX_SESSION_SCORE) return ack({ ok: false, code: "invalid_payload" });
+      if (!qpScoreLimiter.checkLimit(socket.id)) return ack({ ok: false, code: "rate_limited" });
       const state = qpSessions.get(sessionCode);
-      if (!state) {
-        console.warn(`[QP SCORE no session] session=${sessionCode}`);
-        return;
-      }
-      const owned = state.socketToClient.get(socket.id);
-      if (owned !== clientId) return;
-      const entry = state.students.get(clientId);
-      if (!entry) {
-        console.warn(`[QP SCORE no entry] session=${sessionCode} client=${clientId}`);
-        return;
-      }
-      if (score < entry.score) {
-        console.warn(`[QP SCORE regress] session=${sessionCode} client=${clientId} prev=${entry.score} new=${score}`);
-        return;
-      }
-      if (score > entry.score + QP_MAX_SCORE_DELTA) {
-        console.warn(
-          `[QP score rejected] session=${sessionCode} client=${clientId} ` +
-          `previous=${entry.score} attempted=${score} delta=${score - entry.score} ` +
-          `cap=${QP_MAX_SCORE_DELTA}`,
-        );
-        return;
-      }
-
-      const prevScore = entry.score;
-      entry.score = score;
-      entry.lastSeen = Date.now();
-
+      if (!ownsQuickPlayStudent(state, socket.id, clientId)) return ack({ ok: false, code: "unauthorized" });
+      const extras: Partial<QpStudentEntry> = { perfectRound: payload.perfectRound === true };
       // Tier B optional fields. Each is validated independently so a
       // malformed value just drops that one field rather than rejecting
       // the whole score update (which would silently lose points).
       if (typeof payload.streak === "number" && isFinite(payload.streak)
           && payload.streak >= 0 && payload.streak <= QP_MAX_STREAK) {
-        entry.streak = Math.floor(payload.streak);
+        extras.streak = Math.floor(payload.streak);
       }
       if (payload.roundProgress && typeof payload.roundProgress === "object") {
         const { done, total } = payload.roundProgress;
         if (typeof done === "number" && typeof total === "number"
             && isFinite(done) && isFinite(total)
             && done >= 0 && total > 0 && done <= total && total <= QP_MAX_ROUND_TOTAL) {
-          entry.roundProgress = { done: Math.floor(done), total: Math.floor(total) };
+          extras.roundProgress = { done: Math.floor(done), total: Math.floor(total) };
         }
       }
       // perfectRound is intentionally write-once: cleared in
       // qpScheduleBroadcast after the next leaderboard tick so the
       // monitor sees it for exactly one broadcast.
       if (payload.perfectRound === true) {
-        entry.perfectRound = true;
+        extras.perfectRound = true;
       }
 
-      console.log(`[QP SCORE accept] session=${sessionCode} client=${clientId} ${prevScore}→${score}`);
+      const result = await qpStore.score(sessionCode, clientId, socket.id, score, extras);
+      if (!result.entry) return ack({ ok: false, code: result.status });
+      if (qpSessions.get(sessionCode) === state) state!.students.set(clientId, result.entry);
+      ack({ ok: true, score: result.entry.reportedScore, totalScore: result.entry.score });
       qpScheduleBroadcast(sessionCode);
     });
 
     // Student explicit leave — same effect as disconnecting, but
     // propagates immediately rather than waiting for the ping timeout.
-    socket.on(QP_EVENTS.STUDENT_LEAVE, (payload: QpStudentLeavePayload) => {
+    qpOn(QP_EVENTS.STUDENT_LEAVE, async (payload: QpStudentLeavePayload) => {
       if (!payload || typeof payload !== "object") return;
       const { sessionCode, clientId } = payload;
       if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) return;
@@ -3334,6 +3287,7 @@ async function startServer() {
       if (!state) return;
       const owned = state.socketToClient.get(socket.id);
       if (owned !== clientId) return;
+      await qpStore.leave(sessionCode, clientId, socket.id);
       state.students.delete(clientId);
       state.socketToClient.delete(socket.id);
       socket.leave(sessionCode);
@@ -3438,7 +3392,7 @@ async function startServer() {
 
     // Teacher observe — grants receipt of leaderboard broadcasts + kick
     // authority. Token is verified against the session's teacher_uid.
-    socket.on(QP_EVENTS.TEACHER_OBSERVE, async (payload: QpTeacherObservePayload) => {
+    qpOn(QP_EVENTS.TEACHER_OBSERVE, async (payload: QpTeacherObservePayload) => {
       if (!payload || typeof payload !== "object") return;
       const { sessionCode, token } = payload;
       if (!isValidSessionCode(sessionCode)) {
@@ -3460,10 +3414,13 @@ async function startServer() {
       // Also join the teacher-only room so raised-hand alerts (which include a
       // student's name) reach this teacher without leaking to peer students.
       socket.join(qpTeacherRoom(sessionCode));
+      const snapshot = await qpStore.snapshot(sessionCode);
+      for (const student of snapshot.students ?? []) state.students.set(student.clientId, student);
+      state.teamMode = !!snapshot.teamMode;
+      socket.emit(QP_SERVER_EVENTS.TEAM_MODE, { sessionCode, enabled: state.teamMode });
       socket.emit(QP_SERVER_EVENTS.LEADERBOARD, {
-        sessionCode,
-        students: Array.from(state.students.values(), publicQuickPlayStudent),
-        serverId: QP_SERVER_ID,
+        sessionCode, students: (snapshot.students ?? []).map(publicQuickPlayStudent),
+        serverId: "shared", revision: snapshot.revision,
       });
       // If a Word Hunt is already running ON THIS VM, seed the observer's map
       // right away (board config + current positions) instead of waiting for
@@ -3477,49 +3434,26 @@ async function startServer() {
       }
     });
 
-    socket.on(QP_EVENTS.TEACHER_KICK, async (payload: QpTeacherKickPayload) => {
-      if (!payload || typeof payload !== "object") return;
+    qpOn(QP_EVENTS.TEACHER_KICK, async (payload: QpTeacherKickPayload, ack) => {
+      if (!payload || typeof payload !== "object") return ack({ ok: false, code: "invalid_payload" });
       const { sessionCode, clientId, token } = payload;
       if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) {
-        return qpEmitError(socket, QP_EVENTS.TEACHER_KICK, "invalid_payload", "bad payload");
+        return ack({ ok: false, code: "invalid_payload" });
       }
       if (!qpTeacherLimiter.checkLimit(socket.id)) {
-        return qpEmitError(socket, QP_EVENTS.TEACHER_KICK, "rate_limited", "too many teacher actions");
+        return ack({ ok: false, code: "rate_limited" });
       }
       const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
-      if (!verify.ok) return qpEmitError(socket, QP_EVENTS.TEACHER_KICK, verify.reason, "access denied");
+      if (!verify.ok) return ack({ ok: false, code: verify.reason });
 
-      const state = qpSessions.get(sessionCode);
-      if (!state) return;
-      // Mark as kicked BEFORE we drop the entry, so any race between
-      // our own disconnect and the client's auto-reconnect lands on
-      // the STUDENT_JOIN guard that rejects kicked clientIds.
-      state.kickedClientIds.add(clientId);
-      const removed = state.students.delete(clientId);
-      if (!removed) {
-        // Already gone (idle sweep, etc.) — but we still kicked, so
-        // keep the kickedClientIds entry to block any future rejoin.
-      }
-      // Notify the kicked student's socket directly (find by reverse lookup).
-      // `leave()` alone isn't enough — the student's socket is still
-      // connected and can re-emit STUDENT_JOIN with the same clientId
-      // and land right back on the leaderboard.  Force-disconnect so the
-      // kick actually sticks, and rely on the client's KICKED listener
-      // to flip the kicked screen before the socket tears down.
-      for (const [sockId, cId] of state.socketToClient.entries()) {
-        if (cId === clientId) {
-          state.socketToClient.delete(sockId);
-          const targetSocket = qpIo.sockets.get(sockId);
-          targetSocket?.emit(QP_SERVER_EVENTS.KICKED, { sessionCode });
-          targetSocket?.leave(sessionCode);
-          // Give the KICKED packet a moment to flush before severing
-          // the connection.  Without the delay, disconnect() races the
-          // emit and the student never sees the kicked screen.
-          if (targetSocket) {
-            setTimeout(() => { try { targetSocket.disconnect(true); } catch { /* already gone */ } }, 200);
-          }
-        }
-      }
+      const result = await qpStore.kick(sessionCode, clientId);
+      if (result.status !== "ok") return ack({ ok: false, code: result.status });
+      qpApplyControl(sessionCode, clientId);
+      if (redisAdapterStatus === "attached") qpIo.serverSideEmit(QP_CONTROL_FANOUT, { sessionCode, clientId });
+      const room = `qp-player:${sessionCode}:${clientId}`;
+      qpIo.to(room).emit(QP_SERVER_EVENTS.KICKED, { sessionCode });
+      setTimeout(() => qpIo.in(room).disconnectSockets(true), 200);
+      ack({ ok: true });
       qpScheduleBroadcast(sessionCode);
     });
 
@@ -3578,35 +3512,25 @@ async function startServer() {
     // stuck key or runaway client from writing pathological values, and
     // the absolute QP_MAX_SESSION_SCORE ceiling still applies so the
     // total can never go above 100k.
-    socket.on(QP_EVENTS.TEACHER_BONUS, async (payload: QpTeacherBonusPayload) => {
-      if (!payload || typeof payload !== "object") return;
+    qpOn(QP_EVENTS.TEACHER_BONUS, async (payload: QpTeacherBonusPayload, ack) => {
+      if (!payload || typeof payload !== "object") return ack({ ok: false, code: "invalid_payload" });
       const { sessionCode, clientId, amount, token } = payload;
       if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) {
-        return qpEmitError(socket, QP_EVENTS.TEACHER_BONUS, "invalid_payload", "bad payload");
+        return ack({ ok: false, code: "invalid_payload" });
       }
       if (typeof amount !== "number" || !isFinite(amount) || amount <= 0 || amount > QP_MAX_BONUS_AMOUNT) {
-        return qpEmitError(socket, QP_EVENTS.TEACHER_BONUS, "invalid_payload", "bad amount");
+        return ack({ ok: false, code: "invalid_payload" });
       }
       if (!qpTeacherLimiter.checkLimit(socket.id)) {
-        return qpEmitError(socket, QP_EVENTS.TEACHER_BONUS, "rate_limited", "too many teacher actions");
+        return ack({ ok: false, code: "rate_limited" });
       }
       const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
-      if (!verify.ok) return qpEmitError(socket, QP_EVENTS.TEACHER_BONUS, verify.reason, "access denied");
+      if (!verify.ok) return ack({ ok: false, code: verify.reason });
 
-      const state = qpSessions.get(sessionCode);
-      if (!state) return;
-      const entry = state.students.get(clientId);
-      if (!entry) return;
-
-      const next = Math.min(QP_MAX_SESSION_SCORE, entry.score + Math.floor(amount));
-      const delta = next - entry.score;
-      if (delta <= 0) return;
-      entry.score = next;
-      entry.lastSeen = Date.now();
-      console.log(
-        `[QP TEACHER_BONUS] session=${sessionCode} client=${clientId} ` +
-        `+${delta} → ${next}`,
-      );
+      const result = await qpStore.award(sessionCode, clientId, Math.floor(amount), payload.requestId || randomUUID());
+      if (!result.entry) return ack({ ok: false, code: result.status });
+      qpGetOrCreateSession(sessionCode).students.set(clientId, result.entry);
+      ack({ ok: true, totalScore: result.entry.score });
       qpScheduleBroadcast(sessionCode);
     });
 
@@ -3614,7 +3538,7 @@ async function startServer() {
     // Enabling stamps balanced teams onto everyone already in the room;
     // disabling clears them. Either way the on/off signal goes to the room
     // and a fresh leaderboard (carrying teams) is broadcast.
-    socket.on(QP_EVENTS.TEACHER_TEAM_MODE, async (payload: QpTeacherTeamModePayload) => {
+    qpOn(QP_EVENTS.TEACHER_TEAM_MODE, async (payload: QpTeacherTeamModePayload) => {
       if (!payload || typeof payload !== "object") return;
       const { sessionCode, token, enabled } = payload;
       if (!isValidSessionCode(sessionCode) || typeof enabled !== "boolean") {
@@ -3626,13 +3550,11 @@ async function startServer() {
       const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
       if (!verify.ok) return qpEmitError(socket, QP_EVENTS.TEACHER_TEAM_MODE, verify.reason, "access denied");
 
-      const state = qpSessions.get(sessionCode);
-      if (!state) return;
+      const result = await qpStore.teams(sessionCode, enabled);
+      if (result.status !== "ok") return;
+      const state = qpGetOrCreateSession(sessionCode);
       state.teamMode = enabled;
-      if (enabled) qpAssignTeamsToAll(state);
-      else for (const e of state.students.values()) e.team = undefined;
-      console.log(`[QP TEAM_MODE] session=${sessionCode} enabled=${enabled}`);
-
+      for (const entry of result.students ?? []) state.students.set(entry.clientId, entry);
       qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.TEAM_MODE, { sessionCode, enabled });
       qpScheduleBroadcast(sessionCode);
     });
@@ -3640,139 +3562,63 @@ async function startServer() {
     // Student "Switch team" (the hybrid choice). Honoured only when team
     // mode is on, the socket owns the clientId, and the move keeps the two
     // teams balanced (the chosen side may not end up more than 1 ahead).
-    socket.on(QP_EVENTS.TEAM_SWITCH, (payload: QpTeamSwitchPayload) => {
+    qpOn(QP_EVENTS.TEAM_SWITCH, async (payload: QpTeamSwitchPayload) => {
       if (!payload || typeof payload !== "object") return;
       const { sessionCode, clientId, team } = payload;
       if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) return;
       if (team !== "red" && team !== "blue") return;
       if (!qpScoreLimiter.checkLimit(socket.id)) return;
-      const state = qpSessions.get(sessionCode);
-      if (!state || !state.teamMode) return;
-      if (state.socketToClient.get(socket.id) !== clientId) return;
-      const entry = state.students.get(clientId);
-      if (!entry || entry.team === team) return;
-      // Count the other students per side, then require the chosen side to
-      // stay within 1 of the other once this student lands on it.
-      let red = 0, blue = 0;
-      for (const e of state.students.values()) {
-        if (e.clientId === clientId) continue;
-        if (e.team === "red") red++;
-        else if (e.team === "blue") blue++;
-      }
-      const after = team === "red" ? { red: red + 1, blue } : { red, blue: blue + 1 };
-      if (Math.abs(after.red - after.blue) > 1) return; // would unbalance — refuse
-      entry.team = team;
-      entry.lastSeen = Date.now();
+      const result = await qpStore.team(sessionCode, clientId, socket.id, team);
+      if (!result.entry) return;
+      qpGetOrCreateSession(sessionCode).students.set(clientId, result.entry);
       qpScheduleBroadcast(sessionCode);
     });
 
-    socket.on(QP_EVENTS.TEACHER_END, async (payload: QpTeacherEndPayload) => {
-      if (!payload || typeof payload !== "object") return;
+    qpOn(QP_EVENTS.TEACHER_END, async (payload: QpTeacherEndPayload, ack) => {
+      if (!payload || typeof payload !== "object") return ack({ ok: false, code: "invalid_payload" });
       const { sessionCode, token } = payload;
       if (!isValidSessionCode(sessionCode)) {
-        return qpEmitError(socket, QP_EVENTS.TEACHER_END, "invalid_payload", "bad session code");
+        return ack({ ok: false, code: "invalid_payload" });
       }
       if (!qpTeacherLimiter.checkLimit(socket.id)) {
-        return qpEmitError(socket, QP_EVENTS.TEACHER_END, "rate_limited", "too many teacher actions");
+        return ack({ ok: false, code: "rate_limited" });
       }
-      const verify = await qpVerifyTeacherOwnsSession(token, sessionCode);
-      if (!verify.ok) return qpEmitError(socket, QP_EVENTS.TEACHER_END, verify.reason, "access denied");
+      const verify = await qpVerifyTeacherOwnsSession(token, sessionCode, true);
+      if (!verify.ok) return ack({ ok: false, code: verify.reason });
 
-      // Persist the final leaderboard to public.progress BEFORE
-      // tearing down the in-memory state.  Under V2 the leaderboard
-      // lives only in server memory while the game runs; without
-      // this write the teacher's gradebook + analytics show no rows
-      // for the just-played session ("I ended it and nothing landed
-      // in the database" was the literal report).  Skip students
-      // whose client never sent an authUid (older client builds, or
-      // truly unauthenticated browsers — a real auth.users row is
-      // required by the progress trigger from migration 20260430).
-      const endingSessionState = qpSessions.get(sessionCode);
-      if (endingSessionState && supabaseAdmin) {
-        // Resolve the session UUID once — it's the assignment_id for
-        // every progress row.  If the lookup fails we still tear down,
-        // we just skip persistence rather than block the teacher.
-        try {
-          const { data: sessRow } = await supabaseAdmin
-            .from("quick_play_sessions")
-            .select("id")
-            .eq("session_code", sessionCode)
-            .maybeSingle();
-          const assignmentId = sessRow?.id as string | undefined;
-          if (assignmentId) {
-            // Persist EVERY student that scored, regardless of whether
-            // their client managed to attach an authUid.  Anonymous
-            // sign-ins are disabled in some Supabase orgs / blocked by
-            // private browsing, so a strict `s.authUid` filter
-            // silently dropped the entire leaderboard at session-end
-            // (audit 2026-04-25 — teacher saw zero gradebook rows
-            // even though scores climbed live).  The companion
-            // migration 20260517 relaxes the progress trigger so a
-            // synthetic `qp:<clientId>` student_uid is accepted on
-            // QUICK_PLAY rows.
-            const persistableStudents = Array.from(endingSessionState.students.values())
-              .filter(s => s.score > 0);
-            console.warn(`[QP TEACHER_END persist] ${sessionCode}: ${persistableStudents.length} students with score>0 (of ${endingSessionState.students.size} total)`);
-            if (persistableStudents.length > 0) {
-              await Promise.all(persistableStudents.map(async (s) => {
-                // Real auth uid wins; otherwise fall back to a
-                // namespaced clientId so the trigger sees a stable,
-                // non-colliding identifier per student per session.
-                const studentUid = s.authUid || `qp:${s.clientId}`;
-                try {
-                  const { error } = await supabaseAdmin!.rpc("save_student_progress", {
-                    p_student_name: s.nickname,
-                    p_student_uid: studentUid,
-                    p_assignment_id: assignmentId,
-                    p_class_code: "QUICK_PLAY",
-                    p_score: Math.round(s.score),
-                    p_mode: "quickplay",
-                    p_mistakes: [] as number[],
-                    p_avatar: s.avatar,
-                    p_word_attempts: null,
-                  });
-                  if (error) {
-                    console.warn("[QP TEACHER_END persist] failed for", s.clientId, error.message);
-                  } else {
-                    console.warn("[QP TEACHER_END persist] saved", s.nickname, s.score);
-                  }
-                } catch (err) {
-                  console.warn("[QP TEACHER_END persist] threw for", s.clientId, err);
-                }
-              }));
-            }
-          } else {
-            console.warn(`[QP TEACHER_END persist] ${sessionCode}: no assignment_id, skipping persist`);
-          }
-        } catch (err) {
-          console.warn("[QP TEACHER_END persist] session lookup failed", err);
-        }
-      }
-
+      if (!supabaseAdmin) return ack({ ok: false, code: "internal_error" });
+      // Freeze globally before persisting. Retry on ANY server reuses exactly
+      // this snapshot; duplicate END requests cannot increment play_count.
+      const final = await qpStore.close(sessionCode);
+      qpApplyControl(sessionCode);
+      if (redisAdapterStatus === "attached") qpIo.serverSideEmit(QP_CONTROL_FANOUT, { sessionCode });
       qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.SESSION_ENDED, { sessionCode });
-      // Force every student socket in the room to disconnect after the
-      // SESSION_ENDED packet flushes.  Without this, students can keep
-      // emitting SCORE_UPDATE against the (now-deleted) session — the
-      // server no-ops them, but the game UI on their end has no reason
-      // to stop either, so they keep playing until the tab is closed.
-      // The socket disconnect bubbles into the client's onDisconnect →
-      // sessionEndedRef path so the UI transition is unambiguous.
-      if (endingSessionState) {
-        const sockIds = Array.from(endingSessionState.socketToClient.keys());
-        setTimeout(() => {
-          for (const sockId of sockIds) {
-            const sock = qpIo.sockets.get(sockId);
-            try { sock?.disconnect(true); } catch { /* already gone */ }
-          }
-        }, 250);
+      const { data: session, error: lookupError } = await supabaseAdmin
+        .from("quick_play_sessions").select("id").eq("session_code", sessionCode).eq("teacher_uid", verify.uid).single();
+      if (lookupError || !session?.id) throw new Error("Session lookup failed during finalization");
+      // Multiple tabs signed in as one account share one progress row. Keep
+      // that account's highest score, as the historical progress RPC did.
+      const rows = new Map<string, Record<string, unknown>>();
+      for (const player of final.students ?? []) {
+        if (player.score <= 0) continue;
+        const uid = player.authUid || `qp:${player.clientId}`;
+        const score = Math.min(1000, Math.round(player.score));
+        if (Number(rows.get(uid)?.score ?? -1) >= score) continue;
+        rows.set(uid, { student_uid: uid, student_name: player.nickname, avatar: player.avatar,
+          assignment_id: session.id, class_code: "QUICK_PLAY", mode: "quickplay",
+          score, mistakes: [], play_count: 1, completed_at: new Date().toISOString() });
       }
-      // Tear down in-memory state.  Teacher's `is_active=false` DB
-      // update is their own responsibility (client already does this
-      // via end_quick_play_session RPC).
-      if (endingSessionState?.currentRace?.timer) clearTimeout(endingSessionState.currentRace.timer);
-      if (endingSessionState?.currentSpeed?.timer) clearTimeout(endingSessionState.currentSpeed.timer);
-      if (endingSessionState) qpClearArena(endingSessionState); // tick + per-word fumble timers
-      qpSessions.delete(sessionCode);
+      if (rows.size) {
+        const { error } = await supabaseAdmin.from("progress").upsert([...rows.values()], {
+          onConflict: "assignment_id,student_uid,mode,class_code", ignoreDuplicates: true,
+        });
+        if (error) throw new Error(`Could not persist Quick Play results: ${error.code}`);
+      }
+      const { error } = await supabaseAdmin.from("quick_play_sessions")
+        .update({ is_active: false, ended_at: new Date().toISOString() })
+        .eq("session_code", sessionCode).eq("teacher_uid", verify.uid);
+      if (error) throw new Error(`Could not close Quick Play session: ${error.code}`);
+      ack({ ok: true });
     });
 
     // ─── Category Race: teacher starts a synchronized round ───────────
@@ -3852,7 +3698,7 @@ async function startServer() {
     // ─── Category Race: student submits answers for the active round ───
     // Students send TEXT, not a score — the server scores it against the
     // bank, so a tampered client can never claim arbitrary points.
-    socket.on(QP_EVENTS.RACE_SUBMIT, (payload: QpRaceSubmitPayload) => {
+    qpOn(QP_EVENTS.RACE_SUBMIT, async (payload: QpRaceSubmitPayload) => {
       const dropLog = (reason: string, extra?: Record<string, unknown>) => {
         try {
           const p = payload as { sessionCode?: unknown; clientId?: unknown; roundId?: unknown };
@@ -3894,7 +3740,7 @@ async function startServer() {
         const entry = state.students.get(clientId);
         if (!entry) { dropLog("no_entry"); return; }
 
-        const result = qpApplyRaceSubmission(state, race, {
+        const result = await qpApplyRaceSubmission(state, race, {
           clientId, nickname: entry.nickname, avatar: entry.avatar,
           answers: answers as Record<string, unknown>, helped,
         });
@@ -4029,7 +3875,7 @@ async function startServer() {
     // ─── Speed Round: student taps an option ───────────────────────────
     // Students send an INDEX, not a score — the server compares it to the
     // privately-held correctIndex, so a tampered client can't claim points.
-    socket.on(QP_EVENTS.SPEED_SUBMIT, (payload: QpSpeedSubmitPayload) => {
+    qpOn(QP_EVENTS.SPEED_SUBMIT, async (payload: QpSpeedSubmitPayload) => {
       const dropLog = (reason: string, extra?: Record<string, unknown>) => {
         try {
           const p = payload as { sessionCode?: unknown; clientId?: unknown; roundId?: unknown };
@@ -4060,7 +3906,7 @@ async function startServer() {
         const entry = state.students.get(clientId);
         if (!entry) { dropLog("no_entry"); return; }
 
-        const result = qpApplySpeedSubmission(state, speed, {
+        const result = await qpApplySpeedSubmission(state, speed, {
           clientId, choiceIndex, nickname: entry.nickname, avatar: entry.avatar,
         });
         if (!result) return; // too late / duplicate (already screened above)
@@ -4081,7 +3927,7 @@ async function startServer() {
         const owned = state.socketToClient.get(socket.id);
         if (owned !== clientId) return;
         const entry = state.students.get(clientId);
-        const arenaResult = qpApplyArenaAnswer(state, roundId, {
+        const arenaResult = await qpApplyArenaAnswer(state, roundId, {
           clientId, choiceIndex,
           nickname: entry?.nickname ?? "Player",
           avatar: entry?.avatar ?? "🦊",
@@ -4386,7 +4232,7 @@ async function startServer() {
     // gone event broadcasts to the WHOLE room so every client drops the
     // medallion and the collector applies the effect (including the hurricane
     // self-stun — all four kinds produce a gone event now).
-    socket.on(QP_EVENTS.ARENA_PICKUP, (payload: QpArenaPickupPayload) => {
+    qpOn(QP_EVENTS.ARENA_PICKUP, async (payload: QpArenaPickupPayload) => {
       if (!payload || typeof payload !== "object") return;
       const { sessionCode, clientId, pickupId } = payload;
       if (!isValidSessionCode(sessionCode) || !isValidClientId(clientId)) return;
@@ -4395,7 +4241,7 @@ async function startServer() {
 
       const state = qpSessions.get(sessionCode);
       if (state?.currentArena) {
-        const gone = qpApplyArenaPickup(state, { clientId, pickupId, x: payload.x, y: payload.y });
+        const gone = await qpApplyArenaPickup(state, { clientId, pickupId, x: payload.x, y: payload.y });
         if (gone) {
           qpIo.to(sessionCode).emit(QP_SERVER_EVENTS.ARENA_PICKUP_GONE, gone);
           console.log(`[QP ARENA pickup] session=${sessionCode} client=${clientId.slice(0, 8)} kind=${gone.kind}`);
@@ -4545,7 +4391,6 @@ async function startServer() {
         if (state.currentRace?.timer) clearTimeout(state.currentRace.timer);
         if (state.currentSpeed?.timer) clearTimeout(state.currentSpeed.timer);
         qpClearArena(state); // tick + per-word fumble timers
-        qpIo.to(code).emit(QP_SERVER_EVENTS.SESSION_ENDED, { sessionCode: code });
         qpSessions.delete(code);
       }
     }

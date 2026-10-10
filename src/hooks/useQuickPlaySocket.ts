@@ -62,6 +62,7 @@ import {
   type QpArenaTackledPayload,
   type QpRoughModePayload,
 } from "../core/quickPlayProtocol";
+import { createQuickPlayScoreOutbox } from "../utils/quickPlayScoreOutbox";
 import { writeQuickPlayClientId, readStoredClientId } from "../utils/quickPlayClientId";
 // Re-exported for existing importers (e.g. QuickPlayEndgameCard) that read "me"
 // from the leaderboard; the canonical definition lives in the util so read-only
@@ -205,6 +206,7 @@ export interface QuickPlaySocketApi {
 
   // ─── Student actions ────────────────────────────────────────────────
   joinAsStudent: (nickname: string, avatar?: string) => void;
+  getScoreBaseline: () => number;
   updateScore: (
     score: number,
     extras?: {
@@ -222,11 +224,11 @@ export interface QuickPlaySocketApi {
   // ─── Teacher actions ────────────────────────────────────────────────
   /** Starts observing. Token = Supabase access token (verified server-side). */
   observeAsTeacher: (token: string) => void;
-  kickStudent: (clientId: string, token: string) => void;
+  kickStudent: (clientId: string, token: string) => Promise<void>;
   /** Manual teacher bonus — adds `amount` points to a student's score
    *  on the server, bounded by QP_MAX_BONUS_AMOUNT. */
   bonusStudent: (clientId: string, amount: number, token: string) => void;
-  endSession: (token: string) => void;
+  endSession: (token: string) => Promise<void>;
   /** Red vs Blue team mode — true while the teacher has it switched on. */
   teamMode: boolean;
   /** This client's own team, when team mode is on (from the leaderboard
@@ -362,9 +364,8 @@ let cachedSocketUrl: string | null = null;
 let pendingSocket: Promise<Socket> | null = null;
 let socketGeneration = 0;
 const studentJoinIntents = new Map<string, { nickname: string; avatar: string }>();
-let socketMembership: { sessionCode: string; clientId: string } | null = null;
 const rejoinCredentials = new Map<string, string>();
-const pendingScores = new Map<string, { clientId: string; score: number; streak?: number; roundProgress?: { done: number; total: number }; perfectRound?: boolean }>();
+const scoreOutbox = createQuickPlayScoreOutbox();
 function credentialKey(sessionCode: string, clientId: string) { return `vocaband_qp_rejoin:${sessionCode}:${clientId}`; }
 function readRejoinToken(sessionCode: string, clientId: string): string | undefined {
   const key = credentialKey(sessionCode, clientId);
@@ -388,15 +389,25 @@ function storeRejoinToken(sessionCode: string, clientId: string, token: string) 
 export function disconnectQuickPlaySocket(): void {
   socketGeneration++;
   pendingSocket = null;
-  socketMembership = null;
   studentJoinIntents.clear();
-  pendingScores.clear();
+  scoreOutbox.clear();
   rejoinCredentials.clear();
   try {
     cachedSocket?.disconnect();
   } catch { /* best-effort */ }
   cachedSocket = null;
   cachedSocketUrl = null;
+}
+
+function confirmedAction(socket: Socket | null, event: string, payload: unknown): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!socket?.connected) return reject(new Error("Connection lost. Reconnect and try again."));
+    const timer = setTimeout(() => reject(new Error("Could not confirm saving. Please try again.")), 15000);
+    socket.emit(event, payload, (result: { ok: boolean }) => {
+      clearTimeout(timer);
+      if (result?.ok) resolve(); else reject(new Error("Could not confirm saving. Please try again."));
+    });
+  });
 }
 
 function getSocket(): Promise<Socket> {
@@ -498,12 +509,14 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   // Latest leaderboard snapshot per VM (keyed by the broadcast's serverId).
   // `leaderboard` is always the merged union of these — see
   // mergeLeaderboardSources for why this split exists (multi-VM aggregation).
+  const boardRevisionRef = useRef(-1);
   const leaderboardBySourceRef = useRef<Map<string, QpStudentEntry[]>>(new Map());
 
   // Drop all cached snapshots when the session changes (e.g. teacher taps
   // "New race") so last session's students don't bleed into the next board.
   useEffect(() => {
     leaderboardBySourceRef.current = new Map();
+    boardRevisionRef.current = -1;
     myTeamRef.current = undefined;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- clears stale board when the session changes; matches existing convention in this hook
     setLeaderboard([]);
@@ -573,7 +586,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         // a join fired before the socket finished connecting (e.g. a
         // user resuming via QuickPlayResumeBanner taps Start playing
         // immediately on a fresh page load), replay it now.
-        socketMembership = null;
+        scoreOutbox.suspend();
         setJoinedSessionCode(null);
         const joinIntent = sessionCode ? studentJoinIntents.get(sessionCode) : undefined;
         if (joinIntent && sessionCode) {
@@ -598,12 +611,21 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         }
       };
       const onDisconnect = () => {
-        socketMembership = null;
+        scoreOutbox.suspend();
         setJoinedSessionCode(null);
         setStatus("disconnected");
       };
       const onConnectError = () => setStatus("error");
 
+      const applyBoard = (serverId: string | undefined, revision: number | undefined, students: QpStudentEntry[]) => {
+        if (serverId === "shared") {
+          if ((revision ?? 0) < boardRevisionRef.current) return;
+          boardRevisionRef.current = revision ?? 0;
+          leaderboardBySourceRef.current.clear();
+        } else if (boardRevisionRef.current >= 0) return;
+        leaderboardBySourceRef.current.set(serverId ?? "default", students);
+        setLeaderboard(mergeLeaderboardSources(leaderboardBySourceRef.current));
+      };
       const onJoined = (p: QpJoinedPayload) => {
         if (!sessionCode || (p.sessionCode && p.sessionCode !== sessionCode)) return;
         const intent = studentJoinIntents.get(sessionCode);
@@ -612,17 +634,10 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         writeStoredClientId(p.clientId, intent.nickname);
         clientIdRef.current = p.clientId;
         setClientId(p.clientId);
-        socketMembership = { sessionCode, clientId: p.clientId };
         setLastError(null);
-        const pending = pendingScores.get(sessionCode);
-        if (pending) {
-          pendingScores.delete(sessionCode);
-          if (pending.clientId === p.clientId) socket.emit(QP_EVENTS.SCORE_UPDATE, { sessionCode, ...pending });
-        }
-        if (p?.leaderboard) {
-          leaderboardBySourceRef.current.set(p.serverId ?? "default", p.leaderboard);
-          setLeaderboard(mergeLeaderboardSources(leaderboardBySourceRef.current));
-        }
+        scoreOutbox.confirm(sessionCode, p.clientId, p.acceptedScore ?? 0,
+          (payload, ack) => { if (socket.connected) socket.emit(QP_EVENTS.SCORE_UPDATE, payload, ack); });
+        if (p.leaderboard) applyBoard(p.serverId, p.revision, p.leaderboard);
         // Mark the session as confirmed-joined so the UI can advance.
         // Without this signal, optimistic UIs render game state while
         // the server is silently rejecting (nickname_taken etc.) and
@@ -630,20 +645,13 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
         if (sessionCode) setJoinedSessionCode(sessionCode);
       };
       const onLeaderboard = (p: QpLeaderboardPayload) => {
-        if (p?.students && p.sessionCode === sessionCode) {
-          // Keep this VM's snapshot and render the union of all VMs — see
-          // mergeLeaderboardSources. Without this, the teacher's board would
-          // flip-flop between per-VM subsets (and a remote student's stale
-          // score=0 would clobber the round-owner's real Category Race score).
-          leaderboardBySourceRef.current.set(p.serverId ?? "default", p.students);
-          setLeaderboard(mergeLeaderboardSources(leaderboardBySourceRef.current));
-        }
+        if (p?.students && p.sessionCode === sessionCode) applyBoard(p.serverId, p.revision, p.students);
       };
       const onKicked = (p: QpKickedPayload) => {
         if (p.sessionCode !== sessionCode) return;
         studentJoinIntents.delete(p.sessionCode);
-        pendingScores.delete(p.sessionCode);
-        socketMembership = null;
+        scoreOutbox.clear(p.sessionCode);
+        scoreOutbox.suspend();
         // Once the server tells this client they've been kicked, drop
         // the cached lastJoin so socket.io's auto-reconnect doesn't
         // immediately replay STUDENT_JOIN and put the kicked student
@@ -665,8 +673,8 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       const onSessionEnded = (p: QpSessionEndedPayload) => {
         if (p.sessionCode !== sessionCode) return;
         studentJoinIntents.delete(p.sessionCode);
-        pendingScores.delete(p.sessionCode);
-        socketMembership = null;
+        scoreOutbox.clear(p.sessionCode);
+        scoreOutbox.suspend();
         lastJoinRef.current = null;
         setJoinedSessionCode(null);
         setTeamModeState(false);
@@ -946,7 +954,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
       perfectRound?: boolean;
     },
   ) => {
-    if (!sessionCode || !socketRef.current) {
+    if (!sessionCode) {
       console.warn('[QP updateScore] bail', {
         score,
         hasSessionCode: !!sessionCode,
@@ -967,21 +975,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     // sessionStorage here closes the gap — both instances see the same
     // current value because there's only one tab-scoped storage.
     const id = readStoredClientId() ?? clientIdRef.current;
-    if (!socketRef.current.connected || socketMembership?.sessionCode !== sessionCode || socketMembership.clientId !== id) {
-      const previous = pendingScores.get(sessionCode);
-      if (!previous || previous.clientId !== id || score >= previous.score) {
-        pendingScores.set(sessionCode, { clientId: id, score, ...extras });
-      }
-      return;
-    }
-    socketRef.current.emit(QP_EVENTS.SCORE_UPDATE, {
-      sessionCode,
-      clientId: id,
-      score,
-      ...(extras?.streak !== undefined ? { streak: extras.streak } : {}),
-      ...(extras?.roundProgress ? { roundProgress: extras.roundProgress } : {}),
-      ...(extras?.perfectRound ? { perfectRound: true } : {}),
-    });
+    scoreOutbox.enqueue(sessionCode, id, score, extras);
   }, [sessionCode]);
 
   // Tier C — emoji reaction. The server enforces the allow-list and
@@ -999,8 +993,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   const leaveAsStudent = useCallback(() => {
     if (!sessionCode) return;
     studentJoinIntents.delete(sessionCode);
-    pendingScores.delete(sessionCode);
-    socketMembership = null;
+    scoreOutbox.clear(sessionCode);
     setJoinedSessionCode(null);
     if (!socketRef.current) return;
     socketRef.current.emit(QP_EVENTS.STUDENT_LEAVE, {
@@ -1014,22 +1007,8 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     socketRef.current.emit(QP_EVENTS.TEACHER_OBSERVE, { sessionCode, token });
   }, [sessionCode]);
 
-  const kickStudent = useCallback((targetClientId: string, token: string) => {
-    if (!sessionCode || !socketRef.current) return;
-    socketRef.current.emit(QP_EVENTS.TEACHER_KICK, {
-      sessionCode, clientId: targetClientId, token,
-    });
-    // Optimistically drop them from every cached snapshot. The kicked
-    // student's VM stops including them in its next broadcast, but the merged
-    // union would otherwise keep showing them from a stale cached snapshot.
-    let changed = false;
-    for (const [src, arr] of leaderboardBySourceRef.current) {
-      if (arr.some(e => e.clientId === targetClientId)) {
-        leaderboardBySourceRef.current.set(src, arr.filter(e => e.clientId !== targetClientId));
-        changed = true;
-      }
-    }
-    if (changed) setLeaderboard(mergeLeaderboardSources(leaderboardBySourceRef.current));
+  const kickStudent = useCallback(async (targetClientId: string, token: string) => {
+    await confirmedAction(socketRef.current, QP_EVENTS.TEACHER_KICK, { sessionCode, clientId: targetClientId, token });
   }, [sessionCode]);
 
   // Teacher-issued bonus — fire-and-forget. Server validates token and
@@ -1037,13 +1016,12 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
   const bonusStudent = useCallback((targetClientId: string, amount: number, token: string) => {
     if (!sessionCode || !socketRef.current) return;
     socketRef.current.emit(QP_EVENTS.TEACHER_BONUS, {
-      sessionCode, clientId: targetClientId, amount, token,
+      sessionCode, clientId: targetClientId, amount, token, requestId: generateUuid(),
     });
   }, [sessionCode]);
 
-  const endSession = useCallback((token: string) => {
-    if (!sessionCode || !socketRef.current) return;
-    socketRef.current.emit(QP_EVENTS.TEACHER_END, { sessionCode, token });
+  const endSession = useCallback(async (token: string) => {
+    await confirmedAction(socketRef.current, QP_EVENTS.TEACHER_END, { sessionCode, token });
   }, [sessionCode]);
 
   // Teacher: toggle Red vs Blue team mode for the whole session.
@@ -1280,6 +1258,7 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
     lastError,
     joinedSessionCode,
     joinAsStudent,
+    getScoreBaseline: () => sessionCode ? scoreOutbox.cursor(sessionCode, readStoredClientId() ?? clientIdRef.current) : 0,
     updateScore,
     sendReaction,
     leaveAsStudent,

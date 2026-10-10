@@ -42,6 +42,7 @@ export function publicQuickPlayStudent(entry: QpStudentEntry): Omit<QpStudentEnt
     ...(entry.streak !== undefined ? { streak: entry.streak } : {}),
     ...(entry.roundProgress ? { roundProgress: { done: entry.roundProgress.done, total: entry.roundProgress.total } } : {}),
     ...(entry.perfectRound !== undefined ? { perfectRound: entry.perfectRound } : {}),
+    ...(entry.perfectRoundScore !== undefined ? { perfectRoundScore: entry.perfectRoundScore } : {}),
     ...(entry.team ? { team: entry.team } : {}),
   };
 }

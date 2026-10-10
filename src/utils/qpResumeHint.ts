@@ -1,3 +1,5 @@
+import { readQuickPlayScoreCursor } from "./quickPlayScoreOutbox";
+import { readStoredClientId } from "./quickPlayClientId";
 /**
  * Shared helpers for the Quick Play resume hint living in
  * localStorage at `vocaband_qp_guest`.
@@ -58,6 +60,9 @@ export function readQpResumeScore(sessionCode?: string): number {
   const hint = readQpResumeHint();
   if (!hint) return 0;
   if (sessionCode && hint.sessionCode !== sessionCode) return 0;
+  const clientId = readStoredClientId();
+  const cursor = clientId && hint.sessionCode ? readQuickPlayScoreCursor(hint.sessionCode, clientId) : undefined;
+  if (cursor !== undefined) return cursor;
   if (typeof hint.lastScore !== "number" || hint.lastScore < 0) return 0;
   return hint.lastScore;
 }

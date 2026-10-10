@@ -1,5 +1,8 @@
 # Quick Play reliability update — 2026-10-10
 
+Phase 1 was merged in PR #1411 and deployed as `e52c461`. The shared-state
+follow-up is documented in [quick-play-shared-state-2026-10-10.md](quick-play-shared-state-2026-10-10.md).
+
 This change set was prepared against main `09013d3`. Publication and production
 deployment are separate steps; this document records implementation and local
 verification, not a claim that the change is live.
