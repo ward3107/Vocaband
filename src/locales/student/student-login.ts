@@ -1,6 +1,6 @@
 /**
  * student-login.ts — i18n strings for StudentAccountLoginView (the
- * class-code + Google-OAuth entry screen students hit when they tap
+ * class-code + roster PIN entry screen students hit when they tap
  * "Get Started" on the landing page).
  *
  * Pattern: see docs/I18N-MIGRATION.md.
@@ -27,7 +27,10 @@ export interface StudentLoginStrings {
   // Microsoft OAuth button label (covers MoE @edu.gov.il accounts)
   signInWithMicrosoft: string;
 
-  // Footer copy under the Google button
+  enterCode: string;
+  selectNamePin: string;
+
+  // Guidance for the roster-issued PIN flow
   signedInBefore: string;
   firstTime: string;
 
@@ -46,8 +49,10 @@ export const studentLoginT: Record<Language, StudentLoginStrings> = {
     classCodeAria: "Class code",
     classCodeHint: "Got a link from your teacher? Paste it — we'll pull out the code.",
     signInWithMicrosoft: "Sign in with Microsoft",
-    signedInBefore: "Sign in with the same Google account every time to keep your XP and streak.",
-    firstTime: "First time? Type your class code above, then sign in with Google. Your teacher approves new students from the dashboard.",
+    enterCode: "Enter your class code above",
+    selectNamePin: "Then pick your name and type your PIN.",
+    signedInBefore: "Choose your name and use your personal PIN to keep your XP and streak.",
+    firstTime: "First time? Ask your teacher for your class code and personal PIN.",
     features: [
       { emoji: "🏆", text: "Earn XP" },
       { emoji: "🎯", text: "Beat your friends" },
@@ -65,8 +70,10 @@ export const studentLoginT: Record<Language, StudentLoginStrings> = {
     classCodeAria: "קוד הכיתה",
     classCodeHint: "קיבלתם קישור מהמורה? הדביקו אותו — נחלץ את הקוד אוטומטית.",
     signInWithMicrosoft: "התחבר עם Microsoft",
-    signedInBefore: "התחברו תמיד עם אותו חשבון Google כדי לשמור על XP והרצף שלכם.",
-    firstTime: "פעם ראשונה? הקלידו את קוד הכיתה למעלה, ואז התחברו עם Google. המורה מאשר תלמידים חדשים מהלוח.",
+    enterCode: "הקלידו את קוד הכיתה למעלה",
+    selectNamePin: "לאחר מכן בחרו את שמכם והקלידו את הקוד האישי.",
+    signedInBefore: "בחרו את שמכם והשתמשו בקוד האישי כדי לשמור על ה־XP והרצף שלכם.",
+    firstTime: "פעם ראשונה? בקשו מהמורה את קוד הכיתה ואת הקוד האישי שלכם.",
     features: [
       { emoji: "🏆", text: "צברו XP" },
       { emoji: "🎯", text: "נצחו את החברים" },
@@ -84,8 +91,10 @@ export const studentLoginT: Record<Language, StudentLoginStrings> = {
     classCodeAria: "رمز الصف",
     classCodeHint: "حصلت على رابط من معلمك؟ الصقه — سنستخرج الرمز تلقائياً.",
     signInWithMicrosoft: "تسجيل الدخول بحساب Microsoft",
-    signedInBefore: "سجّل الدخول دائماً بنفس حساب Google للحفاظ على نقاط XP والسلسلة.",
-    firstTime: "أول مرة؟ اكتب رمز الصف أعلاه ثم سجّل الدخول بـ Google. سيعتمد المعلم الطلاب الجدد من لوحة التحكم.",
+    enterCode: "أدخل رمز الصف أعلاه",
+    selectNamePin: "ثم اختر اسمك وأدخل رمزك الشخصي.",
+    signedInBefore: "اختر اسمك واستخدم رمزك الشخصي للحفاظ على نقاط XP وسلسلتك.",
+    firstTime: "أول مرة؟ اطلب من معلّمك رمز الصف ورمزك الشخصي.",
     features: [
       { emoji: "🏆", text: "اكسب XP" },
       { emoji: "🎯", text: "تغلّب على أصدقائك" },

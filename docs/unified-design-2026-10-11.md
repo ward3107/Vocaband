@@ -48,9 +48,10 @@ teacher-selected palettes remain available.
 
 - Production build and entry-closure budget: 75.1kB gzip (80kB budget).
 - TypeScript validation passes.
-- Eight new desktop/mobile browser cases pass locally, covering 50 screen
+- Ten new desktop/mobile browser cases pass locally, covering 58 screen
   captures; screenshot waits include lazy-view readiness. The shared fixture
-  supplies a fake session for live-game host screens.
+  supplies a fake session for live-game host screens. Role entry screens
+  also check horizontal overflow and Hebrew/Arabic PIN guidance.
 - Default muted text is at least 4.73:1 against either light surface. Default
   dark primary buttons use dark ink on the brighter accent. Student greeting
   and sign-in animations respect reduced-motion preferences.

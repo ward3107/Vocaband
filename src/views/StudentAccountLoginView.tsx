@@ -181,7 +181,7 @@ export default function StudentAccountLoginView({
     <>
       {/* Shared neutral canvas; the code-entry panel carries the brand color. */}
       <div
-        className="vb-page relative"
+        className="vb-page relative overflow-hidden"
         style={{
           background:
             "var(--vb-surface-alt)",
@@ -314,7 +314,7 @@ export default function StudentAccountLoginView({
 
                     {/* A focused color panel makes the class-code entry easy to find. */}
                     <div
-                      className="bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 rounded-xl p-4"
+                      className="bg-[image:var(--vb-gradient-brand)] rounded-xl p-4"
                       style={{
                         boxShadow:
                           "inset 0 1px 0 rgba(255,255,255,0.20), 0 0 0 4px rgba(139,92,246,0.22), 0 18px 40px -20px rgba(217,70,239,0.45)",
@@ -385,8 +385,8 @@ export default function StudentAccountLoginView({
                   ) : (
                     <div className="text-center py-4">
                       <KeyRound size={22} className="text-stone-400 mx-auto mb-2" />
-                      <p className="text-sm font-bold text-stone-600">Enter your class code above</p>
-                      <p className="text-xs text-stone-500 mt-1">Then pick your name and type your PIN.</p>
+                      <p className="text-sm font-bold text-stone-600">{t.enterCode}</p>
+                      <p className="text-xs text-stone-500 mt-1">{t.selectNamePin}</p>
                     </div>
                   )}
 
@@ -400,7 +400,7 @@ export default function StudentAccountLoginView({
                   {t.features.map(f => (
                     <span
                       key={f.text}
-                      className="px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-xs font-bold text-white/90 border border-white/10"
+                      className="px-3 py-1.5 rounded-xl border border-[var(--vb-border)] bg-[var(--vb-surface)] text-xs font-bold text-[var(--vb-text-secondary)]"
                     >
                       <span className="me-1">{f.emoji}</span>
                       {f.text}
@@ -410,7 +410,7 @@ export default function StudentAccountLoginView({
               </motion.div>
             </main>
 
-            <footer className="py-2 sm:py-3 text-center text-white/40 text-xs font-bold">
+            <footer className="py-2 sm:py-3 text-center text-[var(--vb-text-muted)] text-xs font-bold">
               vocaband.com
             </footer>
           </div>

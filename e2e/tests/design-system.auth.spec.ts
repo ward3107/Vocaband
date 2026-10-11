@@ -2,6 +2,7 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import type { Page, TestInfo } from '@playwright/test';
 import { test, expect } from '../fixtures/auth.fixture';
+import { mockSupabase, presetLocalStorage } from '../fixtures/supabase-mock';
 import { waitForAppLoad } from '../helpers/navigation';
 import { PRIVACY_POLICY_VERSION, STUDENT_VISIBILITY_VERSION } from '../../src/config/privacy-config';
 
@@ -36,7 +37,7 @@ async function open(page: Page, url: string) {
 async function capture(page: Page, info: TestInfo, name: string) {
   // A route flag updates before its lazy module arrives. Capture the screen,
   // not the interim Suspense spinner.
-  await page.locator('[data-vocaband-view] h1, [data-vocaband-view] h2').first().waitFor({ state: 'visible' });
+  await page.locator('[data-vocaband-view]').getByRole('heading').first().waitFor({ state: 'visible' });
   await expect(page.getByText(/^Loading\b.*(?:…|\.{3})$/)).toHaveCount(0);
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: path.join('e2e/test-results/design', info.project.name.replaceAll(' ', '-'), `${name}.png`), fullPage: true, animations: 'disabled' });
@@ -137,4 +138,23 @@ test('legacy iOS controls and shared cards use one palette in light and dark', a
     expect(palette.iosText).toBe(palette.text);
     await capture(page, info, `student-settings-${dark ? 'dark' : 'light'}`);
   }
+});
+
+
+test('role entry screens stay readable without horizontal scrolling', async ({ page }, info) => {
+  await presetLocalStorage(page);
+  await mockSupabase(page, 'public');
+  await prepare(page);
+  for (const role of ['teacher', 'student']) {
+    await open(page, `/${role}`);
+    await capture(page, info, `${role}-login`);
+  }
+  await page.getByRole('button', { name: 'Change language', exact: true }).click();
+  await page.getByRole('button', { name: 'עברית', exact: true }).click();
+  await expect(page.getByText('הקלידו את קוד הכיתה למעלה', { exact: true })).toBeVisible();
+  await capture(page, info, 'student-login-he');
+  await page.getByRole('button', { name: 'החלף שפה', exact: true }).click();
+  await page.getByRole('button', { name: 'العربية', exact: true }).click();
+  await expect(page.getByText('أدخل رمز الصف أعلاه', { exact: true })).toBeVisible();
+  await capture(page, info, 'student-login-ar');
 });
