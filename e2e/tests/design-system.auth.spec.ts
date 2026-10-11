@@ -6,9 +6,11 @@ import { waitForAppLoad } from '../helpers/navigation';
 import { PRIVACY_POLICY_VERSION, STUDENT_VISIBILITY_VERSION } from '../../src/config/privacy-config';
 
 async function prepare(page: Page) {
+  page.setDefaultTimeout(15_000);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.addInitScript(({ privacy, visibility }) => {
     for (const key of ['vocaband_onboarding_done', 'vocaband_student_onboarding_done', 'vocaband_welcome_seen', 'vocaband_privacy_reminder_dismissed']) localStorage.setItem(key, '1');
+    for (const guide of ['library-intro', 'classroom', 'create-assignment', 'approvals', 'worksheet', 'class-show', 'quick-play-monitor']) localStorage.setItem(`vocaband_guide_seen_${guide}`, '1');
     localStorage.setItem('vocaband_consent_version', privacy);
     localStorage.setItem('vocaband_student_visibility_version', visibility);
   }, { privacy: PRIVACY_POLICY_VERSION, visibility: STUDENT_VISIBILITY_VERSION });
@@ -18,16 +20,24 @@ async function open(page: Page, url: string) {
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await waitForAppLoad(page);
   await page.locator('[data-vocaband-view]').waitFor();
-  // A seeded student's newly available companion milestone can open a
-  // nonessential dialog. Dismiss that dialog through its real close control.
-  for (let i = 0; i < 3; i++) {
-    const close = page.getByRole('button', { name: /^Close$|^Skip onboarding$|^Got it$/i }).first();
-    if (!await close.isVisible().catch(() => false)) break;
-    await close.click();
+  if (url === '/') {
+    await expect(page.locator('[data-vocaband-view]')).toHaveAttribute('data-vocaband-view', /^(student|teacher)-dashboard$/);
+    if (await page.locator('[data-vocaband-view]').getAttribute('data-vocaband-view') === 'student-dashboard') {
+      // The fixture has an unclaimed milestone. Wait for the async reward
+      // state before dismissing it, rather than racing the dashboard mount.
+      const close = page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true });
+      await close.waitFor({ state: 'visible' });
+      await close.click();
+      await expect(close).toBeHidden();
+    }
   }
 }
 
 async function capture(page: Page, info: TestInfo, name: string) {
+  // A route flag updates before its lazy module arrives. Capture the screen,
+  // not the interim Suspense spinner.
+  await page.locator('[data-vocaband-view] h1, [data-vocaband-view] h2').first().waitFor({ state: 'visible' });
+  await expect(page.getByText(/^Loading\b.*(?:…|\.{3})$/)).toHaveCount(0);
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: path.join('e2e/test-results/design', info.project.name.replaceAll(' ', '-'), `${name}.png`), fullPage: true, animations: 'disabled' });
   // Catch layouts that look fine on desktop but make the whole phone pan.
@@ -41,6 +51,7 @@ test.beforeEach(async ({}, info) => {
 
 test('teacher workspace and creation screens share the new frame', async ({ teacherPage: page }, info) => {
   test.setTimeout(180_000);
+  await page.route('https://test-project.supabase.co/rest/v1/rpc/create_quick_play_session', route => route.fulfill({ json: { id: 'design-session', session_code: 'DESIGN01' } }));
   await prepare(page);
   await open(page, '/');
   await expect(page.getByRole('heading', { name: /Ready for a great lesson/ })).toBeVisible();
@@ -50,10 +61,10 @@ test('teacher workspace and creation screens share the new frame', async ({ teac
   await capture(page, info, 'teacher-create-class');
   await page.keyboard.press('Escape');
 
-  for (const [tour, name] of [['classroom', 'teacher-classroom'], ['quick-play', 'teacher-quick-play'], ['category-race', 'teacher-race'], ['speed-round', 'teacher-speed'], ['word-hunt-arena', 'teacher-arena']] as const) {
+  for (const [tour, name, view] of [['classroom', 'teacher-classroom', 'classroom'], ['quick-play', 'teacher-quick-play', 'quick-play-setup'], ['category-race', 'teacher-race', 'category-race-host'], ['speed-round', 'teacher-speed', 'speed-round-host'], ['word-hunt-arena', 'teacher-arena', 'word-hunt-arena-host']] as const) {
     await open(page, '/');
     await page.locator(`[data-tour="${tour}"]`).first().click();
-    await expect(page.locator('[data-vocaband-view]')).not.toHaveAttribute('data-vocaband-view', 'teacher-dashboard');
+    await expect(page.locator('[data-vocaband-view]')).toHaveAttribute('data-vocaband-view', view);
     await waitForAppLoad(page);
     await capture(page, info, name);
   }

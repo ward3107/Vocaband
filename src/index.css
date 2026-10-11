@@ -140,7 +140,7 @@
   /* ── Text tiers                                                    */
   --vb-text-primary: #202641;
   --vb-text-secondary: #556078;
-  --vb-text-muted: #66718a;
+  --vb-text-muted: #626d84;
   --vb-text-on-accent: #ffffff;
 
   /* ── Accent (theme-driven)                                         */
@@ -452,7 +452,7 @@ html {
   --color-inverse-on-surface: #f2f4fb;
 
   /* Outline (= --vb-border / --vb-border-strong) */
-  --color-outline: #66718a;
+  --color-outline: #626d84;
   --color-outline-variant: #e0e5f0;
 
   /* Primary (= --vb-accent, indigo) */
@@ -611,6 +611,8 @@ body {
 
   /* Accent: brighten indigo so it pops on dark; darken the soft chip */
   --vb-accent: #818cf8;
+  --vb-accent-text: #171338;
+  --vb-accent-contrast: #171338;
   --vb-accent-hover: #a5b4fc;
   --vb-accent-active: #c7d2fe;
   --vb-accent-soft: #312e81;

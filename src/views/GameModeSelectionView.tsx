@@ -174,12 +174,12 @@ export default function GameModeSelectionView({
       <header className="vb-header sticky top-0 z-30 flex items-center gap-3 px-4 py-3">
         <button
           type="button" onClick={handleExitGame} aria-label={t.closeAria} title={t.closeAria}
-          className={`${ARCADE_BUTTON_TOUCH} flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--ios-fill-tertiary)] text-[color:var(--ios-label)]`}
+          className="vb-icon-button"
         >
           <X size={20} />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-black text-[color:var(--ios-label)]">{t.chooseYourMode}</h1>
+          <h1 className="text-base font-extrabold leading-tight text-[var(--vb-text-primary)] sm:text-lg">{t.chooseYourMode}</h1>
           {activeAssignment?.title && (
             <p className="truncate text-xs font-semibold text-[color:var(--ios-label-secondary)]">{activeAssignment.title}</p>
           )}

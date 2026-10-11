@@ -31,7 +31,7 @@ function variantStyle(variant: Variant, tint: string): CSSProperties {
         fontWeight: 600,
       };
     case "filled":
-      return { backgroundColor: tint, color: "#fff", fontWeight: 600 };
+      return { backgroundColor: tint, color: tint === "var(--vb-accent)" ? "var(--vb-accent-text)" : "#fff", fontWeight: 600 };
     case "tinted":
       // iOS tinted buttons are the accent at ~15% over the card, with the
       // accent itself as the label — not a grey button with colored text.

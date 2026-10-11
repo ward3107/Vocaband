@@ -4,6 +4,7 @@ import { Check, Copy, Flame, ShoppingBag, Pencil, X as XIcon, Crown } from "luci
 import { getXpTitle, NAME_FRAMES, NAME_TITLES, XP_TITLES } from "../../constants/game";
 import { getTitleStyle } from "../../constants/titleStyles";
 import type { AppUser } from "../../core/supabase";
+import { useReducedMotion } from "../../hooks/useReducedMotion";
 import { useLanguage } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
 
@@ -12,7 +13,7 @@ import { studentDashboardT } from "../../locales/student/student-dashboard";
 // font + weight + tracking) is read from src/constants/titleStyles.ts —
 // the SAME record the shop uses, so equipping a title makes the
 // greeting card look identical to the shop preview.
-const DEFAULT_HERO_GRADIENT = 'from-indigo-800 via-indigo-600 to-violet-700';
+const DEFAULT_HERO_GRADIENT = 'bg-[image:var(--vb-gradient-brand)]';
 
 interface StudentGreetingCardProps {
   user: AppUser;
@@ -24,7 +25,7 @@ interface StudentGreetingCardProps {
   setCopiedCode: Dispatch<SetStateAction<string | null>>;
   /** Tap handler for the shop button inlined in the greeting card.
    * Optional — when omitted (e.g. the arcade hub already has a Shop
-   * orbit circle), the shop button is hidden so it isn't duplicated. */
+   * destination card), the shop button is hidden so it isn't duplicated. */
   onShopClick?: () => void;
   /** Optional rename handler. When provided, a pencil icon appears
    *  next to the student's name and lets them change it in-place.
@@ -51,6 +52,7 @@ export default function StudentGreetingCard({
   // Kept local to this card so the rename UX doesn't leak into the
   // orchestrator. Tap the pencil → swap name for an input; save
   // commits via onRenameDisplayName; cancel restores.
+  const reducedMotion = useReducedMotion();
   const [isRenaming, setIsRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState(user.displayName);
   const [renameError, setRenameError] = useState<string | null>(null);
@@ -140,14 +142,14 @@ export default function StudentGreetingCard({
   // applies to both the hero card background and the title-banner pill
   // text — so the dashboard looks like the shop preview.
   const titleStyleEntry = getTitleStyle(equippedTitle?.id);
-  const titleGradient = equippedTitle ? titleStyleEntry.gradient : DEFAULT_HERO_GRADIENT;
+  const titleGradient = equippedTitle ? `bg-gradient-to-br ${titleStyleEntry.gradient}` : DEFAULT_HERO_GRADIENT;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={reducedMotion ? false : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45, ease: "easeOut" }}
-      className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${titleGradient} p-5 sm:p-7 shadow-sm`}
+      transition={{ duration: reducedMotion ? 0 : 0.45, ease: "easeOut" }}
+      className={`relative overflow-hidden rounded-3xl ${titleGradient} p-5 sm:p-7 shadow-sm`}
     >
       {/* Soft glow blobs in the background — pure decoration.
           Uses logical -end / -start so the blobs flip to the
@@ -187,8 +189,8 @@ export default function StudentGreetingCard({
             flame-streak badge bleed into the pills row), 32x32 on
             desktop where there's room. */}
         <motion.div
-          animate={{ y: [0, -4, 0] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          animate={{ y: reducedMotion ? 0 : [0, -4, 0] }}
+          transition={{ duration: reducedMotion ? 0 : 3, repeat: reducedMotion ? 0 : Infinity, ease: "easeInOut" }}
           className="relative shrink-0"
         >
           <div className="absolute inset-0 rounded-2xl bg-white/40 blur-xl animate-pulse" />
@@ -308,9 +310,9 @@ export default function StudentGreetingCard({
               <span className="text-base sm:text-lg leading-none" aria-hidden>{xpTitle.emoji}</span>
               <div className="relative flex-1 h-2 rounded-full bg-white/20 overflow-hidden">
                 <motion.div
-                  initial={{ scaleX: 0 }}
+                  initial={reducedMotion ? false : { scaleX: 0 }}
                   animate={{ scaleX: progressPct / 100 }}
-                  transition={{ duration: 0.9, ease: 'easeOut', delay: 0.2 }}
+                  transition={{ duration: reducedMotion ? 0 : 0.9, ease: 'easeOut', delay: reducedMotion ? 0 : 0.2 }}
                   // Fill from the inline-start edge so the bar grows the right
                   // way under RTL (Hebrew/Arabic) instead of from the left.
                   style={{ transformOrigin: isRTL ? 'right' : 'left' }}

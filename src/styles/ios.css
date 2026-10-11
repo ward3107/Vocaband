@@ -1,20 +1,6 @@
-/* =============================================================================
-   iOS design layer — shared by the teacher and student sides.
-
-   Vocaband already has a token system (`--vb-*` in index.css) that ~300
-   surfaces consume.  This file does NOT replace it.  It adds the primitives
-   iOS has and Material doesn't — materials/blur, hairline separators, the
-   SF type ramp, squircle radii, safe-area insets, and the spring curves —
-   and then re-points a handful of `--vb-*` tokens at iOS system values so
-   existing surfaces inherit the new look without being rewritten one by one.
-
-   Why a separate file: index.css is already ~600 lines of token + a11y +
-   dark-mode logic.  Keeping the iOS layer separate means the restyle can be
-   reverted with a single import line if it regresses in classrooms.
-
-   Load order matters — this must come AFTER the `--vb-*` defaults so the
-   re-points win, and BEFORE the dark-mode block so dark still overrides.
-   ============================================================================= */
+/* iOS interaction primitives share the canonical Vocaband palette.
+   Safe areas, sheets, separators and motion remain here. The aliases below
+   flow from --vb-* to --ios-* so both roles follow the active theme. */
 
 :root {
   /* ── Type ─────────────────────────────────────────────────────────────

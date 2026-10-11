@@ -104,7 +104,7 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
       border: '#e0e5f0',
       textPrimary: '#202641',
       textSecondary: '#556078',
-      textMuted: '#66718a',
+      textMuted: '#626d84',
       accent: '#4f46e5',
       accentSoft: '#eef2ff',
       accentText: '#ffffff',

@@ -349,7 +349,7 @@ export default function VocabularyLibraryView({
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`rounded-3xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 p-5 sm:p-7 shadow-lg shadow-violet-500/20 text-white ${textAlign}`}
+          className={`vb-hero ${textAlign}`}
         >
           <div className={`flex items-start gap-4 ${isRTL ? "flex-row-reverse" : ""}`}>
             <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center shrink-0">
@@ -392,7 +392,7 @@ export default function VocabularyLibraryView({
               onClick={handleNewSet}
               disabled={busy}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-white text-violet-700 font-bold py-3.5 px-5 shadow-sm hover:bg-white/95 disabled:opacity-60"
+              className="vb-button w-full bg-white! text-indigo-800! shadow-sm hover:bg-white/95 disabled:opacity-60"
             >
               <Plus className="w-5 h-5" />
               {t.newSet}

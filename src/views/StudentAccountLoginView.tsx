@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { AlertTriangle, ArrowLeft, KeyRound } from "lucide-react";
 import StudentPinLoginCard from "../components/StudentPinLoginCard";
 import type { View } from "../core/views";
+import { useReducedMotion } from "../hooks/useReducedMotion";
 import { useLanguage, languageNames, type Language } from "../hooks/useLanguage";
 import { studentLoginT } from "../locales/student/student-login";
 import { isStudentShell } from "../utils/studentShell";
@@ -57,6 +58,7 @@ export default function StudentAccountLoginView({
   onTier2Login,
   cookieBannerOverlay,
 }: StudentAccountLoginViewProps) {
+  const reducedMotion = useReducedMotion();
   const codeInputRef = useRef<HTMLInputElement | null>(null);
 
   // Per-student teacher invite link prefill.  The teacher's "Share link"
@@ -177,11 +179,7 @@ export default function StudentAccountLoginView({
 
   return (
     <>
-      {/* Live-mode dark palette — repainted to match the Live v1
-          mockup's "Joining" scene (#0E0828 → #1A0E3D → #2A1B5C
-          radial).  Decorative violet + fuchsia glow blobs mirror the
-          mockup's positioning so the student app feels like the same
-          surface students see on the projector. */}
+      {/* Shared neutral canvas; the code-entry panel carries the brand color. */}
       <div
         className="vb-page relative"
         style={{
@@ -273,9 +271,9 @@ export default function StudentAccountLoginView({
 
             <main id="main-content" className="flex-1 min-h-0 flex items-center justify-center px-4 py-2 sm:py-4">
               <motion.div
-                initial={{ opacity: 0, y: 24 }}
+                initial={reducedMotion ? false : { opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ type: 'spring', stiffness: 120, damping: 18 }}
+                transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 120, damping: 18 }}
                 className="w-full max-w-xl"
               >
                 {/* Hero — compact so the whole login fits in one screen
@@ -287,9 +285,9 @@ export default function StudentAccountLoginView({
                     src="/icon.svg"
                     alt="Vocaband"
                     className="w-14 h-14 sm:w-20 sm:h-20 shrink-0 drop-shadow-[0_8px_24px_rgba(236,72,153,0.35)]"
-                    initial={{ rotate: -15, scale: 0.7 }}
-                    animate={{ rotate: [0, -3, 3, 0], scale: 1 }}
-                    transition={{
+                    initial={reducedMotion ? false : { rotate: -15, scale: 0.7 }}
+                    animate={{ rotate: reducedMotion ? 0 : [0, -3, 3, 0], scale: 1 }}
+                    transition={reducedMotion ? { duration: 0 } : {
                       rotate: { duration: 5, repeat: Infinity, ease: "easeInOut" },
                       scale:  { type: 'spring', stiffness: 180, damping: 12 },
                     }}
@@ -314,10 +312,7 @@ export default function StudentAccountLoginView({
                       {t.classCodeLabel}
                     </label>
 
-                    {/* Code-box wrapper — brand gradient kept (kids
-                        recognise it from the projector) but with the
-                        Live v1 violet glow ring added so it pops on
-                        the deeper dark page chrome behind it. */}
+                    {/* A focused color panel makes the class-code entry easy to find. */}
                     <div
                       className="bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 rounded-xl p-4"
                       style={{
@@ -360,7 +355,7 @@ export default function StudentAccountLoginView({
                     {error && (
                       <motion.div
                         id="student-login-error"
-                        initial={{ opacity: 0, y: -10 }}
+                        initial={reducedMotion ? false : { opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="mt-3 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-lg text-sm font-bold flex items-start gap-2"
                         role="alert"
