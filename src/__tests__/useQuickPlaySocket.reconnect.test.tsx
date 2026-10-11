@@ -31,7 +31,35 @@ beforeEach(() => {
   mocks.socket.connected = true;
   mocks.load.mockImplementation(async () => ({ default: mocks.io }));
 });
-afterEach(() => { cleanup(); disconnectQuickPlaySocket(); });
+afterEach(() => { cleanup(); disconnectQuickPlaySocket(); vi.unstubAllGlobals(); });
+
+describe('secure player identifiers', () => {
+  it('uses the native secure UUID when available', async () => {
+    const randomUUID = vi.fn(() => clientId);
+    vi.stubGlobal('crypto', { randomUUID });
+    const hook = renderHook(() => useQuickPlaySocket({ sessionCode: 'ABC234' }));
+    await waitFor(() => expect(hook.result.current.status).toBe('connected'));
+    await act(async () => hook.result.current.joinAsStudent('Native player'));
+    expect(randomUUID).toHaveBeenCalled();
+    expect(mocks.socket.emit).toHaveBeenCalledWith(QP_EVENTS.STUDENT_JOIN,
+      expect.objectContaining({ clientId }));
+  });
+
+  it.each([
+    [0x00, '00000000-0000-4000-8000-000000000000'],
+    [0xff, 'ffffffff-ffff-4fff-bfff-ffffffffffff'],
+  ])('uses secure random bytes on browsers without randomUUID (%i)', async (byte, expectedId) => {
+    const getRandomValues = vi.fn((bytes: Uint8Array) => bytes.fill(Number(byte)));
+    vi.stubGlobal('crypto', { getRandomValues });
+    const hook = renderHook(() => useQuickPlaySocket({ sessionCode: 'ABC234' }));
+    await waitFor(() => expect(hook.result.current.status).toBe('connected'));
+    await act(async () => hook.result.current.joinAsStudent('Older browser player'));
+    expect(getRandomValues).toHaveBeenCalledWith(expect.any(Uint8Array));
+    expect(mocks.socket.emit).toHaveBeenCalledWith(QP_EVENTS.STUDENT_JOIN,
+      expect.objectContaining({ clientId: expectedId }));
+    expect(readStoredClientId()).toBe(expectedId);
+  });
+});
 
 describe('classroom reconnect', () => {
   it('creates one socket when the app and join screen mount together', async () => {
