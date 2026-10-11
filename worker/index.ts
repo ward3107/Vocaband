@@ -20,6 +20,7 @@
 
 import { downloadZip } from "client-zip";
 import puppeteer from "@cloudflare/puppeteer";
+import { addHtmlScriptNonce } from "./htmlCsp";
 import { buildPdfDocument, type PdfDocData } from "../src/lib/pdf/buildPdfHtml";
 
 interface Env {
@@ -197,6 +198,7 @@ function localizeHtmlResponse(response: Response, lang: LocalizableLang): Respon
 // the cause and must be changed to bypass cache for the HTML routes.
 function noStoreHtml(response: Response): Response {
   const headers = new Headers(response.headers);
+  addHtmlScriptNonce(headers);
   headers.set("Cache-Control", "no-store, must-revalidate");
   // CDN-scoped directives take precedence over Cache-Control for edge
   // caching (Cloudflare-CDN-Cache-Control > CDN-Cache-Control > Cache-Control).

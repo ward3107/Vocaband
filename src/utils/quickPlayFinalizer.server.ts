@@ -79,21 +79,46 @@ export function createQuickPlayFinalizer(options: {
     }
   }
   let ticking = false;
-  const timer = setInterval(() => {
-    if (ticking) return;
+  let stopped = false;
+  let errorDelay = 1000;
+  let timer: ReturnType<typeof setTimeout>;
+  function schedule(delay: number) {
+    clearTimeout(timer);
+    if (stopped) return;
+    timer = setTimeout(tick, delay);
+    timer.unref();
+  }
+  async function tick() {
+    if (ticking || stopped) return;
     ticking = true;
-    void command('due').then(async result => {
-      for (const id of Array.isArray(result) ? result : []) {
+    let next = 60_000;
+    try {
+      const result = await command('due');
+      errorDelay = 1000;
+      const jobs = Array.isArray(result) ? result : [];
+      if (jobs.length) next = 1000;
+      for (const id of jobs) {
         try { await perform(String(id)); } catch (error) { options.warn(String(error)); }
       }
-    }).catch(error => options.warn(String(error))).finally(() => { ticking = false; });
-  }, 1000);
-  timer.unref();
+    } catch (error) {
+      options.warn(String(error));
+      errorDelay = Math.min(errorDelay * 2, 300_000);
+      next = errorDelay;
+    } finally {
+      ticking = false;
+      schedule(next);
+    }
+  }
+  // Immediate requests still finalize synchronously. The background scanner
+  // only recovers abandoned/retry jobs; polling an empty queue every second on
+  // every VM consumed hundreds of thousands of Redis requests while idle.
+  schedule(1000);
   return {
     async request(job: FinalizationJob) {
       const id = `${job.code}:${job.sessionId}`;
       await command('put', id, JSON.stringify({ ...job, attempts: 0, lockedUntil: 0, nextAt: Date.now() }));
-      await perform(id, true);
+      try { await perform(id, true); }
+      catch (error) { schedule(2000); throw error; }
       // Another machine may already own the claim. Success means its DB work
       // finished, never merely that the request was accepted into the queue.
       const deadline = Date.now() + 12000;
@@ -102,6 +127,6 @@ export function createQuickPlayFinalizer(options: {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     },
-    stop: () => clearInterval(timer),
+    stop: () => { stopped = true; clearTimeout(timer); },
   };
 }
