@@ -78,7 +78,8 @@ import path from "path";
 import { createHash, randomBytes, randomUUID } from "crypto";
 import helmet from "helmet";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
-import { RedisStore } from "rate-limit-redis";
+import { recoveringRateLimitStore } from "./src/utils/recoveringRateLimitStore.server";
+import { isLivenessRequest, livenessHandler } from "./src/utils/liveness.server";
 import multer from "multer";
 import { createClient } from "@supabase/supabase-js";
 import { createAdapter } from "@socket.io/redis-adapter";
@@ -1113,13 +1114,15 @@ async function startServer() {
   let redisAdapterError: string | null = null;
   if (process.env.REDIS_URL) {
     try {
-      const pubClient = createRedisClient({ url: process.env.REDIS_URL });
+      const pubClient = createRedisClient({
+        url: process.env.REDIS_URL,
+        disableOfflineQueue: true,
+        socket: { connectTimeout: 5000, reconnectStrategy: retries => Math.min(1000 * 2 ** Math.min(retries, 5), 30_000) },
+      });
       const subClient = pubClient.duplicate();
       // Don't crash the process if Redis hiccups — node-redis auto-reconnects.
       pubClient.on("error", (err) => console.error("[redis-adapter] pub error:", err.message));
       subClient.on("error", (err) => console.error("[redis-adapter] sub error:", err.message));
-      await Promise.all([pubClient.connect(), subClient.connect()]);
-      io.adapter(createAdapter(pubClient, subClient));
       // Assertion needed because redis v6's createClient() overloads infer
       // concrete generics ({}, {}, {}, 3, {}) for this call, while
       // ReturnType<typeof createRedisClient> resolves to the unbound generic
@@ -1127,8 +1130,23 @@ async function startServer() {
       // RespVersions parameter (3 vs 2|3).  Type-level only; no runtime change.
       redisPubClient = pubClient as unknown as ReturnType<typeof createRedisClient>;
       redisSubClient = subClient as unknown as ReturnType<typeof createRedisClient>;
-      redisAdapterStatus = "attached";
-      console.log("[redis-adapter] attached — multi-VM socket.io broadcasts enabled");
+      // Redis may reject HELLO/SCRIPT/PUBLISH when its request quota is
+      // exhausted. Keep reconnecting in the background, but always start HTTP
+      // liveness so Fly can route traffic to the process again.
+      const connect = Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+        io.adapter(createAdapter(pubClient, subClient));
+        redisAdapterStatus = "attached";
+        redisAdapterError = null;
+        console.log("[redis-adapter] attached — multi-VM socket.io broadcasts enabled");
+      });
+      void connect.catch(error => {
+        redisAdapterStatus = "failed";
+        redisAdapterError = String(error);
+      });
+      let startupTimer: ReturnType<typeof setTimeout>;
+      await Promise.race([connect, new Promise<void>((_, reject) => {
+        startupTimer = setTimeout(() => reject(new Error("Redis startup exceeded 8s; reconnecting in background")), 8000);
+      })]).finally(() => clearTimeout(startupTimer));
 
       // Pub/sub smoke test — proves the actual fan-out path works, not just
       // that TCP connected. Catches the case where a firewall allows TCP to
@@ -1156,12 +1174,11 @@ async function startServer() {
         );
       }
     } catch (err) {
-      // Boot continues in single-VM mode. Loud log so we notice in Fly logs.
+      // HTTP liveness can start; shared writes/limits still fail closed.
       redisAdapterStatus = "failed";
       redisAdapterError = err instanceof Error ? err.message : String(err);
       console.error(
-        "[redis-adapter] FAILED to connect — falling back to single-VM mode. " +
-        "Multi-VM scaling will NOT work until this is fixed. Error:",
+        "[redis-adapter] unavailable — shared writes remain blocked until Redis recovers. Error:",
         err
       );
     }
@@ -1176,24 +1193,18 @@ async function startServer() {
   // retry, land on VM-B, and proceed (the "5/min/user" guarantee silently
   // degrading to "5/min/user-per-machine" once we passed 1 VM).
   //
-  // Graceful fallback: if Redis is unset OR the adapter failed to attach,
-  // we still hand back a working limiter using the default memory store.
-  // That keeps dev + single-VM prod unchanged, and means a Redis outage
-  // degrades multi-VM mode to "best effort" instead of breaking the
-  // whole server. Each call gets ~3 Redis ops (INCR + EXPIRE + GET); even
-  // at 10k req/s that's well under Upstash free-tier limits.
+  // Memory counters are only for installations WITHOUT Redis. A configured
+  // shared store failing must never silently loosen authentication/AI limits.
   type RateLimitOpts = Parameters<typeof rateLimit>[0];
+  let rateLimitStoreId = 0;
   function createSharedRateLimit(opts: RateLimitOpts) {
-    if (redisPubClient && redisAdapterStatus === "attached") {
+    if (process.env.REDIS_URL) {
       return rateLimit({
         ...opts,
-        store: new RedisStore({
-          // node-redis v4 sendCommand returns Promise<unknown>; rate-limit-redis
-          // accepts any callable matching this shape via Promise<string | null>.
-          // The runtime types align; the cast quiets the TS overload mismatch.
-          sendCommand: ((...args: string[]) => redisPubClient!.sendCommand(args)) as never,
-          prefix: "rl:",
-        }),
+        store: recoveringRateLimitStore(async (...args) => {
+          if (!redisPubClient?.isReady) throw new Error("Rate limit store unavailable");
+          return redisPubClient.withCommandOptions({ timeout: 2000 }).sendCommand(args);
+        }, `rl:v2:${rateLimitStoreId++}:`),
       });
     }
     return rateLimit(opts);
@@ -1322,7 +1333,7 @@ async function startServer() {
       standardHeaders: true,
       legacyHeaders: false,
       message: { error: "Too many requests, please try again later." },
-      skip: (req) => /\.(js|css|png|jpg|jpeg|svg|ico|woff2?|ttf|webp|map)$/i.test(req.path),
+      skip: (req) => isLivenessRequest(req) || /\.(js|css|png|jpg|jpeg|svg|ico|woff2?|ttf|webp|map)$/i.test(req.path),
     }));
   }
 
@@ -4131,19 +4142,7 @@ async function startServer() {
   // monitors stop routing new traffic to a draining VM.  The proxy also
   // drains on signal natively; this is defence in depth (and useful for
   // any voluntary drain triggered without a signal).
-  app.get("/api/health", (_req, res) => {
-    if (isShuttingDown) {
-      res.status(503).json({
-        status: "draining",
-        timestamp: new Date().toISOString(),
-      });
-      return;
-    }
-    res.json({
-      status: "ok",
-      timestamp: new Date().toISOString(),
-    });
-  });
+  app.get("/api/health", livenessHandler(() => isShuttingDown));
 
   // Audit-log immutability health check — confirms the triggers from
   // supabase/migrations/20260518120000 are still attached. If they
@@ -8228,6 +8227,11 @@ ${sanitizedText}`;
     // CodeQL ref: js/tainted-format-string.
     console.error("[unhandled]", req.method, req.path, "-", err?.stack || err);
     if (res.headersSent) return;
+    if (clientStatus === 503) {
+      res.setHeader("Retry-After", "30");
+      res.status(503).json({ error: "Service temporarily unavailable. Please retry shortly." });
+      return;
+    }
     res.status(500).json({ error: "Internal server error" });
   });
 

@@ -252,31 +252,11 @@
          under production network latency. -->
     <!-- VOCABAND_INLINE_BOOT_CSS -->
     <link rel="stylesheet" href="/boot.css" />
-    <!-- Latin fonts (Plus Jakarta Sans + Be Vietnam Pro) are self-hosted
-         from /public/fonts and declared via @font-face in src/index.css.
-         No request to fonts.googleapis.com / fonts.gstatic.com is made
-         for them.  See PR #787 follow-up (privacy review item #5).
-
-         Preload the two weights the hero actually paints with so they
-         arrive in parallel with the entry CSS instead of waiting for
-         CSS parse to discover them.  Lighthouse's LCP audit pinned the
-         landing hero subtitle (Be Vietnam Pro 400) with a 510 ms render
-         delay because the request only fired AFTER /assets/index-*.css
-         finished parsing — preloading drops that delay to a single
-         queue position. Plus Jakarta Sans is the variable file the h1
-         renders; the rest of the Be Vietnam Pro family (500/700/900)
-         is below-the-fold or interaction-blocking, so swap-loading
-         them is fine.
-
-         RTL fonts (Heebo + Fredoka) are now ALSO self-hosted from
-         /public/fonts via @font-face in src/index.css — the browser
-         fetches the Hebrew woff2 on demand the first time a Hebrew glyph
-         renders, so EN-only sessions never pay for it and no request
-         reaches fonts.googleapis.com / fonts.gstatic.com at all.  The
-         Google Fonts preconnects + the vocaband-rtl-fonts meta tag were
-         removed with that change. -->
+    <!-- The shared UI uses Plus Jakarta Sans. Other font families and RTL
+         subsets remain self-hosted and load through @font-face when rendered;
+         preloading the former Be Vietnam body font wasted a request on every
+         teacher/student screen after the unified typography change. -->
     <link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/be-vietnam-pro-400-latin.woff2" as="font" type="font/woff2" crossorigin />
     <!-- Supabase auth + REST + storage origin.  Pre-warming the TLS
          handshake here knocks ~80–200 ms off the FIRST request the
          supabase-js client makes (auth.getSession on bootstrap), which

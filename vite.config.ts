@@ -20,12 +20,6 @@ import { visualizer } from 'rollup-plugin-visualizer';
 //      SHA-256 hash (see public/_headers). When boot-debug.js changes,
 //      recompute the hash and update _headers — same maintenance
 //      pattern as the Cloudflare Insights bootstrap inlines.
-//   3. Inject <link rel="modulepreload"> hints for App-*.js and
-//      LandingPage-*.js — the chunks every cold landing-page visit
-//      dynamically imports in series. Without these hints the browser
-//      only discovers them after parsing the entry chunk, paying RTT × 3.
-//      With them the chunks fetch in parallel with the entry, which lops
-//      400-800 ms off the time-to-interactive on Slow 4G.
 //
 // Dev mode is intentionally a no-op — the perf wins only matter under
 // production network latency, and skipping in dev keeps HMR uncluttered.
@@ -43,36 +37,9 @@ function vocabandHtmlPerf(): Plugin {
   // through Vite's middleware). Same pattern as boot.css above.
   const BOOT_DEBUG_FALLBACK_SCRIPT = '<script src="/boot-debug.js"></script>';
 
-  // Chunk prefixes whose `.js` outputs deserve a modulepreload hint on
-  // the landing page.
-  //
-  // Tuning history:
-  //  v1 — preloaded 5 chunks (App, LandingPage, landing-page, PublicNav,
-  //       FloatingButtons). Slow-4G field test regressed DCL ~800 ms;
-  //       too much parallel pressure on a bandwidth-bound pipe.
-  //  v2 — empty (no extras). Better on Slow 4G, but a Slow-3G test
-  //       showed DCL 8.2 s because the serial dynamic-import chain
-  //       (entry → App → LandingPage) paid 3 × 2 s RTT.
-  //  v3 — narrow: App and LandingPage only. The two biggest serial
-  //       RTT saves in the chain, picked because Israeli school Wi-Fi
-  //       is typically latency-bound (50-500 ms RTT, many devices
-  //       contending) more than bandwidth-bound. The asymmetry
-  //       favours preload: ~4 s win on high-latency profiles costs
-  //       ~200-500 ms on bandwidth-bound profiles. We accept the
-  //       smaller loss on the better network to fix the worse case.
-  //
-  // landing-page-*, PublicNav-*, FloatingButtons-* deliberately
-  // skipped — they're smaller chunks whose RTT savings are modest
-  // and they ride App's parallel-import wave once App resolves.
-  // NOTE: logged-out visitors on a public view now boot the lightweight
-  // PublicShell (see main.tsx), so the landing critical chunk is
-  // PublicShell-*, not App-*. App + supabase are kept OFF the landing
-  // modulepreload entirely (see build.modulePreload.resolveDependencies)
-  // and load on-demand only when a visitor logs in or has a session.
-  const PRELOAD_CHUNK_PREFIXES = [
-    'PublicShell-',
-    'LandingPage-',
-  ];
+  // Route-specific chunks are discovered by main.tsx after it chooses the
+  // public or authenticated shell. Global hints loaded the landing page on
+  // teacher/student/game routes where those modules never execute.
 
   return {
     name: 'vocaband-html-perf',
@@ -130,7 +97,7 @@ function vocabandHtmlPerf(): Plugin {
     },
     transformIndexHtml: {
       order: 'post',
-      handler(html, ctx) {
+      handler(html) {
         let next = html;
 
         // 1) Inline boot.css.
@@ -181,29 +148,6 @@ function vocabandHtmlPerf(): Plugin {
         } catch {
           // boot-debug.js missing or unreadable — fall through, leave the
           // external <script> in place. Site stays correct, just one extra RTT.
-        }
-
-        // 3) modulepreload hints for landing-page critical chunks.
-        // `ctx.bundle` is the rolldown/rollup bundle map keyed by output
-        // file name (e.g. "assets/App-abc123.js"). Empty in dev (`apply:
-        // 'build'` guards us from running there anyway). Look up each
-        // critical chunk by its prefix and emit a <link rel=modulepreload>
-        // so the browser parallelises the otherwise-serial dynamic-import
-        // chain (entry → App → LandingPage → locales).
-        const bundleFileNames = ctx.bundle ? Object.keys(ctx.bundle) : [];
-        const hints: string[] = [];
-        for (const prefix of PRELOAD_CHUNK_PREFIXES) {
-          const match = bundleFileNames.find(
-            (name) => name.startsWith(`assets/${prefix}`) && name.endsWith('.js'),
-          );
-          if (match) {
-            hints.push(`    <link rel="modulepreload" crossorigin href="/${match}">`);
-          }
-        }
-        if (hints.length > 0) {
-          // Insert before the </head> close tag so they sit alongside the
-          // existing modulepreload hints Vite injected for the entry chunk.
-          next = next.replace('</head>', `${hints.join('\n')}\n  </head>`);
         }
 
         return next;

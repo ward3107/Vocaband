@@ -67,10 +67,10 @@ jobs:
       - name: Health probe — /api/health
         run: |
           set -euo pipefail
-          URL="https://www.vocaband.com/api/health"
+          URL="https://vocaband.com/api/health"
           # 3 attempts 20s apart so a single edge blip doesn't page anyone.
           for attempt in 1 2 3; do
-            if BODY=$(curl -fsS --max-time 15 "$URL"); then
+            if BODY=$(curl -fsSL --max-time 15 "$URL") && jq -e '.status == "ok"' <<< "$BODY" > /dev/null; then
               echo "✓ $URL reachable (attempt $attempt): $BODY"
               exit 0
             fi
@@ -79,6 +79,12 @@ jobs:
           done
           echo "::error::Health probe failed 3/3 attempts: $URL"
           exit 1
+
+      - name: Redis readiness — liveness alone does not prove live games can save
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 15 https://vocaband.com/api/health/redis |
+            jq -e '.adapter == "attached" and .ping == "PONG"' > /dev/null
 
       - name: TLS cert expiry — alarm under 14 days
         if: steps.depth.outputs.deep == 'true'

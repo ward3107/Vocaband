@@ -1,0 +1,102 @@
+name: Production connection diagnostics
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [Deploy to Fly.io]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  public-connections:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Probe HTTP and WebSocket handshakes without accounts or game data
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          const origins = ['https://vocaband.com', 'https://vocaband.fly.dev'];
+          let failed = false;
+          await Promise.all(origins.map(async origin => {
+            const started = Date.now();
+            try {
+              const response = await fetch(origin + '/api/health', { signal: AbortSignal.timeout(15000) });
+              const data = await response.json();
+              const healthy = response.ok && data.status === 'ok';
+              console.log(JSON.stringify({ origin, probe: 'http-health', status: response.status, healthy, ms: Date.now() - started }));
+              if (!healthy) failed = true;
+            } catch (error) {
+              failed = true;
+              console.log(JSON.stringify({ origin, probe: 'http-health', error: error.message }));
+            }
+            await new Promise(resolve => {
+              const ws = new WebSocket(origin.replace('https:', 'wss:') + '/socket.io/?EIO=4&transport=websocket');
+              const start = Date.now();
+              let settled = false;
+              const finish = (healthy, detail) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                if (!healthy) failed = true;
+                console.log(JSON.stringify({ origin, probe: 'quick-play-websocket', healthy, detail, ms: Date.now() - start }));
+                ws.close();
+                resolve();
+              };
+              const timer = setTimeout(() => finish(false, 'handshake timeout'), 15000);
+              ws.onmessage = event => {
+                const packet = String(event.data);
+                if (packet.startsWith('0')) ws.send('40/quick-play,');
+                else if (packet.startsWith('40/quick-play,')) finish(true, 'namespace connected');
+                else if (packet.startsWith('44')) finish(false, 'namespace rejected');
+                else if (packet === '2') ws.send('3');
+              };
+              ws.onerror = () => finish(false, 'transport error');
+              ws.onclose = () => finish(false, 'closed before namespace connected');
+            });
+          }));
+          // A handshake alone cannot prove that authoritative game state can
+          // be saved. Keep dependency readiness a separate, explicit signal.
+          try {
+            const response = await fetch('https://vocaband.com/api/health/redis', { signal: AbortSignal.timeout(15000) });
+            const data = await response.json();
+            const healthy = response.ok && data.adapter === 'attached' && data.ping === 'PONG';
+            console.log(JSON.stringify({ probe: 'redis-readiness', status: response.status, healthy }));
+            if (!healthy) failed = true;
+          } catch (error) {
+            failed = true;
+            console.log(JSON.stringify({ probe: 'redis-readiness', error: error.message }));
+          }
+          process.exitCode = failed ? 1 : 0;
+          JS
+  fly-status:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1
+      - name: Read machine and health-check status
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl status --app vocaband
+          flyctl checks list --app vocaband
+      - name: Count infrastructure errors without publishing application logs
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        shell: bash
+        run: |
+          flyctl logs --app vocaband --no-tail --json > "$RUNNER_TEMP/vocaband-diagnostic-logs.json"
+          python3 - <<'PY'
+          import os, pathlib, re, json
+          content = pathlib.Path(os.environ['RUNNER_TEMP'], 'vocaband-diagnostic-logs.json').read_text()
+          patterns = [r'max requests limit exceeded', r'max daily request limit', r'quota', r'WRONGPASS', r'NOAUTH', r'OOM', r'out of memory', r'ECONNREFUSED', r'ETIMEDOUT', r'ENOTFOUND', r'EAI_AGAIN', r'Command timed out', r'Socket closed', r'Redis', r'rate.limit', r'Internal server error', r'ECONNRESET', r'MaxRetriesPerRequestError', r'exceeded.*?limit']
+          print(json.dumps({pattern: len(re.findall(pattern, content, re.I)) for pattern in patterns}))
+          PY
