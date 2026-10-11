@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronDown, X, Crown, LogOut } from "lucide-react";
+import BrandWordmark from "./BrandWordmark";
 import UiScaleControl from "./dashboard/UiScaleControl";
 import { useLanguage } from "../hooks/useLanguage";
 
@@ -69,7 +70,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
   extraTrailing,
   planBadge,
 }) => {
-  const { language } = useLanguage();
+  const { language, isRTL } = useLanguage();
   // Localised back / exit fallbacks — parents can still pass an
   // explicit exitLabel ("End show", "Cancel", etc.) and it wins.
   const backAria = language === "he" ? "חזרה" : language === "ar" ? "رجوع" : "Go back";
@@ -84,8 +85,6 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
     logout: language === "he" ? "התנתק" : language === "ar" ? "تسجيل الخروج" : "Logout",
   } as const;
   const safeAvatarUrl = sanitizeAvatarUrl(userAvatar);
-  const [isVisible, setIsVisible] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -111,48 +110,25 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
     };
   }, [menuOpen]);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-
-      // Only show header when at the very top of the page
-      if (currentScrollY < 10) {
-        setIsVisible(true);
-      } else {
-        // Hide when anywhere else on the page
-        setIsVisible(false);
-      }
-
-      setLastScrollY(currentScrollY);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [lastScrollY]);
 
   return (
     <header
-      style={{ backgroundColor: 'color-mix(in srgb, var(--vb-surface) 90%, transparent)' }}
-      className={`fixed top-0 left-0 w-full z-50 backdrop-blur-md flex justify-between items-center px-4 sm:px-6 py-3 sm:py-4 border-b border-[var(--vb-border)] transition-transform duration-300 ${
-        isVisible ? "translate-y-0" : "-translate-y-full"
-      }`}
+      className="vb-header fixed top-0 start-0 z-50 flex min-h-18 w-full items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8"
     >
       <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
         {showBack && (
           <button
             onClick={onBack}
-            className="w-10 h-10 shrink-0 flex items-center justify-center rounded-full signature-gradient shadow-lg shadow-blue-500/20 text-white hover:scale-105 active:scale-95 transition-transform"
+            className="vb-icon-button"
             aria-label={backAria}
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={18} className={isRTL ? "rotate-180" : undefined} />
           </button>
         )}
         <div className="flex flex-col min-w-0 flex-1">
-          <span className="text-lg sm:text-2xl font-black font-headline tracking-tight signature-gradient-text truncate">
-            {title}
-          </span>
+          {title === "Vocaband" ? <BrandWordmark /> : <span className="text-lg sm:text-xl font-extrabold font-headline tracking-tight text-[var(--vb-text-primary)] truncate">{title}</span>}
           {subtitle && (
-            <span className="hidden sm:inline-block text-[10px] font-bold tracking-widest text-on-surface-variant uppercase truncate">
+            <span className="hidden sm:inline-block text-xs font-medium tracking-wide text-on-surface-variant uppercase truncate">
               {subtitle}
             </span>
           )}
@@ -194,7 +170,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
             English-only (VocaHebrew stays Hebrew by product design). */}
         {userName && (
           <div className="flex flex-col items-end">
-            <span className="text-xs text-on-surface-variant font-medium">Welcome back,</span>
+            <span className="text-xs text-on-surface-variant font-medium">{menuLabels.welcome}</span>
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-on-surface">{userName}</span>
               {planBadge && <PlanBadge {...planBadge} />}
@@ -204,9 +180,9 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
         {onLogout && (
           <button
             onClick={onLogout}
-            className="text-on-surface-variant font-bold hover:text-error text-xs px-3 py-2 bg-surface-container-lowest rounded-lg shadow-sm border-2 border-primary-container/30 hover:border-error transition-all"
+            className="vb-button vb-button-secondary hover:text-error"
           >
-            Logout
+            {menuLabels.logout}
           </button>
         )}
         <div className="w-10 h-10 rounded-full signature-gradient border-2 border-white overflow-hidden shadow-sm">
@@ -243,7 +219,7 @@ const TopAppBar: React.FC<TopAppBarProps> = ({
             backgroundColor: 'var(--vb-surface)',
             borderColor: 'var(--vb-border)',
           }}
-          className="inline-flex items-center gap-1.5 ps-1 pe-2.5 py-1 rounded-full border-2 shadow-sm hover:bg-surface-container active:scale-95 transition-transform"
+          className="inline-flex min-h-11 items-center gap-1.5 ps-1.5 pe-2.5 py-1 rounded-xl border shadow-sm hover:bg-surface-container active:scale-95 transition-transform"
         >
           <span className="w-7 h-7 rounded-full signature-gradient overflow-hidden flex items-center justify-center shadow-sm">
             {safeAvatarUrl ? (

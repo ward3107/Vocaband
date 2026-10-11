@@ -11,37 +11,22 @@ import StartHerePanel from "./StartHerePanel";
 import { DASHBOARD_SECTION } from "./dashboardScroll";
 import { accentForClass, HERO_AURORA } from "./dashboardAccents";
 
-// "Cool Paper" direction: every live-games card keeps its vivid radial
-// gradient (its colour identity) but drops the coloured halo. A single
-// soft, NEUTRAL dark-translucent shadow reads as a calm lift on every
-// theme instead of a busy glow, so we reuse it across all heroes.
-const NEUTRAL_CARD_SHADOW = "0 12px 28px -16px rgba(15,23,42,0.45)";
-
-// Shared "Live games" hero styling — both cards use the identical
-// LiveGameHero layout and differ only in colour + copy.
+// Per-game color identity; neutral card surfaces come from the shared component.
 const QP_HERO = {
   background: HERO_AURORA,
-  boxShadow: NEUTRAL_CARD_SHADOW,
   accent: "#5B21B6",
-  ctaShadow: "0 10px 24px -8px rgba(91,33,182,0.45)",
 } as const;
 const RACE_HERO = {
   background: "radial-gradient(120% 140% at 0% 0%, #D946EF 0%, #EC4899 45%, #F43F5E 80%, #FB7185 100%)",
-  boxShadow: NEUTRAL_CARD_SHADOW,
   accent: "#9D174D",
-  ctaShadow: "0 10px 24px -8px rgba(157,23,77,0.45)",
 } as const;
 const SPEED_HERO = {
   background: "radial-gradient(120% 140% at 0% 0%, #F59E0B 0%, #F97316 45%, #EF4444 80%, #F43F5E 100%)",
-  boxShadow: NEUTRAL_CARD_SHADOW,
   accent: "#9A3412",
-  ctaShadow: "0 10px 24px -8px rgba(154,52,18,0.45)",
 } as const;
 const ARENA_HERO = {
   background: "radial-gradient(120% 140% at 0% 0%, #10B981 0%, #14B8A6 45%, #06B6D4 80%, #0EA5E9 100%)",
-  boxShadow: NEUTRAL_CARD_SHADOW,
   accent: "#115E59",
-  ctaShadow: "0 10px 24px -8px rgba(17,94,89,0.45)",
 } as const;
 
 // Strings for the "Live games" pairing (Quick Play hero + Category
@@ -166,22 +151,14 @@ export default function EnglishDashboardLayout({
           I begin?" for a non-technical teacher: four plain-language goals
           that explain themselves and route to the sections below. Owns
           no tools of its own — it scrolls to the real cards by id. */}
-      <StartHerePanel
-        language={language}
-        isRTL={isRTL}
-        hasClasses={hasClasses}
-        pendingStudentsCount={pendingStudentsCount}
-        onNewClass={onNewClass}
-        onClassroomClick={onClassroomClick}
-        onApprovalsClick={onApprovalsClick}
-      />
+
 
       {/* ─── Live games ─── Quick Play + Category Race, paired so the
           two live, join-by-code experiences sit together (separate from
           the Management utilities below). */}
       <section id={DASHBOARD_SECTION.liveGames}>
         <SectionLabel>{rt.liveGames}</SectionLabel>
-        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-3 items-stretch">
+        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
           <LiveGameHero
             emoji="⚡"
             title={t.qpTitle}
@@ -191,7 +168,6 @@ export default function EnglishDashboardLayout({
             onStart={onQuickPlayClick}
             isRTL={isRTL}
             dataTour="quick-play"
-            motif="ring"
             live
             hint={rt.qpHint}
             {...QP_HERO}
@@ -205,7 +181,6 @@ export default function EnglishDashboardLayout({
             onStart={onCategoryRaceClick}
             isRTL={isRTL}
             dataTour="category-race"
-            motif="tiles"
             hint={rt.raceHint}
             {...RACE_HERO}
           />
@@ -218,7 +193,6 @@ export default function EnglishDashboardLayout({
             onStart={onSpeedRoundClick}
             isRTL={isRTL}
             dataTour="speed-round"
-            motif="buzzer"
             hint={rt.speedHint}
             {...SPEED_HERO}
           />
@@ -231,7 +205,6 @@ export default function EnglishDashboardLayout({
             onStart={onArenaClick}
             isRTL={isRTL}
             dataTour="word-hunt-arena"
-            motif="arena"
             hint={rt.arenaHint}
             {...ARENA_HERO}
           />
@@ -399,6 +372,17 @@ export default function EnglishDashboardLayout({
           );
         })()}
       </section>
+      <div className="mt-8">
+      <StartHerePanel
+        language={language}
+        isRTL={isRTL}
+        hasClasses={hasClasses}
+        pendingStudentsCount={pendingStudentsCount}
+        onNewClass={onNewClass}
+        onClassroomClick={onClassroomClick}
+        onApprovalsClick={onApprovalsClick}
+      />
+      </div>
     </div>
   );
 }
@@ -406,7 +390,7 @@ export default function EnglishDashboardLayout({
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="mb-3.5 flex items-center gap-2.5 text-[11px] font-extrabold uppercase tracking-[0.14em]"
+      className="vb-section-heading"
       style={{ color: "var(--vb-accent)" }}
     >
       <span

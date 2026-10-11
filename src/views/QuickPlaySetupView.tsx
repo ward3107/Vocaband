@@ -100,7 +100,7 @@ export default function QuickPlaySetupView({
         dir={dir}
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="min-h-screen bg-background p-4 sm:p-6 flex items-center justify-center"
+        className="vb-page p-4 sm:p-6 flex items-center justify-center"
       >
         <div className="max-w-md w-full">
           <motion.div

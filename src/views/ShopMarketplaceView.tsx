@@ -1,10 +1,11 @@
+import WorkspaceHeader from "../components/WorkspaceHeader";
 // Single-screen marketplace — replaces the multi-tab ShopView + Arcade
 // Lobby hub. One scroll, big horizontal carousels per category,
 // Spotlight dynamic hero at the top. See docs/shop-redesign-plan.md.
 
 import { useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Zap, Pin, Lock, Check, ChevronLeft } from "lucide-react";
+import { Zap, Pin, Lock, Check } from "lucide-react";
 import { supabase, type AppUser } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { useRetention } from "../hooks/useRetention";
@@ -666,28 +667,15 @@ export default function ShopMarketplaceView({
 
   return (
     <div className={`min-h-screen ${pageBg} p-4 sm:p-6`} dir={dir}>
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         {/* Header — back + balance */}
-        <div className={`flex items-center justify-between mb-5 ${isRTL ? 'flex-row-reverse' : ''}`}>
-          <button
-            onClick={() => setView("student-dashboard")}
-            type="button"
-            style={{ touchAction: 'manipulation' }}
-            className={`inline-flex items-center gap-1 text-sm font-semibold text-[color:var(--ios-label-secondary)] hover:text-[color:var(--ios-label)] transition-colors ${isRTL ? 'flex-row-reverse' : ''}`}
-          >
-            <ChevronLeft size={16} className={isRTL ? 'rotate-180' : ''} />
-            Dashboard
-          </button>
-          <div className={`flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
-            <StudentLangButton />
+        <WorkspaceHeader title={language === "he" ? "החנות שלך" : language === "ar" ? "متجرك" : "Your shop"} onBack={() => setView("student-dashboard")} trailing={<><StudentLangButton />
             <div className="flex items-center gap-2 bg-[var(--ios-grouped-card)] rounded-full ps-2 pe-3 py-1.5 ring-1 ring-[color:var(--ios-separator)] shadow-sm">
               <span className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-base leading-none">
                 🪙
               </span>
               <span className="font-black text-[color:var(--ios-label)] tabular-nums">{coins.toLocaleString()}</span>
-            </div>
-          </div>
-        </div>
+            </div></>} />
 
         {/* Sticky category jump-chips — kids tap to leap straight to a
             section instead of long-scrolling. Sticks to the top of the

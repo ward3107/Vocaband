@@ -241,7 +241,7 @@ export default function TeacherSignupView({
   return (
     <div
       dir={dir}
-      className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-violet-50 to-fuchsia-50 p-4"
+      className="vb-page flex items-center justify-center p-4"
     >
       <div
         className={`w-full max-w-4xl flex flex-col items-center justify-center gap-6 lg:gap-10 ${
@@ -257,7 +257,7 @@ export default function TeacherSignupView({
         <motion.aside
           initial={{ opacity: 0, x: isRTL ? 28 : -28 }}
           animate={{ opacity: 1, x: 0 }}
-          className="relative hidden lg:flex w-80 shrink-0 flex-col justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 p-8 text-white shadow-xl shadow-violet-500/20 self-stretch"
+          className="relative hidden lg:flex w-80 shrink-0 flex-col justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-800 via-indigo-600 to-violet-700 p-8 text-white shadow-xl shadow-violet-500/20 self-stretch"
         >
           {/* Ambient floating tokens — decorative, low-opacity backdrop. */}
           {FLOATERS.map((f, i) => (
@@ -313,7 +313,7 @@ export default function TeacherSignupView({
         className="w-full max-w-md rounded-3xl bg-white shadow-xl shadow-indigo-500/10 p-6 sm:p-8"
       >
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/30">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-800 via-indigo-600 to-violet-700 flex items-center justify-center shadow-lg shadow-violet-500/30">
             <GraduationCap className="w-8 h-8 text-white" />
           </div>
           <h1 className="mt-4 text-2xl font-bold text-gray-900">{t.title}</h1>
@@ -446,7 +446,7 @@ export default function TeacherSignupView({
           onClick={handleSubmit}
           disabled={!confirmed || submitting}
           style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-          className="w-full rounded-xl bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 px-4 py-3.5 font-semibold text-white shadow-lg shadow-violet-500/30 disabled:opacity-50 disabled:shadow-none"
+          className="w-full rounded-xl bg-gradient-to-r from-indigo-800 via-indigo-600 to-violet-700 px-4 py-3.5 font-semibold text-white shadow-lg shadow-violet-500/30 disabled:opacity-50 disabled:shadow-none"
         >
           {submitting ? t.submitting : t.submit}
         </motion.button>

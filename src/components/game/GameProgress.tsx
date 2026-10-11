@@ -30,10 +30,10 @@ export default function GameProgress({ label, current, total, themeColor }: Game
     // role="status" + the visible label double as the screen-reader
     // announcement; the bar itself is decorative.
     <div className="flex-1 min-w-0" role="status">
-      <p className="text-[11px] sm:text-xs font-bold uppercase tracking-widest text-stone-500 mb-1 truncate">
+      <p className="text-xs sm:text-sm font-semibold text-[var(--vb-text-secondary)] mb-1 truncate">
         {label}
       </p>
-      <div className="h-1.5 w-full rounded-full bg-stone-200/80 overflow-hidden" aria-hidden>
+      <div className="h-2 w-full rounded-full bg-[var(--vb-border)] overflow-hidden" aria-hidden>
         <div
           className={`h-full rounded-full ${fill} motion-safe:transition-all motion-safe:duration-300`}
           style={{ width: `${pct}%` }}

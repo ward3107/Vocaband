@@ -119,6 +119,14 @@ jobs:
       - name: Run Playwright auth suite
         run: npx playwright test --config e2e/playwright.auth.config.ts
 
+      - name: Preserve teacher and student design screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: unified-design-visuals
+          path: e2e/test-results/design/
+          retention-days: 14
+
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v7

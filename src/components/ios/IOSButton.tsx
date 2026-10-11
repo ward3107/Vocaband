@@ -13,10 +13,10 @@ type Variant = "brand" | "filled" | "tinted" | "plain" | "destructive";
 type Size = "sm" | "md" | "lg";
 
 const SIZES: Record<Size, string> = {
-  sm: "px-3 py-1.5 text-[15px] rounded-[8px]",
-  md: "px-4 py-2.5 text-[17px] rounded-[12px]",
+  sm: "min-h-11 px-3 py-2 text-sm rounded-xl",
+  md: "min-h-11 px-4 py-2.5 text-base rounded-xl",
   // `lg` is the full-width sheet CTA — 50px tall is Apple's standard.
-  lg: "px-5 py-[13px] text-[17px] rounded-[12px] w-full",
+  lg: "min-h-12 px-5 py-3 text-base rounded-xl w-full",
 };
 
 function variantStyle(variant: Variant, tint: string): CSSProperties {
@@ -31,7 +31,7 @@ function variantStyle(variant: Variant, tint: string): CSSProperties {
         fontWeight: 600,
       };
     case "filled":
-      return { backgroundColor: tint, color: "#fff", fontWeight: 600 };
+      return { backgroundColor: tint, color: tint === "var(--vb-accent)" ? "var(--vb-accent-text)" : "#fff", fontWeight: 600 };
     case "tinted":
       // iOS tinted buttons are the accent at ~15% over the card, with the
       // accent itself as the label — not a grey button with colored text.

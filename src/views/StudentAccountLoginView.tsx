@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { AlertTriangle, ArrowLeft, KeyRound } from "lucide-react";
 import StudentPinLoginCard from "../components/StudentPinLoginCard";
 import type { View } from "../core/views";
+import { useReducedMotion } from "../hooks/useReducedMotion";
 import { useLanguage, languageNames, type Language } from "../hooks/useLanguage";
 import { studentLoginT } from "../locales/student/student-login";
 import { isStudentShell } from "../utils/studentShell";
@@ -57,6 +58,7 @@ export default function StudentAccountLoginView({
   onTier2Login,
   cookieBannerOverlay,
 }: StudentAccountLoginViewProps) {
+  const reducedMotion = useReducedMotion();
   const codeInputRef = useRef<HTMLInputElement | null>(null);
 
   // Per-student teacher invite link prefill.  The teacher's "Share link"
@@ -177,31 +179,27 @@ export default function StudentAccountLoginView({
 
   return (
     <>
-      {/* Live-mode dark palette — repainted to match the Live v1
-          mockup's "Joining" scene (#0E0828 → #1A0E3D → #2A1B5C
-          radial).  Decorative violet + fuchsia glow blobs mirror the
-          mockup's positioning so the student app feels like the same
-          surface students see on the projector. */}
+      {/* Shared neutral canvas; the code-entry panel carries the brand color. */}
       <div
-        className="h-screen overflow-hidden relative"
+        className="vb-page relative overflow-hidden"
         style={{
           background:
-            "radial-gradient(120% 100% at 50% 0%, #2A1B5C 0%, #1A0E3D 50%, #0E0828 100%)",
+            "var(--vb-surface-alt)",
         }}
       >
         <div
           className="pointer-events-none absolute -top-24 -end-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
-          style={{ background: "radial-gradient(circle, rgba(139,92,246,0.35) 0%, transparent 70%)" }}
+          style={{ background: "radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)" }}
           aria-hidden
         />
         <div
           className="pointer-events-none absolute -bottom-24 -start-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
-          style={{ background: "radial-gradient(circle, rgba(217,70,239,0.22) 0%, transparent 70%)" }}
+          style={{ background: "radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%)" }}
           aria-hidden
         />
 
-        <div className="relative z-10 h-screen flex flex-col overflow-hidden">
-            <header className="flex items-center justify-between px-4 sm:px-6 py-4">
+        <div className="relative z-10 min-h-[100dvh] flex flex-col">
+            <header className="vb-header flex items-center justify-between px-4 sm:px-6 py-4">
               {/* In the native student app this login screen is the root —
                   there is no marketing landing to return to (the shell blocks
                   it), so "Back" did nothing and only confused students. Hide
@@ -216,14 +214,14 @@ export default function StudentAccountLoginView({
                     setStudentLoginClassCode("");
                   }}
                   type="button"
-                  className="flex items-center gap-2 text-white/80 hover:text-white transition-colors font-bold text-sm px-3 py-2 rounded-full bg-white/10 backdrop-blur-sm"
+                  className="flex items-center gap-2 text-[var(--vb-text-primary)] transition-colors font-bold text-sm px-3 py-2 rounded-xl border border-[var(--vb-border)] bg-[var(--vb-surface)] min-h-11"
                 >
                   <ArrowLeft size={16} className={isRTL ? 'rotate-180' : ''} />
                   {t.back}
                 </button>
               )}
               <div className="flex items-center gap-3">
-                <span className="text-white/60 text-xs font-black uppercase tracking-[0.3em] hidden sm:inline">
+                <span className="text-[var(--vb-text-secondary)] text-xs font-black uppercase tracking-[0.3em] hidden sm:inline">
                   {t.student}
                 </span>
                 {/* Language picker — students often need to change the
@@ -240,7 +238,7 @@ export default function StudentAccountLoginView({
                     type="button"
                     aria-label={language === 'he' ? 'החלף שפה' : language === 'ar' ? 'تغيير اللغة' : 'Change language'}
                     aria-expanded={langOpen}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm text-white text-xs font-bold hover:bg-white/20 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--vb-surface)] border border-[var(--vb-border)] text-[var(--vb-text-primary)] text-sm font-bold min-h-11 transition-colors"
                     style={{ touchAction: 'manipulation' }}
                   >
                     <Globe size={14} />
@@ -273,9 +271,9 @@ export default function StudentAccountLoginView({
 
             <main id="main-content" className="flex-1 min-h-0 flex items-center justify-center px-4 py-2 sm:py-4">
               <motion.div
-                initial={{ opacity: 0, y: 24 }}
+                initial={reducedMotion ? false : { opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ type: 'spring', stiffness: 120, damping: 18 }}
+                transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 120, damping: 18 }}
                 className="w-full max-w-xl"
               >
                 {/* Hero — compact so the whole login fits in one screen
@@ -287,24 +285,24 @@ export default function StudentAccountLoginView({
                     src="/icon.svg"
                     alt="Vocaband"
                     className="w-14 h-14 sm:w-20 sm:h-20 shrink-0 drop-shadow-[0_8px_24px_rgba(236,72,153,0.35)]"
-                    initial={{ rotate: -15, scale: 0.7 }}
-                    animate={{ rotate: [0, -3, 3, 0], scale: 1 }}
-                    transition={{
+                    initial={reducedMotion ? false : { rotate: -15, scale: 0.7 }}
+                    animate={{ rotate: reducedMotion ? 0 : [0, -3, 3, 0], scale: 1 }}
+                    transition={reducedMotion ? { duration: 0 } : {
                       rotate: { duration: 5, repeat: Infinity, ease: "easeInOut" },
                       scale:  { type: 'spring', stiffness: 180, damping: 12 },
                     }}
                   />
                   <div>
-                    <h1 className="text-2xl sm:text-4xl font-black text-white leading-[0.95] tracking-tight">
+                    <h1 className="text-2xl sm:text-4xl font-extrabold text-[var(--vb-text-primary)] leading-tight tracking-tight">
                       {t.heroLine1}<br />{t.heroLine2}
                     </h1>
-                    <p className="mt-1 text-sm sm:text-base font-bold text-white/80">
+                    <p className="mt-1 text-sm sm:text-base font-medium text-[var(--vb-text-secondary)]">
                       {t.heroSubtitle}
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-4 sm:p-6">
+                <div className="vb-card p-5 sm:p-7">
                   {/* Class-code entry */}
                   <div className="mb-5">
                     <label
@@ -314,12 +312,9 @@ export default function StudentAccountLoginView({
                       {t.classCodeLabel}
                     </label>
 
-                    {/* Code-box wrapper — brand gradient kept (kids
-                        recognise it from the projector) but with the
-                        Live v1 violet glow ring added so it pops on
-                        the deeper dark page chrome behind it. */}
+                    {/* A focused color panel makes the class-code entry easy to find. */}
                     <div
-                      className="bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 rounded-xl p-4"
+                      className="bg-[image:var(--vb-gradient-brand)] rounded-xl p-4"
                       style={{
                         boxShadow:
                           "inset 0 1px 0 rgba(255,255,255,0.20), 0 0 0 4px rgba(139,92,246,0.22), 0 18px 40px -20px rgba(217,70,239,0.45)",
@@ -360,7 +355,7 @@ export default function StudentAccountLoginView({
                     {error && (
                       <motion.div
                         id="student-login-error"
-                        initial={{ opacity: 0, y: -10 }}
+                        initial={reducedMotion ? false : { opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="mt-3 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-lg text-sm font-bold flex items-start gap-2"
                         role="alert"
@@ -390,8 +385,8 @@ export default function StudentAccountLoginView({
                   ) : (
                     <div className="text-center py-4">
                       <KeyRound size={22} className="text-stone-400 mx-auto mb-2" />
-                      <p className="text-sm font-bold text-stone-600">Enter your class code above</p>
-                      <p className="text-xs text-stone-500 mt-1">Then pick your name and type your PIN.</p>
+                      <p className="text-sm font-bold text-stone-600">{t.enterCode}</p>
+                      <p className="text-xs text-stone-500 mt-1">{t.selectNamePin}</p>
                     </div>
                   )}
 
@@ -405,7 +400,7 @@ export default function StudentAccountLoginView({
                   {t.features.map(f => (
                     <span
                       key={f.text}
-                      className="px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-xs font-bold text-white/90 border border-white/10"
+                      className="px-3 py-1.5 rounded-xl border border-[var(--vb-border)] bg-[var(--vb-surface)] text-xs font-bold text-[var(--vb-text-secondary)]"
                     >
                       <span className="me-1">{f.emoji}</span>
                       {f.text}
@@ -415,7 +410,7 @@ export default function StudentAccountLoginView({
               </motion.div>
             </main>
 
-            <footer className="py-2 sm:py-3 text-center text-white/40 text-xs font-bold">
+            <footer className="py-2 sm:py-3 text-center text-[var(--vb-text-muted)] text-xs font-bold">
               vocaband.com
             </footer>
           </div>

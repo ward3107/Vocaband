@@ -296,21 +296,11 @@ const ClassCard: React.FC<ClassCardProps> = ({
       style={
         isPastel
           ? {
-              // Pastel: outer card carries the accent gradient (or
-              // custom hex tint) directly so the whole card reads as
-              // one tinted surface.  The tonal border frames each card
-              // so they read as discrete surfaces against the page
-              // background (without it, the soft pastels blur into the
-              // page on light themes).  When `isRecent`, swap the
-              // tonal border for the brand-purple ring so the teacher
-              // can spot their most-recent class at a glance.
-              background: backgroundColor ?? pastelBg ?? "var(--vb-surface)",
-              boxShadow: isRecent
-                ? `0 1px 0 rgba(255,255,255,0.7) inset, 0 0 0 3px ${RECENT_RING_COLOR}, 0 22px 44px -20px ${RECENT_RING_COLOR}55`
-                : "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.25)",
-              border: isRecent
-                ? "none"
-                : `1.5px solid ${accentDef?.border ?? "rgba(0,0,0,0.08)"}`,
+              // The class tint belongs to the header; actions and expanded
+              // assignments share the same neutral surface as other cards.
+              background: "var(--vb-surface)",
+              boxShadow: 'var(--vb-shadow)',
+              border: `1px solid ${isRecent ? RECENT_RING_COLOR : 'var(--vb-border)'}`,
             }
           : {
               backgroundColor: 'var(--vb-surface)',
@@ -319,8 +309,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
       }
       className={
         isPastel
-          ? "relative rounded-[28px] overflow-visible"
-          : "rounded-xl border shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+          ? "relative rounded-3xl overflow-visible"
+          : "rounded-3xl border shadow-sm hover:shadow-md transition-shadow overflow-hidden"
       }
     >
       {isPastel && isRecent && (
@@ -340,10 +330,9 @@ const ClassCard: React.FC<ClassCardProps> = ({
           elements only.  Rest of the card stays neutral so the
           assignment-list dropdown keeps its alt-surface contrast and
           long classroom names stay readable on bright tints.
-          In pastel mode the outer card already carries the tint, so
-          this inner band stays transparent. */}
+          The pastel variant uses the same band with its saved accent. */}
       <div
-        style={!isPastel && backgroundColor ? { backgroundColor } : undefined}
+        style={{ background: backgroundColor ?? (isPastel ? pastelBg ?? undefined : undefined), borderRadius: "1.5rem 1.5rem 0 0" }}
       >
       {/* School branding strip — only rendered when set, so legacy
           classes (no school configured yet) keep their existing
@@ -600,16 +589,16 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   style={isPastel
                     ? {
                         touchAction: 'manipulation',
-                        color: tintText?.primary ?? 'var(--vb-text-secondary)',
-                        backgroundColor: 'rgba(255,255,255,0.65)',
+                        color: '#202641',
+                        backgroundColor: 'rgba(255,255,255,0.85)',
                         backdropFilter: 'blur(6px)',
                         WebkitBackdropFilter: 'blur(6px)',
                       }
                     : { touchAction: 'manipulation', color: tintText?.secondary ?? 'var(--vb-text-secondary)' }
                   }
                   className={isPastel
-                    ? "group inline-flex items-center gap-2 rounded-full px-3 py-1 text-[13px] font-semibold font-mono tracking-wider transition-transform active:scale-95"
-                    : "group inline-flex items-center gap-1.5 text-xs font-semibold font-mono tracking-wider transition-colors hover:text-[var(--vb-accent)]"
+                    ? "group inline-flex min-h-11 items-center gap-2 rounded-xl px-3 py-1 text-[13px] font-semibold font-mono tracking-wider transition-transform active:scale-95"
+                    : "group inline-flex min-h-11 items-center gap-1.5 text-xs font-semibold font-mono tracking-wider transition-colors hover:text-[var(--vb-accent)]"
                   }
                   title={t.copyClassCodeTitle}
                 >
@@ -674,16 +663,16 @@ const ClassCard: React.FC<ClassCardProps> = ({
               style={isPastel
                 ? {
                     touchAction: 'manipulation',
-                    color: tintText?.primary ?? 'var(--vb-text-muted)',
-                    backgroundColor: 'rgba(255,255,255,0.5)',
+                    color: '#202641',
+                    backgroundColor: 'rgba(255,255,255,0.85)',
                     backdropFilter: 'blur(6px)',
                     WebkitBackdropFilter: 'blur(6px)',
                   }
                 : { touchAction: 'manipulation', color: tintText?.muted ?? 'var(--vb-text-muted)' }
               }
               className={isPastel
-                ? "w-9 h-9 rounded-xl flex items-center justify-center transition-transform active:scale-95"
-                : "w-9 h-9 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--vb-surface-alt)] hover:text-[var(--vb-text-primary)]"
+                ? "w-11 h-11 rounded-xl flex items-center justify-center transition-transform active:scale-95"
+                : "w-11 h-11 rounded-xl flex items-center justify-center transition-colors hover:bg-[var(--vb-surface-alt)] hover:text-[var(--vb-text-primary)]"
               }
               aria-label={t.classOptionsAria}
             >
@@ -757,7 +746,11 @@ const ClassCard: React.FC<ClassCardProps> = ({
           </div>
         </div>
 
-        {/* Primary action + assignments expand */}
+      </div>
+      </div>{/* /header-band */}
+
+      <div className="px-5 pb-5 pt-4">
+        {/* Actions stay on a neutral surface below the class color. */}
         <div className="flex items-stretch gap-2">
           <button
             onClick={onAssign}
@@ -776,8 +769,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 }
             }
             className={isPastel
-              ? "flex-1 inline-flex items-center justify-center gap-2 py-3 px-4 rounded-full font-bold text-sm transition-transform active:scale-[0.98]"
-              : "flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg font-semibold text-sm shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
+              ? "flex-1 inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl min-h-11 font-bold text-sm transition-transform active:scale-[0.98]"
+              : "flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl min-h-11 font-semibold text-sm shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
             }
           >
             <Zap size={15} />
@@ -791,7 +784,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 ? {
                     touchAction: 'manipulation',
                     backgroundColor: 'rgba(255,255,255,0.7)',
-                    color: tintText?.primary ?? 'var(--vb-text-secondary)',
+                    color: '#202641',
                     backdropFilter: 'blur(6px)',
                     WebkitBackdropFilter: 'blur(6px)',
                   }
@@ -802,8 +795,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   }
               }
               className={isPastel
-                ? "inline-flex items-center gap-1.5 py-3 px-4 rounded-full font-bold text-sm transition-transform active:scale-95"
-                : "inline-flex items-center gap-1.5 py-2.5 px-3 rounded-lg font-semibold text-sm transition-colors hover:opacity-90"
+                ? "inline-flex items-center gap-1.5 py-3 px-4 rounded-xl min-h-11 font-bold text-sm transition-transform active:scale-95"
+                : "inline-flex items-center gap-1.5 py-2.5 px-3 rounded-xl min-h-11 font-semibold text-sm transition-colors hover:opacity-90"
               }
               title={t.rosterButtonTitle}
               aria-label={t.rosterButtonAria}
@@ -819,7 +812,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
               ? {
                   touchAction: 'manipulation',
                   backgroundColor: 'rgba(255,255,255,0.7)',
-                  color: tintText?.primary ?? 'var(--vb-text-secondary)',
+                  color: '#202641',
                   backdropFilter: 'blur(6px)',
                   WebkitBackdropFilter: 'blur(6px)',
                 }
@@ -830,8 +823,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 }
             }
             className={isPastel
-              ? "inline-flex items-center gap-1.5 py-3 px-4 rounded-full font-bold text-sm transition-transform active:scale-95"
-              : "inline-flex items-center gap-1.5 py-2.5 px-3 rounded-lg font-semibold text-sm transition-colors hover:opacity-90"
+              ? "inline-flex items-center gap-1.5 py-3 px-4 rounded-xl min-h-11 font-bold text-sm transition-transform active:scale-95"
+              : "inline-flex items-center gap-1.5 py-2.5 px-3 rounded-xl min-h-11 font-semibold text-sm transition-colors hover:opacity-90"
             }
             title={t.shareClassLink}
             aria-label={t.shareClassLink}
@@ -847,7 +840,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 ? {
                     touchAction: 'manipulation',
                     backgroundColor: 'rgba(255,255,255,0.7)',
-                    color: tintText?.primary ?? 'var(--vb-text-secondary)',
+                    color: '#202641',
                     backdropFilter: 'blur(6px)',
                     WebkitBackdropFilter: 'blur(6px)',
                   }
@@ -858,8 +851,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   }
               }
               className={isPastel
-                ? "inline-flex items-center gap-1.5 py-3 px-3 rounded-full font-bold text-sm transition-transform active:scale-95"
-                : "inline-flex items-center gap-1.5 py-2.5 px-3 rounded-lg font-semibold text-sm transition-colors hover:opacity-90"
+                ? "inline-flex items-center gap-1.5 py-3 px-3 rounded-xl min-h-11 font-bold text-sm transition-transform active:scale-95"
+                : "inline-flex items-center gap-1.5 py-2.5 px-3 rounded-xl min-h-11 font-semibold text-sm transition-colors hover:opacity-90"
               }
               aria-expanded={showAssignments}
             >
@@ -870,7 +863,6 @@ const ClassCard: React.FC<ClassCardProps> = ({
           )}
         </div>
       </div>
-      </div>{/* /header-band */}
 
       {/* Assignments dropdown. The wrapper ref lets us auto-scroll the
           list into view when the teacher expands it — on a dashboard

@@ -1,3 +1,4 @@
+import WorkspaceHeader from "../components/WorkspaceHeader";
 /**
  * StudentHubSubView — full-screen pages reached from the orbital ring on
  * the student dashboard.  Two destinations:
@@ -14,7 +15,6 @@ import { useLanguage } from "../hooks/useLanguage";
 import type { Language } from "../hooks/useLanguage";
 import { useDailyMissions } from "../hooks/useDailyMissions";
 import { useDueReviews } from "../hooks/useDueReviews";
-import { ARCADE_BUTTON_TOUCH } from "../components/arcade/theme";
 import StudentLangButton from "../components/StudentLangButton";
 import DailyPracticeRow from "../components/dashboard/DailyPracticeRow";
 import DailyMissionsCard from "../components/dashboard/DailyMissionsCard";
@@ -54,13 +54,6 @@ interface StudentHubSubViewProps {
   onPlay?: () => void;
 }
 
-/** Per-section header look + localized title. Mirrors OrbitalHub's catalogue
- *  so a circle and the page it opens read as the same destination. */
-const HEAD: Record<HubSection, { emoji: string }> = {
-  practice: { emoji: "⚡" },
-  daily: { emoji: "🎁" },
-};
-
 const TITLES: Record<Language, Record<HubSection, string>> = {
   en: { practice: "Practice", daily: "Daily" },
   he: { practice: "תרגול", daily: "יומי" },
@@ -74,10 +67,6 @@ const DAILY_LABELS: Record<Language, { missions: string; badges: string; boosts:
   ar: { missions: "مهام اليوم", badges: "أوسمتك", boosts: "المعززات النشطة" },
 };
 
-const BACK_LABEL: Record<Language, string> = {
-  en: "Back", he: "חזרה", ar: "رجوع",
-};
-
 export default function StudentHubSubView({
   section, user, onBack,
   studentProgress, studentDataLoading,
@@ -86,7 +75,7 @@ export default function StudentHubSubView({
   boosters, badges, onClaimBadgeXp,
   retention, onGrantXp, onPlay,
 }: StudentHubSubViewProps) {
-  const { language, dir, isRTL } = useLanguage();
+  const { language, dir } = useLanguage();
   const isStudent = user?.role === "student" && !user?.isGuest;
 
   // Both hooks always run; only the section that needs the data sets
@@ -121,24 +110,10 @@ export default function StudentHubSubView({
   const title = (TITLES[language] || TITLES.en)[section];
 
   return (
-    <div dir={dir} className="min-h-screen bg-[var(--ios-grouped-bg)] relative overflow-hidden">
-      <div className="relative z-10 mx-auto max-w-3xl space-y-4 p-4 pb-[calc(env(safe-area-inset-bottom)+4rem)] sm:space-y-6 sm:p-6">
+    <div dir={dir} className="vb-page relative">
+      <div className="relative z-10 mx-auto max-w-4xl space-y-5 p-4 pb-[calc(env(safe-area-inset-bottom)+4rem)] sm:space-y-6 sm:p-6">
         {/* Page header — back to the orbital hub + section title. */}
-        <header className={`flex items-center gap-3 ${isRTL ? "flex-row-reverse" : ""}`}>
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label={BACK_LABEL[language] || BACK_LABEL.en}
-            className={`${ARCADE_BUTTON_TOUCH} flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--ios-fill-tertiary)] text-xl text-[color:var(--ios-label)] transition hover:bg-[var(--ios-fill-secondary)]`}
-          >
-            <span aria-hidden>{isRTL ? "→" : "←"}</span>
-          </button>
-          <h1 className="flex flex-1 items-center gap-2 text-2xl font-black text-[color:var(--ios-label)]">
-            <span aria-hidden>{HEAD[section].emoji}</span>
-            {title}
-          </h1>
-          <StudentLangButton className="shrink-0" />
-        </header>
+        <WorkspaceHeader title={title} onBack={onBack} trailing={<StudentLangButton />} />
 
         {section === "practice" && (
           <DailyPracticeRow

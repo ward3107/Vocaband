@@ -3,6 +3,7 @@ import { supabase } from "../../core/supabase";
 import { useLanguage } from "../../hooks/useLanguage";
 import { studentDashboardT } from "../../locales/student/student-dashboard";
 import StudentLangButton from "../StudentLangButton";
+import BrandWordmark from "../BrandWordmark";
 
 /**
  * Top bar for the student dashboard.  Carries the always-available
@@ -29,7 +30,10 @@ export default function StudentTopBar({ onRequestLogout }: StudentTopBarProps = 
   const t = studentDashboardT[language];
 
   return (
-    <div className="flex justify-end items-center gap-2">
+    <header className="vb-header sticky top-0 z-40">
+    <div className="vb-content flex min-h-18 items-center justify-between gap-3 py-3">
+      <BrandWordmark />
+      <div className="flex items-center gap-2">
       {/* Always-reachable language switcher — the dashboard no longer
           locks the UI language after login. */}
       <StudentLangButton />
@@ -40,12 +44,15 @@ export default function StudentTopBar({ onRequestLogout }: StudentTopBarProps = 
         }}
         type="button"
         style={{ touchAction: 'manipulation' }}
-        className="inline-flex items-center gap-1.5 rounded-full bg-[var(--ios-fill-tertiary)] px-3 py-1.5 text-xs font-semibold text-[color:var(--ios-label-secondary)] transition-colors hover:bg-[var(--ios-fill-secondary)] hover:text-[color:var(--ios-label)] sm:text-sm"
+        className="vb-icon-button sm:w-auto sm:gap-2 sm:px-4 sm:text-sm sm:font-semibold"
+        aria-label={t.signOut}
         title={t.signOut}
       >
         <LogOut size={14} />
         <span className="hidden sm:inline">{t.logout}</span>
       </button>
+      </div>
     </div>
+    </header>
   );
 }

@@ -221,7 +221,7 @@ export const AVATAR_CATEGORY_UNLOCKS: Record<string, { xpRequired: number; label
 // without it, equipping a dark theme only darkened the page background and
 // left cards + buttons stuck in light colours.
 export const THEMES = [
-  { id: 'default', name: 'Classic', preview: '⬜', colors: { bg: 'bg-stone-100', card: 'bg-white', text: 'text-stone-900', accent: 'blue' }, cost: 0, dark: false },
+  { id: 'default', name: 'Classic', preview: '⬜', colors: { bg: 'bg-[var(--vb-surface-alt)]', card: 'bg-white', text: 'text-stone-900', accent: 'blue' }, cost: 0, dark: false },
   { id: 'dark', name: 'Dark Mode', preview: '🌑', colors: { bg: 'bg-gray-900', card: 'bg-gray-800', text: 'text-white', accent: 'blue' }, cost: 100, dark: true },
   { id: 'ocean', name: 'Ocean', preview: '🌊', colors: { bg: 'bg-gradient-to-b from-cyan-50 to-sky-100', card: 'bg-white', text: 'text-stone-900', accent: 'cyan' }, cost: 150, dark: false },
   { id: 'sunset', name: 'Sunset', preview: '🌅', colors: { bg: 'bg-gradient-to-b from-orange-100 via-rose-100 to-pink-100', card: 'bg-white', text: 'text-stone-900', accent: 'orange' }, cost: 150, dark: false },

@@ -292,7 +292,7 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
   // --vb-surface-alt (not --vb-bg, which is never defined) so the page
   // chrome actually follows the active teacher theme.
   return (
-    <div className="min-h-screen bg-[var(--vb-surface-alt)]">
+    <div className="vb-page">
       <PageHero
         icon={<ClipboardList size={32} className="text-white" />}
         title="Worksheet Results"
@@ -301,7 +301,7 @@ export default function WorksheetAttemptsView({ user, onBack }: Props) {
         backLabel={selectedSlug ? "All worksheets" : "Back"}
       />
 
-      <div className="max-w-4xl mx-auto px-4 pt-6 sm:pt-10 pb-10">
+      <div className="vb-content pt-6 sm:pt-8 pb-10">
         {loading ? (
           <div className="flex items-center justify-center gap-3 text-[var(--vb-text-muted)] py-20">
             <Loader2 size={20} className="animate-spin" />

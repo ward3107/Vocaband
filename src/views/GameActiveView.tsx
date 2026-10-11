@@ -518,7 +518,7 @@ export default function GameActiveView() {
     // pill at bottom-3/4 — so the last control (e.g. Spelling's Check)
     // never sits under the reaction bar on phones.
     <div
-      className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-stone-100'} flex flex-col items-center p-2 sm:p-4 pb-[calc(env(safe-area-inset-bottom)+5rem)] font-sans max-w-7xl mx-auto`}>
+      className={`min-h-screen ${user?.role === 'student' ? activeThemeConfig.colors.bg : 'bg-[var(--vb-surface-alt)]'} flex flex-col items-center p-2 sm:p-4 pb-[calc(env(safe-area-inset-bottom)+5rem)] font-body max-w-7xl mx-auto`}>
       {arcadeHubEnabled && (
         <CombosOverlay chain={combo.chain} multiplier={combo.multiplier} />
       )}
@@ -630,7 +630,7 @@ export default function GameActiveView() {
                 animate={isMainMultiChoice ? cardShake(feedback, reduceMotion) : { opacity: 1, x: 0 }}
                 transition={isMainMultiChoice ? cardShakeTransition(feedback, reduceMotion) : undefined}
                 exit={{ opacity: 0, x: -50 }}
-                className={`bg-white rounded-xl sm:rounded-2xl shadow-2xl p-2 sm:p-6 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-emerald-50 border-3 border-emerald-500" : feedback === "wrong" ? "bg-rose-50 border-3 border-rose-400" : feedback === "show-answer" ? "bg-amber-50 border-3 border-amber-500" : "border-3 border-transparent"}`}
+                className={`bg-white rounded-3xl shadow-sm p-4 sm:p-7 text-center relative overflow-hidden transition-colors duration-300 ${feedback === "correct" ? "bg-emerald-50 border-3 border-emerald-500" : feedback === "wrong" ? "bg-rose-50 border-3 border-rose-400" : feedback === "show-answer" ? "bg-amber-50 border-3 border-amber-500" : "border-3 border-[var(--vb-border)]"}`}
               >
                 {/* The card-edge progress bar that used to sit here was
                     consolidated into the shared GameProgress chrome

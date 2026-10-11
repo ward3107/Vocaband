@@ -89,23 +89,23 @@ export const TEACHER_DASHBOARD_THEMES: TeacherDashboardTheme[] = [
   // ─── Light theme ────────────────────────────────────────────────
   // Soft warm-white with an indigo accent.  Reads as classic
   // education-app light mode — clean, professional, low eye strain.
-  // Surface is not pure white (#fbfaf7) to avoid the glare problem
+  // Surface is not pure white (#fdfdff) to avoid the glare problem
   // documented in the comment block above.
   {
     id: 'default',
     name: 'Daylight',
     emoji: '☀️',
-    bg: 'bg-gradient-to-b from-stone-100 to-stone-50',
+    bg: 'bg-[var(--vb-surface-alt)]',
     swatch: 'bg-gradient-to-br from-amber-50 via-stone-100 to-indigo-100',
     dark: false,
     palette: {
-      surface: '#fbfaf7',
-      surfaceAlt: '#f5f4ee',
-      border: '#e7e5e0',
-      textPrimary: '#1c1917',
-      textSecondary: '#57534e',
-      textMuted: '#78716c',
-      accent: '#6366f1',
+      surface: '#fdfdff',
+      surfaceAlt: '#f2f4fb',
+      border: '#e0e5f0',
+      textPrimary: '#202641',
+      textSecondary: '#556078',
+      textMuted: '#626d84',
+      accent: '#4f46e5',
       accentSoft: '#eef2ff',
       accentText: '#ffffff',
       // Saturated mid-tones that take white text; soft variants are

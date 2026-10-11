@@ -75,7 +75,7 @@ export default function StudentLangButton({
         aria-haspopup="menu"
         aria-expanded={open}
         style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-black transition-colors ${triggerCls}`}
+        className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-colors ${triggerCls}`}
       >
         <Globe size={15} strokeWidth={2.25} aria-hidden />
         {/* Active language code so the pill reads as a switcher (and shows

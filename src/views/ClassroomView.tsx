@@ -254,7 +254,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
     return (
       <div
         dir={dir}
-        className="min-h-screen pb-28 sm:pb-12"
+        className="vb-page pb-28 sm:pb-12"
         style={{ backgroundColor: 'var(--vb-surface-alt)' }}
       >
         {pageHero(activeTabMeta?.blurb ?? "")}
@@ -263,7 +263,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
-          className="max-w-6xl mx-auto rounded-2xl border shadow-2xl p-6 sm:p-10"
+          className="max-w-6xl mx-auto rounded-3xl border shadow-sm p-4 sm:p-7"
         >
 
           {/* Tab pills — sit inside the card just under the header.
@@ -564,7 +564,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
-        className="max-w-6xl mx-auto rounded-2xl border shadow-2xl p-6 sm:p-10"
+        className="max-w-6xl mx-auto rounded-3xl border shadow-sm p-4 sm:p-7"
       >
 
         {/* Tab pills inside the card. */}

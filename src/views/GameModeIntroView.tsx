@@ -77,12 +77,12 @@ export default function GameModeIntroView({ onLetsGo }: GameModeIntroViewProps) 
   const isRtl = introLang !== "en";
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${theme.gradient} flex items-center justify-center p-4 sm:p-6`}>
+    <div className="vb-page flex items-center justify-center p-4 sm:p-6">
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
-        className="bg-white rounded-2xl sm:rounded-2xl shadow-xl ring-1 ring-stone-100 p-6 sm:p-10 max-w-md sm:max-w-xl w-full"
+        className="vb-card p-6 sm:p-10 max-w-md sm:max-w-xl w-full"
       >
         {/* Hero icon with gradient circle */}
         <motion.div
@@ -139,7 +139,7 @@ export default function GameModeIntroView({ onLetsGo }: GameModeIntroViewProps) 
         <button
           onClick={() => { setShowModeIntro(false); setShowModeSelection(true); }}
           style={{ touchAction: 'manipulation' }}
-          className="w-full mt-3 py-2 text-stone-400 hover:text-stone-600 font-bold text-sm transition-colors"
+          className="vb-button vb-button-secondary w-full mt-3"
         >
           {t.backToModes}
         </button>

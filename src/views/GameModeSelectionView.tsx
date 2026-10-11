@@ -1,7 +1,7 @@
 import type React from "react";
 import { useState } from "react";
 import {
-  BookOpen, Volume2, PenTool, Zap, Layers, Shuffle, Repeat, X, Brain, Edit3, Check,
+  BookOpen, Volume2, PenTool, Zap, Layers, Shuffle, Repeat, X, Brain, Edit3, Check, Star, Lock, ArrowRight,
 } from "lucide-react";
 import type { GameMode, PetMilestone } from "../constants/game";
 import { MAX_ASSIGNMENT_ROUNDS } from "../constants/game";
@@ -13,9 +13,10 @@ import type { Language } from "../hooks/useLanguage";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { gameModesT, type GameModeId } from "../locales/student/game-modes";
 import { ARCADE_BUTTON_TOUCH } from "../components/arcade/theme";
-import IslandMap, { type MapIsland } from "../components/arcade/IslandMap";
+import type { MapIsland } from "../components/arcade/IslandMap";
 import IslandDetailSheet, { type IslandSheetMode } from "../components/arcade/IslandDetailSheet";
 import type { IslandState } from "../components/arcade/ModeIsland";
+import EvolutionRing from "../components/arcade/EvolutionRing";
 import PetCompanion from "../components/dashboard/PetCompanion";
 import StudentLangButton from "../components/StudentLangButton";
 
@@ -34,6 +35,12 @@ const QUEST_STRINGS: Record<Language, { modesDone: string; round: string }> = {
   he: { modesDone: "מצבים", round: "סבב" },
   ar: { modesDone: "أوضاع", round: "جولة" },
 };
+
+const MODE_STATE = {
+  en: { done: "completed", next: "recommended next", todo: "to play", locked: "locked" },
+  he: { done: "הושלם", next: "הבא המומלץ", todo: "לשחק", locked: "נעול" },
+  ar: { done: "مكتمل", next: "التالي المقترح", todo: "للعب", locked: "مقفل" },
+} satisfies Record<Language, Record<IslandState, string>>;
 
 interface GameModeSelectionViewProps {
   activeAssignment: AssignmentData | null;
@@ -61,7 +68,7 @@ export default function GameModeSelectionView({
   petDisplayName, petXp, petCurrentStage, petNextStage, petClaimableMilestone, onClaimPetMilestone,
   onEditName,
 }: GameModeSelectionViewProps) {
-  const { language, dir, isRTL } = useLanguage();
+  const { language, dir } = useLanguage();
   const reduced = useReducedMotion();
   const t = gameModesT[language] ?? gameModesT.en;
   const qs = QUEST_STRINGS[language] ?? QUEST_STRINGS.en;
@@ -163,16 +170,16 @@ export default function GameModeSelectionView({
   return (
     // iOS flatten: light grouped canvas, styled directly. Colourful
     // mode tiles keep their per-mode gradients.
-    <div dir={dir} className="min-h-screen relative overflow-hidden bg-[var(--ios-grouped-bg)]">
-      <header className={`ios-material ios-hairline sticky top-0 z-30 flex items-center gap-3 px-4 py-3 ${isRTL ? "flex-row-reverse" : ""}`}>
+    <div dir={dir} className="vb-page relative">
+      <header className="vb-header sticky top-0 z-30 flex items-center gap-3 px-4 py-3">
         <button
           type="button" onClick={handleExitGame} aria-label={t.closeAria} title={t.closeAria}
-          className={`${ARCADE_BUTTON_TOUCH} flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--ios-fill-tertiary)] text-[color:var(--ios-label)]`}
+          className="vb-icon-button"
         >
           <X size={20} />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-black text-[color:var(--ios-label)]">{t.chooseYourMode}</h1>
+          <h1 className="text-base font-extrabold leading-tight text-[var(--vb-text-primary)] sm:text-lg">{t.chooseYourMode}</h1>
           {activeAssignment?.title && (
             <p className="truncate text-xs font-semibold text-[color:var(--ios-label-secondary)]">{activeAssignment.title}</p>
           )}
@@ -198,21 +205,31 @@ export default function GameModeSelectionView({
         <StudentLangButton className="shrink-0" />
       </header>
 
-      <div className="relative z-10 mx-auto max-w-xl sm:max-w-2xl lg:max-w-3xl px-2 pb-20">
-        <IslandMap
-          assignmentId={activeAssignment?.id ?? "none"}
-          islands={islands}
-          recommendedIndex={recommendedIndex}
-          pet={{
-            currentStage: petCurrentStage,
-            nextStage: petNextStage,
-            xp: petXp,
-            hasClaimable: !!petClaimableMilestone,
-            displayName: petDisplayName,
-          }}
-          onTapIsland={(i) => setSheetIndex(i)}
-          onTapPet={() => setPetOpen(true)}
-        />
+      <div className="vb-content py-6 sm:py-8 pb-20">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <p className="vb-description">{language === "he" ? "כל דרך ללמוד, במקום אחד. בחרו משחק והתחילו." : language === "ar" ? "كل طرق التعلّم في مكان واحد. اختر لعبة وابدأ." : "Every way to learn, in one place. Choose a game and make it yours."}</p>
+          <div className="flex items-center gap-4"><EvolutionRing currentStage={petCurrentStage} nextStage={petNextStage} xp={petXp} evolutionPending={false} hasClaimable={!!petClaimableMilestone} onTap={() => setPetOpen(true)} /><button type="button" onClick={() => setPetOpen(true)} className="vb-button vb-button-secondary">{language === "he" ? "הדמות וההתקדמות שלי" : language === "ar" ? "رفيقي وتقدّمي" : "My companion & progress"}</button></div>
+        </div>
+        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3 gap-4">
+          {islands.map((island, i) => (
+            <button key={island.id} type="button" disabled={island.state === "locked"} onClick={() => setSheetIndex(i)} aria-label={`${island.name} — ${MODE_STATE[language][island.state]}`}
+              className={`vb-card vb-interactive-card flex flex-col p-5 ${island.state === "next" ? "ring-2 ring-[var(--vb-accent)]" : ""}`}>
+              <span className="mb-4 flex w-full items-center justify-between gap-3">
+                <span className={`grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br ${island.gradient} text-white`} aria-hidden>{island.emoji}</span>
+                {island.state === "locked" ? <Lock size={20} aria-hidden /> : island.state === "done" ? <Check size={20} className="text-[var(--vb-success)]" aria-hidden /> : island.state === "next" ?
+                  <span className="rounded-full bg-[var(--vb-accent-soft)] px-3 py-1.5 text-xs font-bold text-[var(--vb-accent)]">{language === "he" ? "הצעד הבא" : language === "ar" ? "الخطوة التالية" : "Up next"}</span> : null}
+              </span>
+              <span className="text-lg font-extrabold">{island.name}</span>
+              <span className="mt-2 flex-1 text-sm leading-relaxed text-[var(--vb-text-secondary)]">{stops[i].desc}</span>
+              <span className="mt-5 flex w-full items-center justify-between gap-3">
+                <span className="flex gap-1" aria-label={`${island.mastery}/3`}>
+                  {[1,2,3].map(star => <Star key={star} size={17} aria-hidden className={star <= island.mastery ? "fill-amber-400 text-amber-600" : "text-[var(--vb-border-strong)]"} />)}
+                </span>
+                <ArrowRight size={19} className="text-[var(--vb-accent)] rtl:rotate-180" aria-hidden />
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <IslandDetailSheet

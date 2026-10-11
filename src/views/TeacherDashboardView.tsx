@@ -9,6 +9,7 @@ import { useAdaptiveTheme } from "../hooks/useAdaptiveTheme";
 // Lazy — pulls in motion/react and only opens for brand-new teachers.
 const TeacherOnboardingWizard = lazyWithRetry(() => import("../components/onboarding/TeacherOnboardingWizard"));
 import DashboardOnboarding from "../components/DashboardOnboarding";
+import WorkspaceWelcome from "../components/dashboard/WorkspaceWelcome";
 import TopAppBar from "../components/TopAppBar";
 import PageHero from "../components/PageHero";
 import { ErrorTrackingPanel } from "../components/ErrorTrackingPanel";
@@ -296,7 +297,7 @@ export default function TeacherDashboardView({
 
   return (
     <>
-      <div dir={dir} className={`min-h-screen ${dashboardTheme.bg} pt-20 sm:pt-24 pb-36 sm:pb-20`}>
+      <div dir={dir} className={`vb-page ${dashboardTheme.bg} pt-20 sm:pt-24 pb-36 sm:pb-20`}>
         {consentModal}
         {exitConfirmModal}
 
@@ -372,7 +373,7 @@ export default function TeacherDashboardView({
           />
         )}
 
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10">
+        <div className="vb-content pt-5 sm:pt-7">
 
           {/* Plan / trial state lives in the Management grid card now
               (see TeacherQuickActions `plan` prop).  The previous
@@ -384,6 +385,7 @@ export default function TeacherDashboardView({
               Supabase, live-game WebSocket).  Helps a teacher on flaky
               school Wi-Fi tell us which leg is actually broken instead
               of guessing. */}
+          {subject === "english" && <WorkspaceWelcome name={firstName} language={effectiveLanguage} classCount={classes.length} assignmentCount={teacherAssignments.length} onStart={onQuickPlayClick} onCreate={onNewClass} />}
           <div className="mb-4 flex justify-end">
             <NetworkDiagnosticButton />
           </div>

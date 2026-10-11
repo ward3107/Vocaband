@@ -43,11 +43,11 @@ export default function PulseCard({
       style={{
         touchAction: "manipulation",
         WebkitTapHighlightColor: "transparent",
-        background: style.background,
-        boxShadow: style.glow,
+
       }}
-      className="relative flex min-h-[130px] flex-col overflow-hidden rounded-[24px] border-0 px-[20px] sm:px-[22px] py-5 text-start text-white"
+      className="vb-card relative flex min-h-[150px] flex-col overflow-hidden px-5 py-5 text-start sm:px-6"
     >
+      <span aria-hidden className="absolute inset-x-0 top-0 h-1" style={{ background: style.background }} />
       <div className="flex items-center gap-3">
         <div
           className="grid place-items-center"
@@ -55,7 +55,8 @@ export default function PulseCard({
             width: 36,
             height: 36,
             borderRadius: 12,
-            background: "rgba(255,255,255,0.22)",
+            background: style.background,
+            color: bucket === "idle" ? "#fff" : "#202641",
             border: "1px solid rgba(255,255,255,0.28)",
             backdropFilter: "blur(6px)",
             WebkitBackdropFilter: "blur(6px)",
@@ -73,7 +74,7 @@ export default function PulseCard({
         <div className="text-[15px] font-bold leading-tight tracking-[-0.01em]">
           {label}
         </div>
-        <div className="mt-0.5 text-[12px] opacity-85">{desc}</div>
+        <div className="mt-1 text-sm leading-relaxed text-[var(--vb-text-secondary)]">{desc}</div>
       </div>
 
       {!hideRoster && students.length > 0 && (

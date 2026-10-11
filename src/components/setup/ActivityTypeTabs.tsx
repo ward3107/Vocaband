@@ -97,7 +97,7 @@ const ActivityTypeTabs: React.FC<ActivityTypeTabsProps> = ({
 
   return (
     <div className="mb-5 sm:mb-6" dir={isRTL ? 'rtl' : undefined}>
-      <div className="mb-2 flex items-center gap-2 px-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#8B5CF6]">
+      <div className="mb-2 flex items-center gap-2 px-1 text-xs font-bold tracking-wide text-[var(--vb-accent)]">
         <span
           className="inline-block h-1.5 w-1.5 rounded-full"
           style={{ background: 'linear-gradient(135deg,#8B5CF6,#D946EF)' }}
@@ -141,7 +141,7 @@ const ActivityTypeTabs: React.FC<ActivityTypeTabsProps> = ({
                       color: 'var(--vb-text-primary)',
                     }
                 }
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-semibold border whitespace-nowrap transition-transform active:scale-[0.97]"
+                className="inline-flex min-h-11 items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border whitespace-nowrap transition-transform active:scale-[0.97]"
               >
                 <span className={isActive ? 'text-white' : tab.iconColor}>{tab.icon}</span>
                 {tab.label}

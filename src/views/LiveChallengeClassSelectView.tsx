@@ -30,7 +30,7 @@ export default function LiveChallengeClassSelectView({
   const { language, dir } = useLanguage();
   const t = teacherViewsT[language];
   return (
-    <div dir={dir} className="min-h-screen bg-background pb-8">
+    <div dir={dir} className="vb-page pb-8">
       <TopAppBar
         title={t.liveModeTitle}
         subtitle={t.liveModeSubtitle}
