@@ -1,3 +1,4 @@
+import VasiaSignature from './VasiaSignature';
 import React from "react";
 import {
   User,
@@ -395,6 +396,7 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
           </div>
         </div>
       </div>
+      <VasiaSignature />
     </footer>
   );
 };
