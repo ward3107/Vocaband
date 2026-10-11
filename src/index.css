@@ -1,10 +1,8 @@
 @import "tailwindcss";
 
-/* iOS design layer — primitives (materials, hairlines, SF type ramp, safe
-   areas) plus re-points of the --vb-* tokens below onto iOS system values.
-   Parsed first because @import must lead the file; it compensates with
-   selector specificity. Remove this one line to revert the restyle. */
+/* Shared primitives use the same tokens on teacher and student routes. */
 @import "./styles/ios.css";
+@import "./styles/design-system.css";
 
 /* `tall:` — viewport-HEIGHT variant for above-the-fold layouts (landing hero).
    Width breakpoints alone can't tell a 1280×720 laptop from a 1280×1024
@@ -133,16 +131,16 @@
 
   /* ── Surfaces (off-white, not pure #fff — see comment in
         teacherDashboardThemes.ts; pure white glares on phones).      */
-  --vb-surface: #fafaf9;
-  --vb-surface-alt: #f5f5f4;
+  --vb-surface: #fdfdff;
+  --vb-surface-alt: #f2f4fb;
   --vb-surface-elevated: #ffffff; /* modals, popovers — slightly higher */
-  --vb-bg-primary: #fafaf9;
-  --vb-bg-secondary: #f5f5f4;
+  --vb-bg-primary: #fdfdff;
+  --vb-bg-secondary: #f2f4fb;
 
   /* ── Text tiers                                                    */
-  --vb-text-primary: #1c1917;
-  --vb-text-secondary: #57534e;
-  --vb-text-muted: #a8a29e;
+  --vb-text-primary: #202641;
+  --vb-text-secondary: #556078;
+  --vb-text-muted: #66718a;
   --vb-text-on-accent: #ffffff;
 
   /* ── Accent (theme-driven)                                         */
@@ -158,10 +156,10 @@
   --vb-accent-contrast: #ffffff;
 
   /* ── Structural                                                    */
-  --vb-border: #e7e5e4;
-  --vb-border-strong: #d6d3d1;
-  --vb-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
-  --vb-shadow-elevated: 0 4px 12px 0 rgba(0,0,0,0.08);
+  --vb-border: #e0e5f0;
+  --vb-border-strong: #c8d0e1;
+  --vb-shadow: 0 2px 8px -4px rgba(32,38,65,0.12);
+  --vb-shadow-elevated: 0 14px 32px -20px rgba(32,38,65,0.32);
 
   /* ── Status — same across themes (semantic meaning > theme tint)  */
   --vb-success: #16a34a;
@@ -185,6 +183,8 @@
   --vb-font-scale: 1;
   --vb-font-weight-body: 400;
   --vb-font-weight-strong: 600;
+  --vb-radius-card: 1.5rem;
+  --vb-radius-control: 0.875rem;
 
   /* ── Spacing scale                                                 */
   --vb-space-scale: 1;
@@ -214,8 +214,8 @@
    opposite direction, so it keeps the size bump only. */
 :root.vb-presentation:not([data-theme-dark="true"]) {
   --vb-text-secondary: #292524;
-  --vb-text-muted: #57534e;
-  --vb-border: #d6d3d1;
+  --vb-text-muted: #556078;
+  --vb-border: #c8d0e1;
   --vb-border-strong: #78716c;
 }
 
@@ -432,28 +432,28 @@ html {
         the files that consume --vb-* directly via inline style. */
 
   /* Surfaces (= --vb-surface / --vb-surface-alt / --vb-surface-elevated) */
-  --color-surface: #fafaf9;
+  --color-surface: #fdfdff;
   --color-surface-bright: #ffffff;
-  --color-surface-dim: #d6d3d1;
-  --color-surface-variant: #e7e5e4;
+  --color-surface-dim: #c8d0e1;
+  --color-surface-variant: #e0e5f0;
   --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #fafaf9;
-  --color-surface-container: #f5f5f4;
-  --color-surface-container-high: #f5f5f4;
-  --color-surface-container-highest: #e7e5e4;
-  --color-background: #fafaf9;
+  --color-surface-container-low: #fdfdff;
+  --color-surface-container: #f2f4fb;
+  --color-surface-container-high: #f2f4fb;
+  --color-surface-container-highest: #e0e5f0;
+  --color-background: #fdfdff;
   --color-surface-tint: #6366f1;
 
   /* Text on surface (= --vb-text-primary / --vb-text-secondary) */
-  --color-on-surface: #1c1917;
-  --color-on-surface-variant: #57534e;
-  --color-on-background: #1c1917;
-  --color-inverse-surface: #1c1917;
-  --color-inverse-on-surface: #f5f5f4;
+  --color-on-surface: #202641;
+  --color-on-surface-variant: #556078;
+  --color-on-background: #202641;
+  --color-inverse-surface: #202641;
+  --color-inverse-on-surface: #f2f4fb;
 
   /* Outline (= --vb-border / --vb-border-strong) */
-  --color-outline: #a8a29e;
-  --color-outline-variant: #e7e5e4;
+  --color-outline: #66718a;
+  --color-outline-variant: #e0e5f0;
 
   /* Primary (= --vb-accent, indigo) */
   --color-primary: #6366f1;
@@ -498,7 +498,7 @@ html {
 
   /* --- Font Families --- */
   --font-headline: "Plus Jakarta Sans", system-ui, sans-serif;
-  --font-body: "Be Vietnam Pro", system-ui, sans-serif;
+  --font-body: "Plus Jakarta Sans", "Heebo", Arial, system-ui, sans-serif;
   --font-label: "Plus Jakarta Sans", system-ui, sans-serif;
 
   /* --- Hebrew/Arabic Font Families (Fredoka + Heebo hybrid) --- */
@@ -507,8 +507,8 @@ html {
 
   /* --- Border Radius --- */
   --radius-DEFAULT: 1rem;
-  --radius-lg: 2rem;
-  --radius-xl: 3rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.125rem;
   --radius-full: 9999px;
 }
 

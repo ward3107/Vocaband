@@ -43,7 +43,7 @@ export function IOSCard({
         <h2 className={`ios-section-header px-4 pb-2 ${textAlign}`}>{header}</h2>
       )}
       <div
-        className={padded ? "p-4" : ""}
+        className={`vb-card ${padded ? "p-5 sm:p-6" : ""}`}
         style={{
           background: "var(--ios-grouped-card)",
           borderRadius: "var(--ios-radius-card)",

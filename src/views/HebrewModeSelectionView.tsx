@@ -61,41 +61,41 @@ export default function HebrewModeSelectionView({
   const noModesLine2 = language === 'he' ? 'בקשו ממנו להוסיף לפחות מצב אחד למשימה הזו.' : language === 'ar' ? 'اطلب منه إضافة وضع واحد على الأقل لهذا الواجب.' : 'Ask them to add at least one mode to this assignment.';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 p-4 sm:p-8">
+    <div className="vb-page p-4 sm:p-8">
       <div className="max-w-3xl mx-auto">
         <header className="flex items-center justify-between mb-8">
           <button
             type="button"
             onClick={onExit}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-black tracking-widest uppercase hover:bg-white/15"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-[var(--vb-surface)] border border-[var(--vb-border)] text-[var(--vb-text-primary)] text-xs font-black tracking-widest uppercase hover:bg-white/15"
           >
             <ArrowLeft size={14} />
             {backLabel}
           </button>
-          <div className="text-blue-200 font-black text-[11px] tracking-[0.25em] uppercase">
+          <div className="text-[var(--vb-accent)] font-black text-[11px] tracking-[0.25em] uppercase">
             VocaHebrew
           </div>
         </header>
 
         <div className="text-center mb-8 sm:mb-10">
-          <p className="text-blue-300 font-black text-[10px] tracking-[0.25em] uppercase mb-3">
+          <p className="text-[var(--vb-accent)] font-black text-[10px] tracking-[0.25em] uppercase mb-3">
             {pickGameLabel}
           </p>
-          <h1 className="text-2xl sm:text-4xl font-black text-white drop-shadow-lg">
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-[var(--vb-text-primary)]">
             {activeAssignment?.title ?? defaultTitle}
           </h1>
           {lemmaCount > 0 && (
-            <p className="text-white/60 font-bold text-sm mt-2">
+            <p className="text-[var(--vb-text-secondary)] font-bold text-sm mt-2">
               {wordCountStr(lemmaCount)}
             </p>
           )}
         </div>
 
         {visibleTiles.length === 0 ? (
-          <div className="text-center text-white/70 font-bold py-12">
+          <div className="text-center text-[var(--vb-text-secondary)] font-bold py-12">
             <p className="mb-3">{noModesLine1}</p>
-            <p className="text-white/40 text-sm">{noModesLine2}</p>
+            <p className="text-[var(--vb-text-muted)] text-sm">{noModesLine2}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -107,13 +107,13 @@ export default function HebrewModeSelectionView({
                 whileHover={{ y: -4, scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`relative overflow-hidden rounded-2xl p-6 sm:p-7 text-start bg-gradient-to-br ${tile.gradient} text-white shadow-lg ${tile.shadow}`}
+                className="vb-card vb-interactive-card relative overflow-hidden p-6 sm:p-7"
               >
                 <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
                 <div className="relative z-10">
-                  <div className="text-5xl mb-3 drop-shadow-lg">{tile.emoji}</div>
+                  <div className={`mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br ${tile.gradient} text-4xl text-white`}>{tile.emoji}</div>
                   <h3 className="text-xl font-black mb-1">{tile.title}</h3>
-                  <p className="text-white/85 font-bold text-xs sm:text-sm mb-4">
+                  <p className="text-[var(--vb-text-secondary)] text-sm leading-relaxed mb-4">
                     {tile.blurb}
                   </p>
                   <span className="inline-flex items-center gap-1 text-[11px] font-black tracking-widest uppercase">

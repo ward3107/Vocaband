@@ -32,12 +32,11 @@ export default function PageHero({
   trailing,
   gradient = 'from-indigo-500 via-violet-500 to-fuchsia-500',
 }: PageHeroProps) {
-  const { dir, isRTL } = useLanguage();
+  const { dir, isRTL, language } = useLanguage();
 
   return (
-    <div className="relative overflow-hidden" dir={dir}>
-      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-90`} />
-      <div className="relative px-4 sm:px-8 py-6 sm:py-10">
+    <div className="vb-content py-5 sm:py-7" dir={dir}>
+      <div className="vb-hero">
         {onBack && (
           <button
             onClick={onBack}
@@ -46,11 +45,11 @@ export default function PageHero({
             style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
           >
             <ArrowLeft size={18} className={isRTL ? 'rotate-180' : undefined} />
-            {backLabel ?? (isRTL ? 'חזרה' : 'Back')}
+            {backLabel ?? (language === 'he' ? 'חזרה' : language === 'ar' ? 'رجوع' : 'Back')}
           </button>
         )}
-        <div className={`flex items-start gap-4 ${isRTL ? 'flex-row-reverse' : ''}`}>
-          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center shrink-0">
+        <div className="relative z-10 flex items-start gap-4">
+          <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center shrink-0`}>
             {icon}
           </div>
           <div className="flex-1 min-w-0">

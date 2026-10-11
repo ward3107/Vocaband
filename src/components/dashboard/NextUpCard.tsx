@@ -144,7 +144,7 @@ export default function NextUpCard({
         boxShadow:
           "0 20px 40px -22px rgba(99,102,241,0.55), 0 1px 0 rgba(255,255,255,0.4) inset",
       }}
-      className="relative w-full overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-5 sm:p-6 text-start text-white"
+      className="relative w-full overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-800 via-indigo-600 to-violet-700 p-5 sm:p-6 text-start text-white"
     >
       <div
         aria-hidden

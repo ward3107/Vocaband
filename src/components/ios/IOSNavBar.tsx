@@ -31,7 +31,7 @@ export function IOSNavBar({
   trailing?: ReactNode;
   scrollElement?: HTMLElement | null;
 }) {
-  const { isRTL, textAlign } = useLanguage();
+  const { isRTL, textAlign, language } = useLanguage();
   const [collapsed, setCollapsed] = useState(false);
   const largeTitleRef = useRef<HTMLHeadingElement>(null);
 
@@ -62,7 +62,7 @@ export function IOSNavBar({
   return (
     <>
       <header
-        className={`ios-material sticky top-0 z-40 ios-safe-top ${
+        className={`vb-header sticky top-0 z-40 ios-safe-top ${
           collapsed ? "ios-hairline" : ""
         }`}
       >
@@ -75,7 +75,8 @@ export function IOSNavBar({
               <button
                 type="button"
                 onClick={onBack}
-                className="ios-pressable -ms-1 flex items-center gap-0.5 py-1 pe-2 ps-1"
+                aria-label={backLabel ?? (language === "he" ? "חזרה" : language === "ar" ? "رجوع" : "Back")}
+                className="vb-button gap-1 text-[var(--vb-accent)]"
                 style={{
                   color: "var(--vb-accent)",
                   touchAction: "manipulation",
@@ -114,7 +115,7 @@ export function IOSNavBar({
 
       <h1
         ref={largeTitleRef}
-        className={`ios-large-title px-4 pb-2 pt-1 ${textAlign}`}
+        className={`vb-page-title px-4 pb-3 pt-5 ${textAlign}`}
         style={{ color: "var(--ios-label)" }}
       >
         {title}

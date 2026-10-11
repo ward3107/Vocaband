@@ -432,7 +432,7 @@ export default function QuickPlayStudentView({
 
   return (
     <div
-      className="min-h-screen flex flex-col"
+      className="vb-page flex flex-col"
       style={{ background: "var(--ios-grouped-bg)" }}
     >
       <header className="ios-material ios-safe-top ios-hairline w-full sticky top-0 flex items-center justify-between px-3 sm:px-6 py-2.5 z-50">

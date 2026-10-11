@@ -4,5 +4,5 @@ import { AppViewRouter } from "./views/AppViewRouter";
 
 export default function App({ initialView }: { initialView?: View } = {}) {
   const routerDeps = useAppController(initialView);
-  return <AppViewRouter {...routerDeps} />;
+  return <div className="contents" data-vocaband-view={routerDeps.view}><AppViewRouter {...routerDeps} /></div>;
 }

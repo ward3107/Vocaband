@@ -291,7 +291,7 @@ export default function VocabularyLibraryView({
   }
 
   return (
-    <div className="min-h-screen" dir={dir} style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
+    <div className="vb-page" dir={dir} style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       <TopAppBar
         title={t.pageTitle}
         subtitle={t.pageSubtitle}
@@ -303,7 +303,7 @@ export default function VocabularyLibraryView({
         showScaleControl
       />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-24 pb-24">
+      <main className="vb-content pt-24 pb-24">
         {/* Breadcrumb — visible only when drilled into a folder. Crumbs
         are tappable so the teacher can jump to any ancestor in one tap. */}
         {isInsideCollection && (

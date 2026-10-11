@@ -1,5 +1,5 @@
+import WorkspaceHeader from "../components/WorkspaceHeader";
 import React, { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { IOSCard, IOSButton } from "../components/ios";
 import { supabase, hasTeacherAccess, type AppUser } from "../core/supabase";
 import { PRIVACY_POLICY_VERSION, DATA_CONTROLLER, DATA_COLLECTION_POINTS, THIRD_PARTY_REGISTRY, RETENTION_PERIODS } from "../config/privacy-config";
@@ -44,10 +44,8 @@ export default function PrivacySettingsView({
   user, consentModal, exitConfirmModal, setView, setUser, setConfirmDialog, showToast,
   setNeedsConsent, onReopenPrivacyReminder,
 }: PrivacySettingsViewProps) {
-  const { language, dir, isRTL, textAlign } = useLanguage();
+  const { language, dir } = useLanguage();
   const t = privacySettingsT[language];
-  // Back chevron points backwards in the reading direction (flips in RTL).
-  const BackChevron = isRTL ? ChevronRight : ChevronLeft;
   const [editingName, setEditingName] = useState(false);
   const [newDisplayName, setNewDisplayName] = useState("");
 
@@ -138,27 +136,13 @@ export default function PrivacySettingsView({
   return (
     <div
       dir={dir}
-      className="min-h-screen p-4 sm:p-6"
+      className="vb-page p-4 sm:p-6"
       style={{ background: "var(--ios-grouped-bg)" }}
     >
       {consentModal}
       {exitConfirmModal}
       <div className="max-w-2xl mx-auto">
-        <div className="mb-1 flex items-center gap-3">
-          <IOSButton
-            variant="plain"
-            size="sm"
-            onClick={() => setView(hasTeacherAccess(user) ? "teacher-dashboard" : "student-dashboard")}
-          >
-            <BackChevron size={18} strokeWidth={2.5} aria-hidden /> {t.back}
-          </IOSButton>
-        </div>
-        <h1
-          className={`ios-large-title mb-6 mt-3 ${textAlign}`}
-          style={{ color: "var(--ios-label)" }}
-        >
-          {t.pageTitle}
-        </h1>
+        <WorkspaceHeader title={t.pageTitle} onBack={() => setView(hasTeacherAccess(user) ? "teacher-dashboard" : "student-dashboard")} />
 
         {/* Push-notification on/off (self-hides unless enabled for the
             class + supported by the browser) */}

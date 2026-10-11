@@ -136,14 +136,14 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
   return (
     <div
       dir={dir}
-      className="w-full max-w-4xl mx-auto rounded-2xl shadow-2xl overflow-hidden grid md:grid-cols-2 bg-white border border-stone-200 relative"
+      className="w-full max-w-4xl mx-auto rounded-3xl shadow-xl overflow-hidden grid md:grid-cols-2 bg-white border border-stone-200 relative"
     >
       {onCancel && (
         <button
           type="button"
           onClick={onCancel}
           aria-label={language === 'he' ? 'חזרה' : language === 'ar' ? 'رجوع' : 'Back'}
-          className={`absolute top-3 ${dir === "rtl" ? "right-3" : "left-3"} z-30 w-9 h-9 rounded-full bg-white/80 hover:bg-white text-stone-600 hover:text-stone-900 shadow-sm flex items-center justify-center transition-colors`}
+          className={`absolute top-3 ${dir === "rtl" ? "right-3" : "left-3"} z-30 w-11 h-11 rounded-xl bg-white/80 hover:bg-white text-stone-600 hover:text-stone-900 shadow-sm flex items-center justify-center transition-colors`}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
         >
           <ArrowLeft size={18} className={dir === "rtl" ? "rotate-180" : ""} />
@@ -151,7 +151,7 @@ export default function TeacherLoginCard({ onCancel }: TeacherLoginCardProps) {
       )}
 
       {/* ── LEFT PANE — Brand pitch (md+ only) ────────────────────── */}
-      <div className="hidden md:flex relative bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 p-10 flex-col justify-between text-white overflow-hidden">
+      <div className="hidden md:flex relative bg-gradient-to-br from-indigo-800 via-indigo-600 to-violet-700 p-10 flex-col justify-between text-white overflow-hidden">
         {/* Animated gradient mesh blobs (subtle texture) */}
         <motion.div
           animate={{ scale: [1, 1.15, 1], rotate: [0, 60, 0] }}

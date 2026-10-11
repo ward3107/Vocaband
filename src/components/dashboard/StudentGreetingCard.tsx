@@ -12,7 +12,7 @@ import { studentDashboardT } from "../../locales/student/student-dashboard";
 // font + weight + tracking) is read from src/constants/titleStyles.ts —
 // the SAME record the shop uses, so equipping a title makes the
 // greeting card look identical to the shop preview.
-const DEFAULT_HERO_GRADIENT = 'from-indigo-600 via-violet-600 to-fuchsia-600';
+const DEFAULT_HERO_GRADIENT = 'from-indigo-800 via-indigo-600 to-violet-700';
 
 interface StudentGreetingCardProps {
   user: AppUser;
@@ -147,7 +147,7 @@ export default function StudentGreetingCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: "easeOut" }}
-      className={`relative overflow-hidden rounded-2xl sm:rounded-2xl mb-6 bg-gradient-to-br ${titleGradient} p-5 sm:p-7 shadow-xl shadow-violet-500/20`}
+      className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${titleGradient} p-5 sm:p-7 shadow-sm`}
     >
       {/* Soft glow blobs in the background — pure decoration.
           Uses logical -end / -start so the blobs flip to the

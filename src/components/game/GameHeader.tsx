@@ -48,7 +48,7 @@ export default function GameHeader({
     setSpeed(next);
   };
   return (
-    <div className="w-full max-w-4xl md:max-w-5xl flex flex-wrap justify-between items-center gap-1 mb-1.5 sm:mb-6">
+    <div className="vb-card w-full max-w-4xl md:max-w-5xl flex flex-wrap justify-between items-center gap-3 mb-4 p-3 sm:p-4">
       <div className="flex items-center gap-1.5 sm:gap-4 flex-wrap">
         <div className="bg-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg sm:rounded-xl shadow-sm flex items-center gap-1.5">
           <Trophy className="text-amber-500" size={16} />
@@ -90,7 +90,7 @@ export default function GameHeader({
           type="button"
           onClick={toggleSpeed}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className="flex items-center gap-1.5 bg-white px-3 sm:px-4 py-2 rounded-full shadow-sm hover:bg-stone-50 transition-colors"
+          className="vb-button vb-button-secondary"
           aria-label={t.pronunciationSpeed}
           title={`${t.pronunciationSpeed}: ${speed === "slow" ? t.speedSlow : t.speedNormal}`}
         >
@@ -101,7 +101,7 @@ export default function GameHeader({
           type="button"
           onClick={onExit}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className="signature-gradient text-white px-4 py-2 rounded-lg font-bold text-sm hover:scale-105 active:scale-95 transition-all shadow-lg"
+          className="vb-button vb-button-secondary"
         >{t.exit}</button>
       </div>
     </div>

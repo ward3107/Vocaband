@@ -4,7 +4,7 @@ import { LanguageProvider } from "../hooks/useLanguage";
 import type { AssignmentData, ProgressData } from "../core/supabase";
 import { PET_MILESTONES } from "../constants/game";
 
-vi.mock("../components/arcade/TravelingPet", () => ({
+vi.mock("../components/arcade/EvolutionRing", () => ({
   default: () => <div data-testid="pet" />,
 }));
 vi.mock("../components/dashboard/PetCompanion", () => ({
@@ -40,8 +40,8 @@ function renderView(progress: ProgressData[] = []) {
   );
 }
 
-describe("GameModeSelectionView island world", () => {
-  it("renders one island button per allowed mode plus the pet", () => {
+describe("GameModeSelectionView activity cards", () => {
+  it("renders one activity button per allowed mode plus the pet", () => {
     renderView();
     expect(screen.getByRole("button", { name: /Flashcards/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Classic/ })).toBeTruthy();
@@ -49,7 +49,7 @@ describe("GameModeSelectionView island world", () => {
     expect(screen.getByTestId("pet")).toBeTruthy();
   });
 
-  it("marks a completed mode's island as completed", () => {
+  it("marks a completed mode's card as completed", () => {
     const progress = [{ assignmentId: "asg1", mode: "classic", score: 95 }] as unknown as ProgressData[];
     renderView(progress);
     // Locale name is "Classic Mode" (not bare "Classic"), so the completed

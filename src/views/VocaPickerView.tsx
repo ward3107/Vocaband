@@ -58,7 +58,7 @@ export default function VocaPickerView({ user, onPickVoca, onOpenDeveloper }: Vo
   return (
     <div
       dir={dir}
-      className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4 sm:p-8"
+      className="vb-page flex items-center justify-center p-4 sm:p-8"
     >
       <div className="max-w-4xl w-full">
         <motion.div
@@ -67,13 +67,13 @@ export default function VocaPickerView({ user, onPickVoca, onOpenDeveloper }: Vo
           transition={{ duration: 0.4 }}
           className="text-center mb-10 sm:mb-14"
         >
-          <p className="text-amber-300 font-black text-xs tracking-[0.25em] uppercase mb-3">
+          <p className="text-[var(--vb-accent)] font-black text-xs tracking-[0.25em] uppercase mb-3">
             Welcome back, {user.displayName || "admin"}
           </p>
-          <h1 className="text-3xl sm:text-5xl font-black font-headline text-white mb-3 drop-shadow-lg">
+          <h1 className="text-3xl sm:text-5xl font-black font-headline text-[var(--vb-text-primary)] mb-3">
             Pick your Voca
           </h1>
-          <p className="text-white/70 font-bold text-sm sm:text-base max-w-lg mx-auto">
+          <p className="text-[var(--vb-text-secondary)] font-bold text-sm sm:text-base max-w-lg mx-auto">
             Admin entry to all {cards.length} Vocas. Switch between them any
             time from the header pill.
           </p>
@@ -98,14 +98,14 @@ export default function VocaPickerView({ user, onPickVoca, onOpenDeveloper }: Vo
                 touchAction: "manipulation",
                 WebkitTapHighlightColor: "transparent",
               }}
-              className={`relative overflow-hidden rounded-2xl p-8 sm:p-10 text-left bg-gradient-to-br ${card.gradient} text-white shadow-lg shadow-indigo-500/20`}
+              className="vb-card vb-interactive-card relative overflow-hidden p-8 sm:p-10"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
               <div className="relative z-10">
-                <div className="text-6xl sm:text-7xl mb-5 drop-shadow-lg">{card.emoji}</div>
+                <div className={`mb-5 grid h-20 w-20 place-items-center rounded-2xl bg-gradient-to-br ${card.gradient} text-5xl`}>{card.emoji}</div>
                 <h2 className="text-2xl sm:text-3xl font-black mb-2">{card.name}</h2>
-                <p className="text-white/85 font-bold text-sm sm:text-base">{card.tag}</p>
-                <div className="mt-6 inline-flex items-center gap-2 text-xs font-black tracking-widest uppercase text-white/90">
+                <p className="text-[var(--vb-text-secondary)] font-medium text-sm sm:text-base">{card.tag}</p>
+                <div className="mt-6 inline-flex items-center gap-2 text-xs font-black tracking-widest uppercase text-[var(--vb-accent)]">
                   Enter
                   <span aria-hidden>→</span>
                 </div>
@@ -126,7 +126,7 @@ export default function VocaPickerView({ user, onPickVoca, onOpenDeveloper }: Vo
               onClick={onOpenDeveloper}
               whileTap={{ scale: 0.97 }}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white font-bold text-sm transition-all"
+              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-[var(--vb-surface)] hover:bg-[var(--vb-accent-soft)] text-[var(--vb-text-secondary)] hover:text-[var(--vb-accent)] font-bold text-sm transition-all"
             >
               🛠️ Developer Dashboard
             </motion.button>
@@ -137,7 +137,7 @@ export default function VocaPickerView({ user, onPickVoca, onOpenDeveloper }: Vo
             onClick={() => performUserLogout()}
             whileTap={{ scale: 0.97 }}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white font-bold text-sm transition-all"
+            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-[var(--vb-surface)] hover:bg-[var(--vb-accent-soft)] text-[var(--vb-text-secondary)] hover:text-[var(--vb-accent)] font-bold text-sm transition-all"
           >
             🚪 Log out
           </motion.button>

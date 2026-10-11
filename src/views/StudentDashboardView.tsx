@@ -14,7 +14,7 @@ import { useCompetitionsForClass } from "../hooks/useCompetitions";
 import { useDueReviews } from "../hooks/useDueReviews";
 import ArcadeHubLayout from "../components/arcade/ArcadeHubLayout";
 import EvolutionRing from "../components/arcade/EvolutionRing";
-import OrbitalHub, { type OrbitItem } from "../components/arcade/OrbitalHub";
+import StudentLaunchpad, { type StudentDestination } from "../components/dashboard/StudentLaunchpad";
 import { getXpTitle, PET_ACCESSORIES, ALL_GAME_MODES, type PetRewardKind, type PetMilestone } from "../constants/game";
 import { claimPetMilestoneReward } from "../handlers/retentionGrants";
 import { usePetAccessory } from "../hooks/usePetAccessory";
@@ -236,7 +236,7 @@ export default function StudentDashboardView({
     return done < modes.length;
   }).length;
 
-  const orbitItems: OrbitItem[] = [
+  const orbitItems: StudentDestination[] = [
     { key: "play", onClick: () => { void launchNextAssignment?.(); }, disabled: !launchNextAssignment },
     { key: "join", onClick: () => setJoinOpen(true) },
     { key: "tasks", onClick: () => setTasksOpen(true), badge: remainingTasks || undefined },
@@ -295,9 +295,9 @@ export default function StudentDashboardView({
           />
         }
         character={
-          <OrbitalHub
+          <StudentLaunchpad
             items={orbitItems}
-            center={
+            companion={
               <EvolutionRing
                 currentStage={retention.currentPetStage}
                 nextStage={retention.nextPetStage}

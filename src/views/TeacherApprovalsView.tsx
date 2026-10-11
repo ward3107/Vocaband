@@ -67,7 +67,7 @@ export default function TeacherApprovalsView({
   void user;
 
   return (
-    <div dir={dir} className="min-h-screen" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
+    <div dir={dir} className="vb-page" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       {consentModal}
       {exitConfirmModal}
 

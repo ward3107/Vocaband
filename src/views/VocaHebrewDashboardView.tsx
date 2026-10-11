@@ -69,17 +69,17 @@ export default function VocaHebrewDashboardView({
   return (
     <div
       dir={dir}
-      className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 p-4 sm:p-8"
+      className="vb-page p-4 sm:p-8"
     >
       <div className="max-w-4xl mx-auto">
         <header className="flex items-center justify-between mb-8 sm:mb-12">
           <div className="flex items-center gap-3">
             <div className="text-3xl sm:text-4xl drop-shadow-lg">📖</div>
             <div>
-              <p className="text-blue-300 font-black text-[10px] tracking-[0.25em] uppercase">
+              <p className="text-[var(--vb-accent)] font-black text-[10px] tracking-[0.25em] uppercase">
                 VocaHebrew
               </p>
-              <h1 className="text-xl sm:text-2xl font-black text-white">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-[var(--vb-text-primary)]">
                 {user.displayName || "Teacher"}
               </h1>
             </div>
@@ -94,7 +94,7 @@ export default function VocaHebrewDashboardView({
                 touchAction: "manipulation",
                 WebkitTapHighlightColor: "transparent",
               }}
-              className="px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-black tracking-widest uppercase hover:bg-white/15"
+              className="px-4 py-2 rounded-full bg-[var(--vb-surface)] border border-[var(--vb-border)] text-[var(--vb-text-primary)] text-xs font-black tracking-widest uppercase hover:bg-white/15"
             >
               Switch Voca
             </motion.button>
@@ -105,7 +105,7 @@ export default function VocaHebrewDashboardView({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="mb-6 rounded-2xl bg-gradient-to-br from-blue-500 via-sky-500 to-indigo-600 p-6 sm:p-8 text-white shadow-lg shadow-indigo-500/20"
+          className="vb-hero mb-6"
         >
           <p className="text-blue-100 font-black text-[10px] tracking-[0.25em] uppercase mb-2">
             ברוך הבא
@@ -113,14 +113,14 @@ export default function VocaHebrewDashboardView({
           <h2 className="text-2xl sm:text-3xl font-black font-headline mb-2" lang="he" dir="rtl">
             VocaHebrew · ללמד וללמוד עברית
           </h2>
-          <p className="text-white/85 font-bold text-sm sm:text-base max-w-xl">
+          <p className="text-indigo-100 font-medium text-sm sm:text-base max-w-xl">
             30 starter lemmas across animals, family, school, weather,
             feelings, and verbs — grades 3–9.  More games and content
             roll in over the next sessions.
           </p>
         </motion.div>
 
-        <p className="text-blue-300 font-black text-[10px] tracking-[0.25em] uppercase mb-3">
+        <p className="text-[var(--vb-accent)] font-black text-[10px] tracking-[0.25em] uppercase mb-3">
           Available games
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -132,13 +132,13 @@ export default function VocaHebrewDashboardView({
               whileHover={{ y: -4, scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className={`relative overflow-hidden rounded-2xl p-6 sm:p-7 text-start bg-gradient-to-br ${tile.gradient} text-white shadow-lg ${tile.shadow}`}
+              className="vb-card vb-interactive-card relative overflow-hidden p-6 sm:p-7"
             >
               <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent pointer-events-none" />
               <div className="relative z-10">
-                <div className="text-5xl mb-3 drop-shadow-lg">{tile.emoji}</div>
+                <div className={`mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br ${tile.gradient} text-4xl text-white`}>{tile.emoji}</div>
                 <h3 className="text-xl font-black mb-1">{tile.title}</h3>
-                <p className="text-white/85 font-bold text-xs sm:text-sm mb-4">
+                <p className="text-[var(--vb-text-secondary)] text-sm leading-relaxed mb-4">
                   {tile.blurb}
                 </p>
                 <span className="inline-flex items-center gap-1 text-[11px] font-black tracking-widest uppercase">

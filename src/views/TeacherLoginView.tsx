@@ -7,6 +7,7 @@
  * TeacherLoginCard + useTeacherOtpAuth — this wrapper is just
  * layout chrome (centering + bg).
  */
+import BrandWordmark from "../components/BrandWordmark";
 import TeacherLoginCard from "../components/TeacherLoginCard";
 import { useLanguage } from "../hooks/useLanguage";
 
@@ -18,7 +19,8 @@ interface TeacherLoginViewProps {
 export default function TeacherLoginView({ onBack }: TeacherLoginViewProps) {
   const { dir } = useLanguage();
   return (
-    <div dir={dir} className="min-h-screen signature-gradient">
+    <div dir={dir} className="vb-page">
+      <div className="vb-content pt-6"><BrandWordmark /></div>
       <div className="flex items-center justify-center p-4 sm:p-6 pt-10 sm:pt-14">
         <TeacherLoginCard onCancel={onBack} />
       </div>

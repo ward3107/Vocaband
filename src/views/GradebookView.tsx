@@ -520,7 +520,7 @@ export default function GradebookView({
   const selectedClassName = classes.find(c => c.code === selectedClassCode)?.name ?? selectedClassCode;
 
   return (
-    <div dir={dir} className={embedded ? "pb-8" : "min-h-screen bg-background pb-8"}>
+    <div dir={dir} className={embedded ? "pb-8" : "vb-page pb-8"}>
       {!embedded && (
         <TopAppBar
           title={t.title}

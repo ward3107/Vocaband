@@ -57,9 +57,9 @@ interface ModalShellProps {
 }
 
 const HEADER_GRADIENT: Record<ModalVariant, string> = {
-  brand:   "linear-gradient(110deg, #6366F1 0%, #8B5CF6 50%, #D946EF 100%)",
-  success: "linear-gradient(110deg, #2E8E60 0%, #3FA689 50%, #5EC9A6 100%)",
-  danger:  "linear-gradient(110deg, #C2554F 0%, #D87874 50%, #F08D87 100%)",
+  brand:   "var(--vb-gradient-brand)",
+  success: "linear-gradient(110deg, #065f46, #047857)",
+  danger:  "linear-gradient(110deg, #9f1239, #be123c)",
   calm:    "linear-gradient(110deg, #4A3B7A 0%, #6E5BAE 100%)",
 };
 
@@ -208,11 +208,11 @@ export default function ModalShell({
                 {icon}
               </div>
               <div className="relative z-10 min-w-0 flex-1">
-                <div className="text-[16px] sm:text-[18px] font-extrabold leading-[1.2] tracking-[-0.01em] truncate">
+                <div className="text-lg sm:text-xl font-extrabold leading-snug tracking-tight">
                   {title}
                 </div>
                 {subtitle && (
-                  <div className="mt-0.5 text-[12px] opacity-85 truncate">{subtitle}</div>
+                  <div className="mt-1 text-sm leading-relaxed opacity-90">{subtitle}</div>
                 )}
               </div>
               <button
@@ -227,7 +227,7 @@ export default function ModalShell({
                   backdropFilter: "blur(8px)",
                   WebkitBackdropFilter: "blur(8px)",
                 }}
-                className="relative z-10 grid h-8 w-8 place-items-center rounded-[10px] text-white"
+                className="relative z-10 grid h-11 w-11 shrink-0 place-items-center rounded-[10px] text-white"
               >
                 <X size={16} />
               </button>
@@ -239,7 +239,7 @@ export default function ModalShell({
                 bodyClassName ??
                 "px-5 sm:px-6 py-5 sm:py-[22px] text-[14px] leading-[1.55] overflow-y-auto"
               }
-              style={{ color: "#4A3B7A", maxHeight: bodyMaxHeight }}
+              style={{ color: "var(--vb-text-secondary)", maxHeight: bodyMaxHeight }}
             >
               {children}
             </div>
@@ -248,7 +248,7 @@ export default function ModalShell({
             {footer && (
               <div
                 className="flex items-center gap-2 px-5 sm:px-6 py-[14px] border-t"
-                style={{ borderColor: "rgba(99,102,241,0.10)", background: "#FAF7FF" }}
+                style={{ borderColor: "var(--vb-border)", background: "var(--vb-surface-alt)" }}
               >
                 {footer}
               </div>
@@ -280,7 +280,7 @@ export function ModalQuietButton(props: ButtonHTMLAttributes<HTMLButtonElement>)
         WebkitTapHighlightColor: "transparent" as never,
         ...style,
       }}
-      className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[13px] font-bold text-[#8B5CF6] hover:text-[#6D28D9] transition-colors ${className}`}
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-[13px] font-bold text-[var(--vb-accent)] hover:opacity-80 transition-colors ${className}`}
     />
   );
 }
@@ -294,11 +294,11 @@ export function ModalPrimaryButton(props: ButtonHTMLAttributes<HTMLButtonElement
       style={{
         touchAction: "manipulation",
         WebkitTapHighlightColor: "transparent" as never,
-        background: "linear-gradient(110deg, #6366F1 0%, #8B5CF6 50%, #D946EF 100%)",
+        background: "var(--vb-gradient-brand)",
         boxShadow: "0 12px 26px -10px rgba(139,92,246,0.55)",
         ...style,
       }}
-      className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[14px] font-bold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-[14px] font-bold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
     />
   );
 }
@@ -312,11 +312,11 @@ export function ModalDangerButton(props: ButtonHTMLAttributes<HTMLButtonElement>
       style={{
         touchAction: "manipulation",
         WebkitTapHighlightColor: "transparent" as never,
-        background: "linear-gradient(110deg, #D24A41, #E07A75)",
+        background: "var(--vb-danger)",
         boxShadow: "0 12px 26px -10px rgba(216,120,116,0.55)",
         ...style,
       }}
-      className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[14px] font-bold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-[14px] font-bold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
     />
   );
 }

@@ -183,25 +183,25 @@ export default function StudentAccountLoginView({
           mockup's positioning so the student app feels like the same
           surface students see on the projector. */}
       <div
-        className="h-screen overflow-hidden relative"
+        className="vb-page relative"
         style={{
           background:
-            "radial-gradient(120% 100% at 50% 0%, #2A1B5C 0%, #1A0E3D 50%, #0E0828 100%)",
+            "var(--vb-surface-alt)",
         }}
       >
         <div
           className="pointer-events-none absolute -top-24 -end-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
-          style={{ background: "radial-gradient(circle, rgba(139,92,246,0.35) 0%, transparent 70%)" }}
+          style={{ background: "radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)" }}
           aria-hidden
         />
         <div
           className="pointer-events-none absolute -bottom-24 -start-24 w-[28rem] h-[28rem] rounded-full blur-3xl"
-          style={{ background: "radial-gradient(circle, rgba(217,70,239,0.22) 0%, transparent 70%)" }}
+          style={{ background: "radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%)" }}
           aria-hidden
         />
 
-        <div className="relative z-10 h-screen flex flex-col overflow-hidden">
-            <header className="flex items-center justify-between px-4 sm:px-6 py-4">
+        <div className="relative z-10 min-h-[100dvh] flex flex-col">
+            <header className="vb-header flex items-center justify-between px-4 sm:px-6 py-4">
               {/* In the native student app this login screen is the root —
                   there is no marketing landing to return to (the shell blocks
                   it), so "Back" did nothing and only confused students. Hide
@@ -216,14 +216,14 @@ export default function StudentAccountLoginView({
                     setStudentLoginClassCode("");
                   }}
                   type="button"
-                  className="flex items-center gap-2 text-white/80 hover:text-white transition-colors font-bold text-sm px-3 py-2 rounded-full bg-white/10 backdrop-blur-sm"
+                  className="flex items-center gap-2 text-[var(--vb-text-primary)] transition-colors font-bold text-sm px-3 py-2 rounded-xl border border-[var(--vb-border)] bg-[var(--vb-surface)] min-h-11"
                 >
                   <ArrowLeft size={16} className={isRTL ? 'rotate-180' : ''} />
                   {t.back}
                 </button>
               )}
               <div className="flex items-center gap-3">
-                <span className="text-white/60 text-xs font-black uppercase tracking-[0.3em] hidden sm:inline">
+                <span className="text-[var(--vb-text-secondary)] text-xs font-black uppercase tracking-[0.3em] hidden sm:inline">
                   {t.student}
                 </span>
                 {/* Language picker — students often need to change the
@@ -240,7 +240,7 @@ export default function StudentAccountLoginView({
                     type="button"
                     aria-label={language === 'he' ? 'החלף שפה' : language === 'ar' ? 'تغيير اللغة' : 'Change language'}
                     aria-expanded={langOpen}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm text-white text-xs font-bold hover:bg-white/20 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--vb-surface)] border border-[var(--vb-border)] text-[var(--vb-text-primary)] text-sm font-bold min-h-11 transition-colors"
                     style={{ touchAction: 'manipulation' }}
                   >
                     <Globe size={14} />
@@ -295,16 +295,16 @@ export default function StudentAccountLoginView({
                     }}
                   />
                   <div>
-                    <h1 className="text-2xl sm:text-4xl font-black text-white leading-[0.95] tracking-tight">
+                    <h1 className="text-2xl sm:text-4xl font-extrabold text-[var(--vb-text-primary)] leading-tight tracking-tight">
                       {t.heroLine1}<br />{t.heroLine2}
                     </h1>
-                    <p className="mt-1 text-sm sm:text-base font-bold text-white/80">
+                    <p className="mt-1 text-sm sm:text-base font-medium text-[var(--vb-text-secondary)]">
                       {t.heroSubtitle}
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-4 sm:p-6">
+                <div className="vb-card p-5 sm:p-7">
                   {/* Class-code entry */}
                   <div className="mb-5">
                     <label

@@ -304,13 +304,9 @@ const ClassCard: React.FC<ClassCardProps> = ({
               // page on light themes).  When `isRecent`, swap the
               // tonal border for the brand-purple ring so the teacher
               // can spot their most-recent class at a glance.
-              background: backgroundColor ?? pastelBg ?? "var(--vb-surface)",
-              boxShadow: isRecent
-                ? `0 1px 0 rgba(255,255,255,0.7) inset, 0 0 0 3px ${RECENT_RING_COLOR}, 0 22px 44px -20px ${RECENT_RING_COLOR}55`
-                : "0 1px 0 rgba(255,255,255,0.7) inset, 0 18px 40px -22px rgba(60,40,120,0.25)",
-              border: isRecent
-                ? "none"
-                : `1.5px solid ${accentDef?.border ?? "rgba(0,0,0,0.08)"}`,
+              background: "var(--vb-surface)",
+              boxShadow: 'var(--vb-shadow)',
+              border: `1px solid ${isRecent ? RECENT_RING_COLOR : 'var(--vb-border)'}`,
             }
           : {
               backgroundColor: 'var(--vb-surface)',
@@ -320,7 +316,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
       className={
         isPastel
           ? "relative rounded-[28px] overflow-visible"
-          : "rounded-xl border shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+          : "rounded-3xl border shadow-sm hover:shadow-md transition-shadow overflow-hidden"
       }
     >
       {isPastel && isRecent && (
@@ -343,7 +339,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
           In pastel mode the outer card already carries the tint, so
           this inner band stays transparent. */}
       <div
-        style={!isPastel && backgroundColor ? { backgroundColor } : undefined}
+        style={{ background: backgroundColor ?? (isPastel ? pastelBg ?? undefined : undefined), borderRadius: "1.5rem 1.5rem 0 0" }}
       >
       {/* School branding strip — only rendered when set, so legacy
           classes (no school configured yet) keep their existing

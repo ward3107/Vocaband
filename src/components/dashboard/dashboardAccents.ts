@@ -34,7 +34,7 @@ export const ACCENT_ORDER: AccentName[] = [
 ];
 
 export const BRAND_GRADIENT =
-  "linear-gradient(110deg, #6366F1 0%, #8B5CF6 60%, #D946EF 100%)";
+  "var(--vb-gradient-brand)";
 
 export const HERO_AURORA =
   "radial-gradient(120% 140% at 0% 0%, #6366F1 0%, #8B5CF6 38%, #D946EF 72%, #F472B6 100%)";

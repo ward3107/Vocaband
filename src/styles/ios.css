@@ -87,7 +87,7 @@
      stops, a 50% vs 60% midpoint), so screens that were meant to match
      visibly didn't.  `.signature-gradient` in index.css now reads this,
      which makes this declaration the only place the recipe exists. */
-  --vb-gradient-brand: linear-gradient(135deg, #6366f1 0%, #7c3aed 50%, #d946ef 100%);
+  --vb-gradient-brand: linear-gradient(120deg, #3730a3 0%, #4f46e5 55%, #6d28d9 100%);
 
   /* ── Radii ────────────────────────────────────────────────────────────
      Apple uses continuous ("squircle") corners.  Browsers can't do that
@@ -133,87 +133,28 @@
   --ios-tabbar-height: 49px;
 }
 
-/* =============================================================================
-   Re-point the existing --vb-* tokens at iOS values.
-
-   This is the leverage: every surface already written against --vb-* moves
-   to the iOS palette without being touched.  Only tokens whose iOS
-   equivalent is genuinely different are overridden — status colors keep
-   their semantic meaning, and --vb-accent stays brand indigo rather than
-   becoming systemBlue, so Vocaband still looks like Vocaband.
-   `:root:root` is deliberate, not a typo.  A CSS `@import` must sit at the
-   top of the file, so this stylesheet is parsed BEFORE index.css's own
-   `:root` defaults — at equal specificity index.css would win and these
-   re-points would silently do nothing.  Doubling the selector raises
-   specificity to (0,2,0) so they land regardless of source order, while
-   still yielding to the dark-mode rules below and to the teacher palettes,
-   which are applied inline at runtime.
-   ============================================================================= */
-:root:root {
-  --vb-surface: var(--ios-grouped-card);
-  --vb-surface-alt: var(--ios-grouped-bg);
-  --vb-surface-elevated: #ffffff;
-  --vb-bg-primary: var(--ios-grouped-bg);
-  --vb-bg-secondary: var(--ios-grouped-card);
-
-  --vb-text-primary: var(--ios-label);
-  --vb-text-secondary: var(--ios-label-secondary);
-  --vb-text-muted: var(--ios-label-tertiary);
-
-  --vb-border: var(--ios-separator);
-  --vb-border-strong: var(--ios-separator-opaque);
-
-  /* iOS shadows are far softer than Material's — elevation is carried by
-     the grouped-card background, not by a drop shadow. */
-  --vb-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --vb-shadow-elevated: 0 8px 30px rgba(0, 0, 0, 0.12);
-
-  --vb-focus-ring: var(--ios-blue);
-}
-
-/* =============================================================================
-   Dark mode.
-
-   index.css already flips --vb-* under its own dark rules; this block flips
-   the --ios-* primitives so the material/hairline/label layer follows.
-
-   The selector is copied verbatim from index.css rather than written fresh,
-   because dark mode here is NOT `prefers-color-scheme` — it is driven by two
-   explicit signals:
-     • `html.a11y-dark:not([data-theme-dark])` — the global accessibility
-       dark toggle, which yields to a teacher palette
-     • `html[data-theme-dark="true"]` — a teacher's dark dashboard palette
-   Using the media query instead would have flipped the iOS primitives on any
-   phone set to dark at OS level while the --vb-* tokens stayed light, tearing
-   the two halves of the palette apart.
-
-   Specificity is (0,2,1) — above the `:root:root` re-points, so dark wins
-   regardless of source order.
-   ============================================================================= */
-:is(html.a11y-dark:not([data-theme-dark]), html[data-theme-dark="true"]) {
-  --ios-grouped-bg: #000000;
-  --ios-grouped-card: #1c1c1e;
-
-  --ios-label: #ffffff;
-  --ios-label-secondary: rgba(235, 235, 245, 0.6);
-  --ios-label-tertiary: rgba(235, 235, 245, 0.3);
-
-  --ios-separator: rgba(84, 84, 88, 0.65);
-  --ios-separator-opaque: #38383a;
-
-  --ios-fill-quaternary: rgba(118, 118, 128, 0.12);
-  --ios-fill-tertiary: rgba(118, 118, 128, 0.24);
-  --ios-fill-secondary: rgba(120, 120, 128, 0.32);
-
-  --ios-material-thick: rgba(30, 30, 32, 0.94);
-  --ios-material-regular: rgba(30, 30, 32, 0.82);
-  --ios-material-thin: rgba(30, 30, 32, 0.68);
-
-  /* systemBlue shifts brighter in dark mode so it stays legible on black. */
-  --ios-blue: #0a84ff;
-  --ios-green: #30d158;
-  --ios-red: #ff453a;
-  --ios-orange: #ff9f0a;
+/* The iOS-shaped controls are part of the Vocaband system. Alias in ONE
+   direction so teacher palettes, student themes and accessibility switches
+   cannot produce different card/text colors in adjacent components. */
+:root {
+  --ios-grouped-bg: var(--vb-surface-alt);
+  --ios-grouped-card: var(--vb-surface);
+  --ios-label: var(--vb-text-primary);
+  --ios-label-secondary: var(--vb-text-secondary);
+  --ios-label-tertiary: var(--vb-text-muted);
+  --ios-separator: var(--vb-border);
+  --ios-separator-opaque: var(--vb-border-strong);
+  --ios-fill-quaternary: color-mix(in srgb, var(--vb-text-primary) 4%, transparent);
+  --ios-fill-tertiary: color-mix(in srgb, var(--vb-text-primary) 7%, transparent);
+  --ios-fill-secondary: color-mix(in srgb, var(--vb-text-primary) 12%, transparent);
+  --ios-material-thick: color-mix(in srgb, var(--vb-surface) 96%, transparent);
+  --ios-material-regular: color-mix(in srgb, var(--vb-surface) 92%, transparent);
+  --ios-material-thin: color-mix(in srgb, var(--vb-surface) 85%, transparent);
+  --ios-radius-card: var(--vb-radius-card);
+  --ios-blue: var(--vb-accent);
+  --ios-red: var(--vb-danger);
+  --ios-green: var(--vb-success);
+  --ios-font: var(--font-body);
 }
 
 /* =============================================================================

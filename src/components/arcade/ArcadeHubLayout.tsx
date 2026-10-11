@@ -43,13 +43,13 @@ export default function ArcadeHubLayout({
     <div
       dir={dir}
       // iOS flatten: the home hub sits on the grouped-light background.
-      className="min-h-screen relative overflow-hidden bg-[var(--ios-grouped-bg)]"
+      className="vb-page relative"
     >
       {/* Bottom padding clears the fixed overlays (FloatingButtons +
           PetCompanion) and the iOS safe area so the last card stays
           fully visible above them. */}
-      <div className="relative z-10 mx-auto max-w-3xl space-y-4 p-4 pb-[calc(env(safe-area-inset-bottom)+10rem)] sm:space-y-6 sm:p-6 sm:pb-[calc(env(safe-area-inset-bottom)+10rem)]">
-        {topBar}
+      {topBar}
+      <div className="vb-content relative space-y-5 pt-6 pb-[calc(env(safe-area-inset-bottom)+7rem)] sm:space-y-7 sm:pt-8">
         {statsBar}
         {trophyRoad}
         <div className="flex flex-col items-center justify-center gap-2 py-2 sm:gap-4 sm:py-4">

@@ -1,0 +1,121 @@
+/* Shared application components. Tokens live in index.css; both roles and
+   the iOS primitives consume them, including user-selected dark palettes. */
+@layer components {
+  .vb-page {
+    @apply min-h-screen;
+    background: var(--vb-surface-alt);
+    color: var(--vb-text-primary);
+  }
+  .vb-content {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8;
+  }
+  .vb-card {
+    @apply border;
+    border-color: var(--vb-border);
+    border-radius: var(--vb-radius-card);
+    background: var(--vb-surface);
+    color: var(--vb-text-primary);
+    box-shadow: var(--vb-shadow);
+  }
+  .vb-interactive-card {
+    @apply transition duration-200 text-start disabled:opacity-50 disabled:cursor-not-allowed;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .vb-interactive-card:not(:disabled):hover {
+      transform: translateY(-3px);
+      border-color: color-mix(in srgb, var(--vb-accent) 40%, var(--vb-border));
+      box-shadow: var(--vb-shadow-elevated);
+    }
+  }
+  .vb-button {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    border-radius: var(--vb-radius-control);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .vb-button-primary {
+    background: var(--vb-accent);
+    color: var(--vb-accent-text);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--vb-accent) 18%, transparent);
+  }
+  .vb-button-primary:not(:disabled):hover { filter: brightness(0.94); }
+  .vb-button-secondary {
+    @apply border;
+    background: var(--vb-surface);
+    color: var(--vb-text-primary);
+    border-color: var(--vb-border);
+  }
+  .vb-button-secondary:not(:disabled):hover { background: var(--vb-accent-soft); }
+  .vb-icon-button {
+    @apply inline-flex h-11 w-11 shrink-0 items-center justify-center border transition-colors;
+    border-radius: var(--vb-radius-control);
+    background: var(--vb-surface);
+    color: var(--vb-text-secondary);
+    border-color: var(--vb-border);
+    touch-action: manipulation;
+  }
+  .vb-icon-button:hover { color: var(--vb-accent); background: var(--vb-accent-soft); }
+  .vb-eyebrow {
+    @apply text-xs font-bold uppercase tracking-wider;
+    color: var(--vb-accent);
+  }
+  .vb-page-title {
+    @apply text-2xl sm:text-3xl font-extrabold tracking-tight;
+    line-height: 1.25;
+    color: var(--vb-text-primary);
+  }
+  .vb-description {
+    @apply text-sm sm:text-base leading-relaxed;
+    color: var(--vb-text-secondary);
+  }
+  .vb-section-heading {
+    @apply mb-4 flex items-center gap-3 text-lg font-extrabold tracking-tight;
+    color: var(--vb-text-primary);
+  }
+  .vb-header {
+    @apply border-b;
+    border-color: var(--vb-border);
+    background: color-mix(in srgb, var(--vb-surface) 96%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .vb-hero {
+    @apply relative overflow-hidden rounded-3xl p-5 sm:p-8 text-white;
+    background: var(--vb-gradient-brand);
+    box-shadow: 0 10px 28px -18px rgba(49,46,129,.45);
+  }
+  .vb-hero::after {
+    content: "";
+    position: absolute;
+    inline-size: 16rem;
+    block-size: 16rem;
+    inset-inline-end: -5rem;
+    inset-block-start: -9rem;
+    border: 2.5rem solid rgba(255,255,255,.07);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  .vb-field {
+    @apply min-h-11 w-full border px-3.5 py-3 text-base;
+    border-radius: var(--vb-radius-control);
+    border-color: var(--vb-border-strong);
+    background: var(--vb-surface);
+    color: var(--vb-text-primary);
+  }
+  .vb-field::placeholder { color: var(--vb-text-muted); opacity: 1; }
+  .vb-table {
+    @apply w-full text-sm;
+    border-collapse: separate;
+    border-spacing: 0;
+    color: var(--vb-text-primary);
+  }
+  .vb-table th {
+    @apply px-4 py-3 text-start font-bold;
+    background: var(--vb-surface-alt);
+    border-bottom: 1px solid var(--vb-border);
+  }
+  .vb-table td { border-bottom: 1px solid var(--vb-border); }
+  .vb-table tbody tr:hover { background: var(--vb-accent-soft); }
+}

@@ -12,7 +12,7 @@
  *   1. page background      — var(--vb-surface-alt)
  *   2. the PageHero          — same gradient hero on every page
  *   3. the activity-tab slot — max-w-5xl, always aligned to the content
- *   4. the content container — max-w-5xl mx-auto px-4 sm:px-6
+ *   4. the content container — vb-content
  *
  * Each page passes only its own hero config, tab node, and body. Width,
  * padding, background and tab placement are decided here, once.
@@ -75,7 +75,7 @@ export default function CreationPageShell({
 
   return (
     <div
-      className={`min-h-screen ${topBar ? 'pt-20 sm:pt-24' : ''}`}
+      className={`vb-page ${topBar ? 'pt-20 sm:pt-24' : ''}`}
       dir={dir}
       style={{ backgroundColor: 'var(--vb-surface-alt)' }}
     >
@@ -96,12 +96,12 @@ export default function CreationPageShell({
           container, so the eyebrow + pills always sit flush with the
           card edges below them. */}
       {activityTabs && (
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-6">
+        <div className="vb-content pt-5 sm:pt-6">
           {activityTabs}
         </div>
       )}
 
-      <div className={`max-w-5xl mx-auto px-4 sm:px-6 ${contentClassName}`}>
+      <div className={`vb-content ${contentClassName}`}>
         {children}
       </div>
     </div>

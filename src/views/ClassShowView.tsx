@@ -239,7 +239,7 @@ export default function ClassShowView({ user, initialSources, initialSourceIndex
     );
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
+    <div className="vb-page flex flex-col" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       <div className="flex-1 flex">
         {word && (
           <ClassShowQuestion

@@ -227,13 +227,13 @@ export default function GameFinishedView({
         {subtitle}
       </p>
       <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-5 sm:mb-8 w-full max-w-lg">
-        <div className={`${t.card} p-5 sm:p-8 rounded-2xl shadow-md flex-1 text-center`}>
+        <div className={`${t.card} p-5 sm:p-8 rounded-3xl border border-[var(--vb-border)] shadow-sm flex-1 text-center`}>
           <p className={`text-xs sm:text-sm uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-stone-500'} mb-1`}>{tt.finalScore}</p>
-          <p className="text-4xl sm:text-6xl font-black text-blue-500">{score}</p>
+          <p className="text-4xl sm:text-6xl font-black text-[var(--vb-accent)]">{score}</p>
         </div>
-        <div className={`${t.card} p-5 sm:p-8 rounded-2xl shadow-md flex-1 text-center`}>
+        <div className={`${t.card} p-5 sm:p-8 rounded-3xl border border-[var(--vb-border)] shadow-sm flex-1 text-center`}>
           <p className={`text-xs sm:text-sm uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-stone-500'} mb-1`}>{tt.totalXp}</p>
-          <p className="text-4xl sm:text-6xl font-black text-blue-600">{xp}</p>
+          <p className="text-4xl sm:text-6xl font-black text-[var(--vb-accent)]">{xp}</p>
         </div>
         {streak > 0 && (
           <div className={`${t.card} p-6 sm:p-8 rounded-2xl shadow-md border-2 border-orange-100 flex-1 text-center`}>
@@ -371,7 +371,7 @@ export default function GameFinishedView({
                 disabled={isSaving}
                 type="button"
                 style={{ touchAction: 'manipulation' }}
-                className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 text-white px-6 py-5 rounded-xl font-black text-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
+                className="w-full inline-flex items-center justify-center gap-2 signature-gradient text-white px-6 py-5 rounded-xl font-black text-xl shadow-lg hover:shadow-xl active:scale-[0.98] transition-all disabled:opacity-50"
               >
                 <Grid3X3 size={22} />
                 {tt.backToModes}

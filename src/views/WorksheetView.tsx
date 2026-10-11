@@ -340,12 +340,12 @@ export default function WorksheetView({
   };
 
   return (
-    <div className="min-h-screen p-4 sm:p-8" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
+    <div className="vb-page p-4 sm:p-8" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         style={{ backgroundColor: 'var(--vb-surface)', borderColor: 'var(--vb-border)' }}
-        className="max-w-5xl mx-auto rounded-2xl border shadow-2xl p-6 sm:p-10"
+        className="max-w-5xl mx-auto rounded-3xl border shadow-sm p-5 sm:p-8"
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
