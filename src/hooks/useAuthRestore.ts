@@ -314,7 +314,12 @@ export function useAuthRestore(deps: UseAuthRestoreDeps): void {
                       allowedModes: restoredAllowedModes,
                     });
                     setQuickPlaySessionCode(sessionData.session_code);
-                    setView("quick-play-teacher-monitor");
+                    // A saved game restores its data, not the teacher's navigation.
+                    // Normal entry belongs on the dashboard; explicit destinations
+                    // and a monitor already open in this tab should stay in place.
+                    if (!shouldPreserveView("teacher", currentViewRef.current)) {
+                      setView("teacher-dashboard");
+                    }
                   } else {
                     localStorage.removeItem('vocaband_quick_play_session');
                     if (!shouldPreserveView("teacher", currentViewRef.current)) {
