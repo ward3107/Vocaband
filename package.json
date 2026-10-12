@@ -43,7 +43,7 @@
     "@capacitor/push-notifications": "^8.1.2",
     "@floating-ui/react": "^0.27.20",
     "@google/genai": "^2.26.0",
-    "@sentry/node": "^10.74.0",
+    "@sentry/node": "^11.6.0",
     "@sentry/react": "^10.74.0",
     "@socket.io/redis-adapter": "^8.3.0",
     "@supabase/supabase-js": "^2.117.2",
