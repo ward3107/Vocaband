@@ -40,6 +40,10 @@ on:
       - "server.ts"
       - "fly.toml"
       - "Dockerfile"
+      - ".dockerignore"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/scripts/require-ci.cjs"
       - ".github/workflows/fly-deploy.yml"
       # Source the server bundles in — kept as directory roots so a
       # transitive change (a file imported BY one of these) is caught too.
@@ -54,20 +58,30 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
-  # Cancel any in-progress deploy when a new push lands. Prevents two
-  # deploys from racing and overwriting each other.
+  # Serialize production deployments without interrupting a running release.
   group: fly-deploy-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Require successful CI and browser tests on this main commit
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const requireCI = require('./.github/scripts/require-ci.cjs');
+            await requireCI({ github, context, core });
 
       - name: Setup flyctl
         # Pinned to an immutable commit SHA instead of the mutable @master

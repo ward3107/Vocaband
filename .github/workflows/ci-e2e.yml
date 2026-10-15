@@ -18,12 +18,8 @@
 # cancelled "Playwright auth suite" runs after the #1338 Playwright bump).
 # With the container there is no apt step to hang on.
 #
-# ⚠️ The image tag is pinned to the @playwright/test version in
-# package.json. Playwright refuses to run when the driver version and the
-# baked-in browsers disagree, so a Playwright bump MUST bump the two
-# `image:` tags below in the same PR (grep for `playwright:v`). CI cannot
-# read the version from package.json into `container.image` because the
-# image is resolved before any step runs.
+# Resolve the browser image from the lockfile in an earlier job. Dependabot
+# updates then use the matching driver and preinstalled browser image.
 
 name: CI — e2e
 
@@ -44,7 +40,33 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  browser-image:
+    name: Resolve Playwright image
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+      - name: Read the locked Playwright version
+        id: image
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          const version = lock.packages?.['node_modules/@playwright/test']?.version;
+          if (!/^\d+\.\d+\.\d+$/.test(version || '')) {
+            throw new Error('Expected an exact stable Playwright version in package-lock.json');
+          }
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, 'image=mcr.microsoft.com/playwright:v' + version + '-noble\n');
+          NODE
   e2e:
+    needs: browser-image
     # NOTE: the display name is deliberately left as "Playwright smoke"
     # even though this job now runs the full public suite. Status checks
     # are keyed by job name, so renaming it would make any branch-protection
@@ -58,7 +80,7 @@ jobs:
     # and finishes in ~2 min.
     timeout-minutes: 20
     container:
-      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      image: ${{ needs.browser-image.outputs.image }}
 
     steps:
       - name: Checkout
@@ -97,11 +119,12 @@ jobs:
   # sessions restore. These specs cover the logged-in shells (dashboards,
   # deep links, back-button traps).
   e2e-auth:
+    needs: browser-image
     name: Playwright auth suite
     runs-on: ubuntu-latest
     timeout-minutes: 20
     container:
-      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      image: ${{ needs.browser-image.outputs.image }}
 
     steps:
       - name: Checkout
@@ -136,11 +159,12 @@ jobs:
           retention-days: 14
 
   quick-play-board:
+    needs: browser-image
     name: Quick Play projector + WebKit
     runs-on: ubuntu-latest
     timeout-minutes: 15
     container:
-      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      image: ${{ needs.browser-image.outputs.image }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
