@@ -181,3 +181,19 @@ jobs:
           name: quick-play-board-visuals
           path: e2e/test-results/quick-play-board/
           retention-days: 14
+
+  browser-test-gate:
+    name: Browser test gate
+    if: ${{ always() }}
+    needs: [browser-image, e2e, e2e-auth, quick-play-board]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every browser job to succeed
+        env:
+          RESULTS: ${{ join(needs.*.result, ',') }}
+        run: |
+          if [[ "$RESULTS" != "success,success,success,success" ]]; then
+            echo "Browser prerequisites or tests did not all succeed: $RESULTS"
+            exit 1
+          fi

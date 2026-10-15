@@ -9,6 +9,7 @@ Protect `main` with a ruleset that requires pull requests, an up-to-date branch,
 - `Playwright smoke`
 - `Playwright auth suite`
 - `Quick Play projector + WebKit`
+- `Browser test gate`
 
 Apply the rule to administrators and bots; do not give update bots a bypass. Keep automatic merging disabled during rollout. Check names must match GitHub's displayed names after their first run. A skipped, missing, cancelled, or pending check is not evidence of a passing test.
 
@@ -26,4 +27,6 @@ Postdeployment monitoring and automatic rollback are not installed by this PR: t
 
 ## Repository-specific notes
 
-The existing protection requires only the combined CI check and permits administrator bypass. Add all three browser checks and apply protection to administrators. The Playwright container now follows the exact lockfile version. Fly dependency manifest/lockfile changes trigger deployment. Both Actions deployment workflows require successful CI and E2E workflow runs on the exact current main commit, refuse stale/manual non-main releases, and serialize publication. Cloudflare's separate native Git integration can still bypass this Actions gate until configured in its dashboard. Existing advisory security scans remain advisory. The frontend and backend still deploy independently; this PR does not make a cross-provider release atomic.
+The existing protection requires only the combined CI check and permits administrator bypass. Add all three browser checks and Browser test gate and apply protection to administrators. The Playwright container now follows the exact lockfile version. Fly dependency manifest/lockfile changes trigger deployment. Both Actions deployment workflows require successful CI and E2E workflow runs on the exact current main commit, refuse stale/manual non-main releases, and serialize publication. Cloudflare's separate native Git integration can still bypass this Actions gate until configured in its dashboard. Existing advisory security scans remain advisory. The frontend and backend still deploy independently; this PR does not make a cross-provider release atomic.
+
+Browser test gate runs even when a prerequisite fails or a browser job is skipped. Require it: GitHub can otherwise accept a skipped individual required job, which is not proof that the browser tests ran.
