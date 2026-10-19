@@ -45,6 +45,8 @@ type Anyish = any;
 
 export interface StudentDashboardSectionDeps {
   className?: string;
+  classId?: string;
+  onJoinLesson: (game: Awaited<ReturnType<typeof import('../utils/classLiveSession').loadMyClassLiveGame>>) => void;
   user: AppUser;
   xp: number;
   coins: number;
@@ -113,6 +115,8 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
     <LazyWrapper loadingMessage="Loading dashboard...">
       <StudentDashboardView
         className={deps.className}
+        classId={deps.classId}
+        onJoinLesson={deps.onJoinLesson}
         user={user}
         xp={xp}
         coins={coins}

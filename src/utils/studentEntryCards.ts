@@ -62,3 +62,20 @@ export function renderStudentEntryCards({
       @media print { .card { break-inside: avoid; } }
     </style></head><body><h1>${escapeHtml(t.printCards)} · ${escapeHtml(className)}</h1><div class="cards">${cards}</div></body></html>`;
 }
+
+/** Same-window printing also works when the browser blocks pop-up windows. */
+export function printStudentEntryCards(options: Parameters<typeof renderStudentEntryCards>[0], onError: () => void) {
+  const frame = document.createElement('iframe');
+  frame.setAttribute('aria-hidden', 'true');
+  Object.assign(frame.style, { position: 'fixed', right: '0', bottom: '0', width: '0', height: '0', border: '0', opacity: '0' });
+  const cleanup = () => { setTimeout(() => frame.remove(), 1000); };
+  frame.onload = () => {
+    try {
+      if (!frame.contentWindow) throw new Error('print frame unavailable');
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    } catch { onError(); } finally { cleanup(); }
+  };
+  frame.srcdoc = renderStudentEntryCards(options);
+  document.body.appendChild(frame);
+}

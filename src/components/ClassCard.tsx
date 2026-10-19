@@ -50,7 +50,6 @@ interface ClassCardProps {
   studentCount?: number;
   onAssign: () => void;
   onCopyCode: () => void;
-  onWhatsApp: () => void;
   onDelete: () => void;
   /** Open the edit-class modal for renaming + changing avatar. */
   onEdit?: () => void;
@@ -110,7 +109,6 @@ const ClassCard: React.FC<ClassCardProps> = ({
   studentCount,
   onAssign,
   onCopyCode,
-  onWhatsApp,
   onDelete,
   onEdit,
   onOpenRoster,
@@ -515,7 +513,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                       borderColor: avatar === null ? 'var(--vb-accent)' : 'var(--vb-border)',
                       color: avatar === null ? 'var(--vb-accent)' : 'var(--vb-text-secondary)',
                     }}
-                    className={`w-full mb-3 px-3 py-2 rounded-lg flex items-center gap-2 transition-all b${
+                    className={`w-full mb-3 px-3 py-2 rounded-lg flex items-center gap-2 transition-all border-2 ${
                       avatar === null ? 'ring-2 ring-[var(--vb-accent-soft)]' : 'hover:border-[var(--vb-text-muted)]'
                     }`}
                   >
@@ -546,7 +544,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
                                   backgroundColor: selected ? 'var(--vb-accent-soft)' : 'var(--vb-surface)',
                                   borderColor: selected ? 'var(--vb-accent)' : 'var(--vb-border)',
                                 }}
-                                className={`aspect-square rounded-lg flex items-center justify-center text-xl transition-all b${
+                                className={`aspect-square rounded-lg flex items-center justify-center text-xl transition-all border-2 ${
                                   selected ? 'scale-105' : 'hover:scale-105 hover:border-[var(--vb-text-muted)]'
                                 }`}
                               >
@@ -1028,14 +1026,15 @@ const ClassCard: React.FC<ClassCardProps> = ({
       )}
     </div>
     <ShareClassLinkModal
+      language={effectiveLanguage}
       open={shareModalOpen}
       onClose={() => setShareModalOpen(false)}
       className={name}
       code={code}
-      onWhatsApp={onWhatsApp}
       onOpenRoster={onOpenRoster}
     />
     <ShareClassLinkModal
+      language={effectiveLanguage}
       open={sharingAssignment !== null}
       onClose={() => setSharingAssignment(null)}
       className={name}
@@ -1044,6 +1043,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
       assignmentTitle={sharingAssignment?.title}
     />
     <ShareClassLinkModal
+      language={effectiveLanguage}
       open={shareClassMinuteOpen}
       onClose={() => setShareClassMinuteOpen(false)}
       className={name}

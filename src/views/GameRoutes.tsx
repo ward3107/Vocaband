@@ -72,7 +72,7 @@ export function GameRoute() {
         <GameModeSelectionView
           activeAssignment={activeAssignment}
           studentProgress={studentProgress}
-          isQuickPlayGuest={!!user?.isGuest}
+          isQuickPlayGuest={!!quickPlayActiveSession}
           quickPlayCompletedModes={quickPlayCompletedModes}
           setGameMode={setGameMode}
           setShowModeSelection={setShowModeSelection}
@@ -109,8 +109,8 @@ export function GameRoute() {
             cleanupQuickPlayGuest().catch(() => { /* fire-and-forget */ });
             setQuickPlayActiveSession(null);
             setQuickPlayStudentName('');
-            setUser(null);
-            setView('public-landing');
+            if (user?.isGuest) setUser(null);
+            setView(user?.role === 'student' ? 'student-dashboard' : 'public-landing');
           }}
         />
       </LazyWrapper>

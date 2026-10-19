@@ -23,7 +23,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import { classRosterT } from "../locales/teacher/roster";
 import { classEntryT } from "../locales/class-entry";
 import { buildClassJoinUrl } from "../utils/classJoin";
-import { renderStudentEntryCards } from "../utils/studentEntryCards";
+import { printStudentEntryCards } from "../utils/studentEntryCards";
 
 // 32-char alphabet, chosen to be easy to read on paper and easy for a
 // 4th-grader to type on a phone. Excludes I/L/O (look like 1) and 0/1.
@@ -314,52 +314,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
       setError(t.errorAddStudentsFirst);
       return;
     }
-    const html = renderStudentEntryCards({ className, classCode, language, students: withPins });
-
-    // Use a hidden same-window iframe instead of window.open — popup
-    // blockers (the default on mobile Chrome / Safari) silently swallow
-    // window.open in production, leaving the teacher stuck. An iframe
-    // injected into the current document is not subject to popup rules.
-    const frame = document.createElement("iframe");
-    frame.setAttribute("aria-hidden", "true");
-    frame.style.position = "fixed";
-    frame.style.right = "0";
-    frame.style.bottom = "0";
-    frame.style.width = "0";
-    frame.style.height = "0";
-    frame.style.border = "0";
-    frame.style.opacity = "0";
-    document.body.appendChild(frame);
-
-    const cleanup = () => {
-      // Defer the removal so Safari has time to actually paint and
-      // hand the document to the print pipeline before the frame is
-      // detached.
-      setTimeout(() => {
-        if (frame.parentNode) frame.parentNode.removeChild(frame);
-      }, 1000);
-    };
-
-    frame.onload = () => {
-      const cw = frame.contentWindow;
-      if (!cw) {
-        cleanup();
-        return;
-      }
-      try {
-        cw.focus();
-        cw.print();
-      } catch {
-        setError(t.errorPopupBlocked);
-      } finally {
-        cleanup();
-      }
-    };
-
-    // srcdoc writes a fresh same-origin document and fires load reliably
-    // across browsers (more so than document.open + write into the
-    // iframe's contentDocument, which Safari sometimes never settles).
-    frame.srcdoc = html;
+    printStudentEntryCards({ className, classCode, language, students: withPins }, () => setError(t.errorPopupBlocked));
   };
 
   const toggleReveal = (id: string) => {

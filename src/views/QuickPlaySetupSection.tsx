@@ -25,6 +25,7 @@ const HebrewQuickPlaySetupView = lazyWithRetry(() => import('./HebrewQuickPlaySe
 const QuickPlaySetupView = lazyWithRetry(() => import('./QuickPlaySetupView'));
 
 export interface QuickPlaySetupSectionDeps {
+  classEntry?: ReactNode;
   activeVoca: VocaId | null;
   user: AppUser | null;
   setView: React.Dispatch<React.SetStateAction<View>>;
@@ -97,6 +98,7 @@ export function QuickPlaySetupSection(deps: QuickPlaySetupSectionDeps): ReactNod
     return (
       <LazyWrapper loadingMessage="טוען…">
         <HebrewQuickPlaySetupView
+          classEntry={deps.classEntry}
           onBack={() => setView('teacher-dashboard')}
           onOpenMonitor={() => setView('quick-play-teacher-monitor')}
           onCreateSession={(lemmaIds, modes, hebrewTitle) =>
@@ -115,6 +117,7 @@ export function QuickPlaySetupSection(deps: QuickPlaySetupSectionDeps): ReactNod
   return (
     <LazyWrapper loadingMessage="Loading quick play setup...">
       <QuickPlaySetupView
+        classEntry={deps.classEntry}
         allWords={allWords}
         onSaveTemplate={onSaveTemplate}
         initialSelectedWords={quickPlayInitialWords}

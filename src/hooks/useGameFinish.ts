@@ -197,6 +197,12 @@ export function useGameFinish(params: UseGameFinishParams) {
       setView("teacher-dashboard");
     } else if (user?.role === "student") {
       if (showModeSelection || isDirectLaunchMode) {
+        if (quickPlayActiveSession) {
+          cleanupSessionData();
+          setQuickPlayActiveSession(null);
+          setQuickPlayStudentName('');
+          setQuickPlayCompletedModes(new Set());
+        }
         setView("student-dashboard");
       } else {
         setShowModeSelection(true);
@@ -236,7 +242,7 @@ export function useGameFinish(params: UseGameFinishParams) {
     // in-memory leaderboard, not in the progress table.  Emit a final
     // SCORE_UPDATE so the teacher sees the end-of-game total, update
     // the completed-modes set, and skip the Supabase insert entirely.
-    if (user.isGuest && quickPlayActiveSession) {
+    if (quickPlayActiveSession && activeAssignment?.id === `quickplay-${quickPlayActiveSession.id}`) {
       // Tier B: signal PERFECT ROUND to the monitor when the student
       // finished the mode without a single recorded mistake. The
       // server clears this flag after one broadcast tick so the

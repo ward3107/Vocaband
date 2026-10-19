@@ -20,6 +20,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 import { Hourglass, Trophy, Check, X, RotateCw, Crown, ArrowRight, Loader2 } from "lucide-react";
+import { useClassStudentAutoJoin, classStudentName, type ClassStudentIdentity } from '../hooks/useClassStudentAutoJoin';
+import ClassStudentJoinNotice from '../components/ClassStudentJoinNotice';
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import CategoryRaceFocusCard from "../components/game/CategoryRaceFocusCard";
@@ -36,6 +38,7 @@ import type { QpRaceResultPayload } from "../core/quickPlayProtocol";
 import type { View } from "../core/views";
 
 interface CategoryRaceStudentViewProps {
+  classStudent?: ClassStudentIdentity;
   sessionCode: string;
   setView: (v: View) => void;
 }
@@ -120,7 +123,7 @@ function CountUp({ value, className }: { value: number; className?: string }) {
   return <span className={className}>{display}</span>;
 }
 
-export default function CategoryRaceStudentView({ sessionCode, setView }: CategoryRaceStudentViewProps) {
+export default function CategoryRaceStudentView({ sessionCode, setView, classStudent }: CategoryRaceStudentViewProps) {
   const { language, dir } = useLanguage();
   const t = STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
 
@@ -154,8 +157,8 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
 
   const [phase, setPhase] = useState<Phase>("join");
   // Join form
-  const [name, setName] = useState("");
-  const [avatar, setAvatar] = useState(DEFAULT_AVATAR);
+  const [name, setName] = useState(() => classStudentName(classStudent));
+  const [avatar, setAvatar] = useState(classStudent?.avatar || DEFAULT_AVATAR);
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   // Round play
@@ -216,6 +219,8 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
     joinAsStudent(trimmed, avatar);
   };
 
+  useClassStudentAutoJoin(classStudent, sessionCode, handleContinue);
+
   // Advance to the lobby once the server confirms the join.
   useEffect(() => {
     if (joining && joinedSessionCode === sessionCode) {
@@ -225,7 +230,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
       // Remember this confirmed join so a refresh in this tab auto-rejoins the
       // same slot instead of bouncing to the name form / public landing.
       try {
-        sessionStorage.setItem(
+        if (!classStudent) sessionStorage.setItem(
           RACE_GUEST_KEY,
           JSON.stringify({ sessionCode, name: name.trim(), avatar }),
         );
@@ -256,7 +261,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
   // jump. A ref guards against React StrictMode's double-invoke.
   const autoRejoinedRef = useRef(false);
   useEffect(() => {
-    if (autoRejoinedRef.current) return;
+    if (classStudent || autoRejoinedRef.current) return;
     autoRejoinedRef.current = true;
     try {
       const saved = sessionStorage.getItem(RACE_GUEST_KEY);
@@ -425,7 +430,8 @@ export default function CategoryRaceStudentView({ sessionCode, setView }: Catego
           />
 
           <div className="mt-5">
-            <QPAvatarPicker selected={avatar} onSelect={setAvatar} />
+            <ClassStudentJoinNotice student={classStudent} />
+          <QPAvatarPicker selected={avatar} onSelect={setAvatar} />
           </div>
 
           {joinError && <p className="mt-4 text-sm font-bold text-rose-600 text-center">{joinError}</p>}

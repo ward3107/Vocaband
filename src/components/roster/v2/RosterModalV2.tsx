@@ -26,7 +26,9 @@ import BulkAddCodedRow from "./BulkAddCodedRow";
 import RosterHeader from "./RosterHeader";
 import StudentCard, { type RosterStudentV2 } from "./StudentCard";
 import { accentForStudent } from "./constants";
-import { printRosterSheet } from "./printRosterSheet";
+import { printStudentEntryCards } from '../../../utils/studentEntryCards';
+import { buildClassJoinUrl } from '../../../utils/classJoin';
+import { classEntryT } from '../../../locales/class-entry';
 
 interface Props {
   open: boolean;
@@ -78,7 +80,7 @@ export default function RosterModalV2({
   className,
   classEmoji = "🎓",
 }: Props) {
-  const { language, dir, isRTL } = useLanguage();
+  const { language, dir } = useLanguage();
   const isMobile = useIsMobile();
   const { isOn } = useFeatureFlag();
   const t = classRosterT[language];
@@ -301,7 +303,7 @@ export default function RosterModalV2({
   };
 
   const handleCopyLink = async (s: RosterStudentV2) => {
-    const url = `https://vocaband.com/student?class=${classCode}&s=${s.id}`;
+    const url = buildClassJoinUrl(classCode, { className, studentId: s.id });
     const text = t.inviteShareMessage(s.name, className, url);
     try {
       await navigator.clipboard.writeText(text);
@@ -372,23 +374,9 @@ export default function RosterModalV2({
       setError(t.errorAddStudentsFirst);
       return;
     }
-    // Coded rosters (anonymous codes like "07-5-2-14") get a "Student code"
-    // header instead of "Name".
-    const coded = withPins.every((s) => /^\d/.test(s.name));
-    const ok = printRosterSheet({
-      title: t.printTitle(className),
-      classCode,
-      rows: withPins.map((s) => ({ label: s.name, pin: s.pin || "" })),
-      dir: isRTL ? "rtl" : "ltr",
-      language,
-      labels: {
-        labelHeader: coded ? t.codeHeader : t.copyNameHeader,
-        pinHeader: t.copyPinHeader,
-        classCodeLabel: t.printClassCodeLabel,
-        instructions: t.printInstructions,
-      },
-    });
-    if (!ok) setError(t.errorPopupBlocked);
+    printStudentEntryCards({ className, classCode, language,
+      students: withPins.map(s => ({ id: s.id, displayName: s.name, pin: s.pin ?? null })),
+    }, () => setError(t.errorPopupBlocked));
   };
 
   const togglePin = (id: string) => {
@@ -456,7 +444,7 @@ export default function RosterModalV2({
                 studentCountLabel={t.studentCount(students.length)}
                 classLabel={t.sectionLabelPrefix}
                 title={t.title}
-                printLabel={t.printButton}
+                printLabel={classEntryT[language].printCards}
                 addStudentLabel={t.addStudentLabel}
                 ariaCopyCode={t.copyTitle}
                 onCopyCode={handleCopyCode}

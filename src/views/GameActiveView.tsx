@@ -161,7 +161,7 @@ export default function GameActiveView() {
   // own visibility guard so the side panel and the column-width switch
   // stay in lock-step — guests and solo/assignment play (empty board)
   // keep the single-column phone layout at every breakpoint.
-  const hasLeaderboard = !user?.isGuest && Object.keys(leaderboard).length > 0;
+  const hasLeaderboard = !user?.isGuest && !quickPlayActiveSession && Object.keys(leaderboard).length > 0;
   const modeTheme: GameThemeColor | undefined = MODE_THEME[gameMode];
   const modeLabel = t.modeLabels[gameMode] ?? gameMode;
 

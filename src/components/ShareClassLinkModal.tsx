@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Check, Copy, GraduationCap, MessageCircle, Printer, Users } from 'lucide-react';
-import { useLanguage } from '../hooks/useLanguage';
+import { useLanguage, type Language } from '../hooks/useLanguage';
 import { teacherDashboardT } from '../locales/teacher/dashboard';
 import { buildClassJoinUrl } from '../utils/classJoin';
 import { classEntryT } from '../locales/class-entry';
@@ -14,9 +14,8 @@ interface ShareClassLinkModalProps {
   className: string;
   code: string;
   justCreated?: boolean;
+  language?: Language;
   onOpenRoster?: () => void;
-  /** Kept for callers; sharing always uses this dialog's exact deep link. */
-  onWhatsApp?: () => void;
   assignmentId?: string;
   assignmentTitle?: string;
   playMode?: 'class-minute';
@@ -36,8 +35,11 @@ function ShareClassLinkContent({
   assignmentTitle,
   playMode,
   justCreated,
+  language: inviteLanguage,
 }: ShareClassLinkModalProps) {
-  const { language, dir } = useLanguage();
+  const { language: uiLanguage } = useLanguage();
+  const language = inviteLanguage ?? uiLanguage;
+  const dir = language === 'en' ? 'ltr' : 'rtl';
   const t = teacherDashboardT[language];
   const entry = classEntryT[language];
   const [copied, setCopied] = useState<'link' | 'code' | null>(null);

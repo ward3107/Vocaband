@@ -149,12 +149,10 @@ test('role entry screens stay readable without horizontal scrolling', async ({ p
     await open(page, `/${role}`);
     await capture(page, info, `${role}-login`);
   }
-  await page.getByRole('button', { name: 'Change language', exact: true }).click();
   await page.getByRole('button', { name: 'עברית', exact: true }).click();
-  await expect(page.getByText('הקלידו את קוד הכיתה למעלה', { exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'קוד הכיתה או הקישור מהמורה', exact: true })).toBeVisible();
   await capture(page, info, 'student-login-he');
-  await page.getByRole('button', { name: 'החלף שפה', exact: true }).click();
   await page.getByRole('button', { name: 'العربية', exact: true }).click();
-  await expect(page.getByText('أدخل رمز الصف أعلاه', { exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'رمز الصف أو الرابط من معلمك', exact: true })).toBeVisible();
   await capture(page, info, 'student-login-ar');
 });

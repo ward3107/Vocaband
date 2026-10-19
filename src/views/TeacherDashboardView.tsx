@@ -495,6 +495,7 @@ export default function TeacherDashboardView({
       />
 
       <ClassCreatedModal
+        language={subject === 'hebrew' ? 'he' : undefined}
         createdClassCode={createdClassCode}
         createdClassName={createdClassName}
         onDone={() => setCreatedClassCode(null)}

@@ -68,8 +68,8 @@ export function renderQuickPlayExitScreens(deps: RenderQpExitScreensDeps): React
     clearQuickPlayGuest();
     setQuickPlayActiveSession(null);
     setActiveAssignment(null);
-    setUser(null);
-    setView('public-landing');
+    if (user?.isGuest) setUser(null);
+    setView(user?.role === 'student' ? 'student-dashboard' : 'public-landing');
   };
 
   if (quickPlayKicked) {
@@ -81,7 +81,7 @@ export function renderQuickPlayExitScreens(deps: RenderQpExitScreensDeps): React
           // rejoin path clears the guest identity (localStorage + anon auth
           // sign-out) so the student picks up a fresh uid.
           onRejoin={
-            quickPlayActiveSession
+            quickPlayActiveSession && user?.isGuest
               ? () => {
                   clearQuickPlayGuest();
                   supabase.auth.signOut().catch(() => { /* best-effort */ });
