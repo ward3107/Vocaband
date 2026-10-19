@@ -17,6 +17,22 @@ async function prepare(page: Page) {
   }, { privacy: PRIVACY_POLICY_VERSION, visibility: STUDENT_VISIBILITY_VERSION });
 }
 
+async function mockClassEntryChannel(page: Page) {
+  // Keep the UI fixture independent of the deliberately unreachable test host.
+  await page.route('https://test-project.supabase.co/rest/v1/class_live_sessions**', route => route.fulfill({ json: [] }));
+  await page.routeWebSocket('wss://test-project.supabase.co/realtime/v1/websocket**', socket => {
+    socket.onMessage(raw => {
+      if (typeof raw !== 'string') return;
+      const [joinRef, ref, topic, event, payload] = JSON.parse(raw);
+      if (event !== 'phx_join' && event !== 'heartbeat') return;
+      const response = event === 'phx_join'
+        ? { postgres_changes: (payload.config?.postgres_changes ?? []).map((filter: Record<string, unknown>, index: number) => ({ ...filter, id: index + 1 })) }
+        : {};
+      socket.send(JSON.stringify([joinRef, ref, topic, 'phx_reply', { status: 'ok', response }]));
+    });
+  });
+}
+
 async function open(page: Page, url: string) {
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await waitForAppLoad(page);
@@ -52,6 +68,7 @@ test.beforeEach(async ({}, info) => {
 
 test('teacher workspace and creation screens share the new frame', async ({ teacherPage: page }, info) => {
   test.setTimeout(180_000);
+  await mockClassEntryChannel(page);
   await page.route('https://test-project.supabase.co/rest/v1/rpc/create_quick_play_session', route => route.fulfill({ json: { id: 'design-session', session_code: 'DESIGN01' } }));
   await prepare(page);
   await open(page, '/');
@@ -77,6 +94,7 @@ test('teacher workspace and creation screens share the new frame', async ({ teac
 });
 
 test('teacher can open class entry with clear Hebrew instructions', async ({ teacherPage: page }, info) => {
+  await mockClassEntryChannel(page);
   await page.route('https://test-project.supabase.co/rest/v1/rpc/create_quick_play_session', route => route.fulfill({ json: { id: 'design-live-session', session_code: 'ABCD23' } }));
   await page.route('https://test-project.supabase.co/rest/v1/rpc/set_class_live_session', route => route.fulfill({ json: null }));
   await prepare(page);
@@ -91,6 +109,7 @@ test('teacher can open class entry with clear Hebrew instructions', async ({ tea
 });
 
 test('PIN student discovers a live lesson without teacher class state', async ({ studentPage: page }, info) => {
+  await mockClassEntryChannel(page);
   await page.route('https://test-project.supabase.co/rest/v1/rpc/get_my_live_class_session', route => route.fulfill({ json: [{
     class_id: 'class-001', class_name: 'Test English Class', session_id: 'design-live-session',
     session_code: 'ABCD23', allowed_modes: ['classic'], expires_at: new Date(Date.now() + 3600000).toISOString(),
