@@ -99,6 +99,14 @@ test('teacher can open class entry with clear Hebrew instructions', async ({ tea
   await page.route('https://test-project.supabase.co/rest/v1/rpc/set_class_live_session', route => route.fulfill({ json: null }));
   await prepare(page);
   await open(page, '/');
+  await page.getByRole('button', { name: 'Invite students', exact: true }).first().click();
+  const invitation = page.getByRole('dialog');
+  await invitation.getByRole('button', { name: 'עברית', exact: true }).click();
+  await expect(invitation.getByText('1. מכינים את התלמידים', { exact: true })).toBeVisible();
+  await expect(invitation.getByRole('button', { name: 'תלמידים וכרטיסי כניסה', exact: true })).toBeVisible();
+  await expect(invitation.getByText('3. מסבירים לתלמידים מה לעשות', { exact: true })).toBeVisible();
+  await capture(page, info, 'teacher-invite-he');
+  await invitation.getByRole('button', { name: 'סגירה', exact: true }).click();
   await page.locator('[data-tour="category-race"]').first().click();
   await page.getByRole('button', { name: 'עברית', exact: true }).click();
   await page.getByRole('button', { name: 'פתיחה לכיתה הזו', exact: true }).click();
