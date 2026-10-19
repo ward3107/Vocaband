@@ -13,7 +13,7 @@ Native EN/HE/AR controls explain the flow in all three languages. A language cho
 
 ## Approved database change
 
-`supabase/migrations/20261019175511_class_live_entry.sql` replaces the review draft after explicit approval. It adds one current game per class, with a six-hour expiry, owner checks for both class and session, subject matching, and approved student membership derived from `users` plus `student_profiles`. `get_my_live_class_session` accepts no class argument. Functions use invoker rights and explicit grants; RLS remains active.
+`supabase/migrations/20261019175511_class_live_entry.sql` replaces the review draft after explicit approval. It adds one current game per class (closed entries can be reassigned), with a six-hour expiry, owner checks for both class and session, subject matching, and approved student membership derived from `users` plus `student_profiles`. `get_my_live_class_session` accepts no class argument and returns the approved classroom even when no game is open, so PIN students do not depend on teacher-only class state. Closed sessions return no join details. Functions use invoker rights and explicit grants; RLS remains active.
 
 The bridge is included in the existing Realtime publication. Student home uses one visible, class-filtered subscription, rechecks on subscribe/focus/online, aborts stale requests and unsubscribes while hidden. There is no database polling. Closing a game updates the bridge through an invoker trigger so subscribers invalidate their card. Class-entry lookup or publication failures leave the manual game/QR path available.
 

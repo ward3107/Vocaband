@@ -58,52 +58,69 @@ beforeAll(async () => {
 afterAll(async () => { await db.close(); });
 
 describe('class live entry RLS', () => {
+  it('discovers the approved classroom before its teacher opens any game', async () => {
+    expect((await asUser(student, 'SELECT class_id, class_name, session_id FROM get_my_live_class_session()')).rows)
+      .toEqual([{ class_id: classA, class_name: 'A', session_id: null }]);
+  });
   it('lets the owner publish and each student discover only their own class', async () => {
     await asUser(teacher, `SELECT set_class_live_session('${classA}', '${sessionA}')`);
     await asUser(teacher, `SELECT set_class_live_session('${classB}', '${sessionB}')`);
-    expect((await asUser(student, 'SELECT * FROM get_my_live_class_session()')).rows).toMatchObject([{ class_id: classA, session_code: 'ABCD23' }]);
-    expect((await asUser(otherStudent, 'SELECT * FROM get_my_live_class_session()')).rows).toMatchObject([{ class_id: classB, session_code: 'EFGH23' }]);
+    expect((await asUser(student, 'SELECT * FROM get_my_live_class_session() WHERE session_id IS NOT NULL')).rows).toMatchObject([{ class_id: classA, session_code: 'ABCD23' }]);
+    expect((await asUser(otherStudent, 'SELECT * FROM get_my_live_class_session() WHERE session_id IS NOT NULL')).rows).toMatchObject([{ class_id: classB, session_code: 'EFGH23' }]);
     expect((await asUser(student, 'SELECT class_id FROM class_live_sessions')).rows).toEqual([{ class_id: classA }]);
-    expect((await asUser(teacher, 'SELECT * FROM get_my_live_class_session()')).rows).toEqual([]);
+    expect((await asUser(teacher, 'SELECT * FROM get_my_live_class_session() WHERE session_id IS NOT NULL')).rows).toEqual([]);
+  });
+  it('lets the teacher close entry and reopen the same game for a corrected class', async () => {
+    await asUser(teacher, `UPDATE class_live_sessions SET is_open = false WHERE class_id = '${classA}'`);
+    await asUser(teacher, `SELECT set_class_live_session('${classB}', '${sessionA}')`);
+    expect((await asUser(student, 'SELECT class_id, session_id FROM get_my_live_class_session()')).rows)
+      .toEqual([{ class_id: classA, session_id: null }]);
+    expect((await asUser(otherStudent, 'SELECT session_id FROM get_my_live_class_session()')).rows)
+      .toEqual([{ session_id: sessionA }]);
+    await asUser(teacher, `UPDATE class_live_sessions SET is_open = false WHERE class_id = '${classB}'`);
+    await asUser(teacher, `SELECT set_class_live_session('${classA}', '${sessionA}')`);
+    await asUser(teacher, `SELECT set_class_live_session('${classB}', '${sessionB}')`);
   });
   it('rejects foreign classes, foreign sessions, subject mismatches and student publication', async () => {
     for (const [uid, cls, session] of [[teacher, foreignClass, sessionA], [teacher, classA, foreignSession],
       [teacher, hebrewClass, sessionA], [student, classA, sessionA]]) {
       await expect(asUser(uid, `SELECT set_class_live_session('${cls}', '${session}')`)).rejects.toThrow();
     }
-    await expect(asUser(null, 'SELECT * FROM get_my_live_class_session()', 'anon')).rejects.toThrow(/permission denied/);
-    expect((await asUser(null, 'SELECT * FROM get_my_live_class_session()')).rows).toEqual([]);
+    await expect(asUser(null, 'SELECT * FROM get_my_live_class_session() WHERE session_id IS NOT NULL', 'anon')).rejects.toThrow(/permission denied/);
+    expect((await asUser(null, 'SELECT * FROM get_my_live_class_session() WHERE session_id IS NOT NULL')).rows).toEqual([]);
     expect((await asUser(student, `UPDATE class_live_sessions SET is_open = false RETURNING class_id`)).rows).toEqual([]);
   });
   it('requires approved membership with matching server-owned affiliations', async () => {
     await db.exec(`UPDATE student_profiles SET status = 'pending_approval' WHERE auth_uid = '${student}'`);
-    expect((await asUser(student, 'SELECT * FROM get_my_live_class_session()')).rows).toEqual([]);
+    expect((await asUser(student, 'SELECT * FROM get_my_live_class_session() WHERE session_id IS NOT NULL')).rows).toEqual([]);
     await db.exec(`UPDATE student_profiles SET status = 'approved', class_code = 'CLASSBBB' WHERE auth_uid = '${student}'`);
-    expect((await asUser(student, 'SELECT * FROM get_my_live_class_session()')).rows).toEqual([]);
+    expect((await asUser(student, 'SELECT * FROM get_my_live_class_session() WHERE session_id IS NOT NULL')).rows).toEqual([]);
     await db.exec(`UPDATE student_profiles SET class_code = 'CLASSAAA' WHERE auth_uid = '${student}'`);
   });
   it('hides expired or closed lessons and invalidates class entry when the teacher ends a game', async () => {
     await db.exec(`UPDATE class_live_sessions SET opened_at = now() - interval '7 hours', expires_at = now() - interval '1 hour' WHERE class_id = '${classA}'`);
-    expect((await asUser(student, 'SELECT * FROM get_my_live_class_session()')).rows).toEqual([]);
+    expect((await asUser(student, 'SELECT * FROM get_my_live_class_session() WHERE session_id IS NOT NULL')).rows).toEqual([]);
     await asUser(teacher, `SELECT set_class_live_session('${classA}', '${sessionA}')`);
     await asUser(teacher, `UPDATE class_live_sessions SET is_open = false WHERE class_id = '${classA}'`);
-    expect((await asUser(student, 'SELECT * FROM get_my_live_class_session()')).rows).toEqual([]);
+    expect((await asUser(student, 'SELECT * FROM get_my_live_class_session() WHERE session_id IS NOT NULL')).rows).toEqual([]);
     await asUser(teacher, `SELECT set_class_live_session('${classA}', '${sessionA}')`);
     await asUser(teacher, `UPDATE quick_play_sessions SET is_active = false WHERE id = '${sessionA}'`);
-    expect((await asUser(student, 'SELECT * FROM get_my_live_class_session()')).rows).toEqual([]);
+    expect((await asUser(student, 'SELECT * FROM get_my_live_class_session() WHERE session_id IS NOT NULL')).rows).toEqual([]);
+    // Realtime must still be able to authorize the closed bridge's UPDATE.
+    expect((await asUser(student, `SELECT is_open FROM class_live_sessions WHERE class_id = '${classA}'`)).rows).toEqual([{ is_open: false }]);
     expect((await asUser(teacher, `SELECT is_open FROM class_live_sessions WHERE class_id = '${classA}'`)).rows).toEqual([{ is_open: false }]);
     await expect(asUser(teacher, `SELECT set_class_live_session('${classA}', '${sessionA}')`)).rejects.toThrow();
     await asUser(null, `UPDATE quick_play_sessions SET is_active = false WHERE id = '${sessionB}'`, 'service_role');
-    expect((await asUser(otherStudent, 'SELECT * FROM get_my_live_class_session()')).rows).toEqual([]);
+    expect((await asUser(otherStudent, 'SELECT * FROM get_my_live_class_session() WHERE session_id IS NOT NULL')).rows).toEqual([]);
   });
   it('replaces a class game atomically and stops revealing it after class ownership changes', async () => {
     await db.exec(`INSERT INTO quick_play_sessions VALUES ('${id(24)}', 'STUV23', '${teacher}', '{classic}', true, 'english')`);
     await asUser(teacher, `SELECT set_class_live_session('${classA}', '${id(24)}')`);
     await db.exec(`UPDATE quick_play_sessions SET is_active = true WHERE id = '${sessionA}'`);
     await asUser(teacher, `SELECT set_class_live_session('${classB}', '${sessionA}')`);
-    expect((await asUser(otherStudent, 'SELECT * FROM get_my_live_class_session()')).rows).toMatchObject([{ session_id: sessionA }]);
+    expect((await asUser(otherStudent, 'SELECT * FROM get_my_live_class_session() WHERE session_id IS NOT NULL')).rows).toMatchObject([{ session_id: sessionA }]);
     await db.exec(`UPDATE classes SET teacher_uid = '${otherTeacher}' WHERE id = '${classB}'`);
-    expect((await asUser(otherStudent, 'SELECT * FROM get_my_live_class_session()')).rows).toEqual([]);
+    expect((await asUser(otherStudent, 'SELECT * FROM get_my_live_class_session() WHERE session_id IS NOT NULL')).rows).toEqual([]);
     expect((await asUser(teacher, `SELECT class_id FROM class_live_sessions WHERE class_id = '${classB}'`)).rows).toEqual([]);
   });
 });

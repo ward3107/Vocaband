@@ -33,7 +33,6 @@ import { X } from "lucide-react";
 
 interface StudentDashboardViewProps {
   className?: string;
-  classId?: string;
   onJoinLesson: (game: Awaited<ReturnType<typeof import('../utils/classLiveSession').loadMyClassLiveGame>>) => void;
   user: AppUser;
   xp: number;
@@ -112,7 +111,6 @@ interface StudentDashboardViewProps {
 
 export default function StudentDashboardView({
   className,
-  classId,
   onJoinLesson,
   user, xp, coins, setCoins: _setCoins, streak, badges,
   copiedCode, setCopiedCode,
@@ -279,7 +277,7 @@ export default function StudentDashboardView({
       <ArcadeHubLayout
         topBar={<StudentTopBar onRequestLogout={onRequestLogout} />}
         trophyRoad={<>
-          <StudentClassCard uid={user.uid} classId={classId} className={className} onJoinLesson={onJoinLesson} onJoin={() => setJoinOpen(true)} onSwitchStudent={onRequestLogout} />
+          <StudentClassCard uid={user.uid} className={className} onJoinLesson={onJoinLesson} onJoin={() => setJoinOpen(true)} onSwitchStudent={onRequestLogout} />
           {!studentDataLoading && (
           <NextUpCard
             studentAssignments={studentAssignments}

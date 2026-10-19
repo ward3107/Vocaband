@@ -67,12 +67,41 @@ test('teacher workspace and creation screens share the new frame', async ({ teac
     await page.locator(`[data-tour="${tour}"]`).first().click();
     await expect(page.locator('[data-vocaband-view]')).toHaveAttribute('data-vocaband-view', view);
     await waitForAppLoad(page);
+    if (view.endsWith('-host')) await expect(page.getByRole('button', { name: 'Open for this class', exact: true })).toBeVisible();
     await capture(page, info, name);
   }
   for (const [url, name] of [['/vocabulary-library', 'teacher-library'], ['/create-assignment?classId=class-001', 'teacher-assignment'], ['/class-show?assignmentId=assignment-001', 'teacher-class-show'], ['/worksheet?assignmentId=assignment-001', 'teacher-worksheet'], ['/vocabagrut', 'teacher-vocabagrut']] as const) {
     await open(page, url);
     await capture(page, info, name);
   }
+});
+
+test('teacher can open class entry with clear Hebrew instructions', async ({ teacherPage: page }, info) => {
+  await page.route('https://test-project.supabase.co/rest/v1/rpc/create_quick_play_session', route => route.fulfill({ json: { id: 'design-live-session', session_code: 'ABCD23' } }));
+  await page.route('https://test-project.supabase.co/rest/v1/rpc/set_class_live_session', route => route.fulfill({ json: null }));
+  await prepare(page);
+  await open(page, '/');
+  await page.getByRole('button', { name: 'Change language', exact: true }).click();
+  await page.getByRole('menuitemradio', { name: 'עברית' }).click();
+  await page.locator('[data-tour="category-race"]').first().click();
+  await page.getByRole('button', { name: 'פתיחה לכיתה הזו', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'המשחק פתוח לכיתה' })).toBeVisible();
+  await expect(page.getByText(/היכנסו לכיתה שלכם ב־Vocaband/)).toBeVisible();
+  await capture(page, info, 'teacher-live-entry-he');
+});
+
+test('PIN student discovers a live lesson without teacher class state', async ({ studentPage: page }, info) => {
+  await page.route('https://test-project.supabase.co/rest/v1/rpc/get_my_live_class_session', route => route.fulfill({ json: [{
+    class_id: 'class-001', class_name: 'Test English Class', session_id: 'design-live-session',
+    session_code: 'ABCD23', allowed_modes: ['classic'], expires_at: new Date(Date.now() + 3600000).toISOString(),
+  }] }));
+  await prepare(page);
+  await open(page, '/');
+  await page.getByRole('button', { name: 'Change language', exact: true }).click();
+  await page.getByRole('menuitemradio', { name: 'עברית' }).click();
+  await expect(page.getByRole('button', { name: 'הצטרפות לשיעור', exact: true })).toBeVisible();
+  await expect(page.getByText('נשתמש אוטומטית בשם ובדמות שלך מהכיתה.')).toBeVisible();
+  await capture(page, info, 'student-live-entry-he');
 });
 
 test('student destinations and card geometry work on desktop and phone', async ({ studentPage: page }, info) => {

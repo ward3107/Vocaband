@@ -9,14 +9,12 @@ import { primeAudio } from '../../utils/primeAudio';
 
 export default function StudentClassCard({
   className,
-  classId,
   uid,
   onJoin,
   onJoinLesson,
   onSwitchStudent,
 }: {
   className?: string;
-  classId?: string;
   uid: string;
   onJoin: () => void;
   onJoinLesson: (game: Awaited<ReturnType<typeof loadMyClassLiveGame>>) => void;
@@ -25,11 +23,11 @@ export default function StudentClassCard({
   const { language } = useLanguage();
   const t = classEntryT[language];
   const lesson = classLiveT[language];
-  const { live, status, refresh } = useClassLiveSession(uid, classId);
+  const { live, className: discoveredClassName, status, refresh } = useClassLiveSession(uid);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const request = useRef<AbortController | null>(null);
-  useEffect(() => () => { const pending = request.current; request.current = null; pending?.abort(); }, [uid, classId]);
+  useEffect(() => () => { const pending = request.current; request.current = null; pending?.abort(); }, [uid]);
   const join = async () => {
     if (joining) return;
     primeAudio();
@@ -63,7 +61,7 @@ export default function StudentClassCard({
             <GraduationCap size={20} aria-hidden="true" />
             {t.homeTitle}
           </p>
-          {(className || live?.class_name) && <h2 className="mt-1 text-2xl font-extrabold">{className || live?.class_name}</h2>}
+          {(discoveredClassName || className) && <h2 className="mt-1 text-2xl font-extrabold">{discoveredClassName || className}</h2>}
         </div>
         {onSwitchStudent && (
           <button

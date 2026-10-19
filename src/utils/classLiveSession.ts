@@ -13,13 +13,28 @@ export interface ClassLiveSession {
   expires_at: string;
 }
 
-export async function getMyLiveClassSession(signal?: AbortSignal): Promise<ClassLiveSession | null> {
+export interface ClassLiveEntry {
+  classId: string;
+  className: string;
+  live: ClassLiveSession | null;
+}
+
+/** The RPC returns approved class membership even before a game is opened. */
+export async function getMyLiveClassEntry(signal?: AbortSignal): Promise<ClassLiveEntry | null> {
   let query = supabase.rpc('get_my_live_class_session');
   if (signal) query = query.abortSignal(signal);
   const { data, error } = await query;
   if (error) throw error;
   const row = data?.[0] as ClassLiveSession | undefined;
-  return row && Date.parse(row.expires_at) > Date.now() ? row : null;
+  return row ? {
+    classId: row.class_id,
+    className: row.class_name,
+    live: row.session_id && Date.parse(row.expires_at) > Date.now() ? row : null,
+  } : null;
+}
+
+export async function getMyLiveClassSession(signal?: AbortSignal): Promise<ClassLiveSession | null> {
+  return (await getMyLiveClassEntry(signal))?.live ?? null;
 }
 
 export class ClassLessonEndedError extends Error {}

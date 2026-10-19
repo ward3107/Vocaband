@@ -3,13 +3,15 @@ BEGIN;
 
 CREATE TABLE public.class_live_sessions (
   class_id uuid PRIMARY KEY REFERENCES public.classes(id) ON DELETE CASCADE,
-  session_id uuid NOT NULL UNIQUE REFERENCES public.quick_play_sessions(id) ON DELETE CASCADE,
+  session_id uuid NOT NULL REFERENCES public.quick_play_sessions(id) ON DELETE CASCADE,
   teacher_uid text NOT NULL,
   is_open boolean NOT NULL DEFAULT true,
   opened_at timestamptz NOT NULL DEFAULT now(),
   expires_at timestamptz NOT NULL DEFAULT (now() + interval '6 hours'),
   CHECK (expires_at > opened_at AND expires_at <= opened_at + interval '6 hours')
 );
+CREATE UNIQUE INDEX class_live_one_open_class_per_session
+  ON public.class_live_sessions(session_id) WHERE is_open;
 ALTER TABLE public.class_live_sessions ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.class_live_sessions FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.class_live_sessions TO authenticated;
@@ -60,10 +62,8 @@ CREATE POLICY class_live_student ON public.class_live_sessions
       JOIN public.users u ON u.class_code = c.code
       JOIN public.student_profiles p ON p.auth_uid::text = u.uid
         AND p.class_code = c.code AND p.status = 'approved'
-      JOIN public.quick_play_sessions s ON s.id = class_live_sessions.session_id
       WHERE c.id = class_live_sessions.class_id
         AND c.teacher_uid = class_live_sessions.teacher_uid
-        AND s.teacher_uid = c.teacher_uid
         AND u.uid = (SELECT auth.uid())::text AND u.role = 'student'
     )
   );
@@ -98,15 +98,18 @@ RETURNS TABLE (class_id uuid, class_name text, session_id uuid,
 LANGUAGE sql STABLE SECURITY INVOKER
 SET search_path = pg_catalog, public
 AS $$
-  SELECT c.id, c.name, s.id, s.session_code, s.allowed_modes, link.expires_at
-  FROM public.class_live_sessions link
-  JOIN public.classes c ON c.id = link.class_id AND c.teacher_uid = link.teacher_uid
-  JOIN public.quick_play_sessions s ON s.id = link.session_id AND s.teacher_uid = c.teacher_uid
+  SELECT c.id, c.name, s.id, s.session_code, s.allowed_modes,
+    CASE WHEN s.id IS NOT NULL THEN link.expires_at END
+  FROM public.classes c
   JOIN public.users u ON u.class_code = c.code AND u.uid = (SELECT auth.uid())::text
   JOIN public.student_profiles p ON p.auth_uid::text = u.uid
     AND p.class_code = c.code AND p.status = 'approved'
-  WHERE u.role = 'student' AND s.is_active = true AND link.is_open AND link.expires_at > now()
+  LEFT JOIN public.class_live_sessions link ON link.class_id = c.id
+    AND c.teacher_uid = link.teacher_uid AND link.is_open AND link.expires_at > now()
+  LEFT JOIN public.quick_play_sessions s ON s.id = link.session_id
+    AND s.teacher_uid = c.teacher_uid AND s.is_active = true
     AND coalesce(c.subject, 'english') = coalesce(s.subject, 'english')
+  WHERE u.role = 'student'
   LIMIT 1;
 $$;
 

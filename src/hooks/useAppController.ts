@@ -1059,7 +1059,6 @@ export function useAppController(initialView?: View): AppViewRouterProps {
   // gate.  Hook-free assembly; fresh (un-memoized) bag every render.
   const studentSectionDeps = useStudentSectionDeps({
     className: classes.find(c => c.code === user?.classCode)?.name,
-    classId: classes.find(c => c.code === user?.classCode)?.id,
     onJoinLesson: ({ session, view: lessonView }) => {
       cleanupSessionData();
       setActiveAssignment(null);
