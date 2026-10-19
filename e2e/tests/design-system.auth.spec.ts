@@ -99,9 +99,8 @@ test('teacher can open class entry with clear Hebrew instructions', async ({ tea
   await page.route('https://test-project.supabase.co/rest/v1/rpc/set_class_live_session', route => route.fulfill({ json: null }));
   await prepare(page);
   await open(page, '/');
-  await page.getByRole('button', { name: 'Change language', exact: true }).click();
-  await page.getByRole('menuitemradio', { name: 'עברית' }).click();
   await page.locator('[data-tour="category-race"]').first().click();
+  await page.getByRole('button', { name: 'עברית', exact: true }).click();
   await page.getByRole('button', { name: 'פתיחה לכיתה הזו', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'המשחק פתוח לכיתה' })).toBeVisible();
   await expect(page.getByText(/היכנסו לכיתה שלכם ב־Vocaband/)).toBeVisible();

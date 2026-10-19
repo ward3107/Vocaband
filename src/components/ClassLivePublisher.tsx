@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Check, Users } from 'lucide-react';
 import { supabase, type ClassData } from '../core/supabase';
-import { useLanguage } from '../hooks/useLanguage';
+import { useLanguage, type Language } from '../hooks/useLanguage';
 import { classLiveT } from '../locales/class-live';
+import ClassEntryLanguagePicker from './ClassEntryLanguagePicker';
 
 export default function ClassLivePublisher({ sessionId, classes, subject }: {
   sessionId: string;
@@ -10,13 +11,13 @@ export default function ClassLivePublisher({ sessionId, classes, subject }: {
   subject: string;
 }) {
   const { language: uiLanguage } = useLanguage();
-  const language = subject === 'hebrew' ? 'he' : uiLanguage;
+  const [language, setLanguage] = useState<Language>(subject === 'hebrew' ? 'he' : uiLanguage);
   const t = classLiveT[language];
   const choices = classes.filter(c => (c.subject ?? 'english') === subject);
   const [selected, setSelected] = useState('');
   const [published, setPublished] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<'publish' | 'stop' | null>(null);
   const activeRequest = useRef<AbortController | null>(null);
   const selectId = useId();
   const classId = selected || (choices.length === 1 ? choices[0].id : '');
@@ -34,14 +35,14 @@ export default function ClassLivePublisher({ sessionId, classes, subject }: {
         if (activeRequest.current !== controller) return;
         setPublished(data?.class_id ?? null);
       } catch {
-        if (activeRequest.current === controller) setError(t.publishError);
+        if (activeRequest.current === controller) setError('publish');
       } finally {
         clearTimeout(timeout);
         if (activeRequest.current === controller) setBusy(false);
       }
     })();
     return () => { activeRequest.current?.abort(); activeRequest.current = null; controller.abort(); };
-  }, [sessionId, t.publishError]);
+  }, [sessionId]);
 
   const changeEntry = async (open: boolean) => {
     if (busy || (open && !classId)) return;
@@ -60,7 +61,7 @@ export default function ClassLivePublisher({ sessionId, classes, subject }: {
       if (!open && !result.data?.length) throw new Error('entry not updated');
       if (activeRequest.current === controller) setPublished(open ? classId : null);
     } catch {
-      if (activeRequest.current === controller) setError(open ? t.publishError : t.stopError);
+      if (activeRequest.current === controller) setError(open ? 'publish' : 'stop');
     } finally {
       clearTimeout(timeout);
       if (activeRequest.current === controller) setBusy(false);
@@ -71,6 +72,7 @@ export default function ClassLivePublisher({ sessionId, classes, subject }: {
   return (
     <section dir={language === 'en' ? 'ltr' : 'rtl'} aria-label={t.teacherTitle}
       className="mx-auto w-full max-w-5xl rounded-2xl border border-violet-200 bg-white p-4 text-violet-950 shadow-sm sm:p-5">
+      <ClassEntryLanguagePicker language={language} onChange={setLanguage} />
       <h2 className="flex items-center gap-2 text-xl font-extrabold"><Users aria-hidden="true" size={22} />{t.teacherTitle}</h2>
       {published && publishedName ? (
         <>
@@ -96,7 +98,7 @@ export default function ClassLivePublisher({ sessionId, classes, subject }: {
           </div>
         </>
       ) : <p className="mt-2 text-base">{t.noClasses}</p>}
-      {error && <p role="alert" className="mt-3 text-base font-semibold text-red-700">{error}</p>}
+      {error && <p role="alert" className="mt-3 text-base font-semibold text-red-700">{error === 'stop' ? t.stopError : t.publishError}</p>}
     </section>
   );
 }

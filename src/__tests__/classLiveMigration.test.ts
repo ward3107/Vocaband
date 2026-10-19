@@ -90,6 +90,18 @@ describe('class live entry RLS', () => {
     expect((await asUser(null, 'SELECT * FROM get_my_live_class_session() WHERE session_id IS NOT NULL')).rows).toEqual([]);
     expect((await asUser(student, `UPDATE class_live_sessions SET is_open = false RETURNING class_id`)).rows).toEqual([]);
   });
+  it('reopens an expired game for another class without leaving a stale unique link', async () => {
+    await db.exec(`UPDATE class_live_sessions SET opened_at = now() - interval '7 hours', expires_at = now() - interval '1 hour' WHERE class_id = '${classA}'`);
+    await expect(asUser(teacher, `SELECT set_class_live_session('${foreignClass}', '${sessionA}')`)).rejects.toThrow();
+    expect((await asUser(teacher, `SELECT is_open FROM class_live_sessions WHERE class_id = '${classA}'`)).rows).toEqual([{ is_open: true }]);
+    await asUser(teacher, `SELECT set_class_live_session('${classB}', '${sessionA}')`);
+    expect((await asUser(student, 'SELECT session_id FROM get_my_live_class_session()')).rows).toEqual([{ session_id: null }]);
+    expect((await asUser(otherStudent, 'SELECT session_id FROM get_my_live_class_session()')).rows).toEqual([{ session_id: sessionA }]);
+    expect((await asUser(teacher, `SELECT is_open FROM class_live_sessions WHERE class_id = '${classA}'`)).rows).toEqual([{ is_open: false }]);
+    await asUser(teacher, `UPDATE class_live_sessions SET is_open = false WHERE class_id = '${classB}'`);
+    await asUser(teacher, `SELECT set_class_live_session('${classA}', '${sessionA}')`);
+    await asUser(teacher, `SELECT set_class_live_session('${classB}', '${sessionB}')`);
+  });
   it('requires approved membership with matching server-owned affiliations', async () => {
     await db.exec(`UPDATE student_profiles SET status = 'pending_approval' WHERE auth_uid = '${student}'`);
     expect((await asUser(student, 'SELECT * FROM get_my_live_class_session() WHERE session_id IS NOT NULL')).rows).toEqual([]);

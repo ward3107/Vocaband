@@ -6,6 +6,7 @@ import { teacherDashboardT } from '../locales/teacher/dashboard';
 import { buildClassJoinUrl } from '../utils/classJoin';
 import { classEntryT } from '../locales/class-entry';
 import ClassEntryGuide from './ClassEntryGuide';
+import ClassEntryLanguagePicker from './ClassEntryLanguagePicker';
 import ModalShell, { ModalPrimaryButton } from './ui/ModalShell';
 
 interface ShareClassLinkModalProps {
@@ -38,7 +39,7 @@ function ShareClassLinkContent({
   language: inviteLanguage,
 }: ShareClassLinkModalProps) {
   const { language: uiLanguage } = useLanguage();
-  const language = inviteLanguage ?? uiLanguage;
+  const [language, setLanguage] = useState<Language>(inviteLanguage ?? uiLanguage);
   const dir = language === 'en' ? 'ltr' : 'rtl';
   const t = teacherDashboardT[language];
   const entry = classEntryT[language];
@@ -92,6 +93,7 @@ function ShareClassLinkContent({
       }
       footer={<ModalPrimaryButton onClick={onClose}>{t.shareClassLinkDone}</ModalPrimaryButton>}
     >
+      <ClassEntryLanguagePicker language={language} onChange={setLanguage} />
       {baseInvite && (
         <div className="mb-4 rounded-xl bg-violet-50 p-4 text-violet-950">
           <p className="font-bold">1. {entry.prepare}</p>

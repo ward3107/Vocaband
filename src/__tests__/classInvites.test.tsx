@@ -16,6 +16,14 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('teacher invitations', () => {
+  it('lets teachers choose Hebrew instructions without changing the English dashboard', () => {
+    render(<ShareClassLinkModal open onClose={vi.fn()} className="ז׳ 1" code="ABCD2345" />);
+    fireEvent.click(screen.getByRole('button', { name: 'עברית' }));
+    const link = screen.getByRole('link', { name: /וואטסאפ|WhatsApp/ });
+    const message = new URL(link.getAttribute('href')!).searchParams.get('text')!;
+    expect(message).toContain('מזינים את הקוד האישי שקיבלתם מהמורה');
+    expect(message).toContain('class=ABCD2345');
+  });
   it('shares Hebrew-class instructions in Hebrew even when the UI is English', () => {
     render(<ShareClassLinkModal open onClose={vi.fn()} className="ז׳ 1" code="ABCD2345" language="he" assignmentId="task-he" />);
     const link = screen.getByRole('link', { name: /וואטסאפ|WhatsApp/ });

@@ -76,6 +76,10 @@ BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'authentication required' USING ERRCODE = '28000';
   END IF;
+  -- Expiry hides the old link from clients, but it still occupies the partial
+  -- unique index until closed. Invoker RLS limits cleanup to the owner.
+  UPDATE public.class_live_sessions SET is_open = false
+  WHERE session_id = p_session_id AND is_open AND expires_at <= now();
   INSERT INTO public.class_live_sessions (class_id, session_id, teacher_uid, is_open, opened_at, expires_at)
   SELECT c.id, s.id, auth.uid()::text, true, now(), now() + interval '6 hours'
   FROM public.classes c JOIN public.quick_play_sessions s ON s.teacher_uid = c.teacher_uid

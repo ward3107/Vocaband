@@ -15,6 +15,16 @@ const classes = [{ id: 'a', name: 'Class A', subject: 'english' }, { id: 'b', na
 beforeEach(() => { vi.clearAllMocks(); mocks.restore.mockResolvedValue({ data: null, error: null }); mocks.rpc.mockResolvedValue({ error: null }); });
 afterEach(cleanup);
 describe('teacher class publication', () => {
+  it('lets an English-dashboard teacher read the class-entry guide in Hebrew', async () => {
+    render(<ClassLivePublisher sessionId="session-1" classes={[classes[0]]} subject="english" />);
+    await act(async () => {});
+    fireEvent.click(screen.getByRole('button', { name: 'עברית' }));
+    expect(screen.getByRole('heading', { name: 'פתיחת המשחק לתלמידי הכיתה' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'פתיחה לכיתה הזו' })).toBeTruthy();
+    expect(mocks.restore).toHaveBeenCalledTimes(1);
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'פתיחה לכיתה הזו' })));
+    expect(screen.getByText(/אומרים לתלמידים:.*היכנסו לכיתה שלכם/)).toBeTruthy();
+  });
   it('requires the class choice, keeps subjects separate and waits for database confirmation', async () => {
     let confirm!: (value: unknown) => void;
     mocks.rpc.mockReturnValue(new Promise(r => { confirm = r; }));

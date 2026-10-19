@@ -9,7 +9,7 @@
 5. Student home shows **Your teacher opened a lesson! — Join the lesson**. The tap rechecks current membership and the current lesson, reuses the student's name/avatar, and waits for the existing game-server JOIN acknowledgement. Registered users keep their identity and return to their classroom when leaving. Live scores stay on the game podium instead of being written under a synthetic assignment id.
 6. Waiting, loading, network failure and ended-lesson states explain the next action. Manual game-code and QR entry remain available. **Switch student** uses the existing exit confirmation.
 
-Native EN/HE/AR controls explain the flow in all three languages. A language choice carries across SPA mounts; a new full-page load retains the existing English default. Existing six-to-twenty-character class codes remain valid. Exact parsing prevents classroom codes from being truncated into game codes. Last-class storage contains only the class code and label.
+Native EN/HE/AR controls explain the flow in all three languages. Teachers can choose the explanation language directly inside the invitation and live-class card, even though the English teacher dashboard has no global language switcher. This also selects the shared student instructions; it does not change the learning-product UI. A language choice carries across SPA mounts; a new full-page load retains the existing English default. Existing six-to-twenty-character class codes remain valid. Exact parsing prevents classroom codes from being truncated into game codes. Last-class storage contains only the class code and label.
 
 ## Approved database change
 
