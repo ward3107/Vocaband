@@ -1058,6 +1058,7 @@ export function useAppController(initialView?: View): AppViewRouterProps {
   // branch below stays equivalent to the old `user?.role === "student"`
   // gate.  Hook-free assembly; fresh (un-memoized) bag every render.
   const studentSectionDeps = useStudentSectionDeps({
+    className: classes.find(c => c.code === user?.classCode)?.name,
     user, xp, coins, streak, badges, setXp, setCoins, setBadges, setUser,
     copiedCode, setCopiedCode,
     studentAssignments, studentProgress, studentDataLoading,

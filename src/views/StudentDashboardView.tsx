@@ -10,6 +10,7 @@ import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsLi
 import NextUpCard from "../components/dashboard/NextUpCard";
 import StudentWelcomeCard from "../components/dashboard/StudentWelcomeCard";
 import StudentGreetingCard from "../components/dashboard/StudentGreetingCard";
+import StudentClassCard from "../components/dashboard/StudentClassCard";
 import { useCompetitionsForClass } from "../hooks/useCompetitions";
 import { useDueReviews } from "../hooks/useDueReviews";
 import ArcadeHubLayout from "../components/arcade/ArcadeHubLayout";
@@ -31,6 +32,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 
 interface StudentDashboardViewProps {
+  className?: string;
   user: AppUser;
   xp: number;
   coins: number;
@@ -107,6 +109,7 @@ interface StudentDashboardViewProps {
 }
 
 export default function StudentDashboardView({
+  className,
   user, xp, coins, setCoins: _setCoins, streak, badges,
   copiedCode, setCopiedCode,
   studentAssignments, studentProgress, studentDataLoading,
@@ -271,7 +274,9 @@ export default function StudentDashboardView({
       )}
       <ArcadeHubLayout
         topBar={<StudentTopBar onRequestLogout={onRequestLogout} />}
-        trophyRoad={!studentDataLoading && (
+        trophyRoad={<>
+          <StudentClassCard className={className} onJoin={() => setJoinOpen(true)} onSwitchStudent={onRequestLogout} />
+          {!studentDataLoading && (
           <NextUpCard
             studentAssignments={studentAssignments}
             studentProgress={studentProgress}
@@ -281,7 +286,7 @@ export default function StudentDashboardView({
             setView={setView}
             setShowModeSelection={setShowModeSelection}
           />
-        )}
+        )}</>}
         statsBar={
           <StudentGreetingCard
             user={user}

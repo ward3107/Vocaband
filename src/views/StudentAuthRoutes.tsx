@@ -20,7 +20,7 @@ import {
   WheelStudentViewLazy as WheelStudentView,
 } from './studentJoinChunks';
 
-const StudentAccountLoginView = lazyWithRetry(() => import('./StudentAccountLoginView'));
+const StudentClassEntryView = lazyWithRetry(() => import('./StudentClassEntryView'));
 const TeacherSignupView = lazyWithRetry(() => import('./TeacherSignupView'));
 
 export interface StudentAuthRoutesDeps {
@@ -103,7 +103,7 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
   if (view === 'student-account-login') {
     return (
       <LazyWrapper loadingMessage="Loading login...">
-        <StudentAccountLoginView
+        <StudentClassEntryView
           setView={setView}
           error={error}
           studentLoginClassCode={studentLoginClassCode}

@@ -44,6 +44,7 @@ export function isStudentHubView(view: View): view is StudentHubView {
 type Anyish = any;
 
 export interface StudentDashboardSectionDeps {
+  className?: string;
   user: AppUser;
   xp: number;
   coins: number;
@@ -111,6 +112,7 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
   return (
     <LazyWrapper loadingMessage="Loading dashboard...">
       <StudentDashboardView
+        className={deps.className}
         user={user}
         xp={xp}
         coins={coins}

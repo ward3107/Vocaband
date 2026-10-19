@@ -21,6 +21,9 @@ import { supabase } from "../core/supabase";
 import { logAudit } from "../utils/audit";
 import { useLanguage } from "../hooks/useLanguage";
 import { classRosterT } from "../locales/teacher/roster";
+import { classEntryT } from "../locales/class-entry";
+import { buildClassJoinUrl } from "../utils/classJoin";
+import { renderStudentEntryCards } from "../utils/studentEntryCards";
 
 // 32-char alphabet, chosen to be easy to read on paper and easy for a
 // 4th-grader to type on a phone. Excludes I/L/O (look like 1) and 0/1.
@@ -212,7 +215,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
   // read by StudentPinLoginCard.  Bare `vocaband.com` matches the
   // existing print template at the bottom of this file.
   const buildInviteUrl = (studentId: string) =>
-    `https://vocaband.com/student?class=${classCode}&s=${studentId}`;
+    buildClassJoinUrl(classCode, { origin: 'https://vocaband.com', className, studentId });
 
   // Try the native share sheet first.  Returns true when the browser
   // handled the share (including the user-cancelled case — that's not
@@ -311,36 +314,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
       setError(t.errorAddStudentsFirst);
       return;
     }
-    const rows = withPins
-      .map(
-        s =>
-          `<tr><td>${escapeHtml(s.displayName)}</td><td class="pin">${escapeHtml(s.pin || "")}</td></tr>`,
-      )
-      .join("");
-    // RTL-aware print sheet — direction follows the teacher's UI
-    // language so Hebrew/Arabic rosters print right-to-left with the
-    // PIN column on the correct side.
-    const docDir = isRTL ? "rtl" : "ltr";
-    const align = isRTL ? "right" : "left";
-    const html = `<!doctype html><html lang="${language}" dir="${docDir}"><head><meta charset="utf-8"><title>${escapeHtml(t.printTitle(className))}</title>
-      <style>
-        body { font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 32px; color: #1c1917; }
-        h1 { font-size: 22px; margin: 0 0 4px; }
-        .meta { color: #57534e; font-size: 13px; margin-bottom: 16px; }
-        .code { font-family: ui-monospace, Menlo, monospace; font-weight: 700; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #e7e5e4; padding: 10px 14px; text-align: ${align}; }
-        th { background: #fafaf9; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #57534e; }
-        td.pin { font-family: ui-monospace, Menlo, monospace; font-weight: 700; letter-spacing: 0.1em; font-size: 15px; }
-        .footer { margin-top: 18px; color: #78716c; font-size: 11px; }
-        @media print { body { margin: 16mm; } }
-      </style>
-    </head><body>
-      <h1>${escapeHtml(t.printTitle(className))}</h1>
-      <p class="meta">${escapeHtml(t.printClassCodeLabel)} <span class="code">${escapeHtml(classCode)}</span> · vocaband.com/student?class=${escapeHtml(classCode)}</p>
-      <table><thead><tr><th>${escapeHtml(t.copyNameHeader)}</th><th>${escapeHtml(t.copyPinHeader)}</th></tr></thead><tbody>${rows}</tbody></table>
-      <p class="footer">${escapeHtml(t.printInstructions)}</p>
-    </body></html>`;
+    const html = renderStudentEntryCards({ className, classCode, language, students: withPins });
 
     // Use a hidden same-window iframe instead of window.open — popup
     // blockers (the default on mobile Chrome / Safari) silently swallow
@@ -687,7 +661,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                   style={{ touchAction: "manipulation" }}
                 >
                   <Printer size={15} />
-                  {t.printButton}
+                  {classEntryT[language].printCards}
                 </button>
               </div>
             </div>
@@ -697,14 +671,5 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
     </AnimatePresence>
   );
 };
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 export default ClassRosterModal;
