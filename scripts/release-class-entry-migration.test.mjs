@@ -66,7 +66,7 @@ test('propagates denied Management API authorization without attempting an apply
   assert.equal(calls, 1);
 });
 
-test('rejects changed policy definitions and extra policies before reporting an applied release', async t => {
+test('rejects changed schema, function, policy and privilege contracts before reporting an applied release', async t => {
   const db = new PGlite();
   try {
     await db.exec(fixture);
@@ -81,6 +81,21 @@ test('rejects changed policy definitions and extra policies before reporting an 
       ['changed permissiveness', `DROP POLICY class_live_student ON public.class_live_sessions; CREATE POLICY class_live_student ON public.class_live_sessions AS RESTRICTIVE FOR SELECT TO authenticated USING (${student.qual})`],
       ['additional permissive policy', 'CREATE POLICY extra_access ON public.class_live_sessions FOR SELECT TO authenticated USING (true)'],
       ['whitespace inside a literal', `ALTER POLICY class_live_student ON public.class_live_sessions USING (${student.qual.replace("'approved'::text", "'app roved'::text")})`],
+      ['no-op publisher body', `CREATE OR REPLACE FUNCTION public.set_class_live_session(p_class_id uuid, p_session_id uuid) RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path = pg_catalog, public AS $$ BEGIN RETURN; END; $$`],
+      ['changed function configuration', 'ALTER FUNCTION public.get_my_live_class_session() SET search_path = public'],
+      ['changed function return type', `DROP FUNCTION public.get_my_live_class_session(); CREATE FUNCTION public.get_my_live_class_session() RETURNS integer LANGUAGE sql STABLE SECURITY INVOKER SET search_path = pg_catalog, public AS $$ SELECT 1 $$; REVOKE ALL ON FUNCTION public.get_my_live_class_session() FROM PUBLIC, anon; GRANT EXECUTE ON FUNCTION public.get_my_live_class_session() TO authenticated`],
+      ['revoked authenticated RPC access', 'REVOKE EXECUTE ON FUNCTION public.get_my_live_class_session() FROM authenticated'],
+      ['revoked authenticated table INSERT', 'REVOKE INSERT ON public.class_live_sessions FROM authenticated'],
+      ['revoked service table DELETE', 'REVOKE DELETE ON public.class_live_sessions FROM service_role'],
+      ['anonymous write grant', 'GRANT INSERT ON public.class_live_sessions TO anon'],
+      ['removed expiry constraint', 'ALTER TABLE public.class_live_sessions DROP CONSTRAINT class_live_sessions_check'],
+      ['removed session ownership reference', 'ALTER TABLE public.class_live_sessions DROP CONSTRAINT class_live_sessions_session_id_fkey'],
+      ['removed uniqueness index', 'DROP INDEX public.class_live_one_open_class_per_session'],
+      ['nullable owner column', 'ALTER TABLE public.class_live_sessions ALTER COLUMN teacher_uid DROP NOT NULL'],
+      ['changed expiry default', 'ALTER TABLE public.class_live_sessions ALTER COLUMN expires_at SET DEFAULT now()'],
+      ['disabled closing trigger', 'ALTER TABLE public.quick_play_sessions DISABLE TRIGGER close_class_entry_on_session_end'],
+      ['additional RPC overload', `CREATE FUNCTION public.set_class_live_session(p_class_id uuid) RETURNS void LANGUAGE plpgsql AS $$ BEGIN RETURN; END; $$`],
+      ['additional closing trigger', 'CREATE TRIGGER unexpected_close AFTER UPDATE ON public.quick_play_sessions FOR EACH ROW EXECUTE FUNCTION public.close_class_entry_on_session_end()'],
     ];
     for (const [name, change] of cases) {
       await t.test(name, async () => {

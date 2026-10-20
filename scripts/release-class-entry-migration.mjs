@@ -1,10 +1,12 @@
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 export const version = '20261019175511';
 export const migrationUrl = new URL(`../supabase/migrations/${version}_class_live_entry.sql`, import.meta.url);
 const approvedHash = '6f271c87a5655e2bf4d2f24b434a80e37cc2fed2d0a5cfc2a3866fb754e8d185';
+const approvedSchema = JSON.parse(readFileSync(new URL('./class-entry-approved-schema.json', import.meta.url), 'utf8'));
 
 // Canonical PostgreSQL definitions generated from the checksum-pinned SQL.
 // Roles, commands, permissiveness and both predicates must all match; an
@@ -33,6 +35,8 @@ const approvedPolicies = [
 ];
 
 // Only metadata is returned; this release never reads student or teacher rows.
+// Nullability is checked through pg_attribute, since PostgreSQL 18 also adds
+// NOT NULL entries to pg_constraint that older production versions omit.
 export const statusQuery = `SELECT
   (SELECT count(*) = 3 FROM information_schema.columns WHERE table_schema = 'supabase_migrations'
     AND table_name = 'schema_migrations' AND column_name IN ('version', 'name', 'statements'))
@@ -54,9 +58,46 @@ export const statusQuery = `SELECT
     AND tgname = 'close_class_entry_on_session_end' AND NOT tgisinternal AND tgenabled != 'D') AS close_trigger,
   EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime'
     AND schemaname = 'public' AND tablename = 'class_live_sessions') AS realtime,
-  NOT coalesce(has_table_privilege('anon', to_regclass('public.class_live_sessions'), 'SELECT'), false)
+  jsonb_build_object(
+    'functions', (SELECT coalesce(jsonb_agg(jsonb_build_object(
+      'name', p.proname, 'language', l.lanname, 'body', p.prosrc,
+      'arguments', pg_get_function_identity_arguments(p.oid), 'returns', pg_get_function_result(p.oid),
+      'config', p.proconfig, 'security_definer', p.prosecdef, 'volatility', p.provolatile,
+      'strict', p.proisstrict, 'leakproof', p.proleakproof, 'parallel', p.proparallel, 'kind', p.prokind
+    ) ORDER BY p.proname, pg_get_function_identity_arguments(p.oid)), '[]'::jsonb)
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_language l ON l.oid = p.prolang
+    WHERE n.nspname = 'public' AND p.proname IN ('set_class_live_session', 'get_my_live_class_session', 'close_class_entry_on_session_end')),
+    'columns', (SELECT coalesce(jsonb_agg(jsonb_build_object(
+      'name', a.attname, 'type', format_type(a.atttypid, a.atttypmod), 'not_null', a.attnotnull,
+      'identity', a.attidentity, 'generated', a.attgenerated, 'definition', pg_get_expr(d.adbin, d.adrelid)
+    ) ORDER BY a.attnum), '[]'::jsonb) FROM pg_attribute a LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum
+    WHERE a.attrelid = to_regclass('public.class_live_sessions') AND a.attnum > 0 AND NOT a.attisdropped),
+    'constraints', (SELECT coalesce(jsonb_agg(jsonb_build_object(
+      'name', c.conname, 'type', c.contype, 'validated', c.convalidated, 'deferrable', c.condeferrable,
+      'deferred', c.condeferred, 'definition', pg_get_constraintdef(c.oid)
+    ) ORDER BY c.conname), '[]'::jsonb) FROM pg_constraint c WHERE c.conrelid = to_regclass('public.class_live_sessions') AND c.contype != 'n'),
+    'indexes', (SELECT coalesce(jsonb_agg(jsonb_build_object(
+      'name', r.relname, 'valid', i.indisvalid, 'ready', i.indisready, 'definition', pg_get_indexdef(i.indexrelid)
+    ) ORDER BY r.relname), '[]'::jsonb) FROM pg_index i JOIN pg_class r ON r.oid = i.indexrelid
+    WHERE i.indrelid = to_regclass('public.class_live_sessions')),
+    'triggers', (SELECT coalesce(jsonb_agg(jsonb_build_object(
+      'name', t.tgname, 'enabled', t.tgenabled, 'definition', pg_get_triggerdef(t.oid)
+    ) ORDER BY t.tgname), '[]'::jsonb) FROM pg_trigger t WHERE t.tgrelid = to_regclass('public.quick_play_sessions')
+    AND NOT t.tgisinternal AND (t.tgname = 'close_class_entry_on_session_end'
+      OR t.tgfoid = to_regprocedure('public.close_class_entry_on_session_end()')))
+  ) AS schema_definition,
+  (SELECT bool_and(coalesce(has_table_privilege('authenticated', to_regclass('public.class_live_sessions'), privilege), false))
+    FROM unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE']) AS privilege)
+    AND coalesce(has_function_privilege('authenticated', to_regprocedure('public.get_my_live_class_session()'), 'EXECUTE'), false)
+    AND coalesce(has_function_privilege('authenticated', to_regprocedure('public.set_class_live_session(uuid,uuid)'), 'EXECUTE'), false)
+    AND NOT coalesce(has_function_privilege('authenticated', to_regprocedure('public.close_class_entry_on_session_end()'), 'EXECUTE'), false) AS authenticated_allowed,
+  (SELECT bool_and(coalesce(has_table_privilege('service_role', to_regclass('public.class_live_sessions'), privilege), false))
+    FROM unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE']) AS privilege) AS service_allowed,
+  (SELECT NOT bool_or(coalesce(has_table_privilege('anon', to_regclass('public.class_live_sessions'), privilege), false))
+    FROM unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE']) AS privilege)
     AND NOT coalesce(has_function_privilege('anon', to_regprocedure('public.get_my_live_class_session()'), 'EXECUTE'), false)
-    AND NOT coalesce(has_function_privilege('anon', to_regprocedure('public.set_class_live_session(uuid,uuid)'), 'EXECUTE'), false) AS anon_blocked`;
+    AND NOT coalesce(has_function_privilege('anon', to_regprocedure('public.set_class_live_session(uuid,uuid)'), 'EXECUTE'), false)
+    AND NOT coalesce(has_function_privilege('anon', to_regprocedure('public.close_class_entry_on_session_end()'), 'EXECUTE'), false) AS anon_blocked`;
 
 const schemaChecks = ['bridge_table', 'rls', 'publish_invoker', 'discover_invoker', 'close_invoker', 'policies', 'close_trigger', 'realtime'];
 
@@ -80,12 +121,22 @@ function policiesMatch(actual) {
   });
 }
 
+function canonicalSchema(value, key) {
+  if (['definition', 'arguments', 'returns'].includes(key) && typeof value === 'string') return predicateTokens(value);
+  if (Array.isArray(value)) return value.map(item => canonicalSchema(item));
+  if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map(name => [name, canonicalSchema(value[name], name)]));
+  return value;
+}
+
 export function migrationState(row) {
   if (!row || row.prerequisites_ready !== true) throw new Error('Required database objects or migration history are unavailable.');
-  if (row.recorded === true && row.anon_blocked === true && schemaChecks.every(key => row[key] === true)
-    && policiesMatch(row.policy_definitions)) return 'applied';
+  if (row.recorded === true && row.anon_blocked === true && row.authenticated_allowed === true
+    && row.service_allowed === true && schemaChecks.every(key => row[key] === true)
+    && policiesMatch(row.policy_definitions)
+    && JSON.stringify(canonicalSchema(row.schema_definition)) === JSON.stringify(canonicalSchema(approvedSchema))) return 'applied';
   if (row.recorded === false && schemaChecks.every(key => row[key] === false)
-    && Array.isArray(row.policy_definitions) && row.policy_definitions.length === 0) return 'pending';
+    && Array.isArray(row.policy_definitions) && row.policy_definitions.length === 0
+    && row.schema_definition && Object.keys(approvedSchema).every(key => Array.isArray(row.schema_definition[key]) && row.schema_definition[key].length === 0)) return 'pending';
   throw new Error('Class entry schema and migration history disagree; stopping without changing either.');
 }
 
@@ -141,7 +192,7 @@ async function main() {
   };
   const state = await releaseClassEntry({ request, sql, apply: mode === 'apply' });
   console.log(`Class entry migration ${version}: ${state}.`);
-  if (state === 'applied') console.log('Verified history, RLS, invoker functions, ownership/membership policies, close trigger, Realtime and anonymous-access denial.');
+  if (state === 'applied') console.log('Verified history, RLS, complete function and policy definitions, columns, constraints, indexes, close trigger, Realtime, authenticated/service privileges and anonymous-access denial.');
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {

@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - scripts/release-class-entry-migration*.mjs
+      - scripts/class-entry-approved-schema.json
       - .github/workflows/class-entry-database-release.yml
   push:
     branches: [main]
     paths:
       - scripts/release-class-entry-migration*.mjs
+      - scripts/class-entry-approved-schema.json
       - .github/workflows/class-entry-database-release.yml
   workflow_dispatch:
     inputs:
