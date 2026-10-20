@@ -49,6 +49,7 @@ export function usePublicBackNavigation(
       sentinel.current = false;
     }
     url.current = window.location.href;
+    window.dispatchEvent(new CustomEvent('vocaband-view-change', { detail: view }));
   }, [view, enabled]);
 
   useEffect(() => {

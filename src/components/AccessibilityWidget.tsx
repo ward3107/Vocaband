@@ -210,7 +210,9 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
   // on game / dashboard pages. Set by App.tsx via a 'vocaband-view-change'
   // CustomEvent. The panel itself is still openable from anywhere via
   // the existing 'open-a11y-panel' event (footer / nav links).
-  const [currentView, setCurrentView] = useState<string>('');
+  const [currentView, setCurrentView] = useState<string>(() =>
+    typeof document === 'undefined' ? '' : document.querySelector('[data-vocaband-view]')?.getAttribute('data-vocaband-view') ?? ''
+  );
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -228,6 +230,9 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
   ]);
 
   useEffect(() => {
+    // The lazy widget may mount after the shell's first view event.
+    const initialView = document.querySelector('[data-vocaband-view]')?.getAttribute('data-vocaband-view');
+    if (initialView) setCurrentView(initialView);
     const handler = (e: Event) => {
       const next = (e as CustomEvent<string>).detail || '';
       setCurrentView(next);

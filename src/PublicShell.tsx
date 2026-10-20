@@ -94,5 +94,5 @@ export default function PublicShell() {
     );
   }
 
-  return <>{publicView}</>;
+  return <div data-vocaband-view={view}>{publicView}</div>;
 }
