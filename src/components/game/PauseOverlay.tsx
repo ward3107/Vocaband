@@ -7,10 +7,12 @@
  * Space without reaching for the trackpad.
  */
 import { motion } from "motion/react";
+import { useBackLayer } from "../../hooks/useBackLayer";
 import { useLanguage } from "../../hooks/useLanguage";
 import { gameActiveT } from "../../locales/student/game-active";
 
 export default function PauseOverlay({ onResume }: { onResume: () => void }) {
+  useBackLayer(onResume, { priority: 70 });
   const { language, dir } = useLanguage();
   const t = gameActiveT[language];
 

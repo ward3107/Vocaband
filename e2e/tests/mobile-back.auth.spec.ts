@@ -169,6 +169,11 @@ test('Back asks before leaving an unfinished round and repeated cancel keeps the
     .click();
   await page.getByRole('button', { name: /^Classic Mode/ }).click();
   await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await expect(page.getByRole('button', { name: "Let's Go! →", exact: true })).toBeVisible();
+  await back(page);
+  await expect(page.getByRole('heading', { name: /choose your mode/i })).toBeVisible();
+  await page.getByRole('button', { name: /^Classic Mode/ }).click();
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page.getByRole('button', { name: "Let's Go! →", exact: true }).click();
   await page
     .locator('[data-vocaband-view]')
