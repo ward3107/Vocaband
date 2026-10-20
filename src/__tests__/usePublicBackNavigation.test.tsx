@@ -18,6 +18,14 @@ const pop = (view: View, path = '/') =>
   });
 
 describe('public-shell Back navigation', () => {
+  it('does not mistake a same-page history entry for the next page navigation', () => {
+    const setView = vi.fn();
+    const { rerender } = renderHook(({ view }: { view: View }) => usePublicBackNavigation(view, setView, true), { initialProps: { view: 'public-landing' as View } });
+    pop('public-landing');
+    expect(setView).not.toHaveBeenCalled();
+    rerender({ view: 'public-privacy' });
+    expect(window.location.pathname).toBe('/privacy');
+  });
   it('gives a dialog on a fresh home page an in-document Back entry', () => {
     const setView = vi.fn();
     const close = vi.fn();

@@ -78,6 +78,10 @@ export function usePublicBackNavigation(
         window.history.back();
         return;
       }
+      if (destination === current.current) {
+        url.current = window.location.href;
+        return;
+      }
       if (destination && publicViews.has(destination)) {
         popped.current = true;
         setView(destination as View);

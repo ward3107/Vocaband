@@ -79,7 +79,7 @@ const PublicNav: React.FC<PublicNavProps> = ({
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "start" });
         // Update the URL so the user can bookmark / share the section.
-        history.replaceState(null, "", `#${id}`);
+        history.replaceState(history.state, "", `#${id}`);
       }
       return;
     }
