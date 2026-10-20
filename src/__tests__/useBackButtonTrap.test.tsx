@@ -38,6 +38,16 @@ function popped(view: string) {
 }
 
 describe('Back history and session safety', () => {
+  it('seeds a fresh Quick Play QR tab even though its view has no canonical path', () => {
+    window.history.replaceState({}, '', '/?session=ABCD23');
+    const replace = vi.spyOn(window.history, 'replaceState');
+    const push = vi.spyOn(window.history, 'pushState');
+    renderHook(() => useBackButtonTrap(params('quick-play-student')));
+    expect(replace).toHaveBeenCalledWith({ view: 'public-landing' }, '', '/');
+    expect(push).toHaveBeenCalledWith({ view: 'quick-play-student' }, '', expect.stringContaining('/?session=ABCD23'));
+    expect(window.location.search).toBe('?session=ABCD23');
+    replace.mockRestore(); push.mockRestore();
+  });
   it('seeds login above the actual home URL and preserves the whole invite', () => {
     const replace = vi.spyOn(window.history, 'replaceState');
     renderHook(() => useBackButtonTrap(params('student-account-login')));

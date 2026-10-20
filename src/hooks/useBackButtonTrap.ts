@@ -184,7 +184,7 @@ export function useBackButtonTrap(
     // login so back lands on the marketing page instead of leaving.
     const entryUrl = window.location.href;
     const path = pathForView(view);
-    if (view === 'student-account-login' || view === 'teacher-login' ||
+    if (view === 'student-account-login' || view === 'teacher-login' || view === 'quick-play-student' ||
         (path && path !== '/' && !AUTH_VIEWS.has(view))) {
       window.history.replaceState({ view: 'public-landing' }, '', '/');
       window.history.pushState({ view }, '', entryUrl);
