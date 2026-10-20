@@ -1,3 +1,4 @@
+import { useBackLayer } from "../hooks/useBackLayer";
 /**
  * HotSeatView — single-device, pass-around classroom game.
  *
@@ -577,6 +578,8 @@ export default function HotSeatView({ onExit, speak, assignments, topicPacks, cl
     setEditingId(null);
     setEditingValue('');
   }, []);
+
+  useBackLayer(closeReview, { enabled: showReview, priority: 90 });
 
   // Switch target language AND drop any in-flight edit so its value
   // doesn't end up saved against the wrong language.

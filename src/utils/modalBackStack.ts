@@ -54,8 +54,9 @@ export const modalBackStack = {
   closeTop(): boolean {
     const entry = stack[topIndex()];
     if (!entry) return false;
-    // A busy form can consume Back without leaving an in-flight sign-in.
-    if (entry.close() !== false) this.remove(entry.close);
+    // React owns visibility. Cleanup removes this entry when the layer
+    // actually closes; no-op consent gates and pending forms stay on top.
+    entry.close();
     return true;
   },
 };

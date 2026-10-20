@@ -1,3 +1,4 @@
+import { BackLayerContext } from "../../hooks/BackLayerContext";
 import { AnimatePresence, motion } from "motion/react";
 import { type ReactNode } from "react";
 import { useBackLayer } from "../../hooks/useBackLayer";
@@ -41,9 +42,10 @@ export function IOSSheet({
   /** False for a sheet the user must resolve with an explicit action. */
   dismissible?: boolean;
 }) {
-  useBackLayer((): void | false => { if (!dismissible) return false; onClose(); }, { enabled: open, priority: zIndex });
+  const backPriority = useBackLayer((): void | false => { if (!dismissible) return false; onClose(); }, { enabled: open, priority: zIndex });
 
   return (
+    <BackLayerContext.Provider value={backPriority}>
     <AnimatePresence>
       {open && (
         <motion.div
@@ -111,5 +113,6 @@ export function IOSSheet({
         </motion.div>
       )}
     </AnimatePresence>
+    </BackLayerContext.Provider>
   );
 }

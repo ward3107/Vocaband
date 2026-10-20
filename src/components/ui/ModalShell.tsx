@@ -1,3 +1,4 @@
+import { BackLayerContext } from "../../hooks/BackLayerContext";
 /**
  * ModalShell — the shared modal chrome from Modals v1.
  *
@@ -80,7 +81,7 @@ export default function ModalShell({
   bodyMaxHeight = "60vh",
   bodyClassName,
 }: ModalShellProps) {
-  useBackLayer(onClose, { enabled: open, priority: zIndex });
+  const backPriority = useBackLayer(onClose, { enabled: open, priority: zIndex });
 
   // Focus management — move focus into the dialog on open and restore it to
   // the element that opened the modal on close, so keyboard/screen-reader
@@ -127,6 +128,7 @@ export default function ModalShell({
   };
 
   return (
+    <BackLayerContext.Provider value={backPriority}>
     <AnimatePresence>
       {open && (
         <motion.div
@@ -236,6 +238,7 @@ export default function ModalShell({
         </motion.div>
       )}
     </AnimatePresence>
+    </BackLayerContext.Provider>
   );
 }
 

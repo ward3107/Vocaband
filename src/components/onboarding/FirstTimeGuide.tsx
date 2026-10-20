@@ -1,3 +1,4 @@
+import { useBackLayer } from "../../hooks/useBackLayer";
 /**
  * FirstTimeGuide — generic 1..N step modal walkthrough.
  *
@@ -44,6 +45,7 @@ export default function FirstTimeGuide({
   const { language, dir } = useLanguage();
   const t = teacherGuidesT[language].common;
   const [index, setIndex] = useState(0);
+  useBackLayer(onDone, { enabled: isOpen && steps.length > 0, priority: 50 });
 
   // Reset to step 0 every time the guide re-opens so a teacher who
   // dismissed mid-flow and re-triggered later starts from the top

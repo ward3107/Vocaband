@@ -1,3 +1,4 @@
+import { BackLayerContext } from "../../hooks/BackLayerContext";
 /**
  * AdaptiveDrawer — the drill-shell for the v2 Classroom.
  *
@@ -39,7 +40,7 @@ export default function AdaptiveDrawer({
 }: AdaptiveDrawerProps) {
   const { language } = useLanguage();
   const t = teacherClassroomT[language];
-  useBackLayer(onClose, { enabled: open, priority: 50 });
+  const backPriority = useBackLayer(onClose, { enabled: open, priority: 50 });
 
   // Lock body scroll while open so the list behind doesn't scroll under
   // the drill.
@@ -51,6 +52,7 @@ export default function AdaptiveDrawer({
   }, [open]);
 
   return (
+    <BackLayerContext.Provider value={backPriority}>
     <AnimatePresence>
       {open && (
         <>
@@ -116,5 +118,6 @@ export default function AdaptiveDrawer({
         </>
       )}
     </AnimatePresence>
+    </BackLayerContext.Provider>
   );
 }

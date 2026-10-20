@@ -1,3 +1,4 @@
+import { BackLayerContext } from "../../hooks/BackLayerContext";
 /**
  * LiveWordPickerModal — drops the app's full rich word-input (paste a list,
  * pick from the vocabulary Set 1/2/3, saved lists, topic packs, photo/OCR,
@@ -66,9 +67,10 @@ export default function LiveWordPickerModal({
   const count = pickerProps.selectedWords.length;
   const enough = count >= minWords;
 
-  useBackLayer(onClose, { enabled: open, priority: 95 });
+  const backPriority = useBackLayer(onClose, { enabled: open, priority: 95 });
 
   return (
+    <BackLayerContext.Provider value={backPriority}>
     <AnimatePresence>
       {open && (
         <motion.div
@@ -131,5 +133,6 @@ export default function LiveWordPickerModal({
         </motion.div>
       )}
     </AnimatePresence>
+    </BackLayerContext.Provider>
   );
 }

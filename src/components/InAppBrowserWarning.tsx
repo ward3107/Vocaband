@@ -1,3 +1,4 @@
+import { useBackLayer } from "../hooks/useBackLayer";
 import { useEffect, useState } from 'react';
 import { Check, Copy, ExternalLink } from 'lucide-react';
 import { useLanguage } from '../hooks/useLanguage';
@@ -35,12 +36,13 @@ export default function InAppBrowserWarning() {
     setVisible(!dismissed);
   }, []);
 
-  if (!info?.isInApp || !visible) return null;
-
   const dismiss = () => {
     try { window.sessionStorage.setItem(SESSION_DISMISSED_KEY, '1'); } catch { /* */ }
     setVisible(false);
   };
+
+  useBackLayer(dismiss, { enabled: Boolean(info?.isInApp && visible), priority: 100 });
+  if (!info?.isInApp || !visible) return null;
 
   const copyUrl = async () => {
     const url = window.location.href;

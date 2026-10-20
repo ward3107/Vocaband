@@ -124,3 +124,41 @@ test('Back closes the student Tasks sheet before navigating and a deep link retu
   ).toBeVisible();
   await expect(page).toHaveURL(/\/$/);
 });
+
+test('Back asks before leaving an unfinished round and repeated cancel keeps the question', async ({
+  studentPage: page,
+}) => {
+  await prepare(page);
+  await page.goto('/');
+  await waitForAppLoad(page);
+  const reward = page.getByRole('dialog');
+  await reward.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(reward).toHaveCount(0);
+  await page.getByRole('button', { name: 'Tasks', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'Assignments', exact: true })
+    .getByRole('button')
+    .filter({ hasText: 'Week 1 Vocabulary' })
+    .click();
+  await page.getByRole('button', { name: /^Classic Mode/ }).click();
+  await page.getByRole('button', { name: "Let's Go! →", exact: true }).click();
+  await page
+    .locator('[data-vocaband-view]')
+    .getByRole('button', { name: 'Exit', exact: true })
+    .waitFor({ state: 'visible' });
+  const screen = await page.locator('[data-vocaband-view]').innerText();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await back(page);
+    const confirm = page.getByRole('dialog', { name: 'Leave this round?', exact: true });
+    await expect(confirm).toBeVisible();
+    await back(page);
+    await expect(confirm).toHaveCount(0);
+    expect(await page.locator('[data-vocaband-view]').innerText()).toBe(screen);
+  }
+  await page.getByRole('button', { name: 'Exit', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'Leave this round?', exact: true })
+    .getByRole('button', { name: 'Exit', exact: true })
+    .click();
+  await expect(page.getByRole('heading', { name: /choose your mode/i })).toBeVisible();
+});

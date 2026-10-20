@@ -1,3 +1,4 @@
+import { BackLayerContext } from "../../hooks/BackLayerContext";
 import { useBackLayer } from "../../hooks/useBackLayer";
 /**
  * PickerSheet — the shared modal chrome for the four word-source
@@ -70,13 +71,14 @@ const PickerSheet: React.FC<PickerSheetProps> = ({
   zClass = 'z-50',
 }) => {
   const priority = Number(zClass.replace(/[^0-9]/g, '')) || 50;
-  useBackLayer((): void | false => {
+  const backPriority = useBackLayer((): void | false => {
     if (onBack) { onBack(); return false; }
     onClose();
   }, { enabled: isOpen, priority });
   const { isRTL, dir } = useLanguage();
 
   return (
+    <BackLayerContext.Provider value={backPriority}>
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -153,6 +155,7 @@ const PickerSheet: React.FC<PickerSheetProps> = ({
         </motion.div>
       )}
     </AnimatePresence>
+    </BackLayerContext.Provider>
   );
 };
 

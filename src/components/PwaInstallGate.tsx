@@ -1,3 +1,4 @@
+import { useBackLayer } from "../hooks/useBackLayer";
 import { useEffect, useState, type ReactNode } from 'react';
 import { ArrowDown, ArrowUp, Check, Menu, MoreVertical, Share, X } from 'lucide-react';
 import { useLanguage } from '../hooks/useLanguage';
@@ -132,6 +133,7 @@ interface ModalProps {
 }
 
 function InstallModal({ platform, t, dir, isRTL, hasNativePrompt, onInstall, onDismiss }: ModalProps) {
+  useBackLayer(onDismiss, { priority: 90 });
   return (
     <div
       role="dialog"

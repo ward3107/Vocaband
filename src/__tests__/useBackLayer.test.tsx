@@ -2,6 +2,8 @@ import { act, cleanup, fireEvent, render, renderHook } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useBackLayer } from '../hooks/useBackLayer';
 import { modalBackStack } from '../utils/modalBackStack';
+import { useState } from 'react';
+import { BackLayerContext } from '../hooks/BackLayerContext';
 
 afterEach(() => {
   cleanup();
@@ -12,13 +14,21 @@ describe('visible Back layers', () => {
   it('closes a nested dialog before its parent despite child-first effects', () => {
     const parent = vi.fn();
     const child = vi.fn();
-    function Child() {
-      useBackLayer(child, { priority: 110 });
+    function Child({ onClose }: { onClose: () => void }) {
+      useBackLayer(onClose, { priority: 110 });
       return null;
     }
     function Parent() {
+      const [open, setOpen] = useState(true);
       useBackLayer(parent, { priority: 100 });
-      return <Child />;
+      return open ? (
+        <Child
+          onClose={() => {
+            child();
+            setOpen(false);
+          }}
+        />
+      ) : null;
     }
     render(<Parent />);
     fireEvent.keyDown(window, { key: 'Escape' });
@@ -53,14 +63,49 @@ describe('visible Back layers', () => {
     const { rerender } = renderHook(({ action }) => useBackLayer(action, { priority: 50 }), {
       initialProps: { action: old },
     });
-    renderHook(() => useBackLayer(top, { priority: 50 }));
+    const newer = renderHook(() => useBackLayer(top, { priority: 50 }));
     rerender({ action: latest });
     act(() => {
       modalBackStack.closeTop();
+    });
+    newer.unmount();
+    act(() => {
       modalBackStack.closeTop();
     });
     expect(top).toHaveBeenCalledOnce();
     expect(latest).toHaveBeenCalledOnce();
     expect(old).not.toHaveBeenCalled();
+  });
+  it('retains a required dialog whose close action deliberately does nothing', () => {
+    const required = vi.fn();
+    const below = vi.fn();
+    renderHook(() => useBackLayer(below, { priority: 50 }));
+    renderHook(() => useBackLayer(required, { priority: 100 }));
+    act(() => {
+      modalBackStack.closeTop();
+      modalBackStack.closeTop();
+    });
+    expect(required).toHaveBeenCalledTimes(2);
+    expect(below).not.toHaveBeenCalled();
+  });
+  it('respects a nested stacking context when the child has a lower CSS z-index', () => {
+    const parent = vi.fn();
+    const child = vi.fn();
+    function Child() {
+      useBackLayer(child, { priority: 50 });
+      return null;
+    }
+    function Parent() {
+      const priority = useBackLayer(parent, { priority: 95 });
+      return (
+        <BackLayerContext.Provider value={priority}>
+          <Child />
+        </BackLayerContext.Provider>
+      );
+    }
+    render(<Parent />);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(child).toHaveBeenCalledOnce();
+    expect(parent).not.toHaveBeenCalled();
   });
 });

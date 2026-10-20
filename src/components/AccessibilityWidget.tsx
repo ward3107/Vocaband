@@ -1,3 +1,4 @@
+import { useBackLayer } from "../hooks/useBackLayer";
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -192,6 +193,7 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
     if (onOpenChange) onOpenChange(val);
     else setInternalOpen(val);
   };
+  useBackLayer(() => { setIsOpen(false); triggerRef.current?.focus(); }, { enabled: isOpen, priority: 120 });
   // Session-scoped dismiss. The trigger stays gone until the student
   // reloads or navigates away — meeting the UX request while still
   // being compliant, because the widget fully re-appears on next
@@ -374,11 +376,6 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsOpen(false);
-        triggerRef.current?.focus();
-        return;
-      }
       if (e.key !== 'Tab') return;
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
