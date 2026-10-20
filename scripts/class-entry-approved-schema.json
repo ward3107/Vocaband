@@ -1,0 +1,157 @@
+{
+  "columns": [
+    {
+      "name": "class_id",
+      "type": "uuid",
+      "identity": "",
+      "not_null": true,
+      "generated": "",
+      "definition": null
+    },
+    {
+      "name": "session_id",
+      "type": "uuid",
+      "identity": "",
+      "not_null": true,
+      "generated": "",
+      "definition": null
+    },
+    {
+      "name": "teacher_uid",
+      "type": "text",
+      "identity": "",
+      "not_null": true,
+      "generated": "",
+      "definition": null
+    },
+    {
+      "name": "is_open",
+      "type": "boolean",
+      "identity": "",
+      "not_null": true,
+      "generated": "",
+      "definition": "true"
+    },
+    {
+      "name": "opened_at",
+      "type": "timestamp with time zone",
+      "identity": "",
+      "not_null": true,
+      "generated": "",
+      "definition": "now()"
+    },
+    {
+      "name": "expires_at",
+      "type": "timestamp with time zone",
+      "identity": "",
+      "not_null": true,
+      "generated": "",
+      "definition": "(now() + '06:00:00'::interval)"
+    }
+  ],
+  "indexes": [
+    {
+      "name": "class_live_one_open_class_per_session",
+      "ready": true,
+      "valid": true,
+      "definition": "CREATE UNIQUE INDEX class_live_one_open_class_per_session ON public.class_live_sessions USING btree (session_id) WHERE is_open"
+    },
+    {
+      "name": "class_live_sessions_pkey",
+      "ready": true,
+      "valid": true,
+      "definition": "CREATE UNIQUE INDEX class_live_sessions_pkey ON public.class_live_sessions USING btree (class_id)"
+    }
+  ],
+  "triggers": [
+    {
+      "name": "close_class_entry_on_session_end",
+      "enabled": "O",
+      "definition": "CREATE TRIGGER close_class_entry_on_session_end AFTER UPDATE OF is_active ON public.quick_play_sessions FOR EACH ROW WHEN ((old.is_active AND (NOT new.is_active))) EXECUTE FUNCTION close_class_entry_on_session_end()"
+    }
+  ],
+  "functions": [
+    {
+      "body": "\nBEGIN\n  UPDATE public.class_live_sessions SET is_open = false\n  WHERE session_id = NEW.id AND is_open;\n  RETURN NEW;\nEND;\n",
+      "kind": "f",
+      "name": "close_class_entry_on_session_end",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "strict": false,
+      "returns": "trigger",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "",
+      "leakproof": false,
+      "volatility": "v",
+      "security_definer": false
+    },
+    {
+      "body": "\n  SELECT c.id, c.name, s.id, s.session_code, s.allowed_modes,\n    CASE WHEN s.id IS NOT NULL THEN link.expires_at END\n  FROM public.classes c\n  JOIN public.users u ON u.class_code = c.code AND u.uid = (SELECT auth.uid())::text\n  JOIN public.student_profiles p ON p.auth_uid::text = u.uid\n    AND p.class_code = c.code AND p.status = 'approved'\n  LEFT JOIN public.class_live_sessions link ON link.class_id = c.id\n    AND c.teacher_uid = link.teacher_uid AND link.is_open AND link.expires_at > now()\n  LEFT JOIN public.quick_play_sessions s ON s.id = link.session_id\n    AND s.teacher_uid = c.teacher_uid AND s.is_active = true\n    AND coalesce(c.subject, 'english') = coalesce(s.subject, 'english')\n  WHERE u.role = 'student'\n  LIMIT 1;\n",
+      "kind": "f",
+      "name": "get_my_live_class_session",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "strict": false,
+      "returns": "TABLE(class_id uuid, class_name text, session_id uuid, session_code text, allowed_modes text[], expires_at timestamp with time zone)",
+      "language": "sql",
+      "parallel": "u",
+      "arguments": "",
+      "leakproof": false,
+      "volatility": "s",
+      "security_definer": false
+    },
+    {
+      "body": "\nBEGIN\n  IF auth.uid() IS NULL THEN\n    RAISE EXCEPTION 'authentication required' USING ERRCODE = '28000';\n  END IF;\n  -- Expiry hides the old link from clients, but it still occupies the partial\n  -- unique index until closed. Invoker RLS limits cleanup to the owner.\n  UPDATE public.class_live_sessions SET is_open = false\n  WHERE session_id = p_session_id AND is_open AND expires_at <= now();\n  INSERT INTO public.class_live_sessions (class_id, session_id, teacher_uid, is_open, opened_at, expires_at)\n  SELECT c.id, s.id, auth.uid()::text, true, now(), now() + interval '6 hours'\n  FROM public.classes c JOIN public.quick_play_sessions s ON s.teacher_uid = c.teacher_uid\n  WHERE c.id = p_class_id AND s.id = p_session_id\n    AND c.teacher_uid = auth.uid()::text AND s.is_active = true\n    AND coalesce(c.subject, 'english') = coalesce(s.subject, 'english')\n  ON CONFLICT (class_id) DO UPDATE SET\n    session_id = EXCLUDED.session_id, teacher_uid = EXCLUDED.teacher_uid, is_open = true,\n    opened_at = EXCLUDED.opened_at, expires_at = EXCLUDED.expires_at;\n  IF NOT FOUND THEN\n    RAISE EXCEPTION 'class or session unavailable' USING ERRCODE = '42501';\n  END IF;\nEND;\n",
+      "kind": "f",
+      "name": "set_class_live_session",
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "strict": false,
+      "returns": "void",
+      "language": "plpgsql",
+      "parallel": "u",
+      "arguments": "p_class_id uuid, p_session_id uuid",
+      "leakproof": false,
+      "volatility": "v",
+      "security_definer": false
+    }
+  ],
+  "constraints": [
+    {
+      "name": "class_live_sessions_check",
+      "type": "c",
+      "deferred": false,
+      "validated": true,
+      "deferrable": false,
+      "definition": "CHECK (((expires_at > opened_at) AND (expires_at <= (opened_at + '06:00:00'::interval))))"
+    },
+    {
+      "name": "class_live_sessions_class_id_fkey",
+      "type": "f",
+      "deferred": false,
+      "validated": true,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE"
+    },
+    {
+      "name": "class_live_sessions_pkey",
+      "type": "p",
+      "deferred": false,
+      "validated": true,
+      "deferrable": false,
+      "definition": "PRIMARY KEY (class_id)"
+    },
+    {
+      "name": "class_live_sessions_session_id_fkey",
+      "type": "f",
+      "deferred": false,
+      "validated": true,
+      "deferrable": false,
+      "definition": "FOREIGN KEY (session_id) REFERENCES quick_play_sessions(id) ON DELETE CASCADE"
+    }
+  ]
+}

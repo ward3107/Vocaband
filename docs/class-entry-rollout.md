@@ -17,7 +17,7 @@ Native EN/HE/AR controls explain the flow in all three languages. Teachers can c
 
 The bridge is included in the existing Realtime publication. Student home uses one visible, class-filtered subscription, rechecks on subscribe/focus/online, aborts stale requests and unsubscribes while hidden. There is no database polling. Closing a game updates the bridge through an invoker trigger so subscribers invalidate their card. Class-entry lookup or publication failures leave the manual game/QR path available.
 
-The repository's existing **Apply Supabase migrations** workflow applies the additive migration after merge to `main`. The frontend tolerates the migration arriving after the asset deployment. No auth, server, proxy, shared-contract or workflow implementation was changed.
+The repository's existing **Apply Supabase migrations** workflow normally applies the additive migration after merge to `main`. The frontend tolerates the migration arriving after the asset deployment. If the stored database password is rejected, **Complete class entry database release** uses the existing Management API token on `main` to apply only the exact approved class-entry migration. Its checksum is pinned; SQL and the original migration-history version commit atomically. Metadata checks reject partial or inconsistent state and compare complete function and policy definitions, columns, constraints, indexes and the closing trigger against the approved SQL. They also verify RLS, Realtime, authenticated/service-role privileges and anonymous-access denial. Pull requests run isolated safeguard tests without production credentials. The separate **Browser test gate** aggregates the three required browser suites.
 
 ## Verification
 
