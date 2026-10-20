@@ -92,7 +92,7 @@ test('teacher Back dismisses the exit confirmation and never sends a logout requ
   await expect(page.getByRole('heading', { name: 'Leave Vocaband?', exact: true })).toBeVisible();
   await back(page);
   await expect(page.getByRole('heading', { name: 'Leave Vocaband?', exact: true })).toHaveCount(0);
-  await expect(page.getByText('Logout', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Ready for a great lesson/ })).toBeVisible();
   expect(logouts).toBe(0);
 });
 
