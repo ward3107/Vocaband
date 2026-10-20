@@ -33,11 +33,8 @@ interface StudentCardProps {
    *  copy button wrote a multi-line invite message — pasted the wrong
    *  thing into the student-side PIN input. */
   onCopyPin?: () => void;
-  /** Open WhatsApp with JUST the PIN as the message text — no class
-   *  name, no surrounding instructions.  Teachers asked for this so
-   *  they can send the secret PIN alone on a different channel than
-   *  the class invite link. */
-  onSharePinWhatsApp?: () => void;
+  /** Choose a personal link, PIN, or both before opening WhatsApp. */
+  onShareWhatsApp?: () => void;
   /** Localised labels for the small kebab-menu actions and PIN chip. */
   labels: {
     pin: string;
@@ -50,7 +47,7 @@ interface StudentCardProps {
     deleteAria: string;
     deleteLabel: string;
     moreAria: string;
-    sharePinAria: string;
+    shareWhatsApp: string;
   };
 }
 
@@ -73,7 +70,7 @@ export default function StudentCard({
   onDelete,
   onCopyLink,
   onCopyPin,
-  onSharePinWhatsApp,
+  onShareWhatsApp,
   labels,
 }: StudentCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -124,23 +121,6 @@ export default function StudentCard({
           >
             {pinRevealed ? <EyeOff size={12} /> : <Eye size={12} />}
             {pinRevealed ? student.pin : labels.pin}
-          </button>
-        )}
-        {student.pin && onSharePinWhatsApp && (
-          <button
-            type="button"
-            onClick={onSharePinWhatsApp}
-            aria-label={labels.sharePinAria}
-            title={labels.sharePinAria}
-            style={{
-              touchAction: "manipulation",
-              WebkitTapHighlightColor: "transparent",
-              background: "#25D366",
-              boxShadow: "0 6px 14px -8px rgba(37,211,102,0.55)",
-            }}
-            className="grid h-8 w-8 place-items-center rounded-[10px] border-0 text-white transition-transform active:scale-95"
-          >
-            <MessageCircle size={14} />
           </button>
         )}
         {student.pin && onCopyPin && (
@@ -230,6 +210,16 @@ export default function StudentCard({
           </div>
         )}
       </div>
+      {onShareWhatsApp && (
+        <button
+          type="button" onClick={onShareWhatsApp}
+          aria-label={`${labels.shareWhatsApp} — ${student.name}`}
+          style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+          className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-800"
+        >
+          <MessageCircle size={18} aria-hidden="true" />{labels.shareWhatsApp}
+        </button>
+      )}
     </article>
   );
 }

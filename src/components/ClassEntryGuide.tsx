@@ -7,18 +7,20 @@ import { classEntryT } from '../locales/class-entry';
 export default function ClassEntryGuide({
   language,
   className,
+  classCode,
   url,
   onOpenRoster,
 }: {
   language: Language;
   className: string;
+  classCode: string;
   url: string;
   onOpenRoster?: () => void;
 }) {
   const t = classEntryT[language];
   const [copied, setCopied] = useState(false);
   const [failed, setFailed] = useState(false);
-  const instructions = t.instructions(className, url);
+  const instructions = t.instructions(className, url, classCode);
   return (
     <div className="space-y-3">
       <ol className="space-y-3 text-[var(--vb-text-primary)]">

@@ -115,6 +115,45 @@ test('teacher can open class entry with clear Hebrew instructions', async ({ tea
   await capture(page, info, 'teacher-live-entry-he');
 });
 
+test('teacher prepares a personal WhatsApp link and PIN on desktop and phone', async ({ teacherPage: page }, info) => {
+  await mockClassEntryChannel(page);
+  const studentId = '5f7b1234-1111-2222-3333-123456789abc';
+  await page.route('https://test-project.supabase.co/rest/v1/rpc/teacher_view_roster', route => route.fulfill({ json: [
+    { id: studentId, display_name: 'Maya', roster_pin: 'PQRS78', avatar: '🦊', xp: 0 },
+    { id: '6a8c1234-1111-2222-3333-123456789abc', display_name: 'Ali', roster_pin: 'WXYZ89', avatar: '🐻', xp: 0 },
+  ] }));
+  await prepare(page);
+  await open(page, '/');
+  await page.getByRole('button', { name: 'Invite students', exact: true }).first().click();
+  const invitation = page.getByRole('dialog');
+  const groupMessage = new URL((await invitation.getByRole('link', { name: /WhatsApp/ }).getAttribute('href'))!).searchParams.get('text')!;
+  expect(groupMessage).toContain('Class code: TEST01');
+  expect(groupMessage).not.toContain('PQRS78');
+  await invitation.getByRole('button', { name: 'Students & entry cards', exact: true }).click();
+  await page.getByRole('button', { name: 'Send on WhatsApp — Maya', exact: true }).click();
+  const personal = page.getByRole('dialog');
+  await expect(personal).toHaveAttribute('aria-label', 'Send a personal invitation · Maya');
+  const message = async (label: string) => new URL((await personal.getByRole('link', { name: label, exact: true }).getAttribute('href'))!).searchParams.get('text')!;
+  const combined = await message('Send on WhatsApp');
+  expect(combined).toContain('PQRS78');
+  expect(combined).not.toContain('WXYZ89');
+  const destination = new URL(combined.split('\n')[1]);
+  expect(destination.pathname).toBe('/student');
+  expect(Object.fromEntries(destination.searchParams)).toEqual({ class: 'TEST01', className: 'Test English Class', s: studentId });
+  await personal.getByRole('radio', { name: 'Link only', exact: true }).check();
+  expect(await message('Send on WhatsApp')).not.toContain('PQRS78');
+  await personal.getByRole('radio', { name: 'Personal PIN only', exact: true }).check();
+  expect(await message('Send on WhatsApp')).not.toContain('s=');
+  await personal.getByRole('radio', { name: 'Link + personal PIN', exact: true }).check();
+  await personal.getByRole('button', { name: 'עברית', exact: true }).click();
+  await expect(personal).toHaveAttribute('dir', 'rtl');
+  expect(await message('שליחה בוואטסאפ')).toContain('🔑 הקוד האישי: PQRS78');
+  await capture(page, info, 'teacher-personal-whatsapp-he');
+  await page.keyboard.press('Escape');
+  await expect(personal).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Send on WhatsApp — Ali', exact: true })).toBeVisible();
+});
+
 test('PIN student discovers a live lesson without teacher class state', async ({ studentPage: page }, info) => {
   await mockClassEntryChannel(page);
   await page.route('https://test-project.supabase.co/rest/v1/rpc/get_my_live_class_session', route => route.fulfill({ json: [{

@@ -1,5 +1,5 @@
 import type { FC } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   AlertTriangle,
@@ -10,6 +10,7 @@ import {
   KeyRound,
   Lightbulb,
   Link2,
+  MessageCircle,
   Plus,
   Printer,
   RefreshCw,
@@ -19,11 +20,15 @@ import {
 } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { logAudit } from "../utils/audit";
-import { useLanguage } from "../hooks/useLanguage";
+import { useLanguage, type Language } from "../hooks/useLanguage";
 import { classRosterT } from "../locales/teacher/roster";
 import { classEntryT } from "../locales/class-entry";
 import { buildClassJoinUrl } from "../utils/classJoin";
 import { printStudentEntryCards } from "../utils/studentEntryCards";
+import { studentInviteT } from "../locales/student-invite";
+import { lazyWithRetry } from "../utils/lazyWithRetry";
+
+const StudentWhatsAppInviteModal = lazyWithRetry(() => import('./StudentWhatsAppInviteModal'));
 
 // 32-char alphabet, chosen to be easy to read on paper and easy for a
 // 4th-grader to type on a phone. Excludes I/L/O (look like 1) and 0/1.
@@ -57,9 +62,10 @@ interface Props {
   onClose: () => void;
   classCode: string;
   className: string;
+  inviteLanguage?: Language;
 }
 
-const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) => {
+const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className, inviteLanguage }) => {
   const { language, dir, isRTL } = useLanguage();
   const t = classRosterT[language];
   const [students, setStudents] = useState<RosterStudent[]>([]);
@@ -77,6 +83,9 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
   // navigator.share was unavailable or the user dismissed it).  Drives
   // the brief "Copied — paste it into a message" toast.
   const [shareCopied, setShareCopied] = useState(false);
+  const [sharingStudentId, setSharingStudentId] = useState<string | null>(null);
+  const sharingStudent = students.find((student) => student.id === sharingStudentId);
+  const shareLanguage = inviteLanguage ?? language;
 
   const loadRoster = useCallback(async () => {
     setLoading(true);
@@ -112,17 +121,18 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
     setAllRevealed(false);
     setNewName("");
     setError(null);
+    setSharingStudentId(null);
   }, [open, loadRoster]);
 
   // Esc-to-close — matches the rest of the dashboard modals.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !sharingStudentId) onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, onClose, sharingStudentId]);
 
   const handleAdd = async () => {
     const trimmed = newName.trim();
@@ -336,6 +346,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
   };
 
   return (
+    <>
     <AnimatePresence>
       {open && (
         <motion.div
@@ -344,6 +355,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
+          aria-hidden={!!sharingStudent}
         >
           <motion.div
             className="bg-[var(--vb-surface)] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col"
@@ -409,6 +421,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
               <p className="text-xs text-[var(--vb-text-muted)] mt-2">
                 {t.addHelp}
               </p>
+              <p className="mt-2 text-sm font-semibold text-[var(--vb-text-secondary)]">{studentInviteT[shareLanguage].rosterHint}</p>
               <p
                 className="text-xs rounded-md mt-2 px-3 py-2 flex items-start gap-2 border"
                 style={{
@@ -470,10 +483,10 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                       return (
                         <div
                           key={s.id}
-                          className="flex items-center gap-3 p-3 rounded-lg border border-[var(--vb-border)] hover:border-[var(--vb-accent)] transition-colors"
+                          className="flex flex-wrap items-center gap-3 p-3 rounded-lg border border-[var(--vb-border)] hover:border-[var(--vb-accent)] transition-colors"
                         >
                           <span className="text-2xl shrink-0">{s.avatar}</span>
-                          <div className="flex-1 min-w-0">
+                          <div className="min-w-0 flex-1 basis-1/2">
                             <p className="font-bold text-sm text-[var(--vb-text-primary)] truncate">{s.displayName}</p>
                             <p className="text-xs text-[var(--vb-text-muted)] truncate">
                               {s.lastLoginAt
@@ -482,7 +495,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                               {s.xp ? t.xpSuffix(s.xp) : ""}
                             </p>
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                          <div className="flex w-full flex-wrap items-center justify-end gap-1.5">
                             {s.pin ? (
                               isRevealed ? (
                                 <button
@@ -510,6 +523,14 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                             ) : (
                               <span className="text-xs text-[var(--vb-text-muted)] px-3 py-1.5">—</span>
                             )}
+                            <button
+                              type="button" onClick={() => setSharingStudentId(s.id)}
+                              aria-label={`${studentInviteT[shareLanguage].share} — ${s.displayName}`}
+                              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-800"
+                              style={{ touchAction: 'manipulation' }}
+                            >
+                              <MessageCircle size={18} aria-hidden="true" />{studentInviteT[shareLanguage].share}
+                            </button>
                             {/* Channel-separation share buttons.  Distinct colours
                                 (indigo / fuchsia) so a teacher can't tap the wrong
                                 one and leak the PIN through the link channel. */}
@@ -624,6 +645,18 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
         </motion.div>
       )}
     </AnimatePresence>
+    {open && sharingStudent && (
+      <Suspense fallback={null}>
+        <StudentWhatsAppInviteModal
+          key={`${classCode}-${sharingStudent.id}`}
+          className={className} classCode={classCode}
+          studentId={sharingStudent.id} studentName={sharingStudent.displayName}
+          pin={sharingStudent.pin} language={shareLanguage}
+          onClose={() => setSharingStudentId(null)}
+        />
+      </Suspense>
+    )}
+    </>
   );
 };
 

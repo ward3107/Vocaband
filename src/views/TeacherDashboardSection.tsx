@@ -250,6 +250,7 @@ export function TeacherDashboardSection(): ReactNode {
             />
           ) : (
             <ClassRosterModal
+              inviteLanguage="he"
               open={!!rosterModalClass}
               onClose={() => setRosterModalClass(null)}
               classCode={rosterModalClass.code}

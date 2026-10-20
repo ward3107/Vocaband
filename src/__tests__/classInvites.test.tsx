@@ -23,6 +23,7 @@ describe('teacher invitations', () => {
     const message = new URL(link.getAttribute('href')!).searchParams.get('text')!;
     expect(message).toContain('מזינים את הקוד האישי שקיבלתם מהמורה');
     expect(message).toContain('class=ABCD2345');
+    expect(message).toContain('🏫 קוד הכיתה: ABCD2345');
   });
   it('shares Hebrew-class instructions in Hebrew even when the UI is English', () => {
     render(<ShareClassLinkModal open onClose={vi.fn()} className="ז׳ 1" code="ABCD2345" language="he" assignmentId="task-he" />);
@@ -49,6 +50,8 @@ describe('teacher invitations', () => {
     expect(text).toContain('assignment=task-42');
     expect(text).toContain('personal PIN');
     expect(text).toContain('Choose your name or student code');
+    expect(text).toContain('🏫 Class code: ABCD2345');
+    expect(text).not.toContain('&pin=');
   });
   it('opens the roster from the preparation step and closes the invitation', () => {
     const onClose = vi.fn();

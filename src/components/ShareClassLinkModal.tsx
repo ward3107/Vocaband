@@ -46,7 +46,7 @@ function ShareClassLinkContent({
   const [copied, setCopied] = useState<'link' | 'code' | null>(null);
   const [copyFailed, setCopyFailed] = useState(false);
   const url = buildClassJoinUrl(code, { className, assignmentId, playMode });
-  const instructions = entry.instructions(className, url);
+  const instructions = entry.instructions(className, url, code);
   const baseInvite = !assignmentId && !playMode;
   const L = (en: string, he: string, ar: string) =>
     language === 'he' ? he : language === 'ar' ? ar : en;
@@ -178,6 +178,7 @@ function ShareClassLinkContent({
             <ClassEntryGuide
               language={language}
               className={className}
+              classCode={code}
               url={url}
               onOpenRoster={
                 onOpenRoster

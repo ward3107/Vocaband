@@ -19,7 +19,7 @@ export const classEntryT = {
     change: 'Choose another class',
     nameHint: 'Choose your name or student code below. Then enter your personal PIN.',
     personalHint:
-      'Your personal PIN is on the card your teacher gave you. It is different from the class code.',
+      'Your personal PIN is on your entry card or in the private WhatsApp message from your teacher. It is different from the class code.',
     needHelp: 'Need help?',
     help: 'No link or personal PIN? Ask your teacher for your entry card. If your name or student code is missing, your teacher needs to add you first.',
     game: 'Did your teacher give you a game code?',
@@ -39,10 +39,10 @@ export const classEntryT = {
     invite: 'Invite students',
     prepare: 'Prepare students',
     prepareHint:
-      'Add students and give each one their own PIN. Use a first name, nickname or student code.',
+      'Add students, then send each one a personal WhatsApp invitation with their link and PIN, or print an entry card.',
     share: 'Send the class link',
     shareHint:
-      'Send this link to the class group. It opens the correct class; students do not need to type its code.',
+      'Send the link and class code to the class group. The link opens the correct class. Personal PINs are sent individually from Students & entry cards.',
     explain: 'Tell students what to do',
     explainHint: '“Open the link, choose your name or student code, and enter your personal PIN.”',
     manage: 'Students & entry cards',
@@ -51,8 +51,8 @@ export const classEntryT = {
     copyInstructions: 'Copy student instructions',
     copied: 'Copied',
     copyFailed: 'Could not copy. Select and copy the instructions below.',
-    instructions: (name: string, url: string) =>
-      `Enter ${name} on Vocaband:\n${url}\n1. Open the link. Your class is already selected.\n2. Choose your name or student code.\n3. Enter the personal PIN your teacher gave you.\nCan’t find your name or don’t have a PIN? Ask your teacher.`,
+    instructions: (name: string, url: string, code?: string) =>
+      `Enter ${name} on Vocaband:\n${url}${code ? `\n🏫 Class code: ${code}` : ''}\n1. Open the link. Your class is already selected.\n2. Choose your name or student code.\n3. Enter the personal PIN your teacher gave you.\nCan’t find your name or don’t have a PIN? Ask your teacher.`,
     fixedLink: 'Keep this link for the next lesson too.',
     printCards: 'Print personal entry cards',
     cardInstructions:
@@ -80,7 +80,7 @@ export const classEntryT = {
     ready: 'הכיתה כבר נבחרה',
     change: 'בחירת כיתה אחרת',
     nameHint: 'בחרו למטה את השם או את מזהה התלמיד שלכם. אחר כך הזינו את הקוד האישי.',
-    personalHint: 'הקוד האישי מופיע בכרטיס שקיבלתם מהמורה. הוא שונה מקוד הכיתה.',
+    personalHint: 'הקוד האישי מופיע בכרטיס הכניסה או בהודעת וואטסאפ פרטית מהמורה. הוא שונה מקוד הכיתה.',
     needHelp: 'צריכים עזרה?',
     help: 'אין קישור או קוד אישי? בקשו מהמורה את כרטיס הכניסה שלכם. השם או המזהה לא מופיעים? המורה צריך להוסיף אתכם לכיתה.',
     game: 'המורה נתן לכם קוד משחק?',
@@ -100,10 +100,10 @@ export const classEntryT = {
     invite: 'הזמנת תלמידים',
     prepare: 'מכינים את התלמידים',
     prepareHint:
-      'הוסיפו תלמידים ותנו לכל אחד קוד אישי. אפשר להשתמש בשם פרטי, בכינוי או במזהה תלמיד.',
+      'הוסיפו תלמידים ושלחו לכל אחד הזמנה אישית בוואטסאפ עם קישור וקוד אישי, או הדפיסו כרטיס כניסה.',
     share: 'שולחים קישור לכיתה',
     shareHint:
-      'שלחו את הקישור לקבוצת הכיתה. הוא פותח את הכיתה הנכונה — התלמידים לא צריכים להקליד את הקוד שלה.',
+      'שלחו את הקישור וקוד הכיתה לקבוצה. הקישור פותח את הכיתה הנכונה. קודים אישיים שולחים בנפרד מתוך תלמידים וכרטיסי כניסה.',
     explain: 'מסבירים לתלמידים מה לעשות',
     explainHint: '״פתחו את הקישור, בחרו את השם או המזהה שלכם והזינו את הקוד האישי שקיבלתם ממני.״',
     manage: 'תלמידים וכרטיסי כניסה',
@@ -112,8 +112,8 @@ export const classEntryT = {
     copyInstructions: 'העתקת הוראות לתלמידים',
     copied: 'הועתק',
     copyFailed: 'לא הצלחנו להעתיק. סמנו והעתיקו את ההוראות למטה.',
-    instructions: (name: string, url: string) =>
-      `נכנסים לכיתה ${name} ב־Vocaband:\n${url}\n1. פותחים את הקישור. הכיתה כבר נבחרה.\n2. בוחרים את השם או את מזהה התלמיד שלכם.\n3. מזינים את הקוד האישי שקיבלתם מהמורה.\nהשם חסר או שאין לכם קוד אישי? פנו למורה.`,
+    instructions: (name: string, url: string, code?: string) =>
+      `נכנסים לכיתה ${name} ב־Vocaband:\n${url}${code ? `\n🏫 קוד הכיתה: ${code}` : ''}\n1. פותחים את הקישור. הכיתה כבר נבחרה.\n2. בוחרים את השם או את מזהה התלמיד שלכם.\n3. מזינים את הקוד האישי שקיבלתם מהמורה.\nהשם חסר או שאין לכם קוד אישי? פנו למורה.`,
     fixedLink: 'שמרו את הקישור הזה גם לשיעור הבא.',
     printCards: 'הדפסת כרטיסי כניסה אישיים',
     cardInstructions: 'סרקו או פתחו את הקישור והזינו את הקוד האישי. שמרו את הכרטיס לשיעור הבא.',
@@ -140,7 +140,7 @@ export const classEntryT = {
     ready: 'تم اختيار الصف',
     change: 'اختيار صف آخر',
     nameHint: 'اختر اسمك أو رمز الطالب الخاص بك أدناه، ثم أدخل رمزك الشخصي.',
-    personalHint: 'رمزك الشخصي موجود على البطاقة التي أعطاك إياها المعلم. وهو مختلف عن رمز الصف.',
+    personalHint: 'رمزك الشخصي موجود على بطاقة الدخول أو في رسالة واتساب خاصة من معلمك. وهو مختلف عن رمز الصف.',
     needHelp: 'تحتاج إلى مساعدة؟',
     help: 'ليس لديك رابط أو رمز شخصي؟ اطلب بطاقة الدخول من معلمك. إذا لم يظهر اسمك أو رمزك، فعلى المعلم إضافتك إلى الصف أولًا.',
     game: 'أعطاك المعلم رمز لعبة؟',
@@ -160,9 +160,9 @@ export const classEntryT = {
     invite: 'دعوة الطلاب',
     prepare: 'جهّز الطلاب',
     prepareHint:
-      'أضف الطلاب وأعطِ كل طالب رمزه الشخصي. يمكنك استخدام الاسم الأول أو لقب أو رمز طالب.',
+      'أضف الطلاب، ثم أرسل لكل طالب دعوة واتساب شخصية تتضمن رابطه ورمزه الشخصي، أو اطبع بطاقة دخول.',
     share: 'أرسل رابط الصف',
-    shareHint: 'أرسل هذا الرابط إلى مجموعة الصف. يفتح الصف الصحيح دون الحاجة إلى كتابة رمزه.',
+    shareHint: 'أرسل الرابط ورمز الصف إلى المجموعة. يفتح الرابط الصف الصحيح. أرسل الرموز الشخصية بشكل فردي من الطلاب وبطاقات الدخول.',
     explain: 'اشرح للطلاب ما عليهم فعله',
     explainHint:
       '«افتحوا الرابط، اختاروا اسمكم أو رمز الطالب، ثم أدخلوا الرمز الشخصي الذي أعطيتكم إياه.»',
@@ -172,8 +172,8 @@ export const classEntryT = {
     copyInstructions: 'نسخ تعليمات الطلاب',
     copied: 'تم النسخ',
     copyFailed: 'تعذّر النسخ. حدّد التعليمات أدناه وانسخها.',
-    instructions: (name: string, url: string) =>
-      `الدخول إلى الصف ${name} على Vocaband:\n${url}\n1. افتح الرابط. الصف محدّد مسبقًا.\n2. اختر اسمك أو رمز الطالب الخاص بك.\n3. أدخل الرمز الشخصي الذي أعطاك إياه المعلم.\nاسمك غير موجود أو ليس لديك رمز شخصي؟ اطلب المساعدة من المعلم.`,
+    instructions: (name: string, url: string, code?: string) =>
+      `الدخول إلى الصف ${name} على Vocaband:\n${url}${code ? `\n🏫 رمز الصف: ${code}` : ''}\n1. افتح الرابط. الصف محدّد مسبقًا.\n2. اختر اسمك أو رمز الطالب الخاص بك.\n3. أدخل الرمز الشخصي الذي أعطاك إياه المعلم.\nاسمك غير موجود أو ليس لديك رمز شخصي؟ اطلب المساعدة من المعلم.`,
     fixedLink: 'احتفظ بهذا الرابط للدرس القادم أيضًا.',
     printCards: 'طباعة بطاقات دخول شخصية',
     cardInstructions:
