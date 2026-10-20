@@ -97,6 +97,17 @@ test('teacher Back dismisses the exit confirmation and never sends a logout requ
   await expect(page.getByRole('heading', { name: 'Leave Vocaband?', exact: true })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: /Ready for a great lesson/ })).toBeVisible();
   expect(logouts).toBe(0);
+  await page.goto('/privacy-settings');
+  await waitForAppLoad(page);
+  await expect(page.getByRole('heading', { name: 'Privacy & Data Settings', exact: true })).toBeVisible();
+  await back(page);
+  await expect(page.getByRole('heading', { name: /Ready for a great lesson/ })).toBeVisible();
+  // Returning home from a direct link must leave another in-document Back.
+  await back(page);
+  await expect(page.getByRole('heading', { name: 'Leave Vocaband?', exact: true })).toBeVisible();
+  await back(page);
+  await expect(page.getByRole('heading', { name: 'Leave Vocaband?', exact: true })).toHaveCount(0);
+  expect(logouts).toBe(0);
 });
 
 test('Back closes the student Tasks sheet before navigating and a deep link returns home', async ({

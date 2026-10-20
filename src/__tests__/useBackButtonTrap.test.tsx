@@ -85,8 +85,12 @@ describe('Back history and session safety', () => {
     window.history.replaceState({}, '', '/vocabulary-library');
     const p = params('vocabulary-library', teacher);
     renderHook(() => useBackButtonTrap(p));
+    const pushes = vi.spyOn(window.history, 'pushState');
     popped('public-landing');
     expect(p.setView).toHaveBeenCalledWith('teacher-dashboard');
     expect(window.location.pathname).toBe('/');
+    expect(pushes.mock.calls.length).toBeGreaterThan(1);
+    expect(window.history.state).toEqual({ view: 'teacher-dashboard' });
+    pushes.mockRestore();
   });
 });

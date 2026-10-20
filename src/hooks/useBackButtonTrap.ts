@@ -167,8 +167,7 @@ export function useBackButtonTrap(
   // Push a full dashboard trap: refill the pad buffer, then push the
   // dashboard on top.  Called on login transitions and whenever a pad
   // entry is popped so the buffer is always replenished.
-  const pushDashboardTrap = useCallback(() => {
-    const v = viewRef.current;
+  const pushDashboardTrap = useCallback((v: View = viewRef.current) => {
     window.history.replaceState({ view: v, _pad: true }, '');
     for (let i = 1; i < PAD_COUNT; i++) {
       window.history.pushState({ view: v, _pad: true }, '');
@@ -371,6 +370,9 @@ export function useBackButtonTrap(
         // rather than trapping the user indefinitely on the deep link.
         const homeView = getHomeView() as View;
         window.history.replaceState({ view: homeView }, '', pathForView(homeView) ?? '/');
+        // The synthetic home may be the first entry in this document.
+        // Keep the next Back in-document so the dashboard floor can run.
+        pushDashboardTrap(homeView);
         currentUrlRef.current = window.location.href;
         isPopStateNavRef.current = true;
         setView(homeView);
