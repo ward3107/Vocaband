@@ -31,6 +31,7 @@ import { buildClassJoinUrl } from '../../../utils/classJoin';
 import { classEntryT } from '../../../locales/class-entry';
 import { studentInviteT } from '../../../locales/student-invite';
 import { lazyWithRetry } from '../../../utils/lazyWithRetry';
+import { useBackLayer } from '../../../hooks/useBackLayer';
 
 const StudentWhatsAppInviteModal = lazyWithRetry(() => import('../../StudentWhatsAppInviteModal'));
 
@@ -84,6 +85,7 @@ export default function RosterModalV2({
   className,
   classEmoji = "🎓",
 }: Props) {
+  useBackLayer(onClose, { enabled: open, priority: 60 });
   const { language, dir } = useLanguage();
   const isMobile = useIsMobile();
   const { isOn } = useFeatureFlag();
@@ -103,14 +105,7 @@ export default function RosterModalV2({
   const entryCardsPending = loading || rows.some((student) => student.id.startsWith('tmp-'));
 
   // Esc-to-close — matches the legacy modal's behaviour.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !sharingStudentId) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose, sharingStudentId]);
+
 
   const loadRoster = useCallback(async () => {
     setLoading(true);

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, MessageCircle } from 'lucide-react';
+import { Copy, KeyRound, Link, MessageCircle, Send } from 'lucide-react';
 import type { Language } from '../hooks/useLanguage';
 import { classEntryT } from '../locales/class-entry';
 import { studentInviteT } from '../locales/student-invite';
@@ -45,8 +45,8 @@ export default function StudentWhatsAppInviteModal({
     <ModalShell
       open
       onClose={onClose}
-      variant="success"
-      icon="💬"
+      variant="paper"
+      icon={<MessageCircle size={22} aria-hidden="true" />}
       zIndex={110}
       dir={language === 'en' ? 'ltr' : 'rtl'}
       title={`${t.title} · ${studentName}`}
@@ -76,13 +76,13 @@ export default function StudentWhatsAppInviteModal({
         <legend className="mb-2 text-base font-bold text-[var(--vb-text-primary)]">
           {t.contents}
         </legend>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid gap-2">
           {(['both', 'link', 'pin'] as const).map((value) => (
             <label
               key={value}
-              className={`flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm font-bold has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-emerald-700 ${
+              className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border p-3 text-base font-bold has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-violet-700 ${
                 selectedMode === value
-                  ? 'border-emerald-700 bg-emerald-50 text-emerald-950'
+                  ? 'border-[#1d2940] bg-[#f2f5e9] text-[#1d2940]'
                   : 'border-slate-200 bg-white text-slate-700'
               } ${!pin && value !== 'link' ? 'cursor-not-allowed opacity-40' : ''}`}
             >
@@ -96,8 +96,9 @@ export default function StudentWhatsAppInviteModal({
                   setMode(value);
                   setCopyStatus(null);
                 }}
-                className="shrink-0 accent-emerald-700"
+                className="h-4 w-4 shrink-0 accent-violet-700"
               />
+              {value === 'both' ? <Send size={18} aria-hidden="true" /> : value === 'link' ? <Link size={18} aria-hidden="true" /> : <KeyRound size={18} aria-hidden="true" />}
               {t[value]}
             </label>
           ))}
@@ -108,10 +109,10 @@ export default function StudentWhatsAppInviteModal({
         <textarea
           readOnly
           value={message}
-          rows={7}
+          rows={5}
           dir="auto"
           onFocus={(event) => event.currentTarget.select()}
-          className="mt-2 min-h-40 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-base font-normal leading-relaxed text-slate-900"
+          className="mt-2 min-h-40 w-full resize-y rounded-2xl border border-[#e1e5d6] bg-[#f6f8ee] p-4 text-sm font-normal leading-relaxed text-[#1d2940]"
         />
       </label>
       <button

@@ -1,3 +1,4 @@
+import { useBackLayer } from "../hooks/useBackLayer";
 import { useEffect, useRef, useState } from "react";
 import { Loader2, QrCode, Globe } from "lucide-react";
 import { IOSButton, IOSCard, IOSEmptyState, IOSTextField } from "../components/ios";
@@ -239,23 +240,15 @@ export default function QuickPlayStudentView({
   // its toast after the view is already gone.
   useEffect(() => () => disarmJoinWatchdog(), []);
 
-  // ─── Phone back-button trap for the QP join flow ────────────────────
-  //
-  // Without this, the hardware back button on the join screen popped
-  // straight out to public-landing (useBackButtonTrap's CASE C only
-  // walks the global view stack; it doesn't know this is an active QP
-  // session). The join is now a single screen, so back simply re-pushes
-  // to block exit — the student leaves only via the visible header Back
-  // / floating Leave buttons (which call cleanupSessionData).
-  useEffect(() => {
-    window.history.pushState({ view: 'quick-play-student' }, '');
-    const handler = (e: PopStateEvent) => {
-      e.stopImmediatePropagation();
-      window.history.pushState({ view: 'quick-play-student' }, '');
-    };
-    window.addEventListener('popstate', handler, { capture: true });
-    return () => window.removeEventListener('popstate', handler, { capture: true });
-  }, []);
+  const leaveJoin = () => {
+    disarmJoinWatchdog();
+    cleanupSessionData();
+    setQuickPlayActiveSession(null);
+    setView(classStudent ? 'student-dashboard' : 'public-landing');
+  };
+  // The visible arrow and phone Back share cleanup. Higher-priority
+  // dialogs (QR/camera/help) close before leaving this screen.
+  useBackLayer(leaveJoin, { priority: 0, escape: false });
 
   // Surface server-side join errors. Recoverable errors (taken name,
   // rate-limited) show as toasts so the student can fix and retry on
@@ -454,11 +447,7 @@ export default function QuickPlayStudentView({
         <IOSButton
           variant="plain"
           size="sm"
-          onClick={() => {
-            cleanupSessionData(); // Clear save queue and timers
-            setView("public-landing");
-            setQuickPlayActiveSession(null);
-          }}
+          onClick={leaveJoin}
         >
           {qpIsRTL ? '→' : '←'} {qpT.back}
         </IOSButton>

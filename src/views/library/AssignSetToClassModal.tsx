@@ -1,3 +1,4 @@
+import { useBackLayer } from "../../hooks/useBackLayer";
 /**
  * AssignSetToClassModal — turns a saved Vocabulary Set into an
  * Assignment for a chosen class.
@@ -77,6 +78,7 @@ export default function AssignSetToClassModal({
   showToast,
 }: AssignSetToClassModalProps) {
   const { language, isRTL, dir } = useLanguage();
+  useBackLayer(onClose, { priority: 60 });
   const t = useMemo(() => assignSetT[language], [language]);
 
   const [selectedClassId, setSelectedClassId] = useState<string | null>(
@@ -196,7 +198,7 @@ export default function AssignSetToClassModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         dir={dir}
-        className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+        className="fixed inset-0 z-[60] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
         role="dialog"
         aria-modal="true"
         aria-label={t.modalTitle(set.name)}

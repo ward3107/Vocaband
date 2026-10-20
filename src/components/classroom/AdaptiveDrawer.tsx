@@ -15,6 +15,7 @@
  */
 import { useEffect, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { useBackLayer } from "../../hooks/useBackLayer";
 import { X, ArrowLeft } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
 import { teacherClassroomT } from "../../locales/teacher/classroom";
@@ -38,15 +39,7 @@ export default function AdaptiveDrawer({
 }: AdaptiveDrawerProps) {
   const { language } = useLanguage();
   const t = teacherClassroomT[language];
-  // Esc key closes the drawer.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  useBackLayer(onClose, { enabled: open, priority: 50 });
 
   // Lock body scroll while open so the list behind doesn't scroll under
   // the drill.
@@ -91,7 +84,7 @@ export default function AdaptiveDrawer({
                 type="button"
                 onClick={onClose}
                 aria-label={t.closeDetailsAria}
-                className="w-10 h-10 rounded-lg hover:bg-[var(--vb-surface-alt)] flex items-center justify-center shrink-0"
+                className="w-11 h-11 rounded-lg hover:bg-[var(--vb-surface-alt)] flex items-center justify-center shrink-0"
                 style={{
                   color: 'var(--vb-text-secondary)',
                   touchAction: "manipulation",
@@ -100,7 +93,7 @@ export default function AdaptiveDrawer({
               >
                 {/* Back-arrow feels right on mobile; on desktop it still
                     reads as "close panel". */}
-                <ArrowLeft size={20} className="lg:hidden" />
+                <ArrowLeft size={20} className="lg:hidden rtl:rotate-180" />
                 <X size={20} className="hidden lg:block" />
               </button>
 

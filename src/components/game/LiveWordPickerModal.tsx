@@ -12,7 +12,7 @@
  * Done / backdrop / Escape. Word selection syncs live via onSelectedWordsChange,
  * so there's nothing to "save" — Done just closes.
  */
-import { useEffect } from "react";
+import { useBackLayer } from "../../hooks/useBackLayer";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Check } from "lucide-react";
 import WordPicker, { type WordPickerProps } from "../setup/WordPicker";
@@ -66,15 +66,7 @@ export default function LiveWordPickerModal({
   const count = pickerProps.selectedWords.length;
   const enough = count >= minWords;
 
-  // Escape closes, like any modal dialog.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  useBackLayer(onClose, { enabled: open, priority: 95 });
 
   return (
     <AnimatePresence>

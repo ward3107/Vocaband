@@ -1,4 +1,5 @@
 import type { FormEventHandler } from 'react';
+import { ArrowRight } from 'lucide-react';
 import { useLanguage } from '../hooks/useLanguage';
 import { classEntryT } from '../locales/class-entry';
 
@@ -43,7 +44,7 @@ export default function ClassCodeForm({
         aria-describedby="class-entry-hint class-entry-error"
         maxLength={2000}
         placeholder="ABCD2345"
-        className="min-h-14 w-full rounded-xl border-2 border-violet-300 bg-[var(--vb-surface)] px-4 py-3 text-center text-xl font-bold text-[var(--vb-text-primary)] focus-visible:outline-2 focus-visible:outline-violet-600"
+        className="min-h-16 w-full rounded-2xl border-2 border-[#cdd1db] bg-[#f8f9fc] px-4 py-4 text-center font-mono text-2xl font-bold tracking-wider text-[#1d2940] placeholder:text-[#929aab] focus:border-violet-600 focus:outline-2 focus:outline-violet-200"
       />
       <p id="class-entry-hint" className="mt-2 text-sm text-[var(--vb-text-secondary)]">
         {t.codeHint}
@@ -55,16 +56,17 @@ export default function ClassCodeForm({
         <button
           type="button"
           onClick={onJoinGame}
-          className="mt-4 min-h-12 w-full rounded-xl bg-violet-700 p-3 text-lg font-bold text-white"
+          className="mt-5 min-h-14 w-full rounded-2xl bg-[#1d2940] p-3 text-lg font-bold text-white hover:bg-[#303f5b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
         >
           {t.joinGame}
         </button>
       ) : (
         <button
           type="submit"
-          className="mt-4 min-h-12 w-full rounded-xl bg-violet-700 p-3 text-lg font-bold text-white"
+          className="mt-5 flex min-h-14 w-full items-center justify-between gap-3 rounded-2xl bg-[#1d2940] p-3 ps-5 text-base font-bold text-white hover:bg-[#303f5b] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
         >
           {t.continue}
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#d8f36a] text-[#1d2940]"><ArrowRight size={20} className="rtl:rotate-180" aria-hidden="true" /></span>
         </button>
       )}
       {isGameCode && (

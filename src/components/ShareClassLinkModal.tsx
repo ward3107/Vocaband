@@ -76,6 +76,7 @@ function ShareClassLinkContent({
   return (
     <ModalShell
       open
+      variant="paper"
       onClose={onClose}
       dir={dir}
       zIndex={100}
@@ -95,7 +96,7 @@ function ShareClassLinkContent({
     >
       <ClassEntryLanguagePicker language={language} onChange={setLanguage} />
       {baseInvite && (
-        <div className="mb-4 rounded-xl bg-violet-50 p-4 text-violet-950">
+        <div className="mb-4 rounded-2xl border border-[#e1e5d6] bg-[#f6f8ee] p-4 text-[#1d2940]">
           <p className="font-bold">1. {entry.prepare}</p>
           <p className="mt-1 text-sm leading-relaxed">{entry.prepareHint}</p>
           {onOpenRoster && (

@@ -27,6 +27,7 @@ import { buildClassJoinUrl } from "../utils/classJoin";
 import { printStudentEntryCards } from "../utils/studentEntryCards";
 import { studentInviteT } from "../locales/student-invite";
 import { lazyWithRetry } from "../utils/lazyWithRetry";
+import { useBackLayer } from '../hooks/useBackLayer';
 
 const StudentWhatsAppInviteModal = lazyWithRetry(() => import('./StudentWhatsAppInviteModal'));
 
@@ -66,6 +67,7 @@ interface Props {
 }
 
 const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className, inviteLanguage }) => {
+  useBackLayer(onClose, { enabled: open, priority: 100 });
   const { language, dir, isRTL } = useLanguage();
   const t = classRosterT[language];
   const [students, setStudents] = useState<RosterStudent[]>([]);
@@ -125,14 +127,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className, invi
   }, [open, loadRoster]);
 
   // Esc-to-close — matches the rest of the dashboard modals.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !sharingStudentId) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose, sharingStudentId]);
+
 
   const handleAdd = async () => {
     const trimmed = newName.trim();

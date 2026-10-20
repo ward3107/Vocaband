@@ -1,10 +1,11 @@
-import type { FC } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { ArrowLeft, KeyRound, Search, AlertTriangle, Sparkles } from "lucide-react";
-import { supabase } from "../core/supabase";
-import { useLanguage } from "../hooks/useLanguage";
-import { studentPinLoginT } from "../locales/student/student-pin-login";
+import type { FC } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowLeft, ArrowRight, KeyRound, Search, AlertTriangle, RotateCw } from 'lucide-react';
+import { supabase } from '../core/supabase';
+import { useLanguage } from '../hooks/useLanguage';
+import { useBackLayer } from '../hooks/useBackLayer';
+import { classEntryT } from '../locales/class-entry';
+import { studentPinLoginT } from '../locales/student/student-pin-login';
 
 interface RosterEntry {
   id: string;
@@ -15,6 +16,8 @@ interface RosterEntry {
 
 interface Props {
   classCode: string;
+  onStepChange?: (step: 'name' | 'pin') => void;
+  onBusyChange?: (busy: boolean) => void;
   /** Optional student_profiles.id from `?s=` on the teacher invite link.
    *  When provided AND it matches a row in the loaded roster, we skip
    *  the pick-your-name step and land directly on the PIN entry.  The
@@ -37,15 +40,22 @@ const PIN_LENGTH = 6;
 // (no I/L/O, no 0/1).
 const PIN_REGEX = /^[A-HJ-KM-NP-Z2-9]{6}$/;
 
-const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSuccess, onTier2Login }) => {
+const StudentPinLoginCard: FC<Props> = ({
+  classCode,
+  prefilledStudentId,
+  onSuccess,
+  onTier2Login,
+  onStepChange,
+  onBusyChange,
+}) => {
   const { language, dir, isRTL } = useLanguage();
   const t = studentPinLoginT[language];
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [rosterLoading, setRosterLoading] = useState(true);
   const [rosterError, setRosterError] = useState<string | null>(null);
-  const [filter, setFilter] = useState("");
+  const [filter, setFilter] = useState('');
   const [selected, setSelected] = useState<RosterEntry | null>(null);
-  const [pin, setPin] = useState("");
+  const [pin, setPin] = useState('');
   const [signingIn, setSigningIn] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
   // Per-session wrong-PIN counter.  After 3 fails we swap to the
@@ -53,6 +63,13 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
   // security limit (state is in-memory + resets on refresh).  Real
   // brute-force protection lives in GoTrue's per-IP defaults.
   const [wrongPinCount, setWrongPinCount] = useState(0);
+  useEffect(() => {
+    onStepChange?.(selected ? 'pin' : 'name');
+  }, [selected, onStepChange]);
+  useEffect(() => {
+    onBusyChange?.(signingIn);
+  }, [signingIn, onBusyChange]);
+  const nameListRef = useRef<HTMLDivElement>(null);
   const pinInputRef = useRef<HTMLInputElement | null>(null);
 
   // Load the class roster on mount (or when classCode changes).
@@ -65,7 +82,7 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
     setRosterLoading(true);
     setRosterError(null);
     try {
-      const { data, error } = await supabase.rpc("class_roster_for_login", {
+      const { data, error } = await supabase.rpc('class_roster_for_login', {
         p_class_code: classCode,
       });
       if (error) throw error;
@@ -73,7 +90,7 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
         id: r.id as string,
         displayName: r.display_name as string,
         email: r.email as string,
-        avatar: (r.avatar as string) || "🦊",
+        avatar: (r.avatar as string) || '🦊',
       }));
       setRoster(mapped);
     } catch (e) {
@@ -97,7 +114,7 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
     if (consumedPrefillRef.current) return;
     if (!prefilledStudentId) return;
     if (rosterLoading || roster.length === 0) return;
-    const match = roster.find(r => r.id.toLowerCase() === prefilledStudentId.toLowerCase());
+    const match = roster.find((r) => r.id.toLowerCase() === prefilledStudentId.toLowerCase());
     if (!match) {
       // Stale or wrong id — silently fall through to the normal picker.
       consumedPrefillRef.current = true;
@@ -105,7 +122,7 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
     }
     consumedPrefillRef.current = true;
     setSelected(match);
-    setPin("");
+    setPin('');
     setPinError(null);
   }, [prefilledStudentId, roster, rosterLoading]);
 
@@ -117,14 +134,14 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
     if (!selected) return;
     const id = window.setTimeout(() => {
       pinInputRef.current?.focus();
-      pinPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      pinPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 80);
     return () => window.clearTimeout(id);
   }, [selected]);
 
   const handlePick = (s: RosterEntry) => {
     setSelected(s);
-    setPin("");
+    setPin('');
     setPinError(null);
     // Different student selected → start the wrong-PIN counter fresh.
     setWrongPinCount(0);
@@ -132,11 +149,15 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
 
   // "Not me" / change — clear the selection to collapse the PIN panel
   // and return focus to the name list.
-  const clearSelection = () => {
+  const clearSelection = (): void | false => {
+    if (signingIn) return false;
     setSelected(null);
-    setPin("");
+    setPin('');
     setPinError(null);
+    setWrongPinCount(0);
+    requestAnimationFrame(() => nameListRef.current?.focus());
   };
+  useBackLayer(clearSelection, { enabled: Boolean(selected), priority: 20, escape: false });
 
   const handleSubmit = async () => {
     if (!selected || signingIn) return;
@@ -154,7 +175,7 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
       if (onTier2Login) {
         const outcome = await onTier2Login(selected.email, cleanPin);
         if (outcome === 'ok') {
-          void supabase.rpc("student_touch_last_login");
+          void supabase.rpc('student_touch_last_login');
           onSuccess();
           return;
         }
@@ -182,7 +203,7 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
         return;
       }
       // Best-effort last-login bookkeeping — don't block on it.
-      void supabase.rpc("student_touch_last_login");
+      void supabase.rpc('student_touch_last_login');
       onSuccess();
     } catch (e) {
       setPinError(e instanceof Error ? e.message : t.genericSignInError);
@@ -192,182 +213,183 @@ const StudentPinLoginCard: FC<Props> = ({ classCode, prefilledStudentId, onSucce
   };
 
   const filtered = filter.trim()
-    ? roster.filter(r => r.displayName.toLowerCase().includes(filter.trim().toLowerCase()))
+    ? roster.filter((r) => r.displayName.toLowerCase().includes(filter.trim().toLowerCase()))
     : roster;
 
   // Coded classes (anonymous codes like "07-5-2-14") are far less scannable
   // than names, so always show the filter and ask the student to type their
   // code rather than hunt the grid.
-  const isCoded = roster.length > 0 && roster.every(r => /^\d/.test(r.displayName));
+  const isCoded = roster.length > 0 && roster.every((r) => /^\d/.test(r.displayName));
   const showFilter = roster.length > 8 || isCoded;
 
-  // -------- Render: one screen — pick a name, PIN expands inline --------
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-4"
-      dir={dir}
-    >
-      <div className="flex items-center gap-2 text-stone-900">
-        <KeyRound size={18} className="text-indigo-600" />
-        <p className="font-black text-sm">{t.pickYourName}</p>
-      </div>
-
-      {rosterLoading ? (
-        <p className="text-center text-sm text-stone-500 py-8">{t.loading}</p>
-      ) : rosterError ? (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-lg text-sm font-bold flex items-start gap-2">
-          <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
-          <span>{rosterError}</span>
-        </div>
-      ) : roster.length === 0 ? (
-        <div className="text-center py-6 px-3 bg-amber-50 border border-amber-200 rounded-xl">
-          <p className="text-3xl mb-2">🦊</p>
-          <p className="text-sm font-bold text-amber-900">{t.emptyRosterTitle}</p>
-          <p className="text-xs text-amber-800 mt-1">
-            {t.emptyRosterBody}
-          </p>
-        </div>
-      ) : (
-        <>
-          {showFilter && (
-            <div className="relative">
-              <Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-stone-400" />
-              <input
-                type="search"
-                value={filter}
-                onChange={e => setFilter(e.target.value)}
-                placeholder={isCoded ? t.findYourCode : t.findYourName}
-                className="w-full ps-9 pe-3 py-2 rounded-lg border-2 border-stone-200 focus:border-indigo-500 outline-none text-sm font-medium"
-              />
-            </div>
-          )}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto pe-1">
-            <AnimatePresence initial={false}>
-              {filtered.map(s => {
-                const isSel = selected?.id === s.id;
-                return (
-                  <motion.button
-                    layout
-                    key={s.id}
-                    type="button"
-                    onClick={() => handlePick(s)}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    aria-pressed={isSel}
-                    className={`flex items-center gap-2 p-2.5 rounded-lg border transition-colors text-start ${
-                      isSel
-                        ? "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-400"
-                        : "border-stone-200 hover:border-indigo-400 hover:bg-indigo-50"
-                    }`}
-                    style={{ touchAction: "manipulation" }}
-                  >
-                    <span className="text-2xl shrink-0">{s.avatar}</span>
-                    <span className="font-bold text-sm text-stone-900 truncate flex-1">{s.displayName}</span>
-                  </motion.button>
-                );
-              })}
-            </AnimatePresence>
-            {filtered.length === 0 && (
-              <p className="col-span-full text-center text-xs text-stone-500 py-4">
-                {t.noMatches(filter)}
+    <div className="space-y-4 text-[#1d2940]" dir={dir}>
+      {!selected && (
+        <div ref={nameListRef} tabIndex={-1} className="outline-none">
+          <h3 className="mb-4 flex items-center gap-2 text-xl font-extrabold">
+            <KeyRound size={20} className="text-violet-600" aria-hidden="true" />
+            {t.pickYourName}
+          </h3>
+          {rosterLoading ? (
+            <p role="status" className="py-8 text-center text-sm text-[#606b7e]">
+              {t.loading}
+            </p>
+          ) : rosterError ? (
+            <div
+              role="alert"
+              className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"
+            >
+              <p className="flex items-start gap-2">
+                <AlertTriangle size={18} className="shrink-0" aria-hidden="true" />
+                {rosterError}
               </p>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* Inline PIN — expands on this same screen the moment a name is
-          picked, so there's no separate PIN page. Tap another name to
-          switch, or "Not me" to collapse it. */}
-      <AnimatePresence>
-        {selected && (
-          <motion.div
-            key="pin-panel"
-            ref={pinPanelRef}
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="space-y-3 pt-1">
-              <div className="flex items-center gap-3 bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100 rounded-xl p-3">
-                <span className="text-2xl shrink-0">{selected.avatar}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600">{t.signingInAs}</p>
-                  <p className="text-base font-black text-stone-900 truncate">{selected.displayName}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={clearSelection}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-stone-500 hover:text-stone-900 px-2 py-1 rounded-md hover:bg-stone-100 transition-colors shrink-0"
-                  style={{ touchAction: "manipulation" }}
-                >
-                  <ArrowLeft size={12} className={isRTL ? "rotate-180" : ""} /> {t.notMe}
-                </button>
-              </div>
-
-              <div>
-                <label htmlFor="student-pin-input" className="block text-[11px] font-black uppercase tracking-[0.2em] text-stone-500 mb-2 text-center">
-                  {t.typeYourPin}
-                </label>
-                <input
-                  ref={pinInputRef}
-                  id="student-pin-input"
-                  name="pin"
-                  type="text"
-                  inputMode="text"
-                  autoComplete="one-time-code"
-                  autoCapitalize="characters"
-                  spellCheck={false}
-                  maxLength={PIN_LENGTH}
-                  value={pin}
-                  onChange={e => {
-                    const next = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, PIN_LENGTH);
-                    setPin(next);
-                    if (pinError) setPinError(null);
-                  }}
-                  onKeyDown={e => {
-                    if (e.key === "Enter" && pin.length === PIN_LENGTH) handleSubmit();
-                  }}
-                  placeholder="• • • • • •"
-                  className="w-full text-center text-3xl font-black tracking-[0.4em] font-mono py-4 rounded-xl border-2 border-stone-200 focus:border-indigo-500 outline-none text-stone-900 placeholder:text-stone-300"
-                  aria-describedby={pinError ? "pin-error" : undefined}
-                />
-              </div>
-
-              {pinError && (
-                <motion.div
-                  id="pin-error"
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-lg text-sm font-bold flex items-start gap-2"
-                  role="alert"
-                >
-                  <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
-                  <span>{pinError}</span>
-                </motion.div>
-              )}
-
               <button
                 type="button"
-                onClick={handleSubmit}
-                disabled={pin.length !== PIN_LENGTH || signingIn}
-                className="w-full inline-flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-600 text-white font-black text-base shadow-lg shadow-violet-500/30 hover:opacity-95 active:scale-[0.98] transition-all disabled:opacity-50 disabled:shadow-none"
-                style={{ touchAction: "manipulation" }}
+                onClick={loadRoster}
+                className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-300 bg-white px-4 font-bold"
               >
-                {signingIn ? t.signingIn : (<><Sparkles size={18} /> {t.letsGo}</>)}
+                <RotateCw size={16} aria-hidden="true" />
+                {classEntryT[language].retry}
               </button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+          ) : roster.length === 0 ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-6 text-center">
+              <p className="mb-2 text-4xl" aria-hidden="true">
+                🦊
+              </p>
+              <p className="font-bold text-amber-900">{t.emptyRosterTitle}</p>
+              <p className="mt-2 text-sm text-amber-800">{t.emptyRosterBody}</p>
+            </div>
+          ) : (
+            <>
+              {showFilter && (
+                <div className="relative mb-4">
+                  <Search
+                    size={18}
+                    className="absolute start-4 top-1/2 -translate-y-1/2 text-[#606b7e]"
+                    aria-hidden="true"
+                  />
+                  <input
+                    type="search"
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    aria-label={isCoded ? t.findYourCode : t.findYourName}
+                    placeholder={isCoded ? t.findYourCode : t.findYourName}
+                    className="min-h-12 w-full rounded-2xl border border-[#dfe2e9] bg-[#f8f9fc] pe-3 ps-11 text-base focus:outline-2 focus:outline-violet-600"
+                  />
+                </div>
+              )}
+              <div className="grid max-h-[40dvh] grid-cols-2 gap-3 overflow-y-auto p-1">
+                {filtered.map((student, i) => (
+                  <button
+                    key={student.id}
+                    type="button"
+                    onClick={() => handlePick(student)}
+                    className="group flex min-h-24 touch-manipulation flex-col items-center justify-center gap-2 rounded-2xl border border-[#dfe2e9] bg-white px-2 py-3 text-center transition-colors hover:border-violet-500 hover:bg-[#f8f5ff] focus-visible:outline-2 focus-visible:outline-violet-600"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`grid h-12 w-12 place-items-center rounded-2xl text-3xl ${['bg-[#eef4db]', 'bg-[#ebe5ff]', 'bg-[#fff0d3]', 'bg-[#ffebe1]'][i % 4]}`}
+                    >
+                      {student.avatar}
+                    </span>
+                    <span className="break-words text-base font-extrabold">
+                      {student.displayName}
+                    </span>
+                  </button>
+                ))}
+                {filtered.length === 0 && (
+                  <p className="col-span-full py-4 text-center text-sm text-[#606b7e]">
+                    {t.noMatches(filter)}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+      {selected && (
+        <div ref={pinPanelRef} className="space-y-5">
+          <div className="flex items-center gap-3 rounded-2xl bg-[#f2f5e9] p-4">
+            <span
+              className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white text-4xl"
+              aria-hidden="true"
+            >
+              {selected.avatar}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-[#606b7e]">{t.signingInAs}</p>
+              <p className="mt-0.5 break-words text-xl font-extrabold">{selected.displayName}</p>
+            </div>
+            <button
+              type="button"
+              disabled={signingIn}
+              onClick={clearSelection}
+              className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-xl px-2 text-sm font-bold text-violet-700 underline underline-offset-4 disabled:opacity-40"
+            >
+              <ArrowLeft size={16} aria-hidden="true" className={isRTL ? 'rotate-180' : ''} />
+              {t.notMe}
+            </button>
+          </div>
+          <div>
+            <label htmlFor="student-pin-input" className="mb-2 block text-base font-bold">
+              {t.typeYourPin}
+            </label>
+            <input
+              ref={pinInputRef}
+              id="student-pin-input"
+              name="pin"
+              type="text"
+              dir="ltr"
+              inputMode="text"
+              autoComplete="one-time-code"
+              autoCapitalize="characters"
+              spellCheck={false}
+              maxLength={PIN_LENGTH}
+              disabled={signingIn}
+              value={pin}
+              onChange={(e) => {
+                setPin(
+                  e.target.value
+                    .toUpperCase()
+                    .replace(/[^A-Z0-9]/g, '')
+                    .slice(0, PIN_LENGTH)
+                );
+                if (pinError) setPinError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && pin.length === PIN_LENGTH) handleSubmit();
+              }}
+              placeholder="••••••"
+              className="min-h-16 w-full rounded-2xl border-2 border-[#cdd1db] bg-[#f8f9fc] px-3 py-4 text-center font-mono text-3xl font-black tracking-[.25em] text-[#1d2940] placeholder:text-[#adb4c2] focus:border-violet-600 focus:outline-2 focus:outline-violet-200"
+              aria-invalid={Boolean(pinError)}
+              aria-describedby={pinError ? 'pin-error' : undefined}
+            />
+          </div>
+          {pinError && (
+            <div
+              id="pin-error"
+              role="alert"
+              className="flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-bold text-rose-800"
+            >
+              <AlertTriangle size={18} aria-hidden="true" className="shrink-0" />
+              {pinError}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={pin.length !== PIN_LENGTH || signingIn}
+            className="flex min-h-14 w-full touch-manipulation items-center justify-between gap-3 rounded-2xl bg-[#1d2940] p-3 ps-5 text-lg font-extrabold text-white hover:bg-[#303f5b] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+          >
+            {signingIn ? t.signingIn : t.letsGo}
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#d8f36a] text-[#1d2940]">
+              <ArrowRight size={20} aria-hidden="true" className="rtl:rotate-180" />
+            </span>
+          </button>
+        </div>
+      )}
+    </div>
   );
 };
 

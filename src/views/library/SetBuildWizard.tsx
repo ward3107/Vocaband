@@ -1,3 +1,4 @@
+import { useBackLayer } from "../../hooks/useBackLayer";
 /**
  * SetBuildWizard — "create a vocabulary set" modal.
  *
@@ -46,6 +47,7 @@ export default function SetBuildWizard({
   showToast,
 }: SetBuildWizardProps) {
   const { language, dir } = useLanguage();
+  useBackLayer(onClose, { priority: 50 });
   const t = useMemo(() => setBuildWizardT[language], [language]);
   const libT = useMemo(() => vocabularyLibraryT[language], [language]);
   const { translateWord, translateWordsBatch } = useTranslate();

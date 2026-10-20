@@ -1,3 +1,4 @@
+import { useBackLayer } from "../../hooks/useBackLayer";
 /**
  * PickerSheet — the shared modal chrome for the four word-source
  * panels in the Create-Assignment flow (My Library, Topic Packs,
@@ -68,6 +69,11 @@ const PickerSheet: React.FC<PickerSheetProps> = ({
   backAria = 'Back',
   zClass = 'z-50',
 }) => {
+  const priority = Number(zClass.replace(/[^0-9]/g, '')) || 50;
+  useBackLayer((): void | false => {
+    if (onBack) { onBack(); return false; }
+    onClose();
+  }, { enabled: isOpen, priority });
   const { isRTL, dir } = useLanguage();
 
   return (

@@ -18,8 +18,8 @@
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import { useEffect, useRef, type ReactNode, type ButtonHTMLAttributes, type KeyboardEvent as ReactKeyboardEvent } from "react";
-import { modalBackStack } from "../../utils/modalBackStack";
-export type ModalVariant = "brand" | "success" | "danger" | "calm";
+import { useBackLayer } from "../../hooks/useBackLayer";
+export type ModalVariant = "brand" | "success" | "danger" | "calm" | "paper";
 
 interface ModalShellProps {
   open: boolean;
@@ -61,6 +61,7 @@ const HEADER_GRADIENT: Record<ModalVariant, string> = {
   success: "linear-gradient(110deg, #065f46, #047857)",
   danger:  "linear-gradient(110deg, #9f1239, #be123c)",
   calm:    "linear-gradient(110deg, #4A3B7A 0%, #6E5BAE 100%)",
+  paper:   "#f4f7e9",
 };
 
 export default function ModalShell({
@@ -79,29 +80,7 @@ export default function ModalShell({
   bodyMaxHeight = "60vh",
   bodyClassName,
 }: ModalShellProps) {
-  // Esc-to-close — matches the legacy modal conventions across the app.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  // Back-to-close — register with the shared stack while open so the
-  // hardware/browser back button (handled by useBackButtonTrap) closes
-  // this modal instead of navigating. A stable wrapper reads onClose via
-  // a ref so the registry entry's identity never changes across renders
-  // (push and remove must match by identity).
-  const onCloseRef = useRef(onClose);
-  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
-  useEffect(() => {
-    if (!open) return;
-    const entry = () => onCloseRef.current();
-    modalBackStack.push(entry);
-    return () => modalBackStack.remove(entry);
-  }, [open]);
+  useBackLayer(onClose, { enabled: open, priority: zIndex });
 
   // Focus management — move focus into the dialog on open and restore it to
   // the element that opened the modal on close, so keyboard/screen-reader
@@ -176,7 +155,7 @@ export default function ModalShell({
             exit={{ opacity: 0, scale: 0.94, y: 8 }}
             transition={{ type: "spring", stiffness: 220, damping: 22 }}
             onClick={(e) => e.stopPropagation()}
-            className={`relative w-full overflow-hidden rounded-[28px] bg-white flex flex-col outline-none ${
+            className={`relative max-h-[calc(100dvh-2rem)] w-full overflow-hidden rounded-[28px] bg-white flex flex-col outline-none ${
               wide ? "max-w-[560px] md:max-w-[680px]" : "max-w-[480px] md:max-w-[580px]"
             }`}
             style={{
@@ -185,7 +164,7 @@ export default function ModalShell({
           >
             {/* Header */}
             <div
-              className="relative overflow-hidden flex items-center gap-3.5 px-5 sm:px-6 py-[18px] sm:py-[22px] text-white"
+              className={`relative shrink-0 overflow-hidden flex items-center gap-3.5 px-5 sm:px-6 py-[18px] sm:py-[22px] ${variant === 'paper' ? 'border-b border-[#e1e5d6] text-[#1d2940]' : 'text-white'}`}
               style={{ background: HEADER_GRADIENT[variant] }}
             >
               {/* Decorative top-end highlight blob (per mockup) */}
@@ -199,7 +178,7 @@ export default function ModalShell({
               <div
                 className="relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-[12px] text-[20px]"
                 style={{
-                  background: "rgba(255,255,255,0.22)",
+                  background: variant === 'paper' ? '#d8f36a' : "rgba(255,255,255,0.22)",
                   border: "1px solid rgba(255,255,255,0.35)",
                   backdropFilter: "blur(8px)",
                   WebkitBackdropFilter: "blur(8px)",
@@ -227,7 +206,7 @@ export default function ModalShell({
                   backdropFilter: "blur(8px)",
                   WebkitBackdropFilter: "blur(8px)",
                 }}
-                className="relative z-10 grid h-11 w-11 shrink-0 place-items-center rounded-[10px] text-white"
+                className={`relative z-10 grid h-11 w-11 shrink-0 place-items-center rounded-[10px] ${variant === 'paper' ? 'text-[#1d2940]' : 'text-white'}`}
               >
                 <X size={16} />
               </button>
@@ -237,7 +216,7 @@ export default function ModalShell({
             <div
               className={
                 bodyClassName ??
-                "px-5 sm:px-6 py-5 sm:py-[22px] text-[14px] leading-[1.55] overflow-y-auto"
+                "min-h-0 px-5 sm:px-6 py-5 sm:py-[22px] text-[14px] leading-[1.55] overflow-y-auto"
               }
               style={{ color: "var(--vb-text-secondary)", maxHeight: bodyMaxHeight }}
             >
@@ -247,7 +226,7 @@ export default function ModalShell({
             {/* Footer */}
             {footer && (
               <div
-                className="flex items-center gap-2 px-5 sm:px-6 py-[14px] border-t"
+                className="flex shrink-0 items-center gap-2 px-5 sm:px-6 py-[14px] border-t"
                 style={{ borderColor: "var(--vb-border)", background: "var(--vb-surface-alt)" }}
               >
                 {footer}
