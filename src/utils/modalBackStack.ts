@@ -20,6 +20,8 @@
 type CloseFn = () => void | false;
 
 const stack: Array<{ close: CloseFn; priority: number }> = [];
+const listeners = new Set<() => void>();
+const notify = () => listeners.forEach(listener => listener());
 
 function topIndex(): number {
   let top = -1;
@@ -33,12 +35,14 @@ export const modalBackStack = {
   /** Register an open modal's close handler. */
   push(close: CloseFn, priority = 50): void {
     stack.push({ close, priority });
+    notify();
   },
   /** Remove a previously-registered handler (by identity) on close/unmount. */
   remove(close: CloseFn): void {
     for (let i = stack.length - 1; i >= 0; i--) {
       if (stack[i].close === close) {
         stack.splice(i, 1);
+        notify();
         break;
       }
     }
@@ -46,6 +50,10 @@ export const modalBackStack = {
   /** How many modals are currently open. */
   get size(): number {
     return stack.length;
+  },
+  subscribe(listener: () => void): () => void {
+    listeners.add(listener);
+    return () => { listeners.delete(listener); };
   },
   isTop(close: CloseFn): boolean {
     return stack[topIndex()]?.close === close;

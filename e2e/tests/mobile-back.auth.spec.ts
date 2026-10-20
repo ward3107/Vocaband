@@ -39,6 +39,33 @@ async function back(page: Page) {
   await page.evaluate(() => history.back());
 }
 
+test('public-shell Back closes accessibility and mobile navigation before leaving', async ({
+  page,
+}) => {
+  await presetLocalStorage(page);
+  await mockSupabase(page, 'public');
+  await prepare(page);
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: /Level Up Your Vocabulary/ })).toBeVisible();
+  await page.locator('[aria-controls="a11y-panel"]').first().click();
+  await expect(page.locator('#a11y-panel')).toBeVisible();
+  await back(page);
+  await expect(page.locator('#a11y-panel')).toHaveCount(0);
+  await expect(page).toHaveURL(/\/$/);
+  const menu = page.getByRole('button', { name: 'Open menu', exact: true });
+  if (await menu.isVisible()) {
+    await menu.click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await back(page);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  }
+  await page.goto('/privacy');
+  await expect(page.getByRole('heading', { name: 'Privacy Policy', exact: true })).toBeVisible();
+  await back(page);
+  await expect(page.getByRole('heading', { name: /Level Up Your Vocabulary/ })).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+});
+
 test('personal entry Back walks PIN → names → class code → home, keeping the invite URL until home', async ({
   page,
 }) => {
@@ -108,10 +135,10 @@ test('teacher Back dismisses the exit confirmation and never sends a logout requ
   await expect(page.getByRole('heading', { name: 'Leave Vocaband?', exact: true })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: /Ready for a great lesson/ })).toBeVisible();
   expect(logouts).toBe(0);
-  await page.goto('/privacy-settings');
+  await page.goto('/vocabulary-library');
   await waitForAppLoad(page);
   await expect(
-    page.getByRole('heading', { name: 'Privacy & Data Settings', exact: true })
+    page.getByRole('heading', { name: 'Vocabulary Library', exact: true })
   ).toBeVisible();
   await back(page);
   await expect(page.getByRole('heading', { name: /Ready for a great lesson/ })).toBeVisible();
