@@ -1,3 +1,4 @@
+import { useBackLayer } from "../hooks/useBackLayer";
 /**
  * SpeedRoundHostView — the teacher's control room for a live Speed Round,
  * laid out for a classroom projector. A sibling of CategoryRaceHostView,
@@ -98,6 +99,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   const [hasRunRound, setHasRunRound] = useState(false);
   const [copied, setCopied] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
+  useBackLayer(() => setQrEnlarged(false), { enabled: qrEnlarged, priority: 50 });
   // Celebratory results overlay when ending a played game.
   const [showResults, setShowResults] = useState(false);
   const [presenting, setPresenting] = useState(false);

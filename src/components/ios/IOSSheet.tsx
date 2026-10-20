@@ -1,6 +1,7 @@
+import { BackLayerContext } from "../../hooks/BackLayerContext";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, type ReactNode } from "react";
-import { modalBackStack } from "../../utils/modalBackStack";
+import { type ReactNode } from "react";
+import { useBackLayer } from "../../hooks/useBackLayer";
 
 /**
  * Sheet — one overlay for the whole app.
@@ -41,30 +42,10 @@ export function IOSSheet({
   /** False for a sheet the user must resolve with an explicit action. */
   dismissible?: boolean;
 }) {
-  // Read onClose through a ref so the back-stack entry keeps a stable
-  // identity across renders — push and remove must match by reference.
-  const onCloseRef = useRef(onClose);
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    if (!open || !dismissible) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCloseRef.current();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, dismissible]);
-
-  useEffect(() => {
-    if (!open || !dismissible) return;
-    const entry = () => onCloseRef.current();
-    modalBackStack.push(entry);
-    return () => modalBackStack.remove(entry);
-  }, [open, dismissible]);
+  const backPriority = useBackLayer((): void | false => { if (!dismissible) return false; onClose(); }, { enabled: open, priority: zIndex });
 
   return (
+    <BackLayerContext.Provider value={backPriority}>
     <AnimatePresence>
       {open && (
         <motion.div
@@ -132,5 +113,6 @@ export function IOSSheet({
         </motion.div>
       )}
     </AnimatePresence>
+    </BackLayerContext.Provider>
   );
 }

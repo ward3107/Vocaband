@@ -1,3 +1,4 @@
+import { useBackLayer } from "../hooks/useBackLayer";
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -192,6 +193,7 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
     if (onOpenChange) onOpenChange(val);
     else setInternalOpen(val);
   };
+  useBackLayer(() => { setIsOpen(false); triggerRef.current?.focus(); }, { enabled: isOpen, priority: 120 });
   // Session-scoped dismiss. The trigger stays gone until the student
   // reloads or navigates away — meeting the UX request while still
   // being compliant, because the widget fully re-appears on next
@@ -208,7 +210,9 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
   // on game / dashboard pages. Set by App.tsx via a 'vocaband-view-change'
   // CustomEvent. The panel itself is still openable from anywhere via
   // the existing 'open-a11y-panel' event (footer / nav links).
-  const [currentView, setCurrentView] = useState<string>('');
+  const [currentView, setCurrentView] = useState<string>(() =>
+    typeof document === 'undefined' ? '' : document.querySelector('[data-vocaband-view]')?.getAttribute('data-vocaband-view') ?? ''
+  );
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -226,6 +230,9 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
   ]);
 
   useEffect(() => {
+    // The lazy widget may mount after the shell's first view event.
+    const initialView = document.querySelector('[data-vocaband-view]')?.getAttribute('data-vocaband-view');
+    if (initialView) setCurrentView(initialView);
     const handler = (e: Event) => {
       const next = (e as CustomEvent<string>).detail || '';
       setCurrentView(next);
@@ -374,11 +381,6 @@ export const AccessibilityWidget: React.FC<AccessibilityWidgetProps> = ({ open: 
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setIsOpen(false);
-        triggerRef.current?.focus();
-        return;
-      }
       if (e.key !== 'Tab') return;
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }

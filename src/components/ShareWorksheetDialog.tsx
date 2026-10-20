@@ -1,3 +1,4 @@
+import { useBackLayer } from "../hooks/useBackLayer";
 /**
  * ShareWorksheetDialog — mint an interactive worksheet link from any
  * surface in the app (Free Resources, WorksheetView, Create Assignment).
@@ -119,6 +120,7 @@ export const ShareWorksheetDialog: FC<Props> = ({ source, defaultLang, onClose, 
   const [slug, setSlug] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useBackLayer((): void | false => { if (creating) return false; onClose(); }, { priority: 50 });
 
   // AI sentence generation state — shared across all sentence-dependent
   // exercises because they all draw from the same word pool. Phase is

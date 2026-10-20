@@ -1,3 +1,4 @@
+import { useBackLayer } from "../hooks/useBackLayer";
 /**
  * InPageCamera — full-screen camera modal that runs the live preview
  * INSIDE the Vocaband tab via getUserMedia.  Replaces the previous
@@ -41,6 +42,7 @@ export interface InPageCameraProps {
 
 export default function InPageCamera({ onCapture, onCancel, onUseGallery }: InPageCameraProps) {
   const { language } = useLanguage();
+  useBackLayer(onCancel, { priority: 10000 });
   // Per-OS recovery instructions for when permission has already been
   // denied — the browser default ("Click the lock icon") is useless to
   // a 4th-grader holding a phone. iOS Safari hides camera permission

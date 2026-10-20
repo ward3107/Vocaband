@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import StudentClassEntryView from '../views/StudentClassEntryView';
 import { LAST_CLASS_KEY, rememberClass } from '../utils/classJoin';
 import { classEntryT } from '../locales/class-entry';
+import { modalBackStack } from '../utils/modalBackStack';
 
 const mocks = vi.hoisted(() => ({ pinProps: vi.fn(), language: 'en' as 'en' | 'he' | 'ar' }));
 vi.mock('../hooks/useLanguage', () => ({
@@ -141,6 +142,23 @@ describe('guided student class entry', () => {
     expect(mocks.pinProps).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Last class' }));
     expect(screen.getByText('Verified PIN login')).toBeTruthy();
+  });
+  it('Back returns one step, preserves the class code, and does not reselect a personal invite', () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/student?class=ABCD2345&s=5f7b1234-1111-2222-3333-123456789abc'
+    );
+    render(<StudentClassEntryView {...props()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect((screen.getByLabelText(classEntryT.en.codeLabel) as HTMLInputElement).value).toBe(
+      'ABCD2345'
+    );
+    expect(modalBackStack.size).toBe(0);
+    fireEvent.click(screen.getByRole('button', { name: classEntryT.en.continue }));
+    expect(mocks.pinProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ prefilledStudentId: null })
+    );
   });
   it('does not prevent login when storage is blocked', () => {
     window.history.replaceState({}, '', '/student?class=ABCD2345');

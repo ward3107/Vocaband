@@ -1,3 +1,4 @@
+import { useBackLayer } from "../../hooks/useBackLayer";
 /**
  * SentenceGenerationModal — generates AI sentences for a saved Set.
  *
@@ -102,6 +103,7 @@ export default function SentenceGenerationModal({
   onSaved,
   showToast,
 }: SentenceGenerationModalProps) {
+  useBackLayer(onClose, { priority: 60 });
   const { language, isRTL, dir } = useLanguage();
   const t = useMemo(() => sentenceGenerationT[language], [language]);
 
@@ -275,7 +277,7 @@ export default function SentenceGenerationModal({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       dir={dir}
-      className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-[60] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={t.modalTitle(set.name)}

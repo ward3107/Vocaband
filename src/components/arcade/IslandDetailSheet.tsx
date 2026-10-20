@@ -1,3 +1,4 @@
+import { useBackLayer } from "../../hooks/useBackLayer";
 /**
  * Rich bottom sheet that rises when a mode-island is tapped: medallion,
  * name, difficulty, best score, the 3-star target, an XP-on-finish chip,
@@ -40,6 +41,7 @@ const STR: Record<Language, {
 
 export default function IslandDetailSheet({ open, mode, onClose, onPlay, reduced }: IslandDetailSheetProps) {
   const { language, dir } = useLanguage();
+  useBackLayer(onClose, { enabled: open && Boolean(mode), priority: 50 });
   const s = STR[language] ?? STR.en;
 
   return (

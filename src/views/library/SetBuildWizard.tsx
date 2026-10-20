@@ -1,3 +1,5 @@
+import { BackLayerContext } from "../../hooks/BackLayerContext";
+import { useBackLayer } from "../../hooks/useBackLayer";
 /**
  * SetBuildWizard — "create a vocabulary set" modal.
  *
@@ -46,6 +48,7 @@ export default function SetBuildWizard({
   showToast,
 }: SetBuildWizardProps) {
   const { language, dir } = useLanguage();
+  const backPriority = useBackLayer(onClose, { priority: 50 });
   const t = useMemo(() => setBuildWizardT[language], [language]);
   const libT = useMemo(() => vocabularyLibraryT[language], [language]);
   const { translateWord, translateWordsBatch } = useTranslate();
@@ -104,6 +107,7 @@ export default function SetBuildWizard({
 
   // --- Render ------------------------------------------------------------
   return (
+    <BackLayerContext.Provider value={backPriority}>
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -182,6 +186,7 @@ export default function SetBuildWizard({
         </div>
       </motion.div>
     </motion.div>
+    </BackLayerContext.Provider>
   );
 }
 

@@ -18,6 +18,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { X, AlertTriangle, Keyboard, ScanLine } from "lucide-react";
 import { useLanguage } from "../hooks/useLanguage";
+import { useBackLayer } from '../hooks/useBackLayer';
 
 export interface QrScannerModalProps {
   /** Called with the raw decoded QR text (a URL or bare code). The caller
@@ -54,6 +55,7 @@ export default function QrScannerModal({ onDetect, onCancel, onUnsupported }: Qr
       streamRef.current = null;
     }
   }, []);
+  useBackLayer(() => { stop(); onCancel(); }, { priority: 10000 });
 
   useEffect(() => {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -131,6 +133,7 @@ export default function QrScannerModal({ onDetect, onCancel, onUnsupported }: Qr
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[10000] bg-black flex flex-col"
       role="dialog"
+      aria-modal="true"
       aria-label={L("Scan QR code", "סריקת קוד QR", "مسح رمز QR")}
     >
       <div className="absolute top-0 inset-x-0 z-10 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/60 to-transparent">
@@ -138,7 +141,7 @@ export default function QrScannerModal({ onDetect, onCancel, onUnsupported }: Qr
           type="button"
           onClick={() => { stop(); onCancel(); }}
           aria-label={L("Close", "סגור", "إغلاق")}
-          className="w-10 h-10 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white"
+          className="w-11 h-11 rounded-full bg-black/50 backdrop-blur flex items-center justify-center text-white"
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
         >
           <X className="w-6 h-6" />

@@ -7,6 +7,7 @@ import { PUBLIC_PAGE_VIEW, type PublicPage } from "./utils/publicNavigation";
 import { navigateToStudentLogin } from "./handlers/landingNav";
 import { useCookieConsent } from "./hooks/useCookieConsent";
 import { OfflineIndicator } from "./components/OfflineIndicator";
+import { isPublicBackView, usePublicBackNavigation } from "./hooks/usePublicBackNavigation";
 
 // The full app is loaded ONLY when a visitor needs auth (clicks a login)
 // or hits a non-public view. Keeping it behind this boundary is what drops
@@ -24,10 +25,10 @@ const CookieBanner = lazyWithRetry(() => import("./components/CookieBanner"));
  */
 export default function PublicShell() {
   const [view, setView] = useState<View>(resolveInitialView);
-  const [prevView, setPrevView] = useState<View>("public-landing");
   const [showDemo, setShowDemo] = useState(false);
   // Once set, the full App takes over and renders this target view.
   const [enterApp, setEnterApp] = useState<View | null>(null);
+  usePublicBackNavigation(view, setView, enterApp === null && isPublicBackView(view));
 
   const {
     showCookieBanner,
@@ -45,7 +46,6 @@ export default function PublicShell() {
   }
 
   const navigate = (next: View) => {
-    setPrevView(view);
     setView(next);
   };
 
@@ -54,7 +54,7 @@ export default function PublicShell() {
     user: null,
     showDemo,
     setShowDemo,
-    goBack: () => setView(prevView),
+    goBack: () => window.history.back(),
     onPublicNavigate: (page: PublicPage) => navigate(PUBLIC_PAGE_VIEW[page]),
     // Both auth entry points hand off to the full App (which owns supabase,
     // session restore, and the onAuthStateChange listener).
@@ -94,5 +94,5 @@ export default function PublicShell() {
     );
   }
 
-  return <>{publicView}</>;
+  return <div data-vocaband-view={view}>{publicView}</div>;
 }

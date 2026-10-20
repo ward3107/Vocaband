@@ -1,3 +1,4 @@
+import { useBackLayer } from "../hooks/useBackLayer";
 /**
  * CategoryRaceHostView — the teacher's control room for a live Category
  * Race, laid out for a classroom projector. Built on the Quick Play
@@ -178,6 +179,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   const [hasRunRound, setHasRunRound] = useState(false);
   const [copied, setCopied] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
+  useBackLayer(() => setQrEnlarged(false), { enabled: qrEnlarged, priority: 50 });
   const [restarting, setRestarting] = useState(false);
   // Show the celebratory results overlay when ending a game that has scores.
   const [showResults, setShowResults] = useState(false);

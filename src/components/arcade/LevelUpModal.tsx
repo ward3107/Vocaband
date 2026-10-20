@@ -1,3 +1,4 @@
+import { useBackLayer } from "../../hooks/useBackLayer";
 /**
  * LevelUpModal — full-screen celebration when a student crosses an
  * XP_TITLES tier boundary.  Mounted at App root and driven by
@@ -55,6 +56,7 @@ const STRINGS: Record<Language, {
 export default function LevelUpModal({ tier, onClose }: LevelUpModalProps) {
   const { language, dir } = useLanguage();
   const reduced = useReducedMotion();
+  useBackLayer(onClose, { enabled: Boolean(tier), priority: 50 });
 
   useEffect(() => {
     if (!tier) return;

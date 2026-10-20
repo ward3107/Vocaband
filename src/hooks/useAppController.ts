@@ -119,9 +119,9 @@ export function useAppController(initialView?: View): AppViewRouterProps {
 
   // Navigation refs — previousViewRef / currentViewRef / lastUserRoleRef.
   // See useNavigationRefs.
-  const { previousViewRef, currentViewRef, lastUserRoleRef } = useNavigationRefs(view);
+  const { currentViewRef, lastUserRoleRef } = useNavigationRefs(view);
 
-  const goBack = () => setView(previousViewRef.current as View);
+  const goBack = () => window.history.back();
 
   // Cookie consent banner — state + accept/customize handlers live
   // in a dedicated hook so the banner's persistence + quirky React-

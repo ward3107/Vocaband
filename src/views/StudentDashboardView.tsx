@@ -1,3 +1,4 @@
+import { useBackLayer } from "../hooks/useBackLayer";
 import StudentOnboarding from "../components/StudentOnboarding";
 import FloatingButtons from "../components/FloatingButtons";
 import StudentTopBar from "../components/dashboard/StudentTopBar";
@@ -190,14 +191,7 @@ export default function StudentDashboardView({
   const [tasksOpen, setTasksOpen] = React.useState(false);
   const { language } = useLanguage();
 
-  // Escape closes the Tasks sheet, like any modal dialog (the sheet is
-  // role="dialog" aria-modal, so keyboard dismissal is expected).
-  React.useEffect(() => {
-    if (!tasksOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setTasksOpen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [tasksOpen]);
+  useBackLayer(() => setTasksOpen(false), { enabled: tasksOpen, priority: 60 });
   // "Join a game" sheet — lets a logged-in student enter the teacher's live
   // Quick Play game (code or in-app QR scan) without leaving the app.
   const [joinOpen, setJoinOpen] = React.useState(false);
