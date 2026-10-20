@@ -9,6 +9,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import { readableTextOn } from "../utils/contrast";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
 import { competitionsT } from "../locales/competitions";
+import { classEntryT } from "../locales/class-entry";
 import ShareClassLinkModal from "./ShareClassLinkModal";
 import CompetitionLeaderboardModal from "./CompetitionLeaderboardModal";
 import FrostedEmoji from "./dashboard/FrostedEmoji";
@@ -49,7 +50,6 @@ interface ClassCardProps {
   studentCount?: number;
   onAssign: () => void;
   onCopyCode: () => void;
-  onWhatsApp: () => void;
   onDelete: () => void;
   /** Open the edit-class modal for renaming + changing avatar. */
   onEdit?: () => void;
@@ -109,7 +109,6 @@ const ClassCard: React.FC<ClassCardProps> = ({
   studentCount,
   onAssign,
   onCopyCode,
-  onWhatsApp,
   onDelete,
   onEdit,
   onOpenRoster,
@@ -154,6 +153,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
   // their VocaHebrew classes (matches the unified dashboard rule).
   const effectiveLanguage = subject === "hebrew" ? "he" : language;
   const t = teacherDashboardT[effectiveLanguage];
+  const entry = classEntryT[effectiveLanguage];
   const tComp = competitionsT[effectiveLanguage];
   // When a class has a custom tint, the default --vb-text-* vars are
   // wrong (e.g. white text on pale yellow). Compute a readable text
@@ -751,7 +751,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
 
       <div className="px-5 pb-5 pt-4">
         {/* Actions stay on a neutral surface below the class color. */}
-        <div className="flex items-stretch gap-2">
+        <div className="grid grid-cols-2 items-stretch gap-2">
           <button
             onClick={onAssign}
             type="button"
@@ -769,12 +769,39 @@ const ClassCard: React.FC<ClassCardProps> = ({
                 }
             }
             className={isPastel
-              ? "flex-1 inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl min-h-11 font-bold text-sm transition-transform active:scale-[0.98]"
-              : "flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl min-h-11 font-semibold text-sm shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
+              ? "inline-flex items-center justify-center gap-2 py-3 px-3 rounded-xl min-h-12 font-bold text-base transition-transform active:scale-[0.98]"
+              : "inline-flex items-center justify-center gap-2 py-3 px-3 rounded-xl min-h-12 font-semibold text-base shadow-sm hover:opacity-90 active:scale-[0.98] transition-all"
             }
           >
             <Zap size={15} />
             {t.newAssignment}
+          </button>
+          <button
+            onClick={() => setShareModalOpen(true)}
+            type="button"
+            style={isPastel
+              ? {
+                  touchAction: 'manipulation',
+                  backgroundColor: 'rgba(255,255,255,0.7)',
+                  color: '#202641',
+                  backdropFilter: 'blur(6px)',
+                  WebkitBackdropFilter: 'blur(6px)',
+                }
+              : {
+                  touchAction: 'manipulation',
+                  backgroundColor: 'var(--vb-surface-alt)',
+                  color: 'var(--vb-text-secondary)',
+                }
+            }
+            className={isPastel
+              ? "inline-flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl min-h-12 font-bold text-base transition-transform active:scale-95"
+              : "inline-flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl min-h-12 font-semibold text-base transition-colors hover:opacity-90"
+            }
+            title={entry.invite}
+            aria-label={entry.invite}
+          >
+            <QrCode size={15} />
+            <span>{entry.invite}</span>
           </button>
           {onOpenRoster && (
             <button
@@ -795,43 +822,16 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   }
               }
               className={isPastel
-                ? "inline-flex items-center gap-1.5 py-3 px-4 rounded-xl min-h-11 font-bold text-sm transition-transform active:scale-95"
-                : "inline-flex items-center gap-1.5 py-2.5 px-3 rounded-xl min-h-11 font-semibold text-sm transition-colors hover:opacity-90"
+                ? "inline-flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl min-h-11 font-bold text-sm transition-transform active:scale-95"
+                : "inline-flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl min-h-11 font-semibold text-sm transition-colors hover:opacity-90"
               }
-              title={t.rosterButtonTitle}
-              aria-label={t.rosterButtonAria}
+              title={entry.manage}
+              aria-label={entry.manage}
             >
               <Users size={15} />
-              <span className="hidden sm:inline">{t.rosterShortLabel}</span>
+              <span>{entry.manage}</span>
             </button>
           )}
-          <button
-            onClick={() => setShareModalOpen(true)}
-            type="button"
-            style={isPastel
-              ? {
-                  touchAction: 'manipulation',
-                  backgroundColor: 'rgba(255,255,255,0.7)',
-                  color: '#202641',
-                  backdropFilter: 'blur(6px)',
-                  WebkitBackdropFilter: 'blur(6px)',
-                }
-              : {
-                  touchAction: 'manipulation',
-                  backgroundColor: 'var(--vb-surface-alt)',
-                  color: 'var(--vb-text-secondary)',
-                }
-            }
-            className={isPastel
-              ? "inline-flex items-center gap-1.5 py-3 px-4 rounded-xl min-h-11 font-bold text-sm transition-transform active:scale-95"
-              : "inline-flex items-center gap-1.5 py-2.5 px-3 rounded-xl min-h-11 font-semibold text-sm transition-colors hover:opacity-90"
-            }
-            title={t.shareClassLink}
-            aria-label={t.shareClassLink}
-          >
-            <QrCode size={15} />
-            <span className="hidden sm:inline">{t.shareClassLink}</span>
-          </button>
           {assignments.length > 0 && (
             <button
               onClick={handleToggleAssignments}
@@ -851,8 +851,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   }
               }
               className={isPastel
-                ? "inline-flex items-center gap-1.5 py-3 px-3 rounded-xl min-h-11 font-bold text-sm transition-transform active:scale-95"
-                : "inline-flex items-center gap-1.5 py-2.5 px-3 rounded-xl min-h-11 font-semibold text-sm transition-colors hover:opacity-90"
+                ? "inline-flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl min-h-11 font-bold text-sm transition-transform active:scale-95"
+                : "inline-flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl min-h-11 font-semibold text-sm transition-colors hover:opacity-90"
               }
               aria-expanded={showAssignments}
             >
@@ -1026,13 +1026,15 @@ const ClassCard: React.FC<ClassCardProps> = ({
       )}
     </div>
     <ShareClassLinkModal
+      language={effectiveLanguage}
       open={shareModalOpen}
       onClose={() => setShareModalOpen(false)}
       className={name}
       code={code}
-      onWhatsApp={onWhatsApp}
+      onOpenRoster={onOpenRoster}
     />
     <ShareClassLinkModal
+      language={effectiveLanguage}
       open={sharingAssignment !== null}
       onClose={() => setSharingAssignment(null)}
       className={name}
@@ -1041,6 +1043,7 @@ const ClassCard: React.FC<ClassCardProps> = ({
       assignmentTitle={sharingAssignment?.title}
     />
     <ShareClassLinkModal
+      language={effectiveLanguage}
       open={shareClassMinuteOpen}
       onClose={() => setShareClassMinuteOpen(false)}
       className={name}

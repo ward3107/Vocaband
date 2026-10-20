@@ -495,11 +495,14 @@ export default function TeacherDashboardView({
       />
 
       <ClassCreatedModal
+        language={subject === 'hebrew' ? 'he' : undefined}
         createdClassCode={createdClassCode}
         createdClassName={createdClassName}
-        copiedCode={copiedCode}
-        setCopiedCode={setCopiedCode}
         onDone={() => setCreatedClassCode(null)}
+        onOpenRoster={onOpenRoster ? () => {
+          const created = classes.find(c => c.code === createdClassCode);
+          if (created) onOpenRoster(created);
+        } : undefined}
       />
 
       <DeleteAssignmentModal

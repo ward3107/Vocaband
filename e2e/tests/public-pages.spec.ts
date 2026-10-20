@@ -21,8 +21,8 @@ test.describe('Public Pages', () => {
     // string survives only in the JSON-LD <script> in <head> and in body
     // prose, so the old getByText('Start Learning') assertion was
     // matching non-interactive text and proving nothing. The real
-    // student CTA is the class-code button.
-    await expect(page.getByRole('button', { name: /class code/i }).first())
+    // student CTA is the Enter my class button.
+    await expect(page.getByRole('button', { name: /Enter my class/i }).first())
       .toBeVisible({ timeout: 15_000 });
   });
 
@@ -57,10 +57,9 @@ test.describe('Public Pages', () => {
     // getByText('Start Learning'), which resolved to the JSON-LD script /
     // prose text rather than a control: the click was then intercepted by
     // the sticky top nav and retried until the 60s timeout.
-    await page.getByRole('button', { name: /class code/i }).first().click();
+    await page.getByRole('button', { name: /Enter my class/i }).first().click();
 
-    // The app may land on different views here, so only assert the page rendered content
-    const bodyText = await page.textContent('body');
-    expect(bodyText?.length).toBeGreaterThan(50);
+    await expect(page.getByRole('heading', { name: 'Enter your class', exact: true })).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Class code or link from your teacher' })).toBeVisible();
   });
 });

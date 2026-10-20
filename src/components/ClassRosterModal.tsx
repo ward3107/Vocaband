@@ -1,5 +1,5 @@
 import type { FC } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   AlertTriangle,
@@ -10,6 +10,7 @@ import {
   KeyRound,
   Lightbulb,
   Link2,
+  MessageCircle,
   Plus,
   Printer,
   RefreshCw,
@@ -19,8 +20,15 @@ import {
 } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { logAudit } from "../utils/audit";
-import { useLanguage } from "../hooks/useLanguage";
+import { useLanguage, type Language } from "../hooks/useLanguage";
 import { classRosterT } from "../locales/teacher/roster";
+import { classEntryT } from "../locales/class-entry";
+import { buildClassJoinUrl } from "../utils/classJoin";
+import { printStudentEntryCards } from "../utils/studentEntryCards";
+import { studentInviteT } from "../locales/student-invite";
+import { lazyWithRetry } from "../utils/lazyWithRetry";
+
+const StudentWhatsAppInviteModal = lazyWithRetry(() => import('./StudentWhatsAppInviteModal'));
 
 // 32-char alphabet, chosen to be easy to read on paper and easy for a
 // 4th-grader to type on a phone. Excludes I/L/O (look like 1) and 0/1.
@@ -54,9 +62,10 @@ interface Props {
   onClose: () => void;
   classCode: string;
   className: string;
+  inviteLanguage?: Language;
 }
 
-const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) => {
+const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className, inviteLanguage }) => {
   const { language, dir, isRTL } = useLanguage();
   const t = classRosterT[language];
   const [students, setStudents] = useState<RosterStudent[]>([]);
@@ -74,6 +83,9 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
   // navigator.share was unavailable or the user dismissed it).  Drives
   // the brief "Copied — paste it into a message" toast.
   const [shareCopied, setShareCopied] = useState(false);
+  const [sharingStudentId, setSharingStudentId] = useState<string | null>(null);
+  const sharingStudent = students.find((student) => student.id === sharingStudentId);
+  const shareLanguage = inviteLanguage ?? language;
 
   const loadRoster = useCallback(async () => {
     setLoading(true);
@@ -109,17 +121,18 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
     setAllRevealed(false);
     setNewName("");
     setError(null);
+    setSharingStudentId(null);
   }, [open, loadRoster]);
 
   // Esc-to-close — matches the rest of the dashboard modals.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !sharingStudentId) onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, onClose, sharingStudentId]);
 
   const handleAdd = async () => {
     const trimmed = newName.trim();
@@ -212,7 +225,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
   // read by StudentPinLoginCard.  Bare `vocaband.com` matches the
   // existing print template at the bottom of this file.
   const buildInviteUrl = (studentId: string) =>
-    `https://vocaband.com/student?class=${classCode}&s=${studentId}`;
+    buildClassJoinUrl(classCode, { origin: 'https://vocaband.com', className, studentId });
 
   // Try the native share sheet first.  Returns true when the browser
   // handled the share (including the user-cancelled case — that's not
@@ -311,81 +324,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
       setError(t.errorAddStudentsFirst);
       return;
     }
-    const rows = withPins
-      .map(
-        s =>
-          `<tr><td>${escapeHtml(s.displayName)}</td><td class="pin">${escapeHtml(s.pin || "")}</td></tr>`,
-      )
-      .join("");
-    // RTL-aware print sheet — direction follows the teacher's UI
-    // language so Hebrew/Arabic rosters print right-to-left with the
-    // PIN column on the correct side.
-    const docDir = isRTL ? "rtl" : "ltr";
-    const align = isRTL ? "right" : "left";
-    const html = `<!doctype html><html lang="${language}" dir="${docDir}"><head><meta charset="utf-8"><title>${escapeHtml(t.printTitle(className))}</title>
-      <style>
-        body { font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 32px; color: #1c1917; }
-        h1 { font-size: 22px; margin: 0 0 4px; }
-        .meta { color: #57534e; font-size: 13px; margin-bottom: 16px; }
-        .code { font-family: ui-monospace, Menlo, monospace; font-weight: 700; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #e7e5e4; padding: 10px 14px; text-align: ${align}; }
-        th { background: #fafaf9; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #57534e; }
-        td.pin { font-family: ui-monospace, Menlo, monospace; font-weight: 700; letter-spacing: 0.1em; font-size: 15px; }
-        .footer { margin-top: 18px; color: #78716c; font-size: 11px; }
-        @media print { body { margin: 16mm; } }
-      </style>
-    </head><body>
-      <h1>${escapeHtml(t.printTitle(className))}</h1>
-      <p class="meta">${escapeHtml(t.printClassCodeLabel)} <span class="code">${escapeHtml(classCode)}</span> · vocaband.com/student?class=${escapeHtml(classCode)}</p>
-      <table><thead><tr><th>${escapeHtml(t.copyNameHeader)}</th><th>${escapeHtml(t.copyPinHeader)}</th></tr></thead><tbody>${rows}</tbody></table>
-      <p class="footer">${escapeHtml(t.printInstructions)}</p>
-    </body></html>`;
-
-    // Use a hidden same-window iframe instead of window.open — popup
-    // blockers (the default on mobile Chrome / Safari) silently swallow
-    // window.open in production, leaving the teacher stuck. An iframe
-    // injected into the current document is not subject to popup rules.
-    const frame = document.createElement("iframe");
-    frame.setAttribute("aria-hidden", "true");
-    frame.style.position = "fixed";
-    frame.style.right = "0";
-    frame.style.bottom = "0";
-    frame.style.width = "0";
-    frame.style.height = "0";
-    frame.style.border = "0";
-    frame.style.opacity = "0";
-    document.body.appendChild(frame);
-
-    const cleanup = () => {
-      // Defer the removal so Safari has time to actually paint and
-      // hand the document to the print pipeline before the frame is
-      // detached.
-      setTimeout(() => {
-        if (frame.parentNode) frame.parentNode.removeChild(frame);
-      }, 1000);
-    };
-
-    frame.onload = () => {
-      const cw = frame.contentWindow;
-      if (!cw) {
-        cleanup();
-        return;
-      }
-      try {
-        cw.focus();
-        cw.print();
-      } catch {
-        setError(t.errorPopupBlocked);
-      } finally {
-        cleanup();
-      }
-    };
-
-    // srcdoc writes a fresh same-origin document and fires load reliably
-    // across browsers (more so than document.open + write into the
-    // iframe's contentDocument, which Safari sometimes never settles).
-    frame.srcdoc = html;
+    printStudentEntryCards({ className, classCode, language, students: withPins }, () => setError(t.errorPopupBlocked));
   };
 
   const toggleReveal = (id: string) => {
@@ -407,6 +346,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
   };
 
   return (
+    <>
     <AnimatePresence>
       {open && (
         <motion.div
@@ -415,6 +355,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
+          aria-hidden={!!sharingStudent}
         >
           <motion.div
             className="bg-[var(--vb-surface)] rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col"
@@ -480,6 +421,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
               <p className="text-xs text-[var(--vb-text-muted)] mt-2">
                 {t.addHelp}
               </p>
+              <p className="mt-2 text-sm font-semibold text-[var(--vb-text-secondary)]">{studentInviteT[shareLanguage].rosterHint}</p>
               <p
                 className="text-xs rounded-md mt-2 px-3 py-2 flex items-start gap-2 border"
                 style={{
@@ -541,10 +483,10 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                       return (
                         <div
                           key={s.id}
-                          className="flex items-center gap-3 p-3 rounded-lg border border-[var(--vb-border)] hover:border-[var(--vb-accent)] transition-colors"
+                          className="flex flex-wrap items-center gap-3 p-3 rounded-lg border border-[var(--vb-border)] hover:border-[var(--vb-accent)] transition-colors"
                         >
                           <span className="text-2xl shrink-0">{s.avatar}</span>
-                          <div className="flex-1 min-w-0">
+                          <div className="min-w-0 flex-1 basis-1/2">
                             <p className="font-bold text-sm text-[var(--vb-text-primary)] truncate">{s.displayName}</p>
                             <p className="text-xs text-[var(--vb-text-muted)] truncate">
                               {s.lastLoginAt
@@ -553,7 +495,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                               {s.xp ? t.xpSuffix(s.xp) : ""}
                             </p>
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                          <div className="flex w-full flex-wrap items-center justify-end gap-1.5">
                             {s.pin ? (
                               isRevealed ? (
                                 <button
@@ -581,6 +523,14 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                             ) : (
                               <span className="text-xs text-[var(--vb-text-muted)] px-3 py-1.5">—</span>
                             )}
+                            <button
+                              type="button" onClick={() => setSharingStudentId(s.id)}
+                              aria-label={`${studentInviteT[shareLanguage].share} — ${s.displayName}`}
+                              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-800"
+                              style={{ touchAction: 'manipulation' }}
+                            >
+                              <MessageCircle size={18} aria-hidden="true" />{studentInviteT[shareLanguage].share}
+                            </button>
                             {/* Channel-separation share buttons.  Distinct colours
                                 (indigo / fuchsia) so a teacher can't tap the wrong
                                 one and leak the PIN through the link channel. */}
@@ -687,7 +637,7 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
                   style={{ touchAction: "manipulation" }}
                 >
                   <Printer size={15} />
-                  {t.printButton}
+                  {classEntryT[language].printCards}
                 </button>
               </div>
             </div>
@@ -695,16 +645,19 @@ const ClassRosterModal: FC<Props> = ({ open, onClose, classCode, className }) =>
         </motion.div>
       )}
     </AnimatePresence>
+    {open && sharingStudent && (
+      <Suspense fallback={null}>
+        <StudentWhatsAppInviteModal
+          key={`${classCode}-${sharingStudent.id}`}
+          className={className} classCode={classCode}
+          studentId={sharingStudent.id} studentName={sharingStudent.displayName}
+          pin={sharingStudent.pin} language={shareLanguage}
+          onClose={() => setSharingStudentId(null)}
+        />
+      </Suspense>
+    )}
+    </>
   );
 };
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 export default ClassRosterModal;

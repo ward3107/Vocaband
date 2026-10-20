@@ -38,16 +38,7 @@ const LIVE_GAMES_STRINGS = {
   ar: { liveGames: "ألعاب مباشرة", live: "مباشر", raceTitle: "سباق الفئات", raceDescription: "حرف واحد — يتسابق الصف لملء الفئات.", raceStart: "ابدأ", speedTitle: "جولة سريعة", speedDescription: "كلمة واحدة للصف — الإجابة الصحيحة الأسرع تفوز.", arenaTitle: "ساحة صيد الكلمات", arenaDescription: "يركض الطلاب في خريطة مشتركة ويتسابقون لالتقاط الكلمات.", qpHint: "ممتاز للإحماء السريع", raceHint: "الأفضل مع 8+ لاعبين", speedHint: "الأسرع يفوز", arenaHint: "الأفضل مع 6–30 لاعبًا" },
 } as const;
 
-// Mirrors the WhatsApp share text the legacy section produced — the
-// link goes to STUDENTS, so it stays in English here (English Voca).
-function buildWhatsAppShareText(code: string): string {
-  const origin =
-    typeof window !== "undefined" && window.location?.origin
-      ? window.location.origin
-      : "https://www.vocaband.com";
-  const url = `${origin}/student?class=${encodeURIComponent(code)}`;
-  return `Join my class on Vocaband 🎓\n${url}\n(class code: ${code})`;
-}
+
 
 interface EnglishDashboardLayoutProps {
   language: Language;
@@ -349,10 +340,6 @@ export default function EnglishDashboardLayout({
                     navigator.clipboard.writeText(c.code);
                     setCopiedCode(c.code);
                     setTimeout(() => setCopiedCode(null), 2000);
-                  }}
-                  onWhatsApp={() => {
-                    const text = buildWhatsAppShareText(c.code);
-                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
                   }}
                   onDelete={() => onDeleteClass(c.id)}
                   onEdit={() => onEditClass(c)}

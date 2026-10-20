@@ -292,7 +292,7 @@ export default defineConfig(() => {
             // navigation is a cache hit instead of a network round trip —
             // the biggest "feels instant" win on weak classroom Wi-Fi and
             // on every repeat visit. Also makes these flows work offline.
-            'assets/StudentAccountLoginView-*.js',
+            'assets/StudentClassEntryView-*.js',
             'assets/QuickPlayStudentView-*.js',
             'assets/CategoryRaceStudentView-*.js',
             'assets/useQuickPlaySocket-*.js',

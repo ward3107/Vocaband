@@ -39,6 +39,7 @@ import type { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 // Lazy — renders only mid-Quick-Play, and it pulls in motion/react.
 // Keeping it off App's eager import graph drops the ~42 kB gz motion
 // bundle from the cold first-paint (landing) critical path.
+const ClassLivePublisher = lazyWithRetry(() => import('../components/ClassLivePublisher'));
 const QpReactionBar = lazyWithRetry(() => import("../components/QpReactionBar"));
 
 type PrivacySettingsArgs = Parameters<typeof renderPrivacySettingsSection>[0];
@@ -268,6 +269,8 @@ export function AppViewRouter(props: AppViewRouterProps) {
 
   if (view === "quick-play-setup") {
     return QuickPlaySetupSection({
+      classEntry: quickPlayActiveSession ? <Suspense fallback={null}><ClassLivePublisher key={quickPlayActiveSession.id}
+        sessionId={quickPlayActiveSession.id} classes={visibleClasses} subject={activeVoca ?? 'english'} /></Suspense> : undefined,
       activeVoca, user, setView,
       allWords: ALL_WORDS, topicPacks: TOPIC_PACKS,
       customWords, setCustomWords,
@@ -314,6 +317,14 @@ export function AppViewRouter(props: AppViewRouterProps) {
   if (teacherLiveScreen) return (
     <>
       {view === "live-challenge" && <GameMusicPlayer language={language} floating />}
+      {quickPlayActiveSession && ['quick-play-teacher-monitor', 'category-race-host', 'speed-round-host', 'word-hunt-arena-host'].includes(view) && (
+        <Suspense fallback={null}>
+          <div className="bg-[var(--vb-bg)] p-3 sm:p-4">
+            <ClassLivePublisher key={quickPlayActiveSession.id} sessionId={quickPlayActiveSession.id}
+              classes={visibleClasses} subject={activeVoca ?? 'english'} />
+          </div>
+        </Suspense>
+      )}
       {teacherLiveScreen}
     </>
   );

@@ -44,6 +44,27 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  browser-test-gate:
+    name: Browser test gate
+    needs: [e2e, e2e-auth, quick-play-board]
+    # Report a failure rather than a skipped gate when a required suite fails.
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require all browser suites to succeed
+        env:
+          PUBLIC_SUITE_RESULT: ${{ needs.e2e.result }}
+          AUTH_SUITE_RESULT: ${{ needs['e2e-auth'].result }}
+          BOARD_SUITE_RESULT: ${{ needs['quick-play-board'].result }}
+        run: |
+          for browser_suite_result in "$PUBLIC_SUITE_RESULT" "$AUTH_SUITE_RESULT" "$BOARD_SUITE_RESULT"; do
+            if [ "$browser_suite_result" != "success" ]; then
+              echo "::error::Every browser suite must succeed before merging."
+              exit 1
+            fi
+          done
+
   e2e:
     # NOTE: the display name is deliberately left as "Playwright smoke"
     # even though this job now runs the full public suite. Status checks

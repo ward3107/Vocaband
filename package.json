@@ -116,6 +116,7 @@
     "@capacitor/cli": "^8.5.2",
     "@cloudflare/puppeteer": "^1.4.0",
     "@cloudflare/vite-plugin": "^1.63.1",
+    "@electric-sql/pglite": "^0.5.10",
     "@eslint/js": "^10.0.1",
     "@google/generative-ai": "^0.24.1",
     "@playwright/test": "^1.63.0",

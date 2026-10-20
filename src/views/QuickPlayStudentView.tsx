@@ -13,6 +13,8 @@ import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { containsProfanity } from "../utils/nicknameProfanity";
 import { useLanguage, languageNames } from "../hooks/useLanguage";
 import { primeAudio } from "../utils/primeAudio";
+import { useClassStudentAutoJoin, classStudentName, type ClassStudentIdentity } from '../hooks/useClassStudentAutoJoin';
+import ClassStudentJoinNotice from '../components/ClassStudentJoinNotice';
 import { quickPlayT } from "../locales/student/quick-play";
 
 // Quick Play join flow: students connect to the `/quick-play`
@@ -40,6 +42,7 @@ interface QuickPlaySession {
 }
 
 interface QuickPlayStudentViewProps {
+  classStudent?: ClassStudentIdentity;
   qpCumulativeScoreRef: React.MutableRefObject<number>;
   quickPlayActiveSession: QuickPlaySession | null;
   setQuickPlayActiveSession: (s: QuickPlaySession | null) => void;
@@ -74,6 +77,7 @@ interface QuickPlayStudentViewProps {
 }
 
 export default function QuickPlayStudentView({
+  classStudent,
   qpCumulativeScoreRef,
   quickPlayActiveSession,
   setQuickPlayActiveSession,
@@ -322,8 +326,7 @@ export default function QuickPlayStudentView({
     const applyJoinedState = () => {
       qpCumulativeScoreRef.current = quickPlaySocket.getScoreBaseline();
       setQuickPlayStudentName(trimmedName);
-      const guestUser = createGuestUser(trimmedName, "quickplay", quickPlayAvatar);
-      setUser(guestUser);
+      if (!classStudent) setUser(createGuestUser(trimmedName, "quickplay", quickPlayAvatar));
 
       const words = shuffle(quickPlayActiveSession.words).map(w => ({
         ...w,
@@ -369,7 +372,7 @@ export default function QuickPlayStudentView({
       setView("game");
       setShowModeSelection(true);
       try {
-        localStorage.setItem('vocaband_qp_guest', JSON.stringify({
+        if (!classStudent) localStorage.setItem('vocaband_qp_guest', JSON.stringify({
           sessionId: quickPlayActiveSession.id,
           sessionCode: quickPlayActiveSession.sessionCode,
           name: trimmedName,
@@ -380,17 +383,20 @@ export default function QuickPlayStudentView({
       } catch {}
     };
 
-    setTimeout(() => {
-      // Emit STUDENT_JOIN on the /quick-play socket and DEFER the UI
+    // Emit STUDENT_JOIN on the /quick-play socket and DEFER the UI
       // advance until the server's JOINED reply arrives.  Without the
       // defer, the optimistic UI raced ahead while the server was
       // rejecting (nickname_taken, session inactive, kicked) and the
       // student "played" a session they were never in.
-      pendingJoinRef.current = applyJoinedState;
-      armJoinWatchdog(() => quickPlaySocket.joinAsStudent(trimmedName, quickPlayAvatar));
-      quickPlaySocket.joinAsStudent(trimmedName, quickPlayAvatar);
-    }, 100);
+    pendingJoinRef.current = applyJoinedState;
+    armJoinWatchdog(() => quickPlaySocket.joinAsStudent(trimmedName, quickPlayAvatar));
+    quickPlaySocket.joinAsStudent(trimmedName, quickPlayAvatar);
   };
+
+  useClassStudentAutoJoin(classStudent, quickPlayActiveSession?.sessionCode, () => {
+    setJoining(true);
+    void runJoin(classStudentName(classStudent));
+  });
 
   // KICKED + SESSION_ENDED — without these listeners the server emits
   // the events but the student's tab keeps the game running.  Symptom
@@ -815,7 +821,7 @@ export default function QuickPlayStudentView({
                         // Hebrew/Arabic name → RTL) instead of inheriting
                         // the page direction.
                         dir="auto"
-                        defaultValue={quickPlayStudentName}
+                        defaultValue={classStudentName(classStudent) || quickPlayStudentName}
                         placeholder={qpT.namePlaceholder}
                         // Small Android screens: the soft keyboard slides
                         // over the input. Re-centre once the keyboard has
@@ -842,6 +848,7 @@ export default function QuickPlayStudentView({
                   })()}
                 </IOSCard>
 
+                <ClassStudentJoinNotice student={classStudent} />
                 <IOSButton
                   variant="brand"
                   size="lg"

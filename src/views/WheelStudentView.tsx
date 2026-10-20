@@ -14,6 +14,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Loader2, ArrowRight, Sparkles } from "lucide-react";
+import { useClassStudentAutoJoin, classStudentName, type ClassStudentIdentity } from '../hooks/useClassStudentAutoJoin';
+import ClassStudentJoinNotice from '../components/ClassStudentJoinNotice';
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import QPAvatarPicker from "../components/QPAvatarPicker";
@@ -24,6 +26,7 @@ import type { View } from "../core/views";
 import type { QpWheelQuestionPayload } from "../core/quickPlayProtocol";
 
 interface WheelStudentViewProps {
+  classStudent?: ClassStudentIdentity;
   sessionCode: string;
   setView: (v: View) => void;
 }
@@ -63,7 +66,7 @@ const STRINGS = {
   },
 } as const;
 
-export default function WheelStudentView({ sessionCode, setView }: WheelStudentViewProps) {
+export default function WheelStudentView({ sessionCode, setView, classStudent }: WheelStudentViewProps) {
   const { language, dir } = useLanguage();
   const t = STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
 
@@ -76,8 +79,8 @@ export default function WheelStudentView({ sessionCode, setView }: WheelStudentV
   const [answered, setAnswered] = useState<number | null>(null);
 
   const [phase, setPhase] = useState<Phase>("join");
-  const [name, setName] = useState("");
-  const [avatar, setAvatar] = useState(DEFAULT_AVATAR);
+  const [name, setName] = useState(() => classStudentName(classStudent));
+  const [avatar, setAvatar] = useState(classStudent?.avatar || DEFAULT_AVATAR);
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
 
@@ -108,6 +111,8 @@ export default function WheelStudentView({ sessionCode, setView }: WheelStudentV
     joinAsStudent(trimmed, avatar);
   };
 
+  useClassStudentAutoJoin(classStudent, sessionCode, handleJoin);
+
   // Join confirmed → watching.
   useEffect(() => {
     if (joining && joinedSessionCode === sessionCode) {
@@ -115,15 +120,21 @@ export default function WheelStudentView({ sessionCode, setView }: WheelStudentV
       setJoining(false);
       setPhase("watching");
       try {
-        sessionStorage.setItem(WHEEL_GUEST_KEY, JSON.stringify({ sessionCode, name: name.trim(), avatar }));
+        if (!classStudent) sessionStorage.setItem(WHEEL_GUEST_KEY, JSON.stringify({ sessionCode, name: name.trim(), avatar }));
       } catch { /* storage unavailable */ }
     }
   }, [joining, joinedSessionCode, sessionCode, name, avatar]);
 
+  useEffect(() => {
+    if (!joining) return;
+    const timer = setTimeout(() => { setJoining(false); setJoinError(t.joinFailed); }, 10_000);
+    return () => clearTimeout(timer);
+  }, [joining, t.joinFailed]);
+
   // Auto-rejoin after a refresh.
   const autoRejoinedRef = useRef(false);
   useEffect(() => {
-    if (autoRejoinedRef.current) return;
+    if (classStudent || autoRejoinedRef.current) return;
     autoRejoinedRef.current = true;
     try {
       const saved = sessionStorage.getItem(WHEEL_GUEST_KEY);
@@ -244,6 +255,7 @@ export default function WheelStudentView({ sessionCode, setView }: WheelStudentV
         <h1 className="text-2xl font-black text-stone-800">{t.title}</h1>
         <p className="text-sm font-medium text-stone-500 mb-5">{t.subtitle}</p>
 
+        <ClassStudentJoinNotice student={classStudent} />
         <QPAvatarPicker selected={avatar} onSelect={setAvatar} />
 
         <input

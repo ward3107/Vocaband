@@ -14,6 +14,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Crown, ArrowRight, Loader2, Zap } from "lucide-react";
+import { useClassStudentAutoJoin, classStudentName, type ClassStudentIdentity } from '../hooks/useClassStudentAutoJoin';
+import ClassStudentJoinNotice from '../components/ClassStudentJoinNotice';
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import QPAvatarPicker from "../components/QPAvatarPicker";
@@ -37,6 +39,7 @@ import type { View } from "../core/views";
 import { ARENA_STUDENT_STRINGS } from "./arenaStrings";
 
 interface ArenaStudentViewProps {
+  classStudent?: ClassStudentIdentity;
   sessionCode: string;
   setView: (v: View) => void;
 }
@@ -46,7 +49,7 @@ type Phase = "join" | "lobby" | "playing" | "ended" | "kicked";
 const DEFAULT_AVATAR = "🦊";
 const ARENA_GUEST_KEY = "vocaband_arena_guest";
 
-export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentViewProps) {
+export default function ArenaStudentView({ sessionCode, setView, classStudent }: ArenaStudentViewProps) {
   const { language, dir } = useLanguage();
   const t = ARENA_STUDENT_STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
 
@@ -65,8 +68,8 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
   }, []);
 
   const [phase, setPhase] = useState<Phase>("join");
-  const [name, setName] = useState("");
-  const [avatar, setAvatar] = useState(DEFAULT_AVATAR);
+  const [name, setName] = useState(() => classStudentName(classStudent));
+  const [avatar, setAvatar] = useState(classStudent?.avatar || DEFAULT_AVATAR);
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   // Set by ARENA_ENDED (teacher closed THIS arena, session still alive) —
@@ -121,21 +124,29 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
     joinAsStudent(trimmed, avatar);
   };
 
+  useClassStudentAutoJoin(classStudent, sessionCode, handleContinue);
+
   useEffect(() => {
     if (joining && joinedSessionCode === sessionCode) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- socket join confirmation; matches Speed Round convention
       setJoining(false);
       setPhase("lobby");
       try {
-        sessionStorage.setItem(ARENA_GUEST_KEY, JSON.stringify({ sessionCode, name: name.trim(), avatar }));
+        if (!classStudent) sessionStorage.setItem(ARENA_GUEST_KEY, JSON.stringify({ sessionCode, name: name.trim(), avatar }));
       } catch { /* storage unavailable */ }
     }
   }, [joining, joinedSessionCode, sessionCode, name, avatar]);
 
+  useEffect(() => {
+    if (!joining) return;
+    const timer = setTimeout(() => { setJoining(false); setJoinError(t.joinFailed); }, 10_000);
+    return () => clearTimeout(timer);
+  }, [joining, t.joinFailed]);
+
   // Auto-rejoin after a refresh.
   const autoRejoinedRef = useRef(false);
   useEffect(() => {
-    if (autoRejoinedRef.current) return;
+    if (classStudent || autoRejoinedRef.current) return;
     autoRejoinedRef.current = true;
     try {
       const saved = sessionStorage.getItem(ARENA_GUEST_KEY);
@@ -353,7 +364,8 @@ export default function ArenaStudentView({ sessionCode, setView }: ArenaStudentV
             className="w-full bg-stone-50 rounded-2xl border-2 border-stone-200 focus:border-indigo-400 outline-none px-5 py-4 text-xl font-bold text-stone-900 placeholder-stone-300 text-center transition"
           />
           <div className="mt-5">
-            <QPAvatarPicker selected={avatar} onSelect={setAvatar} />
+            <ClassStudentJoinNotice student={classStudent} />
+          <QPAvatarPicker selected={avatar} onSelect={setAvatar} />
           </div>
           {joinError && <p className="mt-4 text-sm font-bold text-rose-600 text-center">{joinError}</p>}
           <button
