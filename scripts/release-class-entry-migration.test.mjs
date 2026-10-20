@@ -66,6 +66,19 @@ test('propagates denied Management API authorization without attempting an apply
   assert.equal(calls, 1);
 });
 
+test('does not apply a pending release when a client role can bypass RLS', async () => {
+  const db = new PGlite();
+  try {
+    await db.exec(fixture);
+    await db.exec('ALTER ROLE authenticated BYPASSRLS');
+    let writes = 0;
+    const request = async body => { if (!body.read_only) writes++; return (await db.query(body.query)).rows; };
+    await assert.rejects(releaseClassEntry({ request, sql, apply: true }), /Client roles can bypass/);
+    assert.equal(writes, 0);
+    assert.equal((await db.query("SELECT to_regclass('public.class_live_sessions') IS NULL AS absent")).rows[0].absent, true);
+  } finally { await db.close(); }
+});
+
 test('rejects changed schema, function, policy and privilege contracts before reporting an applied release', async t => {
   const db = new PGlite();
   try {
@@ -96,6 +109,9 @@ test('rejects changed schema, function, policy and privilege contracts before re
       ['disabled closing trigger', 'ALTER TABLE public.quick_play_sessions DISABLE TRIGGER close_class_entry_on_session_end'],
       ['additional RPC overload', `CREATE FUNCTION public.set_class_live_session(p_class_id uuid) RETURNS void LANGUAGE plpgsql AS $$ BEGIN RETURN; END; $$`],
       ['additional closing trigger', 'CREATE TRIGGER unexpected_close AFTER UPDATE ON public.quick_play_sessions FOR EACH ROW EXECUTE FUNCTION public.close_class_entry_on_session_end()'],
+      ['client owns the bridge', 'ALTER TABLE public.class_live_sessions OWNER TO authenticated'],
+      ['client inherits bridge ownership', 'CREATE ROLE class_entry_owner; GRANT class_entry_owner TO authenticated; ALTER TABLE public.class_live_sessions OWNER TO class_entry_owner'],
+      ['client owns a release function', 'ALTER FUNCTION public.get_my_live_class_session() OWNER TO authenticated'],
     ];
     for (const [name, change] of cases) {
       await t.test(name, async () => {

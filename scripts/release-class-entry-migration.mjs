@@ -46,6 +46,12 @@ export const statusQuery = `SELECT
   EXISTS (SELECT 1 FROM supabase_migrations.schema_migrations WHERE version = '${version}') AS recorded,
   to_regclass('public.class_live_sessions') IS NOT NULL AS bridge_table,
   EXISTS (SELECT 1 FROM pg_class WHERE oid = to_regclass('public.class_live_sessions') AND relrowsecurity) AS rls,
+  EXISTS (SELECT 1 FROM pg_class WHERE oid = to_regclass('public.class_live_sessions')
+    AND NOT pg_has_role('authenticated', relowner, 'MEMBER') AND NOT pg_has_role('anon', relowner, 'MEMBER'))
+    AND NOT EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND p.proname IN ('set_class_live_session', 'get_my_live_class_session', 'close_class_entry_on_session_end')
+      AND (pg_has_role('authenticated', p.proowner, 'MEMBER') OR pg_has_role('anon', p.proowner, 'MEMBER'))) AS client_ownership_safe,
+  NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname IN ('authenticated', 'anon') AND (rolsuper OR rolbypassrls)) AS client_roles_safe,
   EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public.set_class_live_session(uuid,uuid)') AND NOT prosecdef) AS publish_invoker,
   EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public.get_my_live_class_session()') AND NOT prosecdef) AS discover_invoker,
   EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public.close_class_entry_on_session_end()') AND NOT prosecdef) AS close_invoker,
@@ -130,7 +136,8 @@ function canonicalSchema(value, key) {
 
 export function migrationState(row) {
   if (!row || row.prerequisites_ready !== true) throw new Error('Required database objects or migration history are unavailable.');
-  if (row.recorded === true && row.anon_blocked === true && row.authenticated_allowed === true
+  if (row.client_roles_safe !== true) throw new Error('Client roles can bypass row security; stopping before applying the release.');
+  if (row.recorded === true && row.anon_blocked === true && row.authenticated_allowed === true && row.client_ownership_safe === true
     && row.service_allowed === true && schemaChecks.every(key => row[key] === true)
     && policiesMatch(row.policy_definitions)
     && JSON.stringify(canonicalSchema(row.schema_definition)) === JSON.stringify(canonicalSchema(approvedSchema))) return 'applied';

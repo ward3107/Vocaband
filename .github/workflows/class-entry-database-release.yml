@@ -6,12 +6,14 @@ on:
     paths:
       - scripts/release-class-entry-migration*.mjs
       - scripts/class-entry-approved-schema.json
+      - supabase/migrations/20261019175511_class_live_entry.sql
       - .github/workflows/class-entry-database-release.yml
   push:
     branches: [main]
     paths:
       - scripts/release-class-entry-migration*.mjs
       - scripts/class-entry-approved-schema.json
+      - supabase/migrations/20261019175511_class_live_entry.sql
       - .github/workflows/class-entry-database-release.yml
   workflow_dispatch:
     inputs:
