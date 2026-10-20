@@ -1231,9 +1231,12 @@ textarea:focus-visible {
   outline-offset: 2px;
 }
 
-/* Ensure text can be resized without breaking layout (1.4.4) */
-body, p, li, td, th, input, select, textarea, button {
-  min-height: 1em;
+/* Keep the text-resize fallback below component and utility sizes. An
+   unlayered rule here overrides min-h-11, shrinking phone Back buttons. */
+@layer base {
+  body, p, li, td, th, input, select, textarea, button {
+    min-height: 1em;
+  }
 }
 
 /* Prevent text from being clipped when resized - only apply to text elements */

@@ -47,6 +47,9 @@ test('personal entry Back walks PIN → names → class code → home, keeping t
   await page.goto(invite);
   await waitForAppLoad(page);
   await expect(page.getByLabel('Type your PIN', { exact: true })).toBeVisible();
+  const backTarget = await page.getByRole('button', { name: 'Back', exact: true }).boundingBox();
+  expect(backTarget?.height).toBeGreaterThanOrEqual(44);
+  expect(backTarget?.width).toBeGreaterThanOrEqual(44);
   await page.getByLabel('Type your PIN', { exact: true }).fill('PQRS78');
   await back(page);
   await expect(page.getByRole('button', { name: 'Maya', exact: true })).toBeVisible();
