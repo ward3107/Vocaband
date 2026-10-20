@@ -65,3 +65,35 @@ test('propagates denied Management API authorization without attempting an apply
   await assert.rejects(releaseClassEntry({ sql, apply: true, request: async () => { calls++; throw new Error('HTTP 403'); } }), /HTTP 403/);
   assert.equal(calls, 1);
 });
+
+test('rejects changed policy definitions and extra policies before reporting an applied release', async t => {
+  const db = new PGlite();
+  try {
+    await db.exec(fixture);
+    await db.exec(migrationTransaction(sql));
+    const baseline = (await db.query(statusQuery)).rows[0];
+    const student = baseline.policy_definitions.find(policy => policy.policyname === 'class_live_student');
+    const cases = [
+      ['changed roles', 'ALTER POLICY class_live_student ON public.class_live_sessions TO anon'],
+      ['changed SELECT predicate', 'ALTER POLICY class_live_student ON public.class_live_sessions USING (true)'],
+      ['changed write predicate', 'ALTER POLICY class_live_owner ON public.class_live_sessions WITH CHECK (true)'],
+      ['changed command', `DROP POLICY class_live_student ON public.class_live_sessions; CREATE POLICY class_live_student ON public.class_live_sessions FOR ALL TO authenticated USING (${student.qual})`],
+      ['changed permissiveness', `DROP POLICY class_live_student ON public.class_live_sessions; CREATE POLICY class_live_student ON public.class_live_sessions AS RESTRICTIVE FOR SELECT TO authenticated USING (${student.qual})`],
+      ['additional permissive policy', 'CREATE POLICY extra_access ON public.class_live_sessions FOR SELECT TO authenticated USING (true)'],
+      ['whitespace inside a literal', `ALTER POLICY class_live_student ON public.class_live_sessions USING (${student.qual.replace("'approved'::text", "'app roved'::text")})`],
+    ];
+    for (const [name, change] of cases) {
+      await t.test(name, async () => {
+        await db.exec('BEGIN');
+        try {
+          await db.exec(change);
+          let writes = 0;
+          const request = async body => { if (!body.read_only) writes++; return (await db.query(body.query)).rows; };
+          await assert.rejects(releaseClassEntry({ request, sql, apply: true }), /disagree/);
+          assert.equal(writes, 0);
+        } finally { await db.exec('ROLLBACK'); }
+      });
+    }
+    assert.equal(migrationState((await db.query(statusQuery)).rows[0]), 'applied');
+  } finally { await db.close(); }
+});

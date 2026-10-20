@@ -6,6 +6,32 @@ export const version = '20261019175511';
 export const migrationUrl = new URL(`../supabase/migrations/${version}_class_live_entry.sql`, import.meta.url);
 const approvedHash = '6f271c87a5655e2bf4d2f24b434a80e37cc2fed2d0a5cfc2a3866fb754e8d185';
 
+// Canonical PostgreSQL definitions generated from the checksum-pinned SQL.
+// Roles, commands, permissiveness and both predicates must all match; an
+// additional permissive policy would otherwise widen access despite RLS.
+const approvedPolicies = [
+  {
+    "policyname": "class_live_owner",
+    "permissive": "PERMISSIVE",
+    "roles": [
+      "authenticated"
+    ],
+    "cmd": "ALL",
+    "qual": "((teacher_uid = (( SELECT auth.uid() AS uid))::text) AND (EXISTS ( SELECT 1\n   FROM classes c\n  WHERE ((c.id = class_live_sessions.class_id) AND (c.teacher_uid = (( SELECT auth.uid() AS uid))::text)))) AND (EXISTS ( SELECT 1\n   FROM quick_play_sessions s\n  WHERE ((s.id = class_live_sessions.session_id) AND (s.teacher_uid = (( SELECT auth.uid() AS uid))::text)))))",
+    "with_check": "((teacher_uid = (( SELECT auth.uid() AS uid))::text) AND (opened_at <= (now() + '00:01:00'::interval)) AND (expires_at <= (now() + '06:00:00'::interval)) AND (EXISTS ( SELECT 1\n   FROM (classes c\n     JOIN quick_play_sessions s ON ((s.teacher_uid = c.teacher_uid)))\n  WHERE ((c.id = class_live_sessions.class_id) AND (s.id = class_live_sessions.session_id) AND (c.teacher_uid = (( SELECT auth.uid() AS uid))::text) AND ((NOT class_live_sessions.is_open) OR ((COALESCE(c.subject, 'english'::text) = COALESCE(s.subject, 'english'::text)) AND (s.is_active = true)))))))"
+  },
+  {
+    "policyname": "class_live_student",
+    "permissive": "PERMISSIVE",
+    "roles": [
+      "authenticated"
+    ],
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM ((classes c\n     JOIN users u ON ((u.class_code = c.code)))\n     JOIN student_profiles p ON ((((p.auth_uid)::text = u.uid) AND (p.class_code = c.code) AND (p.status = 'approved'::text))))\n  WHERE ((c.id = class_live_sessions.class_id) AND (c.teacher_uid = class_live_sessions.teacher_uid) AND (u.uid = (( SELECT auth.uid() AS uid))::text) AND (u.role = 'student'::text))))",
+    "with_check": null
+  }
+];
+
 // Only metadata is returned; this release never reads student or teacher rows.
 export const statusQuery = `SELECT
   (SELECT count(*) = 3 FROM information_schema.columns WHERE table_schema = 'supabase_migrations'
@@ -21,6 +47,9 @@ export const statusQuery = `SELECT
   EXISTS (SELECT 1 FROM pg_proc WHERE oid = to_regprocedure('public.close_class_entry_on_session_end()') AND NOT prosecdef) AS close_invoker,
   (SELECT count(*) = 2 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'class_live_sessions'
     AND policyname IN ('class_live_owner', 'class_live_student')) AS policies,
+  (SELECT coalesce(jsonb_agg(jsonb_build_object('policyname', policyname, 'permissive', permissive,
+    'roles', roles, 'cmd', cmd, 'qual', qual, 'with_check', with_check) ORDER BY policyname), '[]'::jsonb)
+    FROM pg_policies WHERE schemaname = 'public' AND tablename = 'class_live_sessions') AS policy_definitions,
   EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid = to_regclass('public.quick_play_sessions')
     AND tgname = 'close_class_entry_on_session_end' AND NOT tgisinternal AND tgenabled != 'D') AS close_trigger,
   EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime'
@@ -31,10 +60,32 @@ export const statusQuery = `SELECT
 
 const schemaChecks = ['bridge_table', 'rls', 'publish_invoker', 'discover_invoker', 'close_invoker', 'policies', 'close_trigger', 'realtime'];
 
+function predicateTokens(value) {
+  if (value === null) return null;
+  if (typeof value !== 'string') return undefined;
+  // Ignore formatting outside quoted strings while retaining parentheses,
+  // operators and literal contents, including whitespace inside literals.
+  return value.match(/'(?:''|[^'])*'|"(?:""|[^"])*"|[a-zA-Z_][a-zA-Z_0-9$]*|::|<=|>=|<>|!=|[^\s]/g)
+    ?.map(token => /^["']/.test(token) ? token : token.toLowerCase()).join(' ');
+}
+
+function policiesMatch(actual) {
+  if (!Array.isArray(actual) || actual.length !== approvedPolicies.length) return false;
+  return approvedPolicies.every(expected => {
+    const policy = actual.find(item => item.policyname === expected.policyname);
+    return policy && policy.permissive === expected.permissive && policy.cmd === expected.cmd
+      && Array.isArray(policy.roles) && policy.roles.length === 1 && policy.roles[0] === 'authenticated'
+      && predicateTokens(policy.qual) === predicateTokens(expected.qual)
+      && predicateTokens(policy.with_check) === predicateTokens(expected.with_check);
+  });
+}
+
 export function migrationState(row) {
   if (!row || row.prerequisites_ready !== true) throw new Error('Required database objects or migration history are unavailable.');
-  if (row.recorded === true && row.anon_blocked === true && schemaChecks.every(key => row[key] === true)) return 'applied';
-  if (row.recorded === false && schemaChecks.every(key => row[key] === false)) return 'pending';
+  if (row.recorded === true && row.anon_blocked === true && schemaChecks.every(key => row[key] === true)
+    && policiesMatch(row.policy_definitions)) return 'applied';
+  if (row.recorded === false && schemaChecks.every(key => row[key] === false)
+    && Array.isArray(row.policy_definitions) && row.policy_definitions.length === 0) return 'pending';
   throw new Error('Class entry schema and migration history disagree; stopping without changing either.');
 }
 
