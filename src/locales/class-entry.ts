@@ -55,6 +55,7 @@ export const classEntryT = {
       `Enter ${name} on Vocaband:\n${url}${code ? `\n🏫 Class code: ${code}` : ''}\n1. Open the link. Your class is already selected.\n2. Choose your name or student code.\n3. Enter the personal PIN your teacher gave you.\nCan’t find your name or don’t have a PIN? Ask your teacher.`,
     fixedLink: 'Keep this link for the next lesson too.',
     printCards: 'Print personal entry cards',
+    cardsPending: 'Entry cards will be ready when the student list finishes syncing.',
     cardInstructions:
       'Scan or open your link, then enter your personal PIN. Keep this card for your next lesson.',
     pinLabel: 'My personal PIN',
@@ -116,6 +117,7 @@ export const classEntryT = {
       `נכנסים לכיתה ${name} ב־Vocaband:\n${url}${code ? `\n🏫 קוד הכיתה: ${code}` : ''}\n1. פותחים את הקישור. הכיתה כבר נבחרה.\n2. בוחרים את השם או את מזהה התלמיד שלכם.\n3. מזינים את הקוד האישי שקיבלתם מהמורה.\nהשם חסר או שאין לכם קוד אישי? פנו למורה.`,
     fixedLink: 'שמרו את הקישור הזה גם לשיעור הבא.',
     printCards: 'הדפסת כרטיסי כניסה אישיים',
+    cardsPending: 'כרטיסי הכניסה יהיו מוכנים בסיום עדכון רשימת התלמידים.',
     cardInstructions: 'סרקו או פתחו את הקישור והזינו את הקוד האישי. שמרו את הכרטיס לשיעור הבא.',
     pinLabel: 'הקוד האישי שלי',
     gameClassMistake: 'זה קוד כיתה. היכנסו לכיתה ואז הזינו את הקוד האישי שלכם.',
@@ -176,6 +178,7 @@ export const classEntryT = {
       `الدخول إلى الصف ${name} على Vocaband:\n${url}${code ? `\n🏫 رمز الصف: ${code}` : ''}\n1. افتح الرابط. الصف محدّد مسبقًا.\n2. اختر اسمك أو رمز الطالب الخاص بك.\n3. أدخل الرمز الشخصي الذي أعطاك إياه المعلم.\nاسمك غير موجود أو ليس لديك رمز شخصي؟ اطلب المساعدة من المعلم.`,
     fixedLink: 'احتفظ بهذا الرابط للدرس القادم أيضًا.',
     printCards: 'طباعة بطاقات دخول شخصية',
+    cardsPending: 'ستكون بطاقات الدخول جاهزة عند اكتمال تحديث قائمة الطلاب.',
     cardInstructions:
       'امسح الرمز أو افتح الرابط، ثم أدخل رمزك الشخصي. احتفظ بالبطاقة للدرس القادم.',
     pinLabel: 'رمزي الشخصي',

@@ -100,6 +100,7 @@ export default function RosterModalV2({
   const [toast, setToast] = useState<string | null>(null);
   const [sharingStudentId, setSharingStudentId] = useState<string | null>(null);
   const sharingStudent = rows.find((student) => student.id === sharingStudentId);
+  const entryCardsPending = loading || rows.some((student) => student.id.startsWith('tmp-'));
 
   // Esc-to-close — matches the legacy modal's behaviour.
   useEffect(() => {
@@ -254,8 +255,8 @@ export default function RosterModalV2({
       });
       flashToast(t.bulkSuccess(created.length));
       // Re-sync from the server so rows carry their real profile ids
-      // (needed for reset/delete). Best-effort — the optimistic rows
-      // already show the codes + PINs the teacher needs to print.
+      // (needed for personal links and QR cards). Printing stays disabled
+      // until every optimistic row has been replaced with its real id.
       void loadRoster();
       return true;
     } catch (e) {
@@ -365,6 +366,10 @@ export default function RosterModalV2({
   };
 
   const handlePrint = () => {
+    if (entryCardsPending) {
+      setError(classEntryT[language].cardsPending);
+      return;
+    }
     const withPins = students.filter((s) => s.pin);
     if (withPins.length === 0) {
       setError(t.errorAddStudentsFirst);
@@ -443,6 +448,7 @@ export default function RosterModalV2({
                 classLabel={t.sectionLabelPrefix}
                 title={t.title}
                 printLabel={classEntryT[language].printCards}
+                printDisabled={entryCardsPending}
                 addStudentLabel={t.addStudentLabel}
                 ariaCopyCode={t.copyTitle}
                 onCopyCode={handleCopyCode}
@@ -456,6 +462,18 @@ export default function RosterModalV2({
                   input?.focus();
                 }}
               />
+
+              {entryCardsPending && (
+                <div className="mb-4 rounded-xl bg-indigo-50 p-3 text-sm text-indigo-950" role="status">
+                  <p>{classEntryT[language].cardsPending}</p>
+                  {!loading && (
+                    <button type="button" onClick={() => void loadRoster()}
+                      className="mt-2 min-h-11 rounded-xl border border-indigo-200 bg-white px-4 py-2 font-bold">
+                      {classEntryT[language].retry}
+                    </button>
+                  )}
+                </div>
+              )}
 
               <AddStudentRow
                 mobile={isMobile}
