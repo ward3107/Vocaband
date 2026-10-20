@@ -18,6 +18,17 @@ async function prepare(page: Page) {
         'vocaband_privacy_reminder_dismissed',
       ])
         localStorage.setItem(key, '1');
+      for (const guide of [
+        'library-intro',
+        'classroom',
+        'create-assignment',
+        'approvals',
+        'worksheet',
+        'class-show',
+        'quick-play-monitor',
+      ]) {
+        localStorage.setItem(`vocaband_guide_seen_${guide}`, '1');
+      }
       localStorage.setItem('vocaband_consent_version', privacy);
       localStorage.setItem('vocaband_student_visibility_version', visibility);
     },
@@ -99,7 +110,9 @@ test('teacher Back dismisses the exit confirmation and never sends a logout requ
   expect(logouts).toBe(0);
   await page.goto('/privacy-settings');
   await waitForAppLoad(page);
-  await expect(page.getByRole('heading', { name: 'Privacy & Data Settings', exact: true })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Privacy & Data Settings', exact: true })
+  ).toBeVisible();
   await back(page);
   await expect(page.getByRole('heading', { name: /Ready for a great lesson/ })).toBeVisible();
   // Returning home from a direct link must leave another in-document Back.
@@ -155,6 +168,7 @@ test('Back asks before leaving an unfinished round and repeated cancel keeps the
     .filter({ hasText: 'Week 1 Vocabulary' })
     .click();
   await page.getByRole('button', { name: /^Classic Mode/ }).click();
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
   await page.getByRole('button', { name: "Let's Go! →", exact: true }).click();
   await page
     .locator('[data-vocaband-view]')
