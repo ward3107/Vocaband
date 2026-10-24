@@ -45,3 +45,34 @@ test('main advancing during verification blocks deployment', async () => {
   f.github.rest.git.getRef = async () => ({ data: { object: { sha: ++calls === 1 ? 'abc' : 'new' } } });
   await assert.rejects(gate(f), /Main advanced/);
 });
+
+
+test('canonical main dispatch by the bot or owner can satisfy the gate', async () => {
+  const options = { repository: 'test/test', workflow: 'ci.yml' };
+  const dispatched = { ...pass, event: 'workflow_dispatch', head_repository: { full_name: 'test/test' },
+    path: '.github/workflows/ci.yml', actor: { login: 'github-actions[bot]' } };
+  assert.equal(gate.state([dispatched], 'abc', options), 'success');
+  assert.equal(gate.state([{ ...dispatched, actor: { login: 'test' } }], 'abc', options), 'success');
+  for (const run of [
+    { ...dispatched, actor: { login: 'outside-user' } },
+    { ...dispatched, head_repository: { full_name: 'outside/fork' } },
+    { ...dispatched, path: '.github/workflows/other.yml' },
+    { ...dispatched, head_branch: 'other' },
+    { ...dispatched, head_sha: 'old' },
+  ]) assert.equal(gate.state([run], 'abc', options), 'pending');
+  assert.equal(gate.state([dispatched], 'abc'), 'pending');
+  assert.equal(gate.state([pass, { ...dispatched, id: 2, conclusion: 'failure' }], 'abc', options), 'failure');
+});
+
+test('both canonical dispatch workflows are checked without filtering out dispatch events', async () => {
+  const f = fixture(); const requests = [];
+  f.github.rest.actions.listWorkflowRuns = async args => {
+    requests.push(args);
+    return { data: { workflow_runs: [{ ...pass, event: 'workflow_dispatch',
+      head_repository: { full_name: 'test/test' }, path: '.github/workflows/' + args.workflow_id,
+      actor: { login: 'github-actions[bot]' } }] } };
+  };
+  await gate(f);
+  assert.deepEqual(requests.map(args => args.workflow_id), ['ci.yml', 'ci-e2e.yml']);
+  assert.ok(requests.every(args => !Object.hasOwn(args, 'event')));
+});
