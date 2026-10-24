@@ -1,0 +1,124 @@
+name: Continue merged dependency release
+
+on:
+  workflow_run:
+    workflows: [CI, 'CI — e2e', CodeQL, Dependabot auto-merge]
+    types: [completed]
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: write
+
+concurrency:
+  group: dependency-main-dispatch-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  continue-main:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Dispatch canonical main checks and gated release after a safe bot merge
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const source = context.payload.workflow_run;
+            const repo = context.repo;
+            const fullName = `${repo.owner}/${repo.repo}`;
+            const canonical = new Set([
+              '.github/workflows/ci.yml', '.github/workflows/ci-e2e.yml',
+              '.github/workflows/codeql.yml', '.github/workflows/dependabot-auto-merge.yml',
+            ]);
+            const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
+            const skip = message => core.info(`No dependency release dispatch: ${message}`);
+            const mainRef = async () => (await github.rest.git.getRef({ ...repo, ref: 'heads/main' })).data.object.sha;
+            
+            // workflow_run can hold a write token: inspect metadata only, never PR code or artifacts.
+            if (source?.event !== 'pull_request' || source.conclusion !== 'success' ||
+                source.head_repository?.full_name !== fullName || !canonical.has(source.path)) {
+              return skip('the source is not a successful canonical same-repository PR workflow.');
+            }
+            const associated = await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, {
+              ...repo, commit_sha: source.head_sha, per_page: 100,
+            });
+            let pr;
+            for (const candidate of associated) {
+              const current = (await github.rest.pulls.get({ ...repo, pull_number: candidate.number })).data;
+              if (current.user?.login === 'dependabot[bot]' && current.user?.type === 'Bot' &&
+                  current.base?.ref === 'main' && current.base?.repo?.full_name === fullName &&
+                  current.head?.repo?.full_name === fullName && current.head?.sha === source.head_sha &&
+                  current.auto_merge?.enabled_by?.login === 'github-actions[bot]') {
+                if (pr) throw new Error('Ambiguous dependency pull request for this workflow commit.');
+                pr = current;
+              }
+            }
+            if (!pr) return skip('no matching bot-approved dependency update.');
+            const request = { ...repo, pull_number: pr.number, per_page: 100 };
+            const commits = await github.paginate(github.rest.pulls.listCommits, request);
+            const updateTypes = commits.filter(commit => commit.author?.login === 'dependabot[bot]')
+              .flatMap(commit => [...commit.commit.message.matchAll(/^\s*update-type:\s*(version-update:semver-[a-z]+)\s*$/gm)].map(match => match[1]));
+            if (!updateTypes.length || updateTypes.some(type => !['version-update:semver-patch', 'version-update:semver-minor'].includes(type))) {
+              return skip('Major or unclassified dependency update.');
+            }
+            const reviews = await github.paginate(github.rest.pulls.listReviews, request);
+            if (!reviews.some(review => review.user?.login === 'github-actions[bot]' &&
+                review.state === 'APPROVED' && review.commit_id === pr.head.sha)) {
+              return skip('the current dependency commit has no bot approval.');
+            }
+            // CI completion and native auto-merge are asynchronous. A later completion retries
+            // this short metadata wait; a failed/unmerged dependency PR never deploys.
+            for (let attempt = 0; !pr.merged && attempt < 12; attempt++) {
+              if (pr.state !== 'open' || pr.head.sha !== source.head_sha || !pr.auto_merge) return skip('the PR changed or auto-merge was disabled.');
+              await pause(10000);
+              pr = (await github.rest.pulls.get(request)).data;
+            }
+            if (!pr.merged) return skip('native merge is still pending; another completion can retry.');
+            if (pr.merged_by?.login !== 'github-actions[bot]' || pr.head.sha !== source.head_sha ||
+                !/^[a-f0-9]{40}$/.test(pr.merge_commit_sha || '')) return skip('not a matching native bot merge.');
+            const sha = pr.merge_commit_sha;
+            if (await mainRef() !== sha) return skip('a newer main commit superseded this merge.');
+            
+            function trusted(run, workflow) {
+              return run.head_sha === sha && run.head_branch === 'main' &&
+                run.head_repository?.full_name === fullName && run.path === `.github/workflows/${workflow}` &&
+                (run.event === 'push' || (run.event === 'workflow_dispatch' &&
+                  ['github-actions[bot]', repo.owner].includes(run.actor?.login)));
+            }
+            async function latest(workflow) {
+              const response = await github.rest.actions.listWorkflowRuns({
+                ...repo, workflow_id: workflow, head_sha: sha, branch: 'main', per_page: 100,
+              });
+              return response.data.workflow_runs.filter(run => trusted(run, workflow)).sort((a, b) => b.id - a.id)[0];
+            }
+            async function dispatchUnlessPresent(workflow) {
+              if (await mainRef() !== sha) throw new Error('Main advanced before workflow dispatch.');
+              if (await latest(workflow)) return;
+              await github.rest.actions.createWorkflowDispatch({ ...repo, workflow_id: workflow, ref: 'main' });
+              if (await mainRef() !== sha) throw new Error('Main advanced during workflow dispatch.');
+              core.info(`Dispatched ${workflow} for main ${sha}.`);
+            }
+            // The concurrency key is the PR head SHA. Duplicate completion events/reruns
+            // reuse existing canonical runs, including failures, rather than hiding them.
+            for (const workflow of ['ci.yml', 'ci-e2e.yml']) await dispatchUnlessPresent(workflow);
+            let passed = false;
+            for (let attempt = 0; attempt < 75; attempt++) {
+              if (await mainRef() !== sha) return skip('main advanced while CI was running.');
+              const runs = await Promise.all(['ci.yml', 'ci-e2e.yml'].map(latest));
+              for (const run of runs) {
+                if (run?.status === 'completed' && run.conclusion !== 'success') {
+                  throw new Error(`Canonical main CI did not succeed: ${run.path} (${run.conclusion}).`);
+                }
+              }
+              if (runs.every(run => run?.status === 'completed' && run.conclusion === 'success')) { passed = true; break; }
+              if (attempt + 1 < 75) await pause(20000);
+            }
+            if (!passed) throw new Error('Canonical main CI did not finish successfully within the release wait window.');
+            // These existing workflows independently recheck require-ci.cjs before accessing
+            // deployment credentials. No production deployment code runs in this bridge.
+            for (const workflow of ['fly-deploy.yml', 'cloudflare-deploy.yml']) await dispatchUnlessPresent(workflow);
+            core.info(`Canonical CI passed and gated release workflows are queued for ${sha}.`);
