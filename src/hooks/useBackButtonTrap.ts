@@ -31,7 +31,7 @@
  */
 import { useCallback, useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
-import { supabase, hasTeacherAccess, type AppUser } from '../core/supabase';
+import { hasTeacherAccess, type AppUser } from '../core/supabase';
 import type { View } from '../core/views';
 import { pathForView } from '../utils/routes';
 import { URL_ROUTING_PUSH } from '../utils/urlRouting';
@@ -40,7 +40,7 @@ import { modalBackStack } from '../utils/modalBackStack';
 // Views that a logged-in user should never land on via back button.
 // If popstate would navigate to one of these, we block it.
 const AUTH_VIEWS = new Set<string>([
-  'landing', 'public-landing', 'student-account-login',
+  'landing', 'public-landing', 'student-account-login', 'teacher-login',
   'oauth-class-code', 'oauth-callback',
 ]);
 
@@ -135,6 +135,9 @@ export function useBackButtonTrap(
   const exitModalOpenRef = useRef(false);
   const viewRef = useRef(view);
   const userRef = useRef(user);
+  // popstate has already changed location when it fires. Keep the URL of
+  // the visible screen so closing a dialog never stamps the previous URL.
+  const currentUrlRef = useRef(window.location.href);
   // Timestamp of the student's last back-press at the dashboard floor,
   // for the double-back-to-exit gesture.
   const lastFloorBackRef = useRef(0);
@@ -164,8 +167,7 @@ export function useBackButtonTrap(
   // Push a full dashboard trap: refill the pad buffer, then push the
   // dashboard on top.  Called on login transitions and whenever a pad
   // entry is popped so the buffer is always replenished.
-  const pushDashboardTrap = useCallback(() => {
-    const v = viewRef.current;
+  const pushDashboardTrap = useCallback((v: View = viewRef.current) => {
     window.history.replaceState({ view: v, _pad: true }, '');
     for (let i = 1; i < PAD_COUNT; i++) {
       window.history.pushState({ view: v, _pad: true }, '');
@@ -180,9 +182,12 @@ export function useBackButtonTrap(
     // in the in-app history beneath them, so the hardware back button would
     // exit the app entirely. Seed a public-landing entry underneath the
     // login so back lands on the marketing page instead of leaving.
-    if (view === 'student-account-login' || view === 'teacher-login') {
-      window.history.replaceState({ view: 'public-landing' }, '');
-      window.history.pushState({ view }, '');
+    const entryUrl = window.location.href;
+    const path = pathForView(view);
+    if (view === 'student-account-login' || view === 'teacher-login' || view === 'quick-play-student' ||
+        (path && path !== '/' && !AUTH_VIEWS.has(view))) {
+      window.history.replaceState({ view: 'public-landing' }, '', '/');
+      window.history.pushState({ view }, '', entryUrl);
     } else {
       window.history.replaceState({ view }, '');
     }
@@ -219,6 +224,7 @@ export function useBackButtonTrap(
   useEffect(() => {
     if (isPopStateNavRef.current) {
       isPopStateNavRef.current = false;
+      currentUrlRef.current = window.location.href;
       return;
     }
     const currentStateView = (window.history.state as { view?: string } | null)?.view ?? '';
@@ -230,6 +236,7 @@ export function useBackButtonTrap(
     // back-tap lands on a duplicate that the trap interprets as
     // "nowhere to go" and forwards the user out of the app entirely.
     if (currentStateView === view) {
+      currentUrlRef.current = window.location.href;
       return;
     }
 
@@ -239,7 +246,9 @@ export function useBackButtonTrap(
     // Login transition: replace the landing/auth entry with a pad
     // buffer, then push the dashboard on top.
     if (userRef.current && isDashboard && comingFromAuth) {
+      if (URL_ROUTING_PUSH) window.history.replaceState(window.history.state, '', pathForView(view) ?? undefined);
       pushDashboardTrap();
+      currentUrlRef.current = window.location.href;
       return;
     }
 
@@ -256,6 +265,7 @@ export function useBackButtonTrap(
       ? (pathForView(view) ?? undefined)
       : undefined;
     window.history.pushState({ view }, '', url);
+    currentUrlRef.current = window.location.href;
   }, [view, pushDashboardTrap]);
 
   // ─── The popstate handler — attached once on mount ────────────────
@@ -266,6 +276,7 @@ export function useBackButtonTrap(
       const isPad = state?._pad === true;
       const currentUser = userRef.current;
       const currentView = viewRef.current;
+      const restoreCurrentEntry = () => window.history.pushState({ view: currentView }, '', currentUrlRef.current);
 
       // Guard 0: the user tapped "Leave" — let the browser actually
       // navigate out.  Do not re-trap.
@@ -275,11 +286,11 @@ export function useBackButtonTrap(
       // present" and re-push so the back button doesn't accidentally
       // escape during the ~500 ms restore window after a fresh mount.
       if (restoreInProgressRef.current) {
-        window.history.pushState({ view: currentView }, '');
+        restoreCurrentEntry();
         return;
       }
 
-      // Modal-first: if a ModalShell modal is open, back closes the
+      // Layer-first: if a dialog or inline step is open, back closes the
       // topmost one instead of navigating (native-app behavior). We
       // consumed one history entry getting here, so re-push to keep the
       // stack (and the dashboard-floor pad buffer) intact. Runs before
@@ -288,7 +299,7 @@ export function useBackButtonTrap(
       // modals don't register here, so their flows are unaffected.
       if (modalBackStack.size > 0) {
         modalBackStack.closeTop();
-        window.history.pushState({ view: currentView }, '');
+        restoreCurrentEntry();
         return;
       }
 
@@ -312,11 +323,13 @@ export function useBackButtonTrap(
       //           (On web/PWA exitApp is a no-op — a tab can't self-close.)
       //           If the explicit logout modal happens to be open, back
       //           just closes it (= "Stay").
-      //         - Teachers / guests: unchanged exit-confirm modal. Second
-      //           back while the modal is open = "yes, really leave" →
-      //           signOut + public landing.
+      //         - Teachers: Back opens exit confirmation. A second Back
+      //           dismisses it, just like Stay. Only the explicit Leave
+      //           action may sign out.
       const isStudent = currentUser?.role === 'student';
       if (atDashboardFloor) {
+        // Re-trapping must also keep the dashboard's address bar intact.
+        window.history.replaceState(window.history.state, '', currentUrlRef.current);
         if (isStudent) {
           if (exitModalOpenRef.current) {
             setShowExitConfirmModal(false);
@@ -342,10 +355,7 @@ export function useBackButtonTrap(
         }
         if (exitModalOpenRef.current) {
           setShowExitConfirmModal(false);
-          exitIntentRef.current = true;
-          supabase.auth.signOut().catch(() => {});
-          try { window.history.replaceState({ view: 'public-landing' }, ''); } catch { /* best-effort */ }
-          setTimeout(() => { exitIntentRef.current = false; }, EXIT_INTENT_WINDOW_MS);
+          pushDashboardTrap();
           return;
         }
         pushDashboardTrap();
@@ -354,9 +364,18 @@ export function useBackButtonTrap(
       }
 
       // CASE B: logged-in user NOT at dashboard, but back would go to
-      //         a login/auth view — block it (re-push current view).
+      //         a login/auth view — return to the role home.
       if (currentUser && (!prevView || AUTH_VIEWS.has(prevView))) {
-        window.history.pushState({ view: currentView }, '');
+        // A direct link may have no private screen below it. Return home
+        // rather than trapping the user indefinitely on the deep link.
+        const homeView = getHomeView() as View;
+        window.history.replaceState({ view: homeView }, '', pathForView(homeView) ?? '/');
+        // The synthetic home may be the first entry in this document.
+        // Keep the next Back in-document so the dashboard floor can run.
+        pushDashboardTrap(homeView);
+        currentUrlRef.current = window.location.href;
+        isPopStateNavRef.current = true;
+        setView(homeView);
         return;
       }
 
@@ -368,7 +387,7 @@ export function useBackButtonTrap(
         // remain reachable via back. Block any back-press that would
         // restore a private view when there's no user.
         if (!currentUser && !PUBLIC_VIEWS.has(prevView)) {
-          window.history.pushState({ view: currentView }, '');
+          restoreCurrentEntry();
           return;
         }
         isPopStateNavRef.current = true;
@@ -378,7 +397,7 @@ export function useBackButtonTrap(
 
       // CASE D: defensive block (no state, or pad below a non-dashboard
       //         view — shouldn't happen, but re-push to stay safe).
-      window.history.pushState({ view: currentView }, '');
+      restoreCurrentEntry();
     };
 
     window.addEventListener('popstate', handlePopState);

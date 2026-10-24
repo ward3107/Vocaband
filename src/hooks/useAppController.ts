@@ -119,9 +119,9 @@ export function useAppController(initialView?: View): AppViewRouterProps {
 
   // Navigation refs — previousViewRef / currentViewRef / lastUserRoleRef.
   // See useNavigationRefs.
-  const { previousViewRef, currentViewRef, lastUserRoleRef } = useNavigationRefs(view);
+  const { currentViewRef, lastUserRoleRef } = useNavigationRefs(view);
 
-  const goBack = () => setView(previousViewRef.current as View);
+  const goBack = () => window.history.back();
 
   // Cookie consent banner — state + accept/customize handlers live
   // in a dedicated hook so the banner's persistence + quirky React-
@@ -593,7 +593,7 @@ export function useAppController(initialView?: View): AppViewRouterProps {
   // doesn't land on the student exit screen.
   useQuickPlayEvents({
     enabled: true,
-    isGuest: user?.isGuest ?? false,
+    isGuest: !!user?.isGuest || (user?.role === 'student' && !!quickPlayActiveSession && activeAssignment?.id === `quickplay-${quickPlayActiveSession.id}`),
     onKicked: quickPlaySocket.onKicked,
     onSessionEnded: quickPlaySocket.onSessionEnded,
     handleGuestKicked: () => { setQuickPlayKicked(true); setActiveAssignment(null); },
@@ -1058,6 +1058,18 @@ export function useAppController(initialView?: View): AppViewRouterProps {
   // branch below stays equivalent to the old `user?.role === "student"`
   // gate.  Hook-free assembly; fresh (un-memoized) bag every render.
   const studentSectionDeps = useStudentSectionDeps({
+    className: classes.find(c => c.code === user?.classCode)?.name,
+    onJoinLesson: ({ session, view: lessonView }) => {
+      cleanupSessionData();
+      setActiveAssignment(null);
+      setQuickPlayStudentName('');
+      setQuickPlayCompletedModes(new Set());
+      setQuickPlayAvatar(user?.avatar || '🦊');
+      setQuickPlayKicked(false);
+      setQuickPlaySessionEnded(false);
+      setQuickPlayActiveSession(session);
+      setView(lessonView);
+    },
     user, xp, coins, streak, badges, setXp, setCoins, setBadges, setUser,
     copiedCode, setCopiedCode,
     studentAssignments, studentProgress, studentDataLoading,

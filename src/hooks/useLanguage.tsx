@@ -27,7 +27,11 @@ export const LANGUAGE_KEY = 'vocaband_legal_language';
 let globalLanguage: Language = 'en';
 const listeners: Set<(lang: Language) => void> = new Set();
 
-const getInitialLanguage = (): Language => 'en';
+// A full page load initializes globalLanguage to English. Components that
+// mount later in this same SPA session must inherit the explicit choice:
+// otherwise choosing Hebrew before entering a class opens an English PIN
+// card while the surrounding instructions remain Hebrew.
+const getInitialLanguage = (): Language => globalLanguage;
 
 // Initialize the document attributes for the English default. The initial
 // language is always English (getInitialLanguage), so the first paint is
@@ -45,7 +49,7 @@ const setGlobalLanguage = (lang: Language) => {
     // bootstrap's localized error toasts) pick up the toggled language.
     // NOT read back by getInitialLanguage — the initial language is always
     // English, so this choice deliberately does not survive a reload.
-    localStorage.setItem(LANGUAGE_KEY, lang);
+    try { localStorage.setItem(LANGUAGE_KEY, lang); } catch { /* Language selection still works when storage is blocked. */ }
     // Set lang attribute for accessibility (WCAG 2.0 AA 3.1.1)
     document.documentElement.setAttribute('lang', lang);
     // Set dir attribute for RTL support (Hebrew/Arabic)

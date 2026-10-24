@@ -44,6 +44,8 @@ export function isStudentHubView(view: View): view is StudentHubView {
 type Anyish = any;
 
 export interface StudentDashboardSectionDeps {
+  className?: string;
+  onJoinLesson: (game: Awaited<ReturnType<typeof import('../utils/classLiveSession').loadMyClassLiveGame>>) => void;
   user: AppUser;
   xp: number;
   coins: number;
@@ -111,6 +113,8 @@ export function StudentDashboardSection(deps: StudentDashboardSectionDeps): Reac
   return (
     <LazyWrapper loadingMessage="Loading dashboard...">
       <StudentDashboardView
+        className={deps.className}
+        onJoinLesson={deps.onJoinLesson}
         user={user}
         xp={xp}
         coins={coins}

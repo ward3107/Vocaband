@@ -1,3 +1,4 @@
+import { useBackLayer } from "../../hooks/useBackLayer";
 import { useEffect, useState } from 'react';
 import { Wifi, Check, X as XIcon, Loader2, X } from 'lucide-react';
 import { useLanguage, type Language } from '../../hooks/useLanguage';
@@ -122,6 +123,7 @@ export default function NetworkDiagnosticButton() {
   const t = STRINGS[language];
   const [open, setOpen] = useState(false);
   const { result, running, run } = useNetworkDiagnostic();
+  useBackLayer(() => setOpen(false), { enabled: open, priority: 80 });
 
   // Run on first open so the teacher doesn't have to tap twice.
   useEffect(() => {

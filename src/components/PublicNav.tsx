@@ -3,6 +3,7 @@ import { Menu, X, LogIn, GraduationCap, PlayCircle, Backpack } from "lucide-reac
 import { useLanguage } from "../hooks/useLanguage";
 import { landingPageT } from "../locales/student/landing-page";
 import NavLanguageToggle from "./NavLanguageToggle";
+import { useBackLayer } from "../hooks/useBackLayer";
 
 // The nav lives across two surfaces:
 //
@@ -54,6 +55,7 @@ const PublicNav: React.FC<PublicNavProps> = ({
   const { language, isRTL } = useLanguage();
   const t = landingPageT[language];
   const [mobileOpen, setMobileOpen] = useState(false);
+  useBackLayer(() => setMobileOpen(false), { enabled: mobileOpen, priority: 60 });
 
   // Lock body scroll when the mobile drawer is open — otherwise long
   // landings let the user scroll the page underneath, which makes the
@@ -77,7 +79,7 @@ const PublicNav: React.FC<PublicNavProps> = ({
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "start" });
         // Update the URL so the user can bookmark / share the section.
-        history.replaceState(null, "", `#${id}`);
+        history.replaceState(history.state, "", `#${id}`);
       }
       return;
     }

@@ -1,3 +1,4 @@
+import { modalBackStack } from "../utils/modalBackStack";
 import { useCallback, useEffect, useRef } from 'react';
 
 /** Keeps a Quick Play guest inside the active session after finishing a game. */
@@ -25,6 +26,7 @@ export function useQuickPlayEndgameBack(
     );
 
     const handlePopState = (event: PopStateEvent) => {
+      if (modalBackStack.size > 0) return;
       event.stopImmediatePropagation();
       returnToModes();
     };

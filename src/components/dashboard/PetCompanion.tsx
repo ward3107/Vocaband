@@ -1,3 +1,4 @@
+import { useBackLayer } from "../../hooks/useBackLayer";
 import { motion, AnimatePresence } from "motion/react";
 import { Heart, Sparkles, X, Gift } from "lucide-react";
 import { PET_MILESTONES, type PetMilestone } from "../../constants/game";
@@ -41,6 +42,7 @@ interface PetCompanionProps {
 export default function PetCompanion({
   open, onClose, xp, displayName, currentStage, nextStage, claimableMilestone, accessoryEmoji, onClaim,
 }: PetCompanionProps) {
+  useBackLayer(onClose, { enabled: open, priority: 50 });
   const { language, dir, isRTL } = useLanguage();
   const t = studentDashboardT[language];
 

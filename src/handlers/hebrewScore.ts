@@ -41,9 +41,10 @@ export async function persistHebrewScore(
     quickPlaySocketUpdateScore,
   } = deps;
 
-  if (quickPlayActiveSession) {
+  if (quickPlayActiveSession && activeAssignment.id === `quickplay-${quickPlayActiveSession.id}`) {
     qpCumulativeScoreRef.current += Math.max(0, score);
     quickPlaySocketUpdateScore(qpCumulativeScoreRef.current);
+    return;
   }
 
   try {

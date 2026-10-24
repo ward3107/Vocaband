@@ -1,3 +1,4 @@
+import { useBackLayer } from "../../hooks/useBackLayer";
 /**
  * VocabularySetDetailModal — full-screen view of one saved Set.
  *
@@ -103,6 +104,7 @@ export default function VocabularySetDetailModal({
   onChanged,
   showToast,
 }: VocabularySetDetailModalProps) {
+  useBackLayer(onClose, { priority: 50 });
   const { language, isRTL, dir } = useLanguage();
   const t = useMemo(() => setDetailT[language], [language]);
 

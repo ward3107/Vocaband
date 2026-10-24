@@ -1,396 +1,255 @@
-import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { QRCodeSVG } from "qrcode.react";
-import { Check, Copy, X, Link2, MessageCircle, Printer, GraduationCap, Users } from "lucide-react";
-import { useLanguage } from "../hooks/useLanguage";
-import { teacherDashboardT } from "../locales/teacher/dashboard";
-import type { Language } from "../hooks/useLanguage";
+import { useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
+import { Check, Copy, GraduationCap, MessageCircle, Printer, Users } from 'lucide-react';
+import { useLanguage, type Language } from '../hooks/useLanguage';
+import { teacherDashboardT } from '../locales/teacher/dashboard';
+import { buildClassJoinUrl } from '../utils/classJoin';
+import { classEntryT } from '../locales/class-entry';
+import ClassEntryGuide from './ClassEntryGuide';
+import ClassEntryLanguagePicker from './ClassEntryLanguagePicker';
+import ModalShell, { ModalPrimaryButton } from './ui/ModalShell';
 
 interface ShareClassLinkModalProps {
   open: boolean;
   onClose: () => void;
   className: string;
   code: string;
-  /** Optional WhatsApp override. When omitted the modal builds its own
-   *  localized wa.me share, so WhatsApp is ALWAYS offered (previously it
-   *  only appeared when a caller wired this prop — the per-assignment
-   *  share never did, so teachers lost their #1 sharing channel there). */
-  onWhatsApp?: () => void;
-  /** When set, the share link deep-links the student straight into this
-   *  assignment after they log in (URL gets `&assignment=<id>`). */
+  justCreated?: boolean;
+  language?: Language;
+  onOpenRoster?: () => void;
   assignmentId?: string;
-  /** Title shown in the modal header when sharing a specific assignment. */
   assignmentTitle?: string;
-  /** When set, the share link auto-launches a specific play mode after
-   *  the student lands on the dashboard.  v1 only supports
-   *  'class-minute' — adds `&play=class-minute` to the URL.  Mutually
-   *  exclusive in intent with `assignmentId` (an assignment link routes
-   *  to the mode picker; a Class Minute link routes straight into the
-   *  60-second drill). */
   playMode?: 'class-minute';
 }
 
-/**
- * Build the canonical join URL for a class.  Lives at /student?class=
- * because /student is the dedicated student entry point — no marketing
- * detour, no public-landing CTAs to confuse a 4th-grader who scanned a
- * QR.  See docs/PUBLIC-PAGES-AUDIT-2026-04-28.md for the routing
- * rationale.
- *
- * When `assignmentId` is provided the URL also carries `&assignment=<id>`
- * so App.tsx can auto-open that assignment for the student once they
- * land on their dashboard.  When `playMode` is provided the URL carries
- * `&play=<mode>` — App.tsx's bootstrap effect routes the student into
- * the matching dashboard-launched mode (Class Minute today; others can
- * be added if we surface more dashboard entry points).
- */
-function buildJoinUrl(code: string, assignmentId?: string, playMode?: string): string {
-  // window.location.origin is fine on web; in SSR contexts (none today)
-  // we'd fall back to the production domain.
-  const origin =
-    typeof window !== "undefined" && window.location?.origin
-      ? window.location.origin
-      : "https://www.vocaband.com";
-  let url = `${origin}/student?class=${encodeURIComponent(code)}`;
-  if (assignmentId) url += `&assignment=${encodeURIComponent(assignmentId)}`;
-  if (playMode) url += `&play=${encodeURIComponent(playMode)}`;
-  return url;
+// Unmount the body on close so clipboard feedback never survives a reopen.
+export default function ShareClassLinkModal(props: ShareClassLinkModalProps) {
+  return props.open ? <ShareClassLinkContent {...props} /> : null;
 }
 
-const ShareClassLinkModal: React.FC<ShareClassLinkModalProps> = ({
-  open,
+function ShareClassLinkContent({
   onClose,
   className,
   code,
-  onWhatsApp,
+  onOpenRoster,
   assignmentId,
   assignmentTitle,
   playMode,
-}) => {
-  const { language, dir } = useLanguage();
+  justCreated,
+  language: inviteLanguage,
+}: ShareClassLinkModalProps) {
+  const { language: uiLanguage } = useLanguage();
+  const [language, setLanguage] = useState<Language>(inviteLanguage ?? uiLanguage);
+  const dir = language === 'en' ? 'ltr' : 'rtl';
   const t = teacherDashboardT[language];
-  const [copiedLink, setCopiedLink] = useState(false);
-  const [copiedCode, setCopiedCode] = useState(false);
-  const [showMore, setShowMore] = useState(false);
-
-  const url = buildJoinUrl(code, assignmentId, playMode);
-  const isAssignmentShare = Boolean(assignmentId);
-  const isClassMinuteShare = playMode === 'class-minute';
-
-  // Header copy varies by share kind.  Class Minute gets a distinct
-  // eyebrow + subtitle so a teacher who's sharing the daily drill
-  // doesn't mistake it for a generic class invite.  Translations live
-  // here rather than in the teacher-dashboard locale file because the
-  // existing copy fields (shareClassLinkEyebrow, shareClassLinkSubtitle)
-  // are already used for the class-only flow; adding a third pair to
-  // that file would force every locale entry to grow.  Inline maps
-  // keep the diff tight.
-  const headerCopy: Record<Language, { eyebrow: string; subtitle: string }> = {
-    en: {
-      eyebrow: 'Send Class Minute',
-      subtitle: `Students who open this link join ${className} and go straight into today's 60-second drill.`,
-    },
-    he: {
-      eyebrow: 'שלח דקת כיתה',
-      subtitle: `תלמידים שייפתחו את הקישור יצטרפו ל-${className} ויעברו ישר לתרגול 60 השניות של היום.`,
-    },
-    ar: {
-      eyebrow: 'أرسل دقيقة الصف',
-      subtitle: `سينضم الطلاب الذين يفتحون هذا الرابط إلى ${className} وينتقلون مباشرة إلى تمرين 60 ثانية لليوم.`,
-    },
-  };
-  const cmHeader = headerCopy[language] ?? headerCopy.en;
-
-  const assignmentHeaderCopy: Record<Language, { eyebrow: string; subtitle: string }> = {
-    en: {
-      eyebrow: 'Share assignment',
-      subtitle: `Students who open this link join ${className} and go straight to this assignment.`,
-    },
-    he: {
-      eyebrow: 'שיתוף משימה',
-      subtitle: `תלמידים שייפתחו את הקישור יצטרפו ל-${className} ויעברו ישר למשימה הזו.`,
-    },
-    ar: {
-      eyebrow: 'مشاركة الواجب',
-      subtitle: `سينضم الطلاب الذين يفتحون هذا الرابط إلى ${className} وينتقلون مباشرة إلى هذا الواجب.`,
-    },
-  };
-  const assignHeader = assignmentHeaderCopy[language] ?? assignmentHeaderCopy.en;
-  const closeAria = language === 'he' ? 'סגירה' : language === 'ar' ? 'إغلاق' : 'Close';
-
-  // One plain line telling the teacher exactly what happens on the
-  // student's side, so the QR/code/link don't need explaining.
-  const joinHintCopy: Record<Language, string> = {
-    en: 'Students scan the code or open the link — the class code fills in by itself. They just pick their name.',
-    he: 'התלמידים סורקים את הקוד או פותחים את הקישור — קוד הכיתה נכנס לבד. הם רק בוחרים את השם שלהם.',
-    ar: 'يمسح الطلاب الرمز أو يفتحون الرابط — يُدخل رمز الصف تلقائيًا. عليهم فقط اختيار اسمهم.',
-  };
-  const joinHint = joinHintCopy[language] ?? joinHintCopy.en;
-
-  const moreWaysCopy: Record<Language, string> = {
-    en: 'More ways to share',
-    he: 'עוד דרכים לשתף',
-    ar: 'طرق أخرى للمشاركة',
-  };
-  const moreWays = moreWaysCopy[language] ?? moreWaysCopy.en;
-
-  // Student-facing WhatsApp message — localized, because it's read by the
-  // student (or their parent), not the teacher, so the teacher's UI pick
-  // shouldn't leak an English message to a Hebrew/Arabic family.
-  const whatsAppTextCopy: Record<Language, string> = {
-    en: `Join my class on Vocaband 🎓\n${url}\n(class code: ${code})`,
-    he: `הצטרפו לכיתה שלי ב-Vocaband 🎓\n${url}\n(קוד כיתה: ${code})`,
-    ar: `انضموا إلى صفي على Vocaband 🎓\n${url}\n(رمز الصف: ${code})`,
-  };
-  const shareViaWhatsAppInternal = () => {
-    const msg = whatsAppTextCopy[language] ?? whatsAppTextCopy.en;
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
-  };
-  const handleWhatsApp = () => {
-    (onWhatsApp ?? shareViaWhatsAppInternal)();
-    onClose();
-  };
-
-  // Reset transient UI when the modal closes so a re-open shows the
-  // default Copy icons + collapsed "more ways" rather than stale state.
-  useEffect(() => {
-    if (!open) {
-      setCopiedLink(false);
-      setCopiedCode(false);
-      setShowMore(false);
-    }
-  }, [open]);
-
-  // Esc-to-close mirrors the rest of the dashboard modals.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  // LMS share launchers.  Both Google Classroom and Microsoft Teams
-  // expose a no-auth "share" URL that opens their composer with the
-  // link pre-filled, so the teacher posts the join link as an
-  // assignment/announcement in one click — the ideal channel for a
-  // no-phone computer lab where students open the LMS on the same
-  // device and just click through (the link carries ?class=, so the
-  // code is pre-filled at login).
-  const openShare = (shareUrl: string) => {
-    window.open(shareUrl, "_blank", "noopener,noreferrer");
-  };
-  const classroomUrl = `https://classroom.google.com/share?url=${encodeURIComponent(url)}&title=${encodeURIComponent(className)}`;
-  const teamsUrl = `https://teams.microsoft.com/share?href=${encodeURIComponent(url)}&msgText=${encodeURIComponent(className)}&preview=true`;
-
-  const handleCopy = async (value: string, kind: "link" | "code") => {
+  const entry = classEntryT[language];
+  const [copied, setCopied] = useState<'link' | 'code' | null>(null);
+  const [copyFailed, setCopyFailed] = useState(false);
+  const url = buildClassJoinUrl(code, { className, assignmentId, playMode });
+  const instructions = entry.instructions(className, url, code);
+  const baseInvite = !assignmentId && !playMode;
+  const L = (en: string, he: string, ar: string) =>
+    language === 'he' ? he : language === 'ar' ? ar : en;
+  const title = assignmentId
+    ? assignmentTitle || L('Share assignment', 'שיתוף משימה', 'مشاركة الواجب')
+    : playMode
+      ? L('Send Class Minute', 'שליחת דקת כיתה', 'إرسال دقيقة الصف')
+      : justCreated
+        ? L(
+            'Class created — invite students',
+            'הכיתה נוצרה — מזמינים תלמידים',
+            'تم إنشاء الصف — ادعُ الطلاب'
+          )
+        : entry.invite;
+  const copy = async (value: string, kind: 'link' | 'code') => {
     try {
       await navigator.clipboard.writeText(value);
-      if (kind === "link") {
-        setCopiedLink(true);
-        setTimeout(() => setCopiedLink(false), 1800);
-      } else {
-        setCopiedCode(true);
-        setTimeout(() => setCopiedCode(false), 1800);
-      }
+      setCopied(kind);
+      setCopyFailed(false);
     } catch {
-      // Older browsers / insecure contexts — fall through silently.
-      // Teacher can still long-press the URL or read the code.
+      setCopied(null);
+      setCopyFailed(true);
     }
   };
+  const openShare = (href: string) => window.open(href, '_blank', 'noopener,noreferrer');
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          key="share-class-link-modal"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-6 bg-black/60 backdrop-blur-sm"
-          onClick={onClose}
-          dir={dir}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            transition={{ duration: 0.2, ease: [0.34, 1.56, 0.64, 1] }}
-            className="relative w-full max-w-md rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] overflow-y-auto"
-            style={{ backgroundColor: "var(--vb-surface)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 px-6 pt-6 pb-8 text-white relative">
-              <button
-                onClick={onClose}
-                type="button"
-                aria-label={closeAria}
-                className="absolute top-4 end-4 w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
-                style={{ touchAction: "manipulation" }}
-              >
-                <X size={18} />
-              </button>
-              <p className="text-xs font-black uppercase tracking-[0.28em] text-white/70">
-                {isClassMinuteShare
-                  ? cmHeader.eyebrow
-                  : isAssignmentShare
-                  ? assignHeader.eyebrow
-                  : t.shareClassLinkEyebrow}
-              </p>
-              <h2 className="mt-1 text-2xl font-black leading-tight">
-                {isAssignmentShare ? assignmentTitle ?? className : className}
-              </h2>
-              <p className="mt-2 text-sm text-white/85 leading-relaxed">
-                {isClassMinuteShare
-                  ? cmHeader.subtitle
-                  : isAssignmentShare
-                  ? assignHeader.subtitle
-                  : t.shareClassLinkSubtitle}
-              </p>
-            </div>
-
-            <div className="px-6 pt-6 pb-6 -mt-4">
-              <div className="rounded-xl bg-[var(--vb-surface)] p-5 shadow-lg shadow-indigo-500/10 border border-[var(--vb-border)] flex flex-col items-center gap-4">
-                {/* QR codes need high-contrast dark-on-white to scan
-                    reliably across every scanner.  Pin the inner panel
-                    to an explicit white card with a soft stone ring so
-                    it reads as a deliberate "scan target" rather than a
-                    rendering glitch when the modal is on a dark theme. */}
-                <div className="rounded-lg bg-white p-3 ring-1 ring-stone-200 shadow-sm">
-                  <QRCodeSVG
-                    value={url}
-                    size={192}
-                    level="M"
-                    fgColor="#1F2937"
-                    bgColor="#FFFFFF"
-                    aria-label={`QR code for ${className}`}
-                  />
-                </div>
-                <div className="text-center">
-                  <p className="text-[11px] font-black uppercase tracking-widest text-[var(--vb-text-muted)]">
-                    {t.shareClassLinkCodeLabel}
-                  </p>
-                  <p className="mt-1 font-mono font-black text-3xl tracking-[0.25em] text-[var(--vb-text-primary)]">
-                    {code}
-                  </p>
-                </div>
-              </div>
-
-              {/* Plain "what the student does" line — the whole point of
-                  the screen in one sentence. */}
-              <p
-                className="mt-4 text-center text-sm font-semibold leading-relaxed"
-                style={{ color: "var(--vb-text-secondary)" }}
-              >
-                {joinHint}
-              </p>
-
-              {/* Primary action: WhatsApp — the channel most teachers here
-                  actually use to reach the class + parents.  Always shown. */}
-              <button
-                onClick={handleWhatsApp}
-                type="button"
-                style={{ touchAction: "manipulation" }}
-                className="mt-4 w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl font-black text-base bg-emerald-500 text-white hover:bg-emerald-600 active:scale-[0.98] transition-all shadow-md shadow-emerald-500/25"
-              >
-                <MessageCircle size={18} />
-                {t.shareWhatsApp}
-              </button>
-
-              {/* Copy link + copy code — the two quick fallbacks. */}
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => handleCopy(url, "link")}
-                  type="button"
-                  style={{ touchAction: "manipulation", backgroundColor: "var(--vb-surface-alt)", color: "var(--vb-text-secondary)" }}
-                  className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm hover:opacity-90 active:scale-[0.97] transition-all"
-                >
-                  {copiedLink ? <Check size={15} className="text-emerald-500" /> : <Link2 size={15} />}
-                  {copiedLink ? t.shareClassLinkCopied : t.shareClassLinkCopy}
-                </button>
-                <button
-                  onClick={() => handleCopy(code, "code")}
-                  type="button"
-                  style={{ touchAction: "manipulation", backgroundColor: "var(--vb-surface-alt)", color: "var(--vb-text-secondary)" }}
-                  className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm hover:opacity-90 active:scale-[0.97] transition-all"
-                >
-                  {copiedCode ? <Check size={15} className="text-emerald-500" /> : <Copy size={15} />}
-                  {copiedCode ? t.shareClassLinkCopied : t.copyClassCode}
-                </button>
-              </div>
-
-              {/* Everything else (LMS + printable poster) is tucked behind a
-                  "more ways" toggle so the default screen stays light and
-                  the teacher isn't hunting through six buttons. */}
-              <button
-                onClick={() => setShowMore((v) => !v)}
-                type="button"
-                style={{ touchAction: "manipulation", color: "var(--vb-text-muted)" }}
-                className="mt-4 w-full flex items-center gap-3 text-[11px] font-bold uppercase tracking-wider"
-                aria-expanded={showMore}
-              >
-                <span className="flex-1 h-px" style={{ backgroundColor: "var(--vb-border)" }} />
-                <span>{showMore ? '—' : '+'} {moreWays}</span>
-                <span className="flex-1 h-px" style={{ backgroundColor: "var(--vb-border)" }} />
-              </button>
-
-              {showMore && (
-                <div className="mt-3">
-                  {/* Post-to-LMS row — Google Classroom + Microsoft Teams.
-                      The primary path for a no-phone computer lab: the link
-                      lands in the app students already have open on their
-                      laptop, so they click straight through to the
-                      code-prefilled login. */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => openShare(classroomUrl)}
-                      type="button"
-                      style={{ touchAction: "manipulation" }}
-                      className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm bg-emerald-600 text-white hover:bg-emerald-700 active:scale-[0.97] transition-all"
-                    >
-                      <GraduationCap size={15} />
-                      {t.shareGoogleClassroom}
-                    </button>
-                    <button
-                      onClick={() => openShare(teamsUrl)}
-                      type="button"
-                      style={{ touchAction: "manipulation" }}
-                      className="inline-flex items-center justify-center gap-2 py-2.5 rounded-lg font-bold text-sm bg-indigo-600 text-white hover:bg-indigo-700 active:scale-[0.97] transition-all"
-                    >
-                      <Users size={15} />
-                      {t.shareTeams}
-                    </button>
-                  </div>
-
-                  {/* Printable poster — only for the canonical class-share
-                      flow. Hidden for assignment shares and Class Minute
-                      sends since those are one-off contexts where a wall
-                      poster doesn't apply. /poster (no .html) sidesteps the
-                      Cloudflare auto-trailing-slash redirect that was
-                      getting cached by the Service Worker. */}
-                  {!isAssignmentShare && !isClassMinuteShare && (
-                    <button
-                      onClick={() => {
-                        const posterUrl = `/poster?class=${encodeURIComponent(code)}&ref=teacher-${encodeURIComponent(code)}`;
-                        window.open(posterUrl, '_blank', 'noopener');
-                      }}
-                      type="button"
-                      style={{ touchAction: "manipulation", color: "var(--vb-text-secondary)" }}
-                      className="mt-2 w-full inline-flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold hover:bg-[var(--vb-surface-alt)] active:scale-[0.97] transition-all"
-                    >
-                      <Printer size={15} className="text-indigo-500" />
-                      {t.printPoster}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </motion.div>
+    <ModalShell
+      open
+      variant="paper"
+      onClose={onClose}
+      dir={dir}
+      zIndex={100}
+      icon="🎓"
+      title={`${title} · ${className}`}
+      closeAriaLabel={L('Close', 'סגירה', 'إغلاق')}
+      subtitle={
+        baseInvite
+          ? entry.shareHint
+          : L(
+              'The link opens this activity after the student enters their class.',
+              'הקישור פותח את הפעילות אחרי כניסת התלמיד לכיתה.',
+              'يفتح الرابط هذا النشاط بعد دخول الطالب إلى صفه.'
+            )
+      }
+      footer={<ModalPrimaryButton onClick={onClose}>{t.shareClassLinkDone}</ModalPrimaryButton>}
+    >
+      <ClassEntryLanguagePicker language={language} onChange={setLanguage} />
+      {baseInvite && (
+        <div className="mb-4 rounded-2xl border border-[#e1e5d6] bg-[#f6f8ee] p-4 text-[#1d2940]">
+          <p className="font-bold">1. {entry.prepare}</p>
+          <p className="mt-1 text-sm leading-relaxed">{entry.prepareHint}</p>
+          {onOpenRoster && (
+            <button
+              type="button"
+              className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-bold"
+              onClick={() => {
+                onClose();
+                onOpenRoster();
+              }}
+            >
+              <Users size={18} aria-hidden="true" />
+              {entry.manage}
+            </button>
+          )}
+        </div>
       )}
-    </AnimatePresence>
+      <p className="mb-3 text-base font-bold">{baseInvite ? `2. ${entry.share}` : entry.share}</p>
+      <a
+        href={`https://wa.me/?text=${encodeURIComponent(instructions)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-base font-bold text-white"
+      >
+        <MessageCircle size={20} aria-hidden="true" />
+        {t.shareWhatsApp}
+      </a>
+      <button
+        type="button"
+        onClick={() => {
+          void copy(url, 'link');
+        }}
+        className="mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[var(--vb-border)] bg-[var(--vb-surface-alt)] px-4 py-3 text-base font-bold"
+      >
+        {copied === 'link' ? (
+          <Check size={18} aria-hidden="true" />
+        ) : (
+          <Copy size={18} aria-hidden="true" />
+        )}
+        {copied === 'link' ? entry.copied : entry.copyLink}
+      </button>
+      <p aria-live="polite" className="mt-2 text-sm text-[var(--vb-text-secondary)]">
+        {copyFailed ? entry.copyFailed : copied ? entry.copied : baseInvite ? entry.fixedLink : ''}
+      </p>
+      <input
+        readOnly
+        value={url}
+        aria-label={entry.copyLink}
+        dir="ltr"
+        onFocus={(e) => e.currentTarget.select()}
+        className="mt-2 min-h-11 w-full rounded-lg border border-[var(--vb-border)] bg-[var(--vb-surface)] px-3 py-2 text-sm text-[var(--vb-text-secondary)]"
+      />
+      {baseInvite && (
+        <div className="mt-4 rounded-xl bg-[var(--vb-surface-alt)] p-4">
+          <p className="font-bold">3. {entry.explain}</p>
+          <p className="mt-1 text-sm leading-relaxed">{entry.explainHint}</p>
+        </div>
+      )}
+      <details className="mt-3 rounded-xl border border-[var(--vb-border)] px-4 py-1">
+        <summary className="min-h-11 cursor-pointer py-3 text-base font-bold">
+          {entry.showQr}
+        </summary>
+        <div className="mx-auto mb-4 w-fit rounded-xl bg-white p-3">
+          <QRCodeSVG
+            value={url}
+            size={184}
+            level="M"
+            fgColor="#1F2937"
+            bgColor="#FFFFFF"
+            aria-label={`${entry.invite}: ${className}`}
+          />
+        </div>
+      </details>
+      {baseInvite && (
+        <details className="mt-3 rounded-xl border border-[var(--vb-border)] px-4 py-1">
+          <summary className="min-h-11 cursor-pointer py-3 text-base font-bold">
+            {entry.teacherHelp}
+          </summary>
+          <div className="pb-3">
+            <ClassEntryGuide
+              language={language}
+              className={className}
+              classCode={code}
+              url={url}
+              onOpenRoster={
+                onOpenRoster
+                  ? () => {
+                      onClose();
+                      onOpenRoster();
+                    }
+                  : undefined
+              }
+            />
+          </div>
+        </details>
+      )}
+      <details className="mt-3 rounded-xl border border-[var(--vb-border)] px-4 py-1">
+        <summary className="min-h-11 cursor-pointer py-3 text-sm font-bold">
+          {entry.moreWays}
+        </summary>
+        <p className="mb-2 text-sm">
+          {t.shareClassLinkCodeLabel}: <bdi className="font-mono text-lg font-bold">{code}</bdi>
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            void copy(code, 'code');
+          }}
+          className="mb-2 min-h-11 rounded-xl border border-[var(--vb-border)] px-3 py-2 text-sm font-bold"
+        >
+          {copied === 'code' ? entry.copied : entry.copyCode}
+        </button>
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              openShare(
+                `https://classroom.google.com/share?url=${encodeURIComponent(url)}&title=${encodeURIComponent(className)}`
+              )
+            }
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-sm font-bold text-white"
+          >
+            <GraduationCap size={18} aria-hidden="true" />
+            {t.shareGoogleClassroom}
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              openShare(
+                `https://teams.microsoft.com/share?href=${encodeURIComponent(url)}&msgText=${encodeURIComponent(className)}&preview=true`
+              )
+            }
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-indigo-700 px-3 py-2 text-sm font-bold text-white"
+          >
+            <Users size={18} aria-hidden="true" />
+            {t.shareTeams}
+          </button>
+        </div>
+        {baseInvite && (
+          <button
+            type="button"
+            onClick={() =>
+              openShare(
+                `/poster?class=${encodeURIComponent(code)}&ref=teacher-${encodeURIComponent(code)}`
+              )
+            }
+            className="mb-3 inline-flex min-h-11 items-center gap-2 px-3 py-2 text-sm font-bold"
+          >
+            <Printer size={18} aria-hidden="true" />
+            {t.printPoster}
+          </button>
+        )}
+      </details>
+    </ModalShell>
   );
-};
-
-export default ShareClassLinkModal;
+}

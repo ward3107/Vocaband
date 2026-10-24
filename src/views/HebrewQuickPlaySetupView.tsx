@@ -45,6 +45,7 @@ const HEBREW_QP_MODES: ReadonlyArray<{
 ];
 
 export interface HebrewQuickPlaySetupViewProps {
+  classEntry?: import('react').ReactNode;
   /** Creates the session in the DB and returns the 6-char join code.
    *  Caller wires this to supabase.rpc('create_quick_play_session', { p_subject: 'hebrew', … }).
    *  Throws on failure — this view stays on the review screen so the
@@ -57,7 +58,7 @@ export interface HebrewQuickPlaySetupViewProps {
 }
 
 export default function HebrewQuickPlaySetupView({
-  onCreateSession, onOpenMonitor, onBack,
+  onCreateSession, onOpenMonitor, onBack, classEntry,
 }: HebrewQuickPlaySetupViewProps) {
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
@@ -169,8 +170,9 @@ export default function HebrewQuickPlaySetupView({
             </div>
             <div>
               <h2 className="text-2xl font-black text-white mb-1">המשחק נוצר!</h2>
-              <p className="text-white/60 font-bold text-sm">שתפו את הקוד עם הכיתה</p>
+              <p className="text-white/60 font-bold text-sm">{classEntry ? 'פתחו את המשחק לכיתה. התלמידים יראו כפתור הצטרפות בכיתה שלהם.' : 'שתפו את הקוד עם הכיתה'}</p>
             </div>
+            {classEntry}
             <div className="rounded-xl bg-white/10 border-2 border-blue-400/40 p-5">
               <div className="text-white/50 text-xs font-black tracking-[0.2em] mb-2" dir="ltr">SESSION CODE</div>
               <div className="text-5xl sm:text-6xl font-black tracking-widest text-white" dir="ltr">

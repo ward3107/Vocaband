@@ -17,6 +17,22 @@ async function prepare(page: Page) {
   }, { privacy: PRIVACY_POLICY_VERSION, visibility: STUDENT_VISIBILITY_VERSION });
 }
 
+async function mockClassEntryChannel(page: Page) {
+  // Keep the UI fixture independent of the deliberately unreachable test host.
+  await page.route('https://test-project.supabase.co/rest/v1/class_live_sessions**', route => route.fulfill({ json: [] }));
+  await page.routeWebSocket('wss://test-project.supabase.co/realtime/v1/websocket**', socket => {
+    socket.onMessage(raw => {
+      if (typeof raw !== 'string') return;
+      const [joinRef, ref, topic, event, payload] = JSON.parse(raw);
+      if (event !== 'phx_join' && event !== 'heartbeat') return;
+      const response = event === 'phx_join'
+        ? { postgres_changes: (payload.config?.postgres_changes ?? []).map((filter: Record<string, unknown>, index: number) => ({ ...filter, id: index + 1 })) }
+        : {};
+      socket.send(JSON.stringify([joinRef, ref, topic, 'phx_reply', { status: 'ok', response }]));
+    });
+  });
+}
+
 async function open(page: Page, url: string) {
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await waitForAppLoad(page);
@@ -52,6 +68,7 @@ test.beforeEach(async ({}, info) => {
 
 test('teacher workspace and creation screens share the new frame', async ({ teacherPage: page }, info) => {
   test.setTimeout(180_000);
+  await mockClassEntryChannel(page);
   await page.route('https://test-project.supabase.co/rest/v1/rpc/create_quick_play_session', route => route.fulfill({ json: { id: 'design-session', session_code: 'DESIGN01' } }));
   await prepare(page);
   await open(page, '/');
@@ -67,12 +84,89 @@ test('teacher workspace and creation screens share the new frame', async ({ teac
     await page.locator(`[data-tour="${tour}"]`).first().click();
     await expect(page.locator('[data-vocaband-view]')).toHaveAttribute('data-vocaband-view', view);
     await waitForAppLoad(page);
+    if (view.endsWith('-host')) await expect(page.getByRole('button', { name: 'Open for this class', exact: true })).toBeVisible();
     await capture(page, info, name);
   }
   for (const [url, name] of [['/vocabulary-library', 'teacher-library'], ['/create-assignment?classId=class-001', 'teacher-assignment'], ['/class-show?assignmentId=assignment-001', 'teacher-class-show'], ['/worksheet?assignmentId=assignment-001', 'teacher-worksheet'], ['/vocabagrut', 'teacher-vocabagrut']] as const) {
     await open(page, url);
     await capture(page, info, name);
   }
+});
+
+test('teacher can open class entry with clear Hebrew instructions', async ({ teacherPage: page }, info) => {
+  await mockClassEntryChannel(page);
+  await page.route('https://test-project.supabase.co/rest/v1/rpc/create_quick_play_session', route => route.fulfill({ json: { id: 'design-live-session', session_code: 'ABCD23' } }));
+  await page.route('https://test-project.supabase.co/rest/v1/rpc/set_class_live_session', route => route.fulfill({ json: null }));
+  await prepare(page);
+  await open(page, '/');
+  await page.getByRole('button', { name: 'Invite students', exact: true }).first().click();
+  const invitation = page.getByRole('dialog');
+  await invitation.getByRole('button', { name: 'עברית', exact: true }).click();
+  await expect(invitation.getByText('1. מכינים את התלמידים', { exact: true }).first()).toBeVisible();
+  await expect(invitation.getByRole('button', { name: 'תלמידים וכרטיסי כניסה', exact: true })).toBeVisible();
+  await expect(invitation.getByText('3. מסבירים לתלמידים מה לעשות', { exact: true }).first()).toBeVisible();
+  await capture(page, info, 'teacher-invite-he');
+  await invitation.getByRole('button', { name: 'סגירה', exact: true }).click();
+  await page.locator('[data-tour="category-race"]').first().click();
+  await page.getByRole('button', { name: 'עברית', exact: true }).click();
+  await page.getByRole('button', { name: 'פתיחה לכיתה הזו', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'המשחק פתוח לכיתה' })).toBeVisible();
+  await expect(page.getByText(/היכנסו לכיתה שלכם ב־Vocaband/)).toBeVisible();
+  await capture(page, info, 'teacher-live-entry-he');
+});
+
+test('teacher prepares a personal WhatsApp link and PIN on desktop and phone', async ({ teacherPage: page }, info) => {
+  await mockClassEntryChannel(page);
+  const studentId = '5f7b1234-1111-2222-3333-123456789abc';
+  await page.route('https://test-project.supabase.co/rest/v1/rpc/teacher_view_roster', route => route.fulfill({ json: [
+    { id: studentId, display_name: 'Maya', roster_pin: 'PQRS78', avatar: '🦊', xp: 0 },
+    { id: '6a8c1234-1111-2222-3333-123456789abc', display_name: 'Ali', roster_pin: 'WXYZ89', avatar: '🐻', xp: 0 },
+  ] }));
+  await prepare(page);
+  await open(page, '/');
+  await page.getByRole('button', { name: 'Invite students', exact: true }).first().click();
+  const invitation = page.getByRole('dialog');
+  const groupMessage = new URL((await invitation.getByRole('link', { name: /WhatsApp/ }).getAttribute('href'))!).searchParams.get('text')!;
+  expect(groupMessage).toContain('Class code: TEST01');
+  expect(groupMessage).not.toContain('PQRS78');
+  await invitation.getByRole('button', { name: 'Students & entry cards', exact: true }).click();
+  await page.getByRole('button', { name: 'Send on WhatsApp — Maya', exact: true }).click();
+  const personal = page.getByRole('dialog');
+  await expect(personal).toHaveAttribute('aria-label', 'Send a personal invitation · Maya');
+  const message = async (label: string) => new URL((await personal.getByRole('link', { name: label, exact: true }).getAttribute('href'))!).searchParams.get('text')!;
+  const combined = await message('Send on WhatsApp');
+  expect(combined).toContain('PQRS78');
+  expect(combined).not.toContain('WXYZ89');
+  const destination = new URL(combined.split('\n')[1]);
+  expect(destination.pathname).toBe('/student');
+  expect(Object.fromEntries(destination.searchParams)).toEqual({ class: 'TEST01', className: 'Test English Class', s: studentId });
+  await personal.getByRole('radio', { name: 'Link only', exact: true }).check();
+  expect(await message('Send on WhatsApp')).not.toContain('PQRS78');
+  await personal.getByRole('radio', { name: 'Personal PIN only', exact: true }).check();
+  expect(await message('Send on WhatsApp')).not.toContain('s=');
+  await personal.getByRole('radio', { name: 'Link + personal PIN', exact: true }).check();
+  await personal.getByRole('button', { name: 'עברית', exact: true }).click();
+  await expect(personal).toHaveAttribute('dir', 'rtl');
+  expect(await message('שליחה בוואטסאפ')).toContain('🔑 הקוד האישי: PQRS78');
+  await capture(page, info, 'teacher-personal-whatsapp-he');
+  await page.keyboard.press('Escape');
+  await expect(personal).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Send on WhatsApp — Ali', exact: true })).toBeVisible();
+});
+
+test('PIN student discovers a live lesson without teacher class state', async ({ studentPage: page }, info) => {
+  await mockClassEntryChannel(page);
+  await page.route('https://test-project.supabase.co/rest/v1/rpc/get_my_live_class_session', route => route.fulfill({ json: [{
+    class_id: 'class-001', class_name: 'Test English Class', session_id: 'design-live-session',
+    session_code: 'ABCD23', allowed_modes: ['classic'], expires_at: new Date(Date.now() + 3600000).toISOString(),
+  }] }));
+  await prepare(page);
+  await open(page, '/');
+  await page.getByRole('button', { name: 'Change language', exact: true }).click();
+  await page.getByRole('menuitemradio', { name: 'עברית' }).click();
+  await expect(page.getByRole('button', { name: 'הצטרפות לשיעור', exact: true })).toBeVisible();
+  await expect(page.getByText('נשתמש אוטומטית בשם ובדמות שלך מהכיתה.')).toBeVisible();
+  await capture(page, info, 'student-live-entry-he');
 });
 
 test('student destinations and card geometry work on desktop and phone', async ({ studentPage: page }, info) => {
@@ -149,12 +243,10 @@ test('role entry screens stay readable without horizontal scrolling', async ({ p
     await open(page, `/${role}`);
     await capture(page, info, `${role}-login`);
   }
-  await page.getByRole('button', { name: 'Change language', exact: true }).click();
   await page.getByRole('button', { name: 'עברית', exact: true }).click();
-  await expect(page.getByText('הקלידו את קוד הכיתה למעלה', { exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'קוד הכיתה או הקישור מהמורה', exact: true })).toBeVisible();
   await capture(page, info, 'student-login-he');
-  await page.getByRole('button', { name: 'החלף שפה', exact: true }).click();
   await page.getByRole('button', { name: 'العربية', exact: true }).click();
-  await expect(page.getByText('أدخل رمز الصف أعلاه', { exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'رمز الصف أو الرابط من معلمك', exact: true })).toBeVisible();
   await capture(page, info, 'student-login-ar');
 });

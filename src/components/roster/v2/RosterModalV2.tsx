@@ -13,7 +13,7 @@
  * naturally, on desktop the content is centred with a max-width.
  */
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { supabase } from "../../../core/supabase";
 import { logAudit } from "../../../utils/audit";
@@ -26,7 +26,14 @@ import BulkAddCodedRow from "./BulkAddCodedRow";
 import RosterHeader from "./RosterHeader";
 import StudentCard, { type RosterStudentV2 } from "./StudentCard";
 import { accentForStudent } from "./constants";
-import { printRosterSheet } from "./printRosterSheet";
+import { printStudentEntryCards } from '../../../utils/studentEntryCards';
+import { buildClassJoinUrl } from '../../../utils/classJoin';
+import { classEntryT } from '../../../locales/class-entry';
+import { studentInviteT } from '../../../locales/student-invite';
+import { lazyWithRetry } from '../../../utils/lazyWithRetry';
+import { useBackLayer } from '../../../hooks/useBackLayer';
+
+const StudentWhatsAppInviteModal = lazyWithRetry(() => import('../../StudentWhatsAppInviteModal'));
 
 interface Props {
   open: boolean;
@@ -78,7 +85,8 @@ export default function RosterModalV2({
   className,
   classEmoji = "🎓",
 }: Props) {
-  const { language, dir, isRTL } = useLanguage();
+  useBackLayer(onClose, { enabled: open, priority: 60 });
+  const { language, dir } = useLanguage();
   const isMobile = useIsMobile();
   const { isOn } = useFeatureFlag();
   const t = classRosterT[language];
@@ -92,16 +100,12 @@ export default function RosterModalV2({
   const [allRevealed, setAllRevealed] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [sharingStudentId, setSharingStudentId] = useState<string | null>(null);
+  const sharingStudent = rows.find((student) => student.id === sharingStudentId);
+  const entryCardsPending = loading || rows.some((student) => student.id.startsWith('tmp-'));
 
   // Esc-to-close — matches the legacy modal's behaviour.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+
 
   const loadRoster = useCallback(async () => {
     setLoading(true);
@@ -135,6 +139,7 @@ export default function RosterModalV2({
     setRevealedIds(new Set());
     setAllRevealed(false);
     setError(null);
+    setSharingStudentId(null);
   }, [open, loadRoster]);
 
   // ── Adapter: raw RPC row → new design's RosterStudentV2 shape ──
@@ -245,8 +250,8 @@ export default function RosterModalV2({
       });
       flashToast(t.bulkSuccess(created.length));
       // Re-sync from the server so rows carry their real profile ids
-      // (needed for reset/delete). Best-effort — the optimistic rows
-      // already show the codes + PINs the teacher needs to print.
+      // (needed for personal links and QR cards). Printing stays disabled
+      // until every optimistic row has been replaced with its real id.
       void loadRoster();
       return true;
     } catch (e) {
@@ -301,7 +306,7 @@ export default function RosterModalV2({
   };
 
   const handleCopyLink = async (s: RosterStudentV2) => {
-    const url = `https://vocaband.com/student?class=${classCode}&s=${s.id}`;
+    const url = buildClassJoinUrl(classCode, { className, studentId: s.id });
     const text = t.inviteShareMessage(s.name, className, url);
     try {
       await navigator.clipboard.writeText(text);
@@ -309,17 +314,6 @@ export default function RosterModalV2({
     } catch {
       setError(t.shareFailedToast);
     }
-  };
-
-  // WhatsApp prefill for JUST the PIN — no class name, no instructions,
-  // no surrounding chrome.  Teachers asked for this so they can send
-  // the secret PIN alone on a separate channel from the class invite
-  // link (channel-separation pattern).  Falls back gracefully when
-  // the row has no PIN (button is hidden in that case anyway).
-  const handleSharePinWhatsApp = (s: RosterStudentV2) => {
-    if (!s.pin) return;
-    const url = `https://wa.me/?text=${encodeURIComponent(s.pin)}`;
-    window.open(url, "_blank", "noopener");
   };
 
   // Copy ONLY the 6-char PIN to the clipboard.  Top-row affordance so
@@ -367,28 +361,18 @@ export default function RosterModalV2({
   };
 
   const handlePrint = () => {
+    if (entryCardsPending) {
+      setError(classEntryT[language].cardsPending);
+      return;
+    }
     const withPins = students.filter((s) => s.pin);
     if (withPins.length === 0) {
       setError(t.errorAddStudentsFirst);
       return;
     }
-    // Coded rosters (anonymous codes like "07-5-2-14") get a "Student code"
-    // header instead of "Name".
-    const coded = withPins.every((s) => /^\d/.test(s.name));
-    const ok = printRosterSheet({
-      title: t.printTitle(className),
-      classCode,
-      rows: withPins.map((s) => ({ label: s.name, pin: s.pin || "" })),
-      dir: isRTL ? "rtl" : "ltr",
-      language,
-      labels: {
-        labelHeader: coded ? t.codeHeader : t.copyNameHeader,
-        pinHeader: t.copyPinHeader,
-        classCodeLabel: t.printClassCodeLabel,
-        instructions: t.printInstructions,
-      },
-    });
-    if (!ok) setError(t.errorPopupBlocked);
+    printStudentEntryCards({ className, classCode, language,
+      students: withPins.map(s => ({ id: s.id, displayName: s.name, pin: s.pin ?? null })),
+    }, () => setError(t.errorPopupBlocked));
   };
 
   const togglePin = (id: string) => {
@@ -411,6 +395,7 @@ export default function RosterModalV2({
   };
 
   return (
+    <>
     <AnimatePresence>
       {open && (
         <motion.div
@@ -420,6 +405,7 @@ export default function RosterModalV2({
           dir={dir}
           className="fixed inset-0 z-[60] bg-slate-950/40 backdrop-blur-sm flex items-stretch sm:items-center justify-center sm:p-4"
           onClick={onClose}
+          aria-hidden={!!sharingStudent}
         >
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -456,7 +442,8 @@ export default function RosterModalV2({
                 studentCountLabel={t.studentCount(students.length)}
                 classLabel={t.sectionLabelPrefix}
                 title={t.title}
-                printLabel={t.printButton}
+                printLabel={classEntryT[language].printCards}
+                printDisabled={entryCardsPending}
                 addStudentLabel={t.addStudentLabel}
                 ariaCopyCode={t.copyTitle}
                 onCopyCode={handleCopyCode}
@@ -470,6 +457,18 @@ export default function RosterModalV2({
                   input?.focus();
                 }}
               />
+
+              {entryCardsPending && (
+                <div className="mb-4 rounded-xl bg-indigo-50 p-3 text-sm text-indigo-950" role="status">
+                  <p>{classEntryT[language].cardsPending}</p>
+                  {!loading && (
+                    <button type="button" onClick={() => void loadRoster()}
+                      className="mt-2 min-h-11 rounded-xl border border-indigo-200 bg-white px-4 py-2 font-bold">
+                      {classEntryT[language].retry}
+                    </button>
+                  )}
+                </div>
+              )}
 
               <AddStudentRow
                 mobile={isMobile}
@@ -497,6 +496,7 @@ export default function RosterModalV2({
               )}
 
               <TipCard strong="" body={t.privacyTip} />
+              <p className="mb-4 text-sm font-semibold text-[#4A3B7A]">{studentInviteT[language].rosterHint}</p>
 
               {/* Top action bar: reveal-all + copy-all PINs.  Lives
                   above the grid so a teacher with a long roster doesn't
@@ -554,7 +554,7 @@ export default function RosterModalV2({
                       onDelete={() => handleDelete(s)}
                       onCopyLink={() => handleCopyLink(s)}
                       onCopyPin={() => handleCopyPin(s)}
-                      onSharePinWhatsApp={() => handleSharePinWhatsApp(s)}
+                      onShareWhatsApp={s.id.startsWith('tmp-') ? undefined : () => setSharingStudentId(s.id)}
                       labels={{
                         pin: t.showPin,
                         copyLinkAria: t.copyLinkLabel,
@@ -566,7 +566,7 @@ export default function RosterModalV2({
                         deleteAria: t.removeAria(s.name),
                         deleteLabel: t.removeTitle,
                         moreAria: t.moreActionsAria,
-                        sharePinAria: t.sharePinAria(s.name),
+                        shareWhatsApp: studentInviteT[language].share,
                       }}
                     />
                   ))}
@@ -593,5 +593,17 @@ export default function RosterModalV2({
         </motion.div>
       )}
     </AnimatePresence>
+    {open && sharingStudent && (
+      <Suspense fallback={null}>
+        <StudentWhatsAppInviteModal
+          key={`${classCode}-${sharingStudent.id}`}
+          className={className} classCode={classCode}
+          studentId={sharingStudent.id} studentName={sharingStudent.displayName}
+          pin={sharingStudent.pin} language={language}
+          onClose={() => setSharingStudentId(null)}
+        />
+      </Suspense>
+    )}
+    </>
   );
 }

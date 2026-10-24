@@ -20,7 +20,7 @@ import {
   WheelStudentViewLazy as WheelStudentView,
 } from './studentJoinChunks';
 
-const StudentAccountLoginView = lazyWithRetry(() => import('./StudentAccountLoginView'));
+const StudentClassEntryView = lazyWithRetry(() => import('./StudentClassEntryView'));
 const TeacherSignupView = lazyWithRetry(() => import('./TeacherSignupView'));
 
 export interface StudentAuthRoutesDeps {
@@ -100,10 +100,27 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
     setQuickPlayKicked,
   } = deps;
 
+  const classStudent = user?.role === 'student' && !user.isGuest ? user : undefined;
+  const setStudentGameView: React.Dispatch<React.SetStateAction<View>> = next => {
+    const destination = (value: View): View => {
+      if (classStudent && value === 'public-landing') {
+        setQuickPlayActiveSession(null);
+        setActiveAssignment(null);
+        return 'student-dashboard';
+      }
+      return value;
+    };
+    if (typeof next === 'function') setView(previous => {
+      const value = next(previous);
+      return classStudent && value === 'public-landing' ? 'student-dashboard' : value;
+    });
+    else setView(destination(next));
+  };
+
   if (view === 'student-account-login') {
     return (
       <LazyWrapper loadingMessage="Loading login...">
-        <StudentAccountLoginView
+        <StudentClassEntryView
           setView={setView}
           error={error}
           studentLoginClassCode={studentLoginClassCode}
@@ -139,8 +156,9 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
     return (
       <LazyWrapper loadingMessage="Loading race...">
         <CategoryRaceStudentView
+          classStudent={classStudent}
           sessionCode={quickPlayActiveSession.sessionCode}
-          setView={setView}
+          setView={setStudentGameView}
         />
       </LazyWrapper>
     );
@@ -154,8 +172,9 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
     return (
       <LazyWrapper loadingMessage="Loading Speed Round...">
         <SpeedRoundStudentView
+          classStudent={classStudent}
           sessionCode={quickPlayActiveSession.sessionCode}
-          setView={setView}
+          setView={setStudentGameView}
         />
       </LazyWrapper>
     );
@@ -169,8 +188,9 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
     return (
       <LazyWrapper loadingMessage="Loading Word Hunt Arena...">
         <ArenaStudentView
+          classStudent={classStudent}
           sessionCode={quickPlayActiveSession.sessionCode}
-          setView={setView}
+          setView={setStudentGameView}
         />
       </LazyWrapper>
     );
@@ -184,8 +204,9 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
     return (
       <LazyWrapper loadingMessage="Loading wheel...">
         <WheelStudentView
+          classStudent={classStudent}
           sessionCode={quickPlayActiveSession.sessionCode}
-          setView={setView}
+          setView={setStudentGameView}
         />
       </LazyWrapper>
     );
@@ -195,6 +216,7 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
     return (
       <LazyWrapper loadingMessage="Loading quick play...">
         <QuickPlayStudentView
+          classStudent={classStudent}
           qpCumulativeScoreRef={qpCumulativeScoreRef}
           quickPlayActiveSession={quickPlayActiveSession}
           setQuickPlayActiveSession={setQuickPlayActiveSession}
@@ -202,8 +224,8 @@ export function renderStudentAuthRoute(deps: StudentAuthRoutesDeps): ReactNode {
           setQuickPlayStudentName={setQuickPlayStudentName}
           quickPlayAvatar={quickPlayAvatar}
           setQuickPlayAvatar={setQuickPlayAvatar}
-          setView={setView}
-          setUser={setUser}
+          setView={setStudentGameView}
+          setUser={next => { if (!classStudent) setUser(next); }}
           setAssignmentWords={setAssignmentWords}
           setActiveAssignment={setActiveAssignment}
           setCurrentIndex={setCurrentIndex}

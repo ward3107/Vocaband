@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useBackLayer } from "../hooks/useBackLayer";
 import { motion } from "motion/react";
 import type { GameMode } from "../constants/game";
 import { useLanguage } from "../hooks/useLanguage";
@@ -57,6 +58,8 @@ export default function GameModeIntroView({ onLetsGo }: GameModeIntroViewProps) 
   // forced students to answer the same question twice — every time
   // they entered a new mode.
   const { language: introLang } = useLanguage();
+  const backToModes = () => { setShowModeIntro(false); setShowModeSelection(true); };
+  useBackLayer(backToModes, { priority: 0, escape: false });
 
   // If the student picked Hebrew or Arabic as their UI language but
   // the game-side translation target hasn't been committed yet, mirror
@@ -137,7 +140,7 @@ export default function GameModeIntroView({ onLetsGo }: GameModeIntroViewProps) 
 
         {/* Back link */}
         <button
-          onClick={() => { setShowModeIntro(false); setShowModeSelection(true); }}
+          onClick={backToModes}
           style={{ touchAction: 'manipulation' }}
           className="vb-button vb-button-secondary w-full mt-3"
         >

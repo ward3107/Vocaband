@@ -17,17 +17,19 @@
  * flows without app.tsx needing new global state.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import { Copy, Share2, Check, BookOpen, Target, QrCode, ExternalLink } from 'lucide-react';
 import SetupWizard, { type SetupWizardProps } from '../components/setup/SetupWizard';
 import type { Word } from '../data/vocabulary';
 import { useLanguage } from '../hooks/useLanguage';
 import { teacherDrilldownsT } from '../locales/teacher/drilldowns';
+import { classLiveT } from '../locales/class-live';
 
 type WizardCompleteResult = { words: Word[]; modes: string[] };
 
 export interface QuickPlaySetupViewProps extends Omit<SetupWizardProps, 'mode' | 'onComplete' | 'assignmentTitle' | 'onTitleChange' | 'assignmentInstructions' | 'onInstructionsChange'> {
+  classEntry?: ReactNode;
   /** Creates the session in the DB and returns the generated session code
    *  (6-char short code the students type). Called after the wizard finishes
    *  but BEFORE we show the success screen, so the code is available to
@@ -42,6 +44,7 @@ export default function QuickPlaySetupView({
   onCreateSession,
   onOpenMonitor,
   onBack,
+  classEntry,
   ...rest
 }: QuickPlaySetupViewProps) {
   const { language, dir } = useLanguage();
@@ -127,10 +130,11 @@ export default function QuickPlaySetupView({
                 {t.qpLiveTitle}
               </h2>
               <p className="text-on-surface-variant">
-                {t.qpLiveSubtitle}
+                {classEntry ? classLiveT[language].teacherHint : t.qpLiveSubtitle}
               </p>
             </motion.div>
 
+            {classEntry}
             {/* Details summary — matches CreateAssignment parity. */}
             {title && (
               <motion.div

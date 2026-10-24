@@ -1,3 +1,4 @@
+import { useBackLayer } from "../hooks/useBackLayer";
 /**
  * AppModals — three top-level confirmation modals previously defined
  * inline inside App.tsx.
@@ -57,6 +58,7 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
 }) => {
   const { language, dir } = useLanguage();
   const t = appModalsT[language];
+  useBackLayer(() => false, { enabled: show, priority: 50 });
   if (!show) return null;
 
   const isReminder = mode === 'reminder';
@@ -307,6 +309,7 @@ export const ClassSwitchModal: React.FC<ClassSwitchModalProps> = ({
 }) => {
   const { language, dir } = useLanguage();
   const t = appModalsT[language];
+  useBackLayer(onCancel, { enabled: Boolean(pendingClassSwitch), priority: 50 });
   if (!pendingClassSwitch) return null;
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 z-50">

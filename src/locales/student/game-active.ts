@@ -70,6 +70,8 @@ export interface GameActiveStrings {
 
   // GameView chrome (added Phase 1 i18n)
   exit: string;
+  exitRoundTitle: string;
+  exitRoundHint: string;
   playPronunciation: string;
   /** Aria-label + tooltip prefix for the pronunciation-speed toggle in
    *  the game header. */
@@ -168,6 +170,8 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     falseLabel: "False",
     swipeHint: "Swipe right for True, left for False",
     exit: "Exit",
+    exitRoundTitle: "Leave this round?",
+    exitRoundHint: "Your unfinished round will be reset. You can keep playing instead.",
     playPronunciation: "Play pronunciation",
     pronunciationSpeed: "Pronunciation speed",
     speedSlow: "Slow",
@@ -249,6 +253,8 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     falseLabel: "לא נכון",
     swipeHint: "החליקו ימינה לנכון, שמאלה לא נכון",
     exit: "יציאה",
+    exitRoundTitle: "לצאת מהסיבוב?",
+    exitRoundHint: "הסיבוב שעדיין לא הסתיים יתאפס. אפשר להמשיך לשחק.",
     playPronunciation: "השמע הגייה",
     pronunciationSpeed: "מהירות הגייה",
     speedSlow: "איטי",
@@ -330,6 +336,8 @@ export const gameActiveT: Record<Language, GameActiveStrings> = {
     falseLabel: "خطأ",
     swipeHint: "اسحب يمينًا لصحيح، يسارًا لخطأ",
     exit: "خروج",
+    exitRoundTitle: "مغادرة هذه الجولة؟",
+    exitRoundHint: "ستبدأ الجولة غير المكتملة من جديد. يمكنك متابعة اللعب بدلًا من ذلك.",
     playPronunciation: "تشغيل النطق",
     pronunciationSpeed: "سرعة النطق",
     speedSlow: "بطيء",

@@ -12,6 +12,7 @@ interface RosterHeaderProps {
   classLabel: string;
   title: string;
   printLabel: string;
+  printDisabled?: boolean;
   addStudentLabel: string;
   ariaCopyCode: string;
   mobile?: boolean;
@@ -34,6 +35,7 @@ export default function RosterHeader({
   classLabel,
   title,
   printLabel,
+  printDisabled = false,
   addStudentLabel,
   ariaCopyCode,
   mobile = false,
@@ -78,8 +80,9 @@ export default function RosterHeader({
           <button
             type="button"
             onClick={onPrint}
+            disabled={printDisabled}
             style={{ touchAction: "manipulation", boxShadow: "0 4px 14px -8px rgba(99,102,241,0.3)" }}
-            className="inline-flex items-center gap-2 rounded-full border border-indigo-500/[0.10] bg-white px-[18px] py-[11px] text-[14px] font-bold text-[#1F1147]"
+            className="inline-flex items-center gap-2 rounded-full border border-indigo-500/[0.10] bg-white px-[18px] py-[11px] text-[14px] font-bold text-[#1F1147] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Printer size={14} /> {printLabel}
           </button>

@@ -1,3 +1,4 @@
+import { useBackLayer } from "../../hooks/useBackLayer";
 /**
  * KickConfirmModal — a small confirmation overlay for removing a student
  * from a live game. Shared by the live-game host screens (Speed Round,
@@ -43,6 +44,7 @@ interface KickConfirmModalProps {
 }
 
 export default function KickConfirmModal({ name, language, onConfirm, onCancel }: KickConfirmModalProps) {
+  useBackLayer(onCancel, { enabled: name !== null, priority: 50 });
   const tr = STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
   return (
     <AnimatePresence>

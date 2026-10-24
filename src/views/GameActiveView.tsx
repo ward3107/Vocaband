@@ -1,4 +1,6 @@
-import { useEffect, useMemo } from "react";
+import { useBackLayer } from "../hooks/useBackLayer";
+import ModalShell, { ModalQuietButton, ModalDangerButton } from "../components/ui/ModalShell";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { AlertTriangle, X } from "lucide-react";
 import { THEMES, PET_MILESTONES } from "../constants/game";
@@ -161,7 +163,7 @@ export default function GameActiveView() {
   // own visibility guard so the side panel and the column-width switch
   // stay in lock-step — guests and solo/assignment play (empty board)
   // keep the single-column phone layout at every breakpoint.
-  const hasLeaderboard = !user?.isGuest && Object.keys(leaderboard).length > 0;
+  const hasLeaderboard = !user?.isGuest && !quickPlayActiveSession && Object.keys(leaderboard).length > 0;
   const modeTheme: GameThemeColor | undefined = MODE_THEME[gameMode];
   const modeLabel = t.modeLabels[gameMode] ?? gameMode;
 
@@ -274,9 +276,13 @@ export default function GameActiveView() {
   // un-paused on purpose: the session's socket events + teacher monitor
   // keep flowing server-side, so a local freeze would silently desync
   // the student from the live leaderboard.
+  const [exitRoundOpen, setExitRoundOpen] = useState(false);
   const { isPaused, resume } = useInterruptionPause(
     gameInProgress && !quickPlayActiveSession,
   );
+
+  const paused = isPaused || (exitRoundOpen && !quickPlayActiveSession);
+  useBackLayer(() => { setExitRoundOpen(true); return false; }, { enabled: !isFinished, priority: 0, escape: false });
 
   // Chromebook keyboard shortcuts (open-issues §F). Each mode binds its
   // own key map; only one is `enabled` at a time so the listeners never
@@ -291,7 +297,7 @@ export default function GameActiveView() {
   const visibleOptions = options.filter(o => !hiddenOptions.includes(o.id));
   const keyboardActive = useGameKeyboard({
     mode: "choice",
-    enabled: isChoiceMode && !isFinished && !isPaused,
+    enabled: isChoiceMode && !isFinished && !paused && !exitRoundOpen,
     optionCount: visibleOptions.length,
     onSelect: (i) => {
       // Mirror AnswerOptionButton's disabled guard — number keys must
@@ -308,7 +314,7 @@ export default function GameActiveView() {
   // the guard here too so a held key during feedback is a clean no-op.
   const tfKeyboardActive = useGameKeyboard({
     mode: "true-false",
-    enabled: gameMode === "true-false" && !isFinished && !isPaused,
+    enabled: gameMode === "true-false" && !isFinished && !paused && !exitRoundOpen,
     onTrueFalse: (isTrue) => {
       if (!feedback) handleTFAnswer(isTrue);
     },
@@ -319,7 +325,7 @@ export default function GameActiveView() {
   // (matches the on-card tap handlers).
   const flashKeyboardActive = useGameKeyboard({
     mode: "flashcards",
-    enabled: gameMode === "flashcards" && !isFinished && !isPaused,
+    enabled: gameMode === "flashcards" && !isFinished && !paused && !exitRoundOpen,
     onFlip: () => {
       if (!isProcessingRef.current) setIsFlipped(f => !f);
     },
@@ -440,7 +446,7 @@ export default function GameActiveView() {
           themeColor={modeTheme ?? "red"}
           targetLanguage={targetLanguage}
           speak={speakWord}
-          paused={isPaused}
+          paused={paused}
           onFinish={(score) => { finishSelfContainedMode(score, 'speed-round'); }}
         />
       );
@@ -458,7 +464,7 @@ export default function GameActiveView() {
           themeColor={modeTheme ?? "amber"}
           targetLanguage={targetLanguage}
           speak={speakWord}
-          paused={isPaused}
+          paused={paused}
           onFinish={(score) => { finishSelfContainedMode(score, 'class-minute'); }}
         />
       );
@@ -548,11 +554,12 @@ export default function GameActiveView() {
           (open-issues §C). Solo/assignment play only; see the hook
           wiring above for why Quick Play is excluded. */}
       {isPaused && <PauseOverlay onResume={resume} />}
+      <ModalShell open={exitRoundOpen} onClose={() => setExitRoundOpen(false)} variant="paper" icon="↩" title={t.exitRoundTitle} subtitle={t.exitRoundHint} zIndex={80} footer={<><ModalQuietButton onClick={() => setExitRoundOpen(false)}>{t.pausedResumeButton}</ModalQuietButton><div className="flex-1" /><ModalDangerButton onClick={handleExitGame}>{t.exit}</ModalDangerButton></>}><p className="font-bold">{t.questionOfTotal(progressCurrent, progressTotal)}</p></ModalShell>
       <GameHeader
         score={score}
         xp={xp}
         streak={streak}
-        onExit={handleExitGame}
+        onExit={() => setExitRoundOpen(true)}
       />
 
       {/* Tablet/landscape layout (open-issues §F) — on phones everything

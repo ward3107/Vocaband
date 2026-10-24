@@ -1,3 +1,4 @@
+import { useBackLayer } from "../hooks/useBackLayer";
 import { useEffect, useRef, useState } from "react";
 import { Loader2, QrCode, Globe } from "lucide-react";
 import { IOSButton, IOSCard, IOSEmptyState, IOSTextField } from "../components/ios";
@@ -13,6 +14,8 @@ import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { containsProfanity } from "../utils/nicknameProfanity";
 import { useLanguage, languageNames } from "../hooks/useLanguage";
 import { primeAudio } from "../utils/primeAudio";
+import { useClassStudentAutoJoin, classStudentName, type ClassStudentIdentity } from '../hooks/useClassStudentAutoJoin';
+import ClassStudentJoinNotice from '../components/ClassStudentJoinNotice';
 import { quickPlayT } from "../locales/student/quick-play";
 
 // Quick Play join flow: students connect to the `/quick-play`
@@ -40,6 +43,7 @@ interface QuickPlaySession {
 }
 
 interface QuickPlayStudentViewProps {
+  classStudent?: ClassStudentIdentity;
   qpCumulativeScoreRef: React.MutableRefObject<number>;
   quickPlayActiveSession: QuickPlaySession | null;
   setQuickPlayActiveSession: (s: QuickPlaySession | null) => void;
@@ -74,6 +78,7 @@ interface QuickPlayStudentViewProps {
 }
 
 export default function QuickPlayStudentView({
+  classStudent,
   qpCumulativeScoreRef,
   quickPlayActiveSession,
   setQuickPlayActiveSession,
@@ -235,23 +240,15 @@ export default function QuickPlayStudentView({
   // its toast after the view is already gone.
   useEffect(() => () => disarmJoinWatchdog(), []);
 
-  // ─── Phone back-button trap for the QP join flow ────────────────────
-  //
-  // Without this, the hardware back button on the join screen popped
-  // straight out to public-landing (useBackButtonTrap's CASE C only
-  // walks the global view stack; it doesn't know this is an active QP
-  // session). The join is now a single screen, so back simply re-pushes
-  // to block exit — the student leaves only via the visible header Back
-  // / floating Leave buttons (which call cleanupSessionData).
-  useEffect(() => {
-    window.history.pushState({ view: 'quick-play-student' }, '');
-    const handler = (e: PopStateEvent) => {
-      e.stopImmediatePropagation();
-      window.history.pushState({ view: 'quick-play-student' }, '');
-    };
-    window.addEventListener('popstate', handler, { capture: true });
-    return () => window.removeEventListener('popstate', handler, { capture: true });
-  }, []);
+  const leaveJoin = () => {
+    disarmJoinWatchdog();
+    cleanupSessionData();
+    setQuickPlayActiveSession(null);
+    setView(classStudent ? 'student-dashboard' : 'public-landing');
+  };
+  // The visible arrow and phone Back share cleanup. Higher-priority
+  // dialogs (QR/camera/help) close before leaving this screen.
+  useBackLayer(leaveJoin, { priority: 0, escape: false });
 
   // Surface server-side join errors. Recoverable errors (taken name,
   // rate-limited) show as toasts so the student can fix and retry on
@@ -322,8 +319,7 @@ export default function QuickPlayStudentView({
     const applyJoinedState = () => {
       qpCumulativeScoreRef.current = quickPlaySocket.getScoreBaseline();
       setQuickPlayStudentName(trimmedName);
-      const guestUser = createGuestUser(trimmedName, "quickplay", quickPlayAvatar);
-      setUser(guestUser);
+      if (!classStudent) setUser(createGuestUser(trimmedName, "quickplay", quickPlayAvatar));
 
       const words = shuffle(quickPlayActiveSession.words).map(w => ({
         ...w,
@@ -369,7 +365,7 @@ export default function QuickPlayStudentView({
       setView("game");
       setShowModeSelection(true);
       try {
-        localStorage.setItem('vocaband_qp_guest', JSON.stringify({
+        if (!classStudent) localStorage.setItem('vocaband_qp_guest', JSON.stringify({
           sessionId: quickPlayActiveSession.id,
           sessionCode: quickPlayActiveSession.sessionCode,
           name: trimmedName,
@@ -380,17 +376,20 @@ export default function QuickPlayStudentView({
       } catch {}
     };
 
-    setTimeout(() => {
-      // Emit STUDENT_JOIN on the /quick-play socket and DEFER the UI
+    // Emit STUDENT_JOIN on the /quick-play socket and DEFER the UI
       // advance until the server's JOINED reply arrives.  Without the
       // defer, the optimistic UI raced ahead while the server was
       // rejecting (nickname_taken, session inactive, kicked) and the
       // student "played" a session they were never in.
-      pendingJoinRef.current = applyJoinedState;
-      armJoinWatchdog(() => quickPlaySocket.joinAsStudent(trimmedName, quickPlayAvatar));
-      quickPlaySocket.joinAsStudent(trimmedName, quickPlayAvatar);
-    }, 100);
+    pendingJoinRef.current = applyJoinedState;
+    armJoinWatchdog(() => quickPlaySocket.joinAsStudent(trimmedName, quickPlayAvatar));
+    quickPlaySocket.joinAsStudent(trimmedName, quickPlayAvatar);
   };
+
+  useClassStudentAutoJoin(classStudent, quickPlayActiveSession?.sessionCode, () => {
+    setJoining(true);
+    void runJoin(classStudentName(classStudent));
+  });
 
   // KICKED + SESSION_ENDED — without these listeners the server emits
   // the events but the student's tab keeps the game running.  Symptom
@@ -448,11 +447,7 @@ export default function QuickPlayStudentView({
         <IOSButton
           variant="plain"
           size="sm"
-          onClick={() => {
-            cleanupSessionData(); // Clear save queue and timers
-            setView("public-landing");
-            setQuickPlayActiveSession(null);
-          }}
+          onClick={leaveJoin}
         >
           {qpIsRTL ? '→' : '←'} {qpT.back}
         </IOSButton>
@@ -815,7 +810,7 @@ export default function QuickPlayStudentView({
                         // Hebrew/Arabic name → RTL) instead of inheriting
                         // the page direction.
                         dir="auto"
-                        defaultValue={quickPlayStudentName}
+                        defaultValue={classStudentName(classStudent) || quickPlayStudentName}
                         placeholder={qpT.namePlaceholder}
                         // Small Android screens: the soft keyboard slides
                         // over the input. Re-centre once the keyboard has
@@ -842,6 +837,7 @@ export default function QuickPlayStudentView({
                   })()}
                 </IOSCard>
 
+                <ClassStudentJoinNotice student={classStudent} />
                 <IOSButton
                   variant="brand"
                   size="lg"

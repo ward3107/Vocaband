@@ -1,3 +1,4 @@
+import { useBackLayer } from "../hooks/useBackLayer";
 /**
  * ArenaHostView — the teacher's control room for Word Hunt Arena, laid out
  * for a classroom projector. A sibling of SpeedRoundHostView on the same
@@ -108,6 +109,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   };
   const [copied, setCopied] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
+  useBackLayer(() => setQrEnlarged(false), { enabled: qrEnlarged, priority: 50 });
   // Celebratory results overlay when ending a played hunt.
   const [showResults, setShowResults] = useState(false);
   const [presenting, setPresenting] = useState(false);

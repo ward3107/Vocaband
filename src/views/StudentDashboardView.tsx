@@ -1,3 +1,4 @@
+import { useBackLayer } from "../hooks/useBackLayer";
 import StudentOnboarding from "../components/StudentOnboarding";
 import FloatingButtons from "../components/FloatingButtons";
 import StudentTopBar from "../components/dashboard/StudentTopBar";
@@ -10,6 +11,7 @@ import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsLi
 import NextUpCard from "../components/dashboard/NextUpCard";
 import StudentWelcomeCard from "../components/dashboard/StudentWelcomeCard";
 import StudentGreetingCard from "../components/dashboard/StudentGreetingCard";
+import StudentClassCard from "../components/dashboard/StudentClassCard";
 import { useCompetitionsForClass } from "../hooks/useCompetitions";
 import { useDueReviews } from "../hooks/useDueReviews";
 import ArcadeHubLayout from "../components/arcade/ArcadeHubLayout";
@@ -31,6 +33,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 
 interface StudentDashboardViewProps {
+  className?: string;
+  onJoinLesson: (game: Awaited<ReturnType<typeof import('../utils/classLiveSession').loadMyClassLiveGame>>) => void;
   user: AppUser;
   xp: number;
   coins: number;
@@ -107,6 +111,8 @@ interface StudentDashboardViewProps {
 }
 
 export default function StudentDashboardView({
+  className,
+  onJoinLesson,
   user, xp, coins, setCoins: _setCoins, streak, badges,
   copiedCode, setCopiedCode,
   studentAssignments, studentProgress, studentDataLoading,
@@ -185,14 +191,7 @@ export default function StudentDashboardView({
   const [tasksOpen, setTasksOpen] = React.useState(false);
   const { language } = useLanguage();
 
-  // Escape closes the Tasks sheet, like any modal dialog (the sheet is
-  // role="dialog" aria-modal, so keyboard dismissal is expected).
-  React.useEffect(() => {
-    if (!tasksOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setTasksOpen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [tasksOpen]);
+  useBackLayer(() => setTasksOpen(false), { enabled: tasksOpen, priority: 60 });
   // "Join a game" sheet — lets a logged-in student enter the teacher's live
   // Quick Play game (code or in-app QR scan) without leaving the app.
   const [joinOpen, setJoinOpen] = React.useState(false);
@@ -271,7 +270,9 @@ export default function StudentDashboardView({
       )}
       <ArcadeHubLayout
         topBar={<StudentTopBar onRequestLogout={onRequestLogout} />}
-        trophyRoad={!studentDataLoading && (
+        trophyRoad={<>
+          <StudentClassCard uid={user.uid} className={className} onJoinLesson={onJoinLesson} onJoin={() => setJoinOpen(true)} onSwitchStudent={onRequestLogout} />
+          {!studentDataLoading && (
           <NextUpCard
             studentAssignments={studentAssignments}
             studentProgress={studentProgress}
@@ -281,7 +282,7 @@ export default function StudentDashboardView({
             setView={setView}
             setShowModeSelection={setShowModeSelection}
           />
-        )}
+        )}</>}
         statsBar={
           <StudentGreetingCard
             user={user}

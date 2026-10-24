@@ -52,7 +52,7 @@ export default function GameFinishedView({
     setAssignmentWords, setShowModeSelection, setView,
     qpLeaderboard, leaderboard, targetLanguage, speakWord, gameMode,
   } = useGameRoute();
-  const isGuest = !!user?.isGuest;
+  const isGuest = !!user?.isGuest || !!quickPlaySessionCode;
 
   // ─── Live Challenge endgame parity ─────────────────────────────────
   // An authenticated student on a non-empty live leaderboard just finished
