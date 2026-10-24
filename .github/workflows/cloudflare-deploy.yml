@@ -1,8 +1,7 @@
 # Cloudflare Workers deploy — triggered on every push to main.
 #
-# Runs in parallel with Cloudflare's native git integration as a backup
-# path. If one fails, the other still lands. Both deploy the same commit
-# so last-write-wins is fine — no divergence possible.
+# This Actions deployment waits for CI and browser checks. Configure the native
+# Cloudflare Git integration separately so it cannot bypass this gate.
 #
 # Required GitHub secrets (Settings → Secrets and variables → Actions):
 #   CLOUDFLARE_API_TOKEN   — token with "Edit Cloudflare Workers" permission
@@ -30,20 +29,30 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
-  # Cancel any in-progress deploy when a new push lands. Prevents two
-  # deploys from racing and overwriting each other.
+  # Serialize production deployments without interrupting a running release.
   group: cloudflare-deploy-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Require successful CI and browser tests on this main commit
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const requireCI = require('./.github/scripts/require-ci.cjs');
+            await requireCI({ github, context, core });
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -55,16 +64,8 @@ jobs:
           node-version: "22"
           cache: npm
 
-      - name: Install dependencies
-        # `npm ci` is the canonical choice in CI for reproducibility, but
-        # it fails hard when package-lock.json is even slightly out of
-        # sync with package.json.  The lockfile here was drifted by an
-        # earlier commit that added @sentry/react without regenerating
-        # the lock — `npm ci` errored "Missing: @sentry/react from lock
-        # file" and never ran.  Use `npm install` instead so the install
-        # self-heals on lockfile drift; CI reproducibility is preserved
-        # by the explicit version pins in package.json.
-        run: npm install --legacy-peer-deps
+      - name: Install locked dependencies
+        run: npm ci
 
       - name: Run tests
         run: npm test

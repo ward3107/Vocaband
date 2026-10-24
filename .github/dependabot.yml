@@ -1,34 +1,37 @@
-# Dependabot — automated dependency updates.
-#
-# Strategy: weekly grouped PRs, not per-package noise.  CI's `npm audit`
-# step blocks high/critical-severity merges, so anything Dependabot
-# files for those tiers is high signal.  Patch + minor updates are
-# grouped to keep the PR queue manageable; majors come solo so the
-# diff is easy to review.
-
+# Keep the React renderer and type packages together; majors still require owner review.
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-    groups:
-      patch-and-minor:
-        update-types:
-          - "patch"
-          - "minor"
-    # Security-only updates bypass grouping so they ship immediately.
-    # No allow/ignore lists — let GitHub's advisory feed dictate.
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 2
-    labels:
-      - "dependencies"
-      - "ci"
+- package-ecosystem: npm
+  directory: /
+  schedule:
+    interval: weekly
+    day: sunday
+    time: "06:00"
+    timezone: Asia/Jerusalem
+  open-pull-requests-limit: 5
+  groups:
+    react-compatible:
+      patterns:
+      - react
+      - react-dom
+      - '@types/react'
+      - '@types/react-dom'
+      update-types:
+      - minor
+      - patch
+    development-patches:
+      dependency-type: development
+      exclude-patterns:
+      - '@playwright/*'
+      - playwright
+      - playwright-core
+      update-types:
+      - patch
+- package-ecosystem: github-actions
+  directory: /
+  schedule:
+    interval: weekly
+    day: sunday
+    time: "06:30"
+    timezone: Asia/Jerusalem
+  open-pull-requests-limit: 2
