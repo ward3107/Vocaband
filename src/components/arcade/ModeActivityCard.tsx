@@ -30,15 +30,15 @@ export default function ModeActivityCard({
         (next
           ? 'border-indigo-700 bg-gradient-to-br from-indigo-800 via-violet-700 to-violet-600 text-white shadow-lg shadow-indigo-900/15'
           : 'border-[var(--vb-border)] bg-[var(--vb-surface)] text-[var(--vb-text-primary)] enabled:hover:border-[var(--vb-accent)] enabled:hover:shadow-md')}>
-      <span aria-hidden="true" className={'relative grid h-16 w-16 shrink-0 place-items-center rounded-[1.25rem] text-white shadow-sm [&>svg]:h-8 [&>svg]:w-8 ' +
+      <span aria-hidden="true" className={'relative grid h-16 w-16 shrink-0 place-items-center rounded-[1.25rem] text-white shadow-sm ' +
         (next ? 'border border-white/25 bg-white/15' : 'bg-gradient-to-br ' + gradient)}>
         <span className="absolute -end-1 -top-1 h-5 w-5 rounded-md border border-white/50 bg-white/20 rotate-12" />
-        {icon}
+        <span className="[&>svg]:h-8 [&>svg]:w-8">{icon}</span>
         {next && <Sparkles size={14} className="absolute -bottom-1 -start-1 rounded-full bg-amber-300 p-0.5 text-indigo-950" />}
       </span>
       <span className="relative min-w-0 flex-1">
         <span className={'mb-1.5 flex items-center gap-1.5 text-[11px] font-extrabold ' +
-          (next ? 'text-cyan-200' : completed ? 'text-[var(--vb-success)]' : 'text-[var(--vb-text-secondary)]')}>
+          (next ? 'text-cyan-200' : 'text-[var(--vb-text-secondary)]')}>
           {completed ? <Check size={13} aria-hidden="true" /> : next ? <Play size={11} className="fill-current" aria-hidden="true" /> : null}
           {locked ? t.played : next ? t.next : completed ? t.done : t.ready}
         </span>
