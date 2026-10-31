@@ -84,7 +84,17 @@ test('teacher workspace and creation screens share the new frame', async ({ teac
     await page.locator(`[data-tour="${tour}"]`).first().click();
     await expect(page.locator('[data-vocaband-view]')).toHaveAttribute('data-vocaband-view', view);
     await waitForAppLoad(page);
-    if (view.endsWith('-host')) await expect(page.getByRole('button', { name: 'Open for this class', exact: true })).toBeVisible();
+    if (view.endsWith('-host')) {
+      const trigger = page.getByRole('button', { name: 'Choose a class', exact: true });
+      await expect(trigger).toBeVisible();
+      await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+      await expect(page.getByRole('button', { name: 'Open for this class', exact: true })).toBeHidden();
+      const entry = await page.getByRole('region', { name: 'Open this game for your class', exact: true }).boundingBox();
+      const button = await trigger.boundingBox();
+      expect(entry).not.toBeNull();
+      expect(button).not.toBeNull();
+      expect(entry!.height, 'Collapsed class entry should only occupy the button height').toBeLessThanOrEqual(button!.height + 1);
+    }
     await capture(page, info, name);
   }
   for (const [url, name] of [['/vocabulary-library', 'teacher-library'], ['/create-assignment?classId=class-001', 'teacher-assignment'], ['/class-show?assignmentId=assignment-001', 'teacher-class-show'], ['/worksheet?assignmentId=assignment-001', 'teacher-worksheet'], ['/vocabagrut', 'teacher-vocabagrut']] as const) {
@@ -108,11 +118,24 @@ test('teacher can open class entry with clear Hebrew instructions', async ({ tea
   await capture(page, info, 'teacher-invite-he');
   await invitation.getByRole('button', { name: 'סגירה', exact: true }).click();
   await page.locator('[data-tour="category-race"]').first().click();
+  const trigger = page.getByRole('button', { name: 'Choose a class', exact: true });
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  await trigger.click();
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
   await page.getByRole('button', { name: 'עברית', exact: true }).click();
   await page.getByRole('button', { name: 'פתיחה לכיתה הזו', exact: true }).click();
-  await expect(page.getByRole('status').filter({ hasText: 'המשחק פתוח לכיתה' })).toBeVisible();
+  const published = page.getByRole('button', { name: /^המשחק פתוח לכיתה/ });
+  await expect(published).toBeVisible();
+  await expect(published).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByRole('status').filter({ hasText: 'המשחק פתוח לכיתה' })).toHaveText(/המשחק פתוח לכיתה/);
+  await expect(page.getByText(/היכנסו לכיתה שלכם ב־Vocaband/)).toBeHidden();
+  await capture(page, info, 'teacher-live-entry-he-compact');
+  await published.click();
   await expect(page.getByText(/היכנסו לכיתה שלכם ב־Vocaband/)).toBeVisible();
   await capture(page, info, 'teacher-live-entry-he');
+  await page.keyboard.press('Escape');
+  await expect(published).toHaveAttribute('aria-expanded', 'false');
+  await expect(published).toBeFocused();
 });
 
 test('teacher prepares a personal WhatsApp link and PIN on desktop and phone', async ({ teacherPage: page }, info) => {

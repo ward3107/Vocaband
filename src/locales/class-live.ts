@@ -3,6 +3,7 @@ import type { Language } from '../hooks/useLanguage';
 export const classLiveT = {
   en: {
     teacherTitle: 'Open this game for your class',
+    closePanel: 'Close class options',
     teacherHint: 'Choose a class. Students enter their usual classroom and tap “Join the lesson”.',
     choose: 'Class', choosePlaceholder: 'Choose a class', publish: 'Open for this class',
     publishing: 'Opening…', published: (name: string) => `Open for ${name}`,
@@ -21,6 +22,7 @@ export const classLiveT = {
   },
   he: {
     teacherTitle: 'פתיחת המשחק לתלמידי הכיתה',
+    closePanel: 'סגירת בחירת הכיתה',
     teacherHint: 'בוחרים כיתה. התלמידים נכנסים לכיתה הרגילה שלהם ולוחצים על ״הצטרפות לשיעור״.',
     choose: 'כיתה', choosePlaceholder: 'בחירת כיתה', publish: 'פתיחה לכיתה הזו',
     publishing: 'פותחים…', published: (name: string) => `המשחק פתוח לכיתה ${name}`,
@@ -39,6 +41,7 @@ export const classLiveT = {
   },
   ar: {
     teacherTitle: 'افتح اللعبة لطلاب الصف',
+    closePanel: 'إغلاق خيارات الصف',
     teacherHint: 'اختر صفًا. يدخل الطلاب إلى صفهم المعتاد ويضغطون على «الانضمام إلى الدرس».',
     choose: 'الصف', choosePlaceholder: 'اختر صفًا', publish: 'افتح لهذا الصف',
     publishing: 'جارٍ الفتح…', published: (name: string) => `اللعبة مفتوحة للصف ${name}`,

@@ -1,7 +1,7 @@
 import type React from "react";
 import { useState } from "react";
 import {
-  BookOpen, Volume2, PenTool, Zap, Layers, Shuffle, Repeat, X, Brain, Edit3, Check, Star, Lock, ArrowRight,
+  BookOpen, Volume2, PenTool, Zap, Layers, Shuffle, Repeat, X, Brain, Edit3, Check,
 } from "lucide-react";
 import type { GameMode, PetMilestone } from "../constants/game";
 import { MAX_ASSIGNMENT_ROUNDS } from "../constants/game";
@@ -19,6 +19,9 @@ import type { IslandState } from "../components/arcade/ModeIsland";
 import EvolutionRing from "../components/arcade/EvolutionRing";
 import PetCompanion from "../components/dashboard/PetCompanion";
 import StudentLangButton from "../components/StudentLangButton";
+import ModeActivityCard from "../components/arcade/ModeActivityCard";
+import ModeQuestHero from "../components/arcade/ModeQuestHero";
+import { modeJourneyT } from "../locales/student/mode-journey";
 
 const MODE_GRADIENTS: Record<string, string> = {
   cyan: "from-cyan-400 to-blue-500", emerald: "from-emerald-400 to-teal-500",
@@ -72,6 +75,7 @@ export default function GameModeSelectionView({
   const reduced = useReducedMotion();
   const t = gameModesT[language] ?? gameModesT.en;
   const qs = QUEST_STRINGS[language] ?? QUEST_STRINGS.en;
+  const journey = modeJourneyT[language];
 
   const modesMeta: Array<{ id: GameMode; color: string; icon: React.ReactNode; isLearnMode?: boolean }> = [
     { id: "flashcards", color: "cyan", icon: <Layers size={44} />, isLearnMode: true },
@@ -102,7 +106,7 @@ export default function GameModeSelectionView({
 
   const rowsFor = (id: string) =>
     studentProgress.filter((p) => p.assignmentId === activeAssignment?.id && p.mode === id);
-  const isCompleted = (id: string) => rowsFor(id).length > 0;
+  const isCompleted = (id: string) => rowsFor(id).length > 0 || (isQuickPlayGuest && quickPlayCompletedModes.has(id));
   const isLocked = (id: string) => isQuickPlayGuest && quickPlayCompletedModes.has(id);
   const bestScore = (id: string) => {
     const rows = rowsFor(id);
@@ -168,10 +172,9 @@ export default function GameModeSelectionView({
       : null;
 
   return (
-    // iOS flatten: light grouped canvas, styled directly. Colourful
-    // mode tiles keep their per-mode gradients.
     <div dir={dir} className="vb-page relative">
-      <header className="vb-header sticky top-0 z-30 flex items-center gap-3 px-4 py-3">
+      <header className="vb-header sticky top-0 z-30">
+        <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 py-3 sm:gap-3 sm:px-6 lg:px-8">
         <button
           type="button" onClick={handleExitGame} aria-label={t.closeAria} title={t.closeAria}
           className="vb-icon-button"
@@ -179,57 +182,50 @@ export default function GameModeSelectionView({
           <X size={20} />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="text-base font-extrabold leading-tight text-[var(--vb-text-primary)] sm:text-lg">{t.chooseYourMode}</h1>
+          <h1 className="line-clamp-2 text-sm font-extrabold leading-snug text-[var(--vb-text-primary)] sm:text-lg">{t.chooseYourMode}</h1>
           {activeAssignment?.title && (
             <p className="truncate text-xs font-semibold text-[color:var(--ios-label-secondary)]">{activeAssignment.title}</p>
           )}
         </div>
-        {showRoundPill && (
-          <span className="shrink-0 rounded-full bg-[var(--ios-fill-tertiary)] px-3 py-1.5 text-center text-[11px] font-bold text-[color:var(--vb-accent)]">
-            {completedCount}/{totalModes} {qs.modesDone}
-            <span className="block text-[10px] text-[color:var(--ios-label-secondary)]">{qs.round} {currentRound}/{MAX_ASSIGNMENT_ROUNDS}</span>
-          </span>
-        )}
         {isQuickPlayGuest && onEditName && (
           <button
             type="button"
             onClick={onEditName}
             title={t.editName}
             aria-label={t.editName}
-            className={`${ARCADE_BUTTON_TOUCH} flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-[var(--ios-fill-tertiary)] px-3 text-[color:var(--ios-label)]`}
+            className={`${ARCADE_BUTTON_TOUCH} flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[var(--ios-fill-tertiary)] sm:w-auto sm:px-3 text-[color:var(--ios-label)]`}
           >
             <Edit3 size={16} />
-            <span className="text-xs font-bold">{t.editName}</span>
+            <span className="hidden text-xs font-bold sm:inline">{t.editName}</span>
           </button>
         )}
         <StudentLangButton className="shrink-0" />
+        </div>
       </header>
 
-      <div className="vb-content py-6 sm:py-8 pb-20">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <p className="vb-description">{language === "he" ? "כל דרך ללמוד, במקום אחד. בחרו משחק והתחילו." : language === "ar" ? "كل طرق التعلّم في مكان واحد. اختر لعبة وابدأ." : "Every way to learn, in one place. Choose a game and make it yours."}</p>
-          <div className="flex items-center gap-4"><EvolutionRing currentStage={petCurrentStage} nextStage={petNextStage} xp={petXp} evolutionPending={false} hasClaimable={!!petClaimableMilestone} onTap={() => setPetOpen(true)} /><button type="button" onClick={() => setPetOpen(true)} className="vb-button vb-button-secondary">{language === "he" ? "הדמות וההתקדמות שלי" : language === "ar" ? "رفيقي وتقدّمي" : "My companion & progress"}</button></div>
-        </div>
-        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 lg:grid-cols-3 gap-4">
-          {islands.map((island, i) => (
-            <button key={island.id} type="button" disabled={island.state === "locked"} onClick={() => setSheetIndex(i)} aria-label={`${island.name} — ${MODE_STATE[language][island.state]}`}
-              className={`vb-card vb-interactive-card flex flex-col p-5 ${island.state === "next" ? "ring-2 ring-[var(--vb-accent)]" : ""}`}>
-              <span className="mb-4 flex w-full items-center justify-between gap-3">
-                <span className={`grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br ${island.gradient} text-white`} aria-hidden>{island.emoji}</span>
-                {island.state === "locked" ? <Lock size={20} aria-hidden /> : island.state === "done" ? <Check size={20} className="text-[var(--vb-success)]" aria-hidden /> : island.state === "next" ?
-                  <span className="rounded-full bg-[var(--vb-accent-soft)] px-3 py-1.5 text-xs font-bold text-[var(--vb-accent)]">{language === "he" ? "הצעד הבא" : language === "ar" ? "الخطوة التالية" : "Up next"}</span> : null}
-              </span>
-              <span className="text-lg font-extrabold">{island.name}</span>
-              <span className="mt-2 flex-1 text-sm leading-relaxed text-[var(--vb-text-secondary)]">{stops[i].desc}</span>
-              <span className="mt-5 flex w-full items-center justify-between gap-3">
-                <span className="flex gap-1" aria-label={`${island.mastery}/3`}>
-                  {[1,2,3].map(star => <Star key={star} size={17} aria-hidden className={star <= island.mastery ? "fill-amber-400 text-amber-600" : "text-[var(--vb-border-strong)]"} />)}
-                </span>
-                <ArrowRight size={19} className="text-[var(--vb-accent)] rtl:rotate-180" aria-hidden />
-              </span>
-            </button>
-          ))}
-        </div>
+      <div className="vb-content space-y-5 py-4 pb-20 sm:space-y-6 sm:py-6">
+        <ModeQuestHero
+          completed={completedCount}
+          total={totalModes}
+          countLabel={completedCount + "/" + totalModes + " " + qs.modesDone}
+          roundLabel={showRoundPill ? qs.round + " " + currentRound + "/" + MAX_ASSIGNMENT_ROUNDS : undefined}
+          companion={<EvolutionRing currentStage={petCurrentStage} nextStage={petNextStage} xp={petXp}
+            evolutionPending={false} hasClaimable={!!petClaimableMilestone} onTap={() => setPetOpen(true)} />}
+          petName={petDisplayName}
+          petXp={petXp}
+          onOpenCompanion={() => setPetOpen(true)}
+        />
+        <section aria-label={journey.activities}>
+          <h2 className="mb-3 text-sm font-extrabold text-[var(--vb-text-primary)] sm:text-base">{journey.activities}</h2>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {islands.map((island, i) => (
+              <ModeActivityCard key={island.id} name={island.name} description={stops[i].desc}
+                icon={island.emoji} gradient={island.gradient} state={island.state}
+                stateLabel={MODE_STATE[language][island.state]} mastery={island.mastery}
+                onSelect={() => setSheetIndex(i)} />
+            ))}
+          </div>
+        </section>
       </div>
 
       <IslandDetailSheet
