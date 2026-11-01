@@ -1,10 +1,51 @@
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MOTIVATIONAL_AUDIO_KEYS } from '../hooks/useAudio';
+import { MOTIVATIONAL_AUDIO_KEYS, useAudio } from '../hooks/useAudio';
 import { getMotivationalAudioUrl, getWordAudioUrl } from './audioUrl';
 
-afterEach(() => vi.unstubAllEnvs());
+const audioMock = vi.hoisted(() => ({
+  instances: [] as Array<{ playCount: number; unloadCount: number }>,
+  failNextPlay: false,
+}));
+
+vi.mock('../hooks/useEffectiveConnection', () => ({ isSlowConnection: () => false }));
+vi.mock('howler', () => ({
+  Howl: class {
+    playCount = 0;
+    unloadCount = 0;
+    private listeners = new Map<string, () => void>();
+    constructor(private options: { onplayerror?: () => void }) {
+      audioMock.instances.push(this);
+    }
+    off(event: string) { this.listeners.delete(event); }
+    on(event: string, callback: () => void) { this.listeners.set(event, callback); }
+    once(event: string, callback: () => void) { this.on(event, callback); }
+    rate() { return 1; }
+    state() { return 'loaded'; }
+    playing() { return false; }
+    stop() { return this; }
+    unload() { this.unloadCount++; return this; }
+    play() {
+      this.playCount++;
+      if (audioMock.failNextPlay) {
+        audioMock.failNextPlay = false;
+        this.options.onplayerror?.();
+        this.listeners.get('playerror')?.();
+      }
+      return 1;
+    }
+  },
+}));
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  audioMock.instances.length = 0;
+  audioMock.failNextPlay = false;
+});
 
 describe('audio source routing', () => {
   it('keeps bundled pronunciation on R2 when the CDN is configured', () => {
@@ -51,5 +92,32 @@ describe('audio source routing', () => {
       .map(name => name.slice(0, -4))
       .sort();
     expect([...MOTIVATIONAL_AUDIO_KEYS].sort()).toEqual(shippedKeys);
+  });
+});
+
+describe('recorded word playback', () => {
+  it('retries a bundled MP3 after a transient play error instead of silencing later taps', async () => {
+    const speakTTS = vi.fn();
+    vi.stubGlobal('SpeechSynthesisUtterance', class {
+      constructor(public text: string) {}
+    });
+    vi.stubGlobal('speechSynthesis', {
+      addEventListener: vi.fn(), getVoices: () => [], cancel: vi.fn(), speak: speakTTS,
+    });
+    const realNow = Date.now.bind(Date);
+    let clockOffset = 0;
+    vi.spyOn(Date, 'now').mockImplementation(() => realNow() + clockOffset);
+
+    audioMock.failNextPlay = true;
+    const { result } = renderHook(() => useAudio());
+    act(() => result.current.speak(1, 'hello'));
+    await waitFor(() => expect(speakTTS).toHaveBeenCalledTimes(1));
+    expect(audioMock.instances[0].unloadCount).toBe(1);
+
+    clockOffset += 1_000; // A deliberate second tap, past the same-word debounce.
+    act(() => result.current.speak(1, 'hello'));
+    await waitFor(() => expect(audioMock.instances).toHaveLength(2));
+    expect(audioMock.instances[1].playCount).toBe(1);
+    expect(speakTTS).toHaveBeenCalledTimes(1);
   });
 });

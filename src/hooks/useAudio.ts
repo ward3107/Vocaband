@@ -544,7 +544,8 @@ export const useAudio = (options: UseAudioOptions = {}) => {
           },
           onplayerror: () => {
             console.warn(`Audio playback failed for ${key}`)
-            recordFailedWord(key)
+            // A blocked autoplay attempt does not mean the MP3 is missing.
+            // Let a later user-initiated play try the recording again.
           }
         })
       }).catch(() => {
@@ -647,7 +648,7 @@ export const useAudio = (options: UseAudioOptions = {}) => {
 
     // Add error handler for playback failures - fall back to TTS
     let failureHandled = false
-    const handleAudioError = () => {
+    const handleAudioError = (missingRecording: boolean) => {
       // Howler can emit a spurious play/load error (e.g. a CORS-blocked
       // decode attempt) even though the html5 <audio> element is actually
       // playing the recorded clip fine. Firing TTS then layers the robotic
@@ -655,7 +656,7 @@ export const useAudio = (options: UseAudioOptions = {}) => {
       // fall back to TTS when the clip is genuinely NOT playing.
       if (sound.playing() || failureHandled) return
       failureHandled = true
-      recordFailedWord(key)
+      if (missingRecording) recordFailedWord(key)
       sound.unload()
       if (wordCache[key] === sound) delete wordCache[key]
       const index = wordCacheOrder.indexOf(key)
@@ -666,11 +667,11 @@ export const useAudio = (options: UseAudioOptions = {}) => {
       }
     }
 
-    sound.on('playerror', handleAudioError)
+    sound.on('playerror', () => handleAudioError(false))
     // If the MP3 404s (common for freshly-created custom words whose audio the
     // backend is still generating), play browser TTS immediately so the student
     // isn't left with silence on their first tap.
-    sound.on('loaderror', handleAudioError)
+    sound.on('loaderror', () => handleAudioError(true))
 
     // Honour the student's chosen pronunciation speed. Set on every play
     // so toggling slow/normal mid-game takes effect on the next word.
