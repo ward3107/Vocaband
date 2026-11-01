@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { getPublicSupabaseUrl } from './supabasePublicUrl';
 
 // Public fallback values — these are the production Supabase URL + anon
 // ("publishable") key. They're already visible inside every shipped JS
@@ -13,16 +14,14 @@ import { createClient } from '@supabase/supabase-js';
 // mode on every preview URL even when the .env.production file IS in
 // the repo. Source-level fallbacks sidestep that entirely: if the env
 // var is empty/missing for any reason, this still works.
-const FALLBACK_SUPABASE_URL = 'https://auth.vocaband.com';
 const FALLBACK_SUPABASE_ANON_KEY = 'sb_publishable_Pw-mQ9L76U5T-wLdKjOkpg_GnG99XDF';
 
-const envUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 // Exported so non-client modules (e.g. the network diagnostic probe) can
 // hit Supabase REST endpoints directly with the right apikey header,
 // without re-reading the env or re-importing the fallback constants.
-export const supabaseUrl = (envUrl && envUrl.length > 0) ? envUrl : FALLBACK_SUPABASE_URL;
+export const supabaseUrl = getPublicSupabaseUrl();
 export const supabaseAnonKey = (envKey && envKey.length > 0) ? envKey : FALLBACK_SUPABASE_ANON_KEY;
 
 // Guard kept for true dev-shell edge cases where even the fallback is
