@@ -65,6 +65,7 @@ import { ShowAnswerFeedback } from "../components/ShowAnswerFeedback";
 import AnswerFeedback, { cardShake, cardShakeTransition } from "../components/game/AnswerFeedback";
 import ClassicModeGame from "../components/ClassicModeGame";
 import GameHeader from "../components/game/GameHeader";
+import GameCoachTip from "../components/game/GameCoachTip";
 import WordPromptCard from "../components/game/WordPromptCard";
 import PowerUpToolbar from "../components/game/PowerUpToolbar";
 import MatchingModeGame from "../components/game/MatchingModeGame";
@@ -561,6 +562,9 @@ export default function GameActiveView() {
         streak={streak}
         onExit={() => setExitRoundOpen(true)}
       />
+      {user?.role === 'student' && !isFinished && (
+        <GameCoachTip key={gameMode} mode={gameMode} currentIndex={currentIndex} feedback={feedback} />
+      )}
 
       {/* Tablet/landscape layout (open-issues §F) — on phones everything
           stays a single narrow column (`w-full`, byte-identical to the
