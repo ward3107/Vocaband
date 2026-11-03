@@ -32,7 +32,7 @@ export default function StudentAdventurePreview() {
   return (
     <LanguageProvider>
       <div data-preview-controls className="fixed bottom-3 right-3 z-50 flex gap-2 rounded-xl border border-white/20 bg-slate-950/90 p-2 text-xs font-bold text-white shadow-xl">
-        <span className="self-center px-1">LOCAL DESIGN PREVIEW</span>
+        <span className="self-center px-1">DESIGN PREVIEW · SAMPLE DATA</span>
         <button type="button" className="rounded-lg bg-white/15 px-3 py-2" onClick={() => setGuest(value => !value)}>
           {guest ? 'Assignment view' : 'Quick Play view'}
         </button>
@@ -44,7 +44,7 @@ export default function StudentAdventurePreview() {
             <p className="text-sm font-bold text-amber-200">MODE LAUNCH PREVIEW</p>
             <h1 className="mb-4 text-3xl font-bold">{selected}</h1>
             <GameCoachTip key={selected} mode={selected} currentIndex={0} feedback={null} />
-            <p className="mt-5 text-sm text-sky-100/80">The real game opens here in the student session. This local preview shows the one-tap route and first-step tip.</p>
+            <p className="mt-5 text-sm text-sky-100/80">The real game opens here in the student session. This preview shows the one-tap route and first-step tip.</p>
           </div>
         </div>
       ) : (
