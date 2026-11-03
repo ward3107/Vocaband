@@ -562,7 +562,7 @@ export default function GameActiveView() {
         streak={streak}
         onExit={() => setExitRoundOpen(true)}
       />
-      {user?.role === 'student' && !isFinished && (
+      {(user?.role === 'student' || user?.role === 'guest') && !isFinished && (
         <GameCoachTip key={gameMode} mode={gameMode} currentIndex={currentIndex} feedback={feedback} />
       )}
 
