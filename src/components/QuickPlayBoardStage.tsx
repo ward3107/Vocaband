@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import QPAvatar from './QPAvatar';
 import { quickPlayBoardLayout } from '../utils/quickPlayBoardLayout';
 
-interface BoardStudent { studentUid: string; name: string; avatar?: string; score: number; handRaisedAt?: number | null }
+interface BoardStudent { studentUid: string; name: string; avatar?: string; score: number; handRaisedAt?: number | null; roundProgress?: { done: number; total: number } }
 interface Props {
   students: BoardStudent[];
   language: 'en' | 'he' | 'ar';
@@ -37,16 +37,24 @@ export default function QuickPlayBoardStage({ students, language, onRemove, onBo
         <div role="list" className="grid gap-[8px]" style={{ gridTemplateColumns: `repeat(${layout.columns}, minmax(0, 1fr))`, gridAutoRows: `${layout.cardHeight}px`, fontSize: layout.fontSize }}>
           {students.map((student, index) => (
             <div role="listitem" data-qp-uid={student.studentUid} key={student.studentUid}
-              className={`group relative flex min-h-0 flex-col justify-center overflow-hidden rounded-xl border bg-white/10 px-2 py-1 ${index < 3 ? 'border-amber-400/70' : 'border-current/15'}`}>
+              className={`group relative flex min-h-0 flex-col justify-center overflow-hidden rounded-xl border px-2 py-1 text-white shadow-sm ${index < 3 ? 'border-amber-300/70 bg-indigo-700' : 'border-indigo-300/20 bg-indigo-950'}`}>
               <div className="flex min-w-0 items-center gap-2">
                 <span aria-label={`#${index + 1}`} className="shrink-0 font-black tabular-nums">{index < 3 ? ['🥇', '🥈', '🥉'][index] : index + 1}</span>
                 <span className="shrink-0"><QPAvatar value={student.avatar || '🦊'} iconSize={Math.max(20, layout.fontSize + 6)} className="text-[1.4em]" /></span>
-                <b className="min-w-0 truncate" title={student.name} dir="auto">{student.name}</b>
+                <b className="min-w-0 truncate text-[.85em] leading-tight" title={student.name} dir="auto">{student.name}</b>
               </div>
               <div className="flex items-center justify-center gap-2 font-black tabular-nums">
                 <span>{student.score}</span>
                 {student.handRaisedAt && <button type="button" className="min-h-6 min-w-6 rounded focus-visible:ring-2" aria-label={`${t.help} ${student.name}`} onClick={() => onHelp(student.studentUid)}>🙋</button>}
               </div>
+              {student.roundProgress && student.roundProgress.total > 0 && (
+                <div className="mt-1 flex items-center gap-1.5" aria-label={`${student.roundProgress.done} / ${student.roundProgress.total}`}>
+                  <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/20">
+                    <div className="h-full rounded-full bg-cyan-300 transition-[width] duration-500" style={{ width: `${Math.min(100, Math.max(0, student.roundProgress.done / student.roundProgress.total * 100))}%` }} />
+                  </div>
+                  <span className="text-[10px] font-bold tabular-nums text-white/80">{student.roundProgress.done}/{student.roundProgress.total}</span>
+                </div>
+              )}
               <div className="absolute inset-x-0 bottom-0 flex justify-center gap-2 bg-slate-950/95 p-1 text-white opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-within:opacity-100">
                 <button type="button" className="min-h-7 min-w-9 rounded bg-indigo-600 px-2 text-sm focus-visible:ring-2" aria-label={`${t.bonus} ${student.name}`} onClick={() => onBonus(student.studentUid)}>+5</button>
                 <button type="button" className="min-h-7 min-w-9 rounded bg-red-700 px-2 text-sm focus-visible:ring-2" aria-label={`${t.remove} ${student.name}`} onClick={() => onRemove(student.studentUid)}>×</button>

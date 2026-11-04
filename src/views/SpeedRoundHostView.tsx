@@ -373,6 +373,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               <button
                 type="button"
                 onClick={() => setPresenting(true)}
+                aria-label={t.present}
                 style={{ touchAction: "manipulation" }}
                 className="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-xl font-black text-sm bg-indigo-100 text-indigo-700 hover:bg-indigo-200 active:scale-95 transition"
               >
@@ -381,6 +382,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               <button
                 type="button"
                 onClick={handleEnd}
+                aria-label={t.end}
                 style={{ touchAction: "manipulation" }}
                 className="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-xl font-black text-sm bg-rose-100 text-rose-700 hover:bg-rose-200 active:scale-95 transition"
               >
@@ -561,7 +563,16 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
         ) : (
           /* ─────────────── STEP 2 · The room + live play ─────────────── */
           <>
-            {/* Live word banner — small strip; students read the full question
+            {!roundActive && (
+              <section className="mb-4 rounded-[2rem] border border-amber-300/20 bg-[#101b3b] p-6 text-white shadow-lg sm:p-8">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div><span className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">{t.title}</span><div className="mt-1 text-2xl font-black sm:text-4xl">{t.inRoom(sorted.length)}</div></div>
+                  <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold">{t.wordsPlayed(playedCount, totalRounds)}</div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">{modes.map(mode => <span key={mode} className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold">{SPEED_MODE_META[mode].emoji} {t.modeNames[mode]}</span>)}</div>
+              </section>
+            )}
+            {/* Live word banner - small strip; students read the full question
                 on their own phones, so the board leads with the scoreboard. */}
             <AnimatePresence>
               {roundActive && currentSpeed && (
@@ -569,19 +580,22 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  className={`mb-4 rounded-2xl border px-5 py-3 flex items-center justify-center gap-4 shadow-sm ${
-                    lowTime ? "bg-red-50 border-red-200" : cardCls
-                  }`}
+                  className="relative mb-4 flex flex-wrap items-center justify-between gap-5 overflow-hidden rounded-[2rem] border border-amber-300/20 bg-[#101b3b] px-6 py-7 text-white shadow-[0_22px_55px_rgba(16,27,59,.25)] sm:px-9 sm:py-8"
                 >
-                  <span className={`text-xs font-black uppercase tracking-[0.18em] ${A.label}`}>
+                  <span className="rounded-full border border-amber-300/35 bg-amber-300/10 px-3 py-1 text-xs font-black uppercase tracking-[0.15em] text-amber-200">
                     {SPEED_MODE_META[currentSpeed.mode].emoji} {t.modeNames[currentSpeed.mode]}
                   </span>
-                  <span className={`font-black ${headingCls} text-xl sm:text-2xl`} dir="auto">
+                  <span className="order-3 min-w-0 basis-full break-words text-center text-3xl font-black leading-tight text-white sm:order-none sm:basis-auto sm:flex-1 sm:text-5xl" dir="auto">
                     {currentSpeed.promptKind === "audio" ? "🔊 ?" : currentSpeed.prompt}
                   </span>
-                  <span className={`tabular-nums font-black ${lowTime ? "text-red-600 animate-pulse" : A.label} text-2xl sm:text-3xl`}>
+                  <span className={`rounded-3xl border border-white/15 bg-white/10 px-5 py-3 tabular-nums text-5xl font-black leading-none sm:text-7xl ${lowTime ? "animate-pulse text-amber-200" : "text-white"}`}>
                     {secondsLeft}
                   </span>
+                  <div className="flex w-full flex-wrap items-center gap-x-8 gap-y-2 border-t border-white/15 pt-4 text-sm font-bold text-white/75">
+                    <span>{t.wordsPlayed(playedCount, totalRounds)}</span>
+                    <span>{t.players(sorted.length)}</span>
+                    <span>{t.leaderboard}: <strong className="text-white">{sorted[0]?.nickname ?? "—"}</strong></span>
+                  </div>
                 </motion.section>
               )}
             </AnimatePresence>
@@ -593,8 +607,8 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               {/* Left: the join card (QR + code) + play controls. Hidden when
                   presenting full-screen (floating buttons take over there). */}
               {!presenting && (
-                <aside className="lg:col-span-4 space-y-4">
-                  <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+                <aside className="flex flex-col gap-4 lg:col-span-4">
+                  <section className={`order-2 rounded-3xl shadow-lg border p-5 ${cardCls}`}>
                     <div className="flex items-center justify-between mb-3">
                       <h2 className={`text-xs font-black uppercase tracking-widest ${A.label}`}>{t.joinHeading}</h2>
                       <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
@@ -636,7 +650,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                   </section>
 
                   {/* Play controls — start / next / play-again / end-round. */}
-                  <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+                  <section className={`order-1 rounded-3xl shadow-lg border p-5 ${cardCls}`}>
                     {buildError && <p className="mb-3 text-xs font-bold text-rose-600">{t.buildError}</p>}
                     {hasRunRound && !roundActive && allPlayed && (
                       <p className="mb-3 text-center text-sm font-black text-emerald-600">🎉 {t.roundDone}</p>

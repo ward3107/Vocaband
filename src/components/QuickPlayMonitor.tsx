@@ -1415,6 +1415,13 @@ export default function QuickPlayMonitor({
     [data-qp-reduced-motion="true"] [style*="qp-sparkle-orbit"]{animation:none !important}
   `;
 
+  const dashboardLabels = language === 'he'
+    ? { title: 'מצב הכיתה', joined: 'משתתפים', finished: 'סיימו סבב', help: 'מבקשים עזרה', leader: 'מוביל/ה' }
+    : language === 'ar'
+      ? { title: 'حالة الصف', joined: 'المشاركون', finished: 'أكملوا الجولة', help: 'يطلبون المساعدة', leader: 'المتصدر' }
+      : { title: 'Class at a glance', joined: 'Playing', finished: 'Round finished', help: 'Need help', leader: 'Leading now' };
+  const finishedCount = effectiveStudents.filter(student => student.roundProgress && student.roundProgress.total > 0 && student.roundProgress.done >= student.roundProgress.total).length;
+
   return (
     <div
       data-qp-reduced-motion={reducedMotion ? "true" : "false"}
@@ -1670,6 +1677,17 @@ export default function QuickPlayMonitor({
       </header>
 
       {/* ─── Main content ──────────────────────────────────────────────────── */}
+      <section className="mx-3 mt-3 shrink-0 overflow-hidden rounded-2xl border border-indigo-300/20 bg-[#24175a] px-4 py-3 text-white shadow-lg sm:mx-8 sm:px-6" aria-label={dashboardLabels.title}>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/15 pb-2">
+          <h2 className="text-sm font-black uppercase tracking-[0.14em] text-indigo-100">{dashboardLabels.title}</h2>
+          <span className="max-w-[55%] truncate text-sm font-bold text-white/80">{dashboardLabels.leader}: <strong className="text-white">{sorted[0]?.name ?? '—'}</strong></span>
+        </div>
+        <div className="grid grid-cols-3 gap-3 pt-3">
+          <div><span className="block text-xs font-bold text-indigo-200">{dashboardLabels.joined}</span><strong className="text-2xl font-black tabular-nums sm:text-3xl">{sorted.length}</strong></div>
+          <div><span className="block text-xs font-bold text-indigo-200">{dashboardLabels.finished}</span><strong className="text-2xl font-black tabular-nums sm:text-3xl">{finishedCount}</strong></div>
+          <div><span className="block text-xs font-bold text-indigo-200">{dashboardLabels.help}</span><strong className="text-2xl font-black tabular-nums text-rose-200 sm:text-3xl">{handRaisedCount(effectiveStudents)}</strong></div>
+        </div>
+      </section>
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-4 py-2">
         <button type="button" onClick={() => setShowAllPlayers(v => !v)} aria-pressed={showAllPlayers} className="min-h-11 rounded-xl border border-current/20 px-4 text-base font-bold">
           {showAllPlayers ? (language === 'he' ? 'תצוגת פודיום' : language === 'ar' ? 'عرض المنصة' : 'Podium view') : (language === 'he' ? 'הצג את כולם' : language === 'ar' ? 'عرض الجميع' : 'Show everyone')}

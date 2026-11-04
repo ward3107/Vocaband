@@ -383,6 +383,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
               <button
                 type="button"
                 onClick={() => setPresenting(true)}
+                aria-label={t.present}
                 style={{ touchAction: "manipulation" }}
                 className="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-xl font-black text-sm bg-indigo-100 text-indigo-700 hover:bg-indigo-200 active:scale-95 transition"
               >
@@ -391,6 +392,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
               <button
                 type="button"
                 onClick={handleEndAndNew}
+                aria-label={t.endNew}
                 disabled={restarting}
                 style={{ touchAction: "manipulation" }}
                 className={`inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-xl font-black text-sm ${A.chip} active:scale-95 transition disabled:opacity-60`}
@@ -400,6 +402,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
               <button
                 type="button"
                 onClick={handleEnd}
+                aria-label={t.end}
                 style={{ touchAction: "manipulation" }}
                 className="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-xl font-black text-sm bg-rose-100 text-rose-700 hover:bg-rose-200 active:scale-95 transition"
               >
@@ -550,38 +553,60 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
         ) : (
           /* ─────────────── STEP 2 · The room + live play ─────────────── */
           <>
-            {/* Round banner — only shown while a round is live. */}
+            {!roundActive && (
+              <section className="mb-4 rounded-[2rem] border border-fuchsia-300/20 bg-[#4d104b] p-6 text-white shadow-lg sm:p-8">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div><span className="text-xs font-black uppercase tracking-[0.18em] text-fuchsia-200">{t.title}</span><div className="mt-1 text-2xl font-black sm:text-4xl">{t.inRoom(sorted.length)}</div></div>
+                  <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm font-bold">{t.code}: <span dir="ltr" className="text-lg font-black tracking-wider">{liveCode}</span></div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">{selectedCats.map(id => {
+                  const cat = CATEGORIES.find(item => item.id === id);
+                  return cat ? <span key={id} className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold">{cat.emoji} {categoryLabel(cat, language)}</span> : null;
+                })}</div>
+              </section>
+            )}
+            {/* Round banner - only shown while a round is live. */}
             <AnimatePresence>
               {roundActive && currentRace && (
                 <motion.section
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  className={`mb-4 rounded-3xl border p-6 sm:p-7 text-center shadow-lg ${
-                    lowTime ? "bg-red-50 border-red-200 shadow-red-500/10" : cardCls
-                  }`}
+                  className="relative mb-4 overflow-hidden rounded-[2rem] border border-fuchsia-300/20 bg-[#4d104b] p-6 text-white shadow-[0_22px_55px_rgba(93,20,75,.25)] sm:p-8"
                 >
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-5 sm:gap-10">
-                    <div className="flex flex-col items-center">
-                      <span className={`text-xs font-black uppercase tracking-[0.2em] ${A.label}`}>{t.letterLabel}</span>
+                  <div aria-hidden className="pointer-events-none absolute -end-16 -top-24 h-72 w-72 rounded-full bg-fuchsia-400/20 blur-3xl" />
+                  <div className="relative grid gap-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                    <div className="flex flex-col items-center text-center sm:items-start sm:text-start">
+                      <span className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-200">{t.roundLive}</span>
+                      <span className="mt-2 text-sm font-bold text-white/75">{t.letterLabel}</span>
                       <SlotLetter letter={currentRace.letter} roundId={currentRace.roundId} />
+                      <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
+                        {selectedCats.map(id => {
+                          const cat = CATEGORIES.find(item => item.id === id);
+                          return cat ? <span key={id} className="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-bold text-white">{cat.emoji} {categoryLabel(cat, language)}</span> : null;
+                        })}
+                      </div>
                     </div>
-                    <div className="flex flex-col items-center">
-                      <span className="text-sm font-black uppercase tracking-[0.18em] text-stone-400">{t.roundLive}</span>
+                    <div className="flex min-w-32 flex-col items-center rounded-3xl border border-white/20 bg-white/10 px-6 py-5">
+                      <Clock size={22} className="text-fuchsia-200" aria-hidden />
                       {currentRace.untimed ? (
                         <>
-                          <InfinityIcon className={`mt-1 ${headingCls}`} size={64} strokeWidth={2.5} />
-                          <span className="text-sm font-bold text-stone-400 mt-1">{t.answerWhenReady}</span>
+                          <InfinityIcon className="mt-1 text-white" size={64} strokeWidth={2.5} />
+                          <span className="mt-1 text-sm font-bold text-white/75">{t.answerWhenReady}</span>
                         </>
                       ) : (
                         <>
-                          <span className={`tabular-nums font-black leading-none mt-1 ${lowTime ? "text-red-600 animate-pulse" : headingCls} text-6xl sm:text-7xl`}>
+                          <span className={`mt-1 tabular-nums text-6xl font-black leading-none sm:text-7xl ${lowTime ? "text-amber-200 animate-pulse" : "text-white"}`}>
                             {secondsLeft}
                           </span>
-                          <span className="text-sm font-bold text-stone-400 mt-1">{t.seconds(roundSeconds)}</span>
+                          <span className="mt-1 text-sm font-bold text-white/75">{t.seconds(roundSeconds)}</span>
                         </>
                       )}
                     </div>
+                  </div>
+                  <div className="relative mt-6 grid grid-cols-2 gap-2 border-t border-white/20 pt-4 text-start sm:max-w-sm">
+                    <div><div className="text-xs font-bold text-fuchsia-200">{t.players(sorted.length)}</div><div className="text-2xl font-black tabular-nums">{sorted.length}</div></div>
+                    <div><div className="text-xs font-bold text-fuchsia-200">{t.leaderboard}</div><div className="truncate text-lg font-black">{sorted[0]?.nickname ?? "—"}</div></div>
                   </div>
                 </motion.section>
               )}
@@ -593,8 +618,8 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
               {/* Left: join card (QR + code) + play controls. */}
               {!presenting && (
-                <aside className="lg:col-span-4 space-y-4">
-                  <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+                <aside className="flex flex-col gap-4 lg:col-span-4">
+                  <section className={`order-2 rounded-3xl shadow-lg border p-5 ${cardCls}`}>
                     <div className="flex items-center justify-between mb-3">
                       <h2 className={`text-xs font-black uppercase tracking-widest ${A.label}`}>{t.joinHeading}</h2>
                       <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
@@ -635,7 +660,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                   </section>
 
                   {/* Play controls — start / next / end-round. */}
-                  <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+                  <section className={`order-1 rounded-3xl shadow-lg border p-5 ${cardCls}`}>
                     <button
                       type="button"
                       onClick={handleStart}
