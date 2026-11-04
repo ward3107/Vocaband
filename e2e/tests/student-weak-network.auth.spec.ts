@@ -93,17 +93,12 @@ test.describe('Student game — weak network', () => {
         .getByRole('button', { name: new RegExp(TEST_ASSIGNMENT.title, 'i') })
         .first()
         .click({ timeout: 15_000 });
-      await expect(page.getByRole('heading', { name: /Choose Your Mode/i })).toBeVisible({
+      await expect(page.getByRole('heading', { name: /Your Word Adventure/i })).toBeVisible({
         timeout: 30_000,
       });
 
-      await page.getByRole('button', { name: /Flashcards/i }).click();
-      const flashcardsSheet = page.getByRole('dialog', { name: 'Flashcards' });
-      await expect(flashcardsSheet).toBeVisible();
-      await flashcardsSheet.getByRole('button', { name: /^Play$/i }).click();
-
-      await expect(page.getByRole('heading', { name: 'Flashcards' })).toBeVisible();
-      await page.getByRole('button', { name: /Let's Go/i }).click();
+      await page.getByRole('button', { name: /^Flashcards -/i }).click();
+      await expect(page.getByRole('complementary', { name: 'How to play' })).toBeVisible({ timeout: 30_000 });
 
       const gotIt = page.getByRole('button', { name: /Got It/i });
       await expect(gotIt).toBeVisible({ timeout: 30_000 });
