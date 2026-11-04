@@ -3879,9 +3879,10 @@ async function startServer() {
     // ─── Word Hunt Arena: student avatar movement ──────────────────────
     // Persist positions separately so frequent moves cannot conflict with answers.
     // Broadcast only acknowledged writes, coalesced at the existing tick cadence.
-    qpOn(QP_EVENTS.ARENA_MOVE, async (payload: QpArenaMovePayload) => {
-      if (!payload || !isValidSessionCode(payload.sessionCode) || !isValidClientId(payload.clientId)) return;
-      if (!Number.isFinite(payload.x) || !Number.isFinite(payload.y) || !qpMoveLimiter.checkLimit(socket.id)) return;
+    qpOn(QP_EVENTS.ARENA_MOVE, async (payload: QpArenaMovePayload, ack) => {
+      if (!payload || !isValidSessionCode(payload.sessionCode) || !isValidClientId(payload.clientId)) return ack({ ok: false, code: "invalid_payload" });
+      if (!Number.isFinite(payload.x) || !Number.isFinite(payload.y)) return ack({ ok: false, code: "invalid_payload" });
+      if (!qpMoveLimiter.checkLimit(socket.id)) return ack({ ok: false, code: "rate_limited" });
       const position = { x: Math.round(Math.min(QP_ARENA_WIDTH, Math.max(0, payload.x))),
         y: Math.round(Math.min(QP_ARENA_HEIGHT, Math.max(0, payload.y))), lastMoveTs: Date.now() };
       const result = await qpStore.move(payload.sessionCode, payload.clientId, socket.id, position);
@@ -3890,6 +3891,7 @@ async function startServer() {
         if (!pending) { pending = new Map(); qpMoves.set(payload.sessionCode, pending); }
         pending.set(payload.clientId, position);
       }
+      ack(result.status === "ok" ? { ok: true } : { ok: false, code: result.status });
     });
 
     // ─── Word Hunt Arena: student grabs a word ─────────────────────────

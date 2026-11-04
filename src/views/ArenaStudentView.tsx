@@ -448,6 +448,7 @@ export default function ArenaStudentView({ sessionCode, setView, classStudent }:
             inputRef={inputRef}
             selfPosRef={selfPosRef}
             onGrab={(wordId, x, y) => requestGrab(wordId, x, y)}
+            claimCopy={t.claim}
             pickups={currentArena.pickups}
             onPickupCollect={(pickupId, x, y) => sendArenaPickup(pickupId, x, y)}
             speedBoostUntilRef={speedBoostUntilRef}

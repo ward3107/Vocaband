@@ -29,6 +29,7 @@ import {
 } from "../../core/quickPlayProtocol";
 import { arenaMapById } from "./arenaMaps";
 import type { ArenaInputVector } from "./ArenaJoystick";
+import { ARENA_STUDENT_STRINGS, type ArenaClaimCopy } from "../../views/arenaStrings";
 
 /** Local avatar speed in logical units/sec, tuned for precise phone steering. */
 // Keep full-stick screen travel close to the old feel as the student's
@@ -64,6 +65,7 @@ interface ArenaCanvasProps {
   /** An explicit tap within the grab radius attempts a word claim.
    *  The server decides which student claimed it first. */
   onGrab?: (wordId: string, x: number, y: number) => void;
+  claimCopy?: ArenaClaimCopy;
   /** Scattered game elements (Speed Boost / Bonus Star / Double Points / Mud).
    *  Rendered in the same scaled world layer as words, so camera zoom +
    *  counter-scale apply identically. */
@@ -117,6 +119,7 @@ interface ArenaCanvasProps {
 export default function ArenaCanvas({
   arena, positionsRef, leaderboard,
   selfClientId, inputRef, selfPosRef, onGrab,
+  claimCopy = ARENA_STUDENT_STRINGS.en.claim,
   pickups = [], onPickupCollect, speedBoostUntilRef, hurricaneStunUntilRef, stunnedUntilRef,
   dashUntilRef, onTackle,
   readOnly = false, isPaused = false, fill = false, zoom = 1, className = "",
@@ -417,7 +420,7 @@ export default function ArenaCanvas({
             {w.state === "locked" && <Lock size={10} strokeWidth={3} />}
             {w.state === "answered" && <Check size={10} strokeWidth={3} />}
             {w.label}
-            {claimable && <span className="ml-1 rounded-full bg-white/95 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-fuchsia-700">Tap</span>}
+            {claimable && <span className="ml-1 rounded-full bg-white/95 px-1.5 py-0.5 text-[9px] font-black tracking-wide text-fuchsia-700">{claimCopy.tap}</span>}
           </motion.div>
         );
         return (
@@ -450,7 +453,7 @@ export default function ArenaCanvas({
               <button
                 type="button"
                 onClick={() => handleWordTap(w.wordId)}
-                aria-label={claimable ? `Tap to claim ${w.label}` : `${w.label}, move closer to claim`}
+                aria-label={claimable ? claimCopy.tapToClaim(w.label) : claimCopy.moveCloser(w.label)}
                 // p-4 + -m-4 grows the hit box well past the visual pill
                 // without shifting layout — a fat fingertip target on the map
                 // (kids kept missing the small pill on phones).
@@ -559,7 +562,7 @@ export default function ArenaCanvas({
             onClick={() => handleWordTap(claimableWord.wordId)}
             className="absolute left-1/2 top-4 z-40 flex min-h-12 max-w-[85%] -translate-x-1/2 items-center gap-2 rounded-full border-2 border-white bg-fuchsia-600 px-5 py-2 font-black text-white shadow-xl shadow-fuchsia-900/30 active:scale-95"
           >
-            <span className="truncate">Claim {claimableWord.label}</span>
+            <span className="truncate">{claimCopy.claim(claimableWord.label)}</span>
             <span aria-hidden className="rounded-full bg-white/20 px-2 py-0.5 text-sm">↗</span>
           </button>
       )}

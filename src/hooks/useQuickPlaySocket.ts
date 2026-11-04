@@ -63,6 +63,7 @@ import {
   type QpRoughModePayload,
 } from "../core/quickPlayProtocol";
 import { createQuickPlayScoreOutbox } from "../utils/quickPlayScoreOutbox";
+import { emitArenaClaim } from "../utils/arenaClaim";
 import { writeQuickPlayClientId, readStoredClientId } from "../utils/quickPlayClientId";
 // Re-exported for existing importers (e.g. QuickPlayEndgameCard) that read "me"
 // from the leaderboard; the canonical definition lives in the util so read-only
@@ -1189,12 +1190,10 @@ export function useQuickPlaySocket(opts: QuickPlaySocketOptions): QuickPlaySocke
 
   const requestGrab = useCallback((wordId: string, x: number, y: number) => {
     if (!sessionCode || !socketRef.current) return;
+    const socket = socketRef.current;
     const id = readStoredClientId() ?? clientIdRef.current;
-    // x/y is the owner VM's range-check fallback (it may never have seen
-    // this student's move stream on a multi-VM split).
-    socketRef.current.emit(QP_EVENTS.ARENA_GRAB, {
-      sessionCode, clientId: id, wordId, x: Math.round(x), y: Math.round(y),
-    });
+    emitArenaClaim(socket, { sessionCode, clientId: id, wordId, x, y },
+      () => socketRef.current === socket);
   }, [sessionCode]);
 
   const sendArenaPickup = useCallback((pickupId: string, x: number, y: number) => {

@@ -108,12 +108,20 @@ export const ARENA_HOST_STRINGS: Record<"en" | "he" | "ar", ArenaHostStrings> = 
   },
 };
 
+export interface ArenaClaimCopy {
+  tap: string;
+  claim: (word: string) => string;
+  tapToClaim: (word: string) => string;
+  moveCloser: (word: string) => string;
+}
+
 interface ArenaStudentStrings {
   joinTitle: string; joinSub: string;
   namePlaceholder: string; joinBtn: string; joining: string;
   nameTaken: string; kicked: string; joinFailed: string; badName: string;
   lobbyTitle: string; lobbySub: string;
   hudScore: string;
+  claim: ArenaClaimCopy;
   deniedLocked: string; deniedRange: string; deniedCooldown: string; deniedGone: string;
   pickupSpeed: string; pickupDouble: string; pickupStar: string; pickupHurricane: string;
   dash: string; tackled: string;
@@ -131,6 +139,11 @@ export const ARENA_STUDENT_STRINGS: Record<"en" | "he" | "ar", ArenaStudentStrin
     joinFailed: "Couldn't join. Check the code and try again.", badName: "Please pick a different name.",
     lobbyTitle: "You're in!", lobbySub: "Get ready — the teacher opens the arena…",
     hudScore: "Score",
+    claim: {
+      tap: "Tap", claim: (word) => `Claim ${word}`,
+      tapToClaim: (word) => `Tap to claim ${word}`,
+      moveCloser: (word) => `${word}, move closer to claim`,
+    },
     deniedLocked: "Too late — someone grabbed it!", deniedRange: "Get closer!",
     deniedCooldown: "Catch your breath…", deniedGone: "That word is gone.",
     pickupSpeed: "⚡ Speed boost!", pickupDouble: "✌️ ×2 next answer!", pickupStar: "✨ Bonus points!",
@@ -148,6 +161,11 @@ export const ARENA_STUDENT_STRINGS: Record<"en" | "he" | "ar", ArenaStudentStrin
     joinFailed: "ההצטרפות נכשלה. בדקו את הקוד ונסו שוב.", badName: "בחרו שם אחר בבקשה.",
     lobbyTitle: "אתם בפנים!", lobbySub: "התכוננו — המורה פותח את הזירה…",
     hudScore: "ניקוד",
+    claim: {
+      tap: "הקישו", claim: (word) => `תפסו את ${word}`,
+      tapToClaim: (word) => `הקישו כדי לתפוס את ${word}`,
+      moveCloser: (word) => `${word}, התקרבו כדי לתפוס`,
+    },
     deniedLocked: "מאוחר מדי — מישהו תפס אותה!", deniedRange: "תתקרבו!",
     deniedCooldown: "קחו נשימה…", deniedGone: "המילה הזו כבר נתפסה.",
     pickupSpeed: "⚡ מהירות על!", pickupDouble: "✌️ ×2 בתשובה הבאה!", pickupStar: "✨ נקודות בונוס!",
@@ -165,6 +183,11 @@ export const ARENA_STUDENT_STRINGS: Record<"en" | "he" | "ar", ArenaStudentStrin
     joinFailed: "تعذّر الانضمام. تحقق من الرمز وحاول مجددًا.", badName: "اختر اسمًا مختلفًا من فضلك.",
     lobbyTitle: "أنت في اللعبة!", lobbySub: "استعد — المعلم يفتح الساحة…",
     hudScore: "النقاط",
+    claim: {
+      tap: "اضغط", claim: (word) => `التقط ${word}`,
+      tapToClaim: (word) => `اضغط لالتقاط ${word}`,
+      moveCloser: (word) => `${word}، اقترب لالتقاطها`,
+    },
     deniedLocked: "فات الأوان — أحدهم أمسك بها!", deniedRange: "اقترب أكثر!",
     deniedCooldown: "التقط أنفاسك…", deniedGone: "هذه الكلمة اختفت.",
     pickupSpeed: "⚡ دفعة سرعة!", pickupDouble: "✌️ ×2 للإجابة التالية!", pickupStar: "✨ نقاط إضافية!",
