@@ -7,7 +7,6 @@ import type { Language } from "../../hooks/useLanguage";
 import LiveGameHero from "./LiveGameHero";
 import MgmtCard from "./MgmtCard";
 import FrostedEmoji from "./FrostedEmoji";
-import StartHerePanel from "./StartHerePanel";
 import { DASHBOARD_SECTION } from "./dashboardScroll";
 import { accentForClass, HERO_AURORA } from "./dashboardAccents";
 
@@ -362,17 +361,6 @@ export default function EnglishDashboardLayout({
           );
         })()}
       </section>
-      <div className="mt-8">
-      <StartHerePanel
-        language={language}
-        isRTL={isRTL}
-        hasClasses={hasClasses}
-        pendingStudentsCount={pendingStudentsCount}
-        onNewClass={onNewClass}
-        onClassroomClick={onClassroomClick}
-        onApprovalsClick={onApprovalsClick}
-      />
-      </div>
     </div>
   );
 }
