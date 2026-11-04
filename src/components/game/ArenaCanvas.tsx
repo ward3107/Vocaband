@@ -381,9 +381,11 @@ export default function ArenaCanvas({
             alt=""
             aria-hidden
             className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover"
+            style={{ filter: "saturate(1.08) contrast(1.04)" }}
           />
-          {/* Scrim: keeps token/avatar contrast readable over any scene. */}
-          <div aria-hidden className="pointer-events-none absolute inset-0 z-0 bg-white/25" />
+          {/* A light center and shaded edges give the stage depth while
+              preserving contrast for word and player markers. */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 z-0" style={{ background: "radial-gradient(ellipse at 50% 45%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 48%, rgba(7,24,26,0.24) 100%)" }} />
         </>
       )}
 
