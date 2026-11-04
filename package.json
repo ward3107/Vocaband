@@ -113,7 +113,8 @@
     "source-map-js": "^1.2.2",
     "minimatch": "^11.0.4",
     "glob": "^14.0.3",
-    "body-parser": "^2.4.0"
+    "body-parser": "^2.4.0",
+    "deepmerge": "3.3.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.3",
