@@ -195,13 +195,6 @@ test('Back asks before leaving an unfinished round and repeated cancel keeps the
     .filter({ hasText: 'Week 1 Vocabulary' })
     .click();
   await page.getByRole('button', { name: /^Classic Mode/ }).click();
-  await page.getByRole('button', { name: 'Play', exact: true }).click();
-  await expect(page.getByRole('button', { name: "Let's Go! →", exact: true })).toBeVisible();
-  await back(page);
-  await expect(page.getByRole('heading', { name: /choose your mode/i })).toBeVisible();
-  await page.getByRole('button', { name: /^Classic Mode/ }).click();
-  await page.getByRole('button', { name: 'Play', exact: true }).click();
-  await page.getByRole('button', { name: "Let's Go! →", exact: true }).click();
   await page
     .locator('[data-vocaband-view]')
     .getByRole('button', { name: 'Exit', exact: true })
@@ -220,5 +213,5 @@ test('Back asks before leaving an unfinished round and repeated cancel keeps the
     .getByRole('dialog', { name: 'Leave this round?', exact: true })
     .getByRole('button', { name: 'Exit', exact: true })
     .click();
-  await expect(page.getByRole('heading', { name: /choose your mode/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /your word adventure/i })).toBeVisible();
 });

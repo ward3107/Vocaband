@@ -1,49 +1,21 @@
-import type React from "react";
-import { useState } from "react";
-import {
-  BookOpen, Volume2, PenTool, Zap, Layers, Shuffle, Repeat, X, Brain, Edit3, Check,
-} from "lucide-react";
-import type { GameMode, PetMilestone } from "../constants/game";
-import { MAX_ASSIGNMENT_ROUNDS } from "../constants/game";
-import type { AssignmentData, ProgressData } from "../core/supabase";
-import { DIFFICULTY_META, getModeDifficulty } from "../components/setup/types";
-import { computeRoundsCompleted, sumPlayCountFromProgress } from "../hooks/useAssignmentPlays";
-import { useLanguage } from "../hooks/useLanguage";
-import type { Language } from "../hooks/useLanguage";
-import { useReducedMotion } from "../hooks/useReducedMotion";
-import { gameModesT, type GameModeId } from "../locales/student/game-modes";
-import { ARCADE_BUTTON_TOUCH } from "../components/arcade/theme";
-import type { MapIsland } from "../components/arcade/IslandMap";
-import IslandDetailSheet, { type IslandSheetMode } from "../components/arcade/IslandDetailSheet";
-import type { IslandState } from "../components/arcade/ModeIsland";
-import EvolutionRing from "../components/arcade/EvolutionRing";
-import PetCompanion from "../components/dashboard/PetCompanion";
-import StudentLangButton from "../components/StudentLangButton";
-import ModeActivityCard from "../components/arcade/ModeActivityCard";
-import ModeQuestHero from "../components/arcade/ModeQuestHero";
-import { modeJourneyT } from "../locales/student/mode-journey";
+import type React from 'react';
+import { useState } from 'react';
+import { ArrowRight, BookOpen, Brain, Check, Edit3, Layers, PenTool, Repeat, Shuffle, Volume2, X, Zap } from 'lucide-react';
+import type { GameMode, PetMilestone } from '../constants/game';
+import { MAX_ASSIGNMENT_ROUNDS } from '../constants/game';
+import type { AssignmentData, ProgressData } from '../core/supabase';
+import { computeRoundsCompleted, sumPlayCountFromProgress } from '../hooks/useAssignmentPlays';
+import { useLanguage } from '../hooks/useLanguage';
+import type { Language } from '../hooks/useLanguage';
+import { gameModesT, type GameModeId } from '../locales/student/game-modes';
+import { adventureT } from '../locales/student/adventure';
+import { primeAudio } from '../utils/primeAudio';
+import AdventureWorldMap, { type AdventureMode } from '../components/arcade/AdventureWorldMap';
+import type { IslandState } from '../components/arcade/ModeIsland';
+import PetCompanion from '../components/dashboard/PetCompanion';
+import StudentLangButton from '../components/StudentLangButton';
 
-const MODE_GRADIENTS: Record<string, string> = {
-  cyan: "from-cyan-400 to-blue-500", emerald: "from-emerald-400 to-teal-500",
-  lime: "from-lime-400 to-green-500", blue: "from-blue-400 to-indigo-500",
-  purple: "from-purple-400 to-violet-600", amber: "from-amber-400 to-orange-500",
-  pink: "from-pink-400 to-rose-500", rose: "from-rose-400 to-pink-600",
-  indigo: "from-indigo-400 to-violet-600", fuchsia: "from-fuchsia-400 to-purple-600",
-  violet: "from-violet-400 to-purple-600", teal: "from-teal-400 to-cyan-500",
-  red: "from-red-400 to-rose-600",
-};
-
-const QUEST_STRINGS: Record<Language, { modesDone: string; round: string }> = {
-  en: { modesDone: "modes", round: "Round" },
-  he: { modesDone: "מצבים", round: "סבב" },
-  ar: { modesDone: "أوضاع", round: "جولة" },
-};
-
-const MODE_STATE = {
-  en: { done: "completed", next: "recommended next", todo: "to play", locked: "locked" },
-  he: { done: "הושלם", next: "הבא המומלץ", todo: "לשחק", locked: "נעול" },
-  ar: { done: "مكتمل", next: "التالي المقترح", todo: "للعب", locked: "مقفل" },
-} satisfies Record<Language, Record<IslandState, string>>;
+const ROUND: Record<Language, string> = { en: 'Round', he: 'סבב', ar: 'جولة' };
 
 interface GameModeSelectionViewProps {
   activeAssignment: AssignmentData | null;
@@ -53,6 +25,8 @@ interface GameModeSelectionViewProps {
   setGameMode: (mode: GameMode) => void;
   setShowModeSelection: (v: boolean) => void;
   setShowModeIntro: (v: boolean) => void;
+  /** GameRoutes primes iOS audio and syncs the translation target before direct launch. */
+  onLaunchMode?: (mode: GameMode) => void;
   handleExitGame: () => void;
   petDisplayName: string;
   petXp: number;
@@ -60,194 +34,140 @@ interface GameModeSelectionViewProps {
   petNextStage: PetMilestone | null;
   petClaimableMilestone: PetMilestone | null;
   onClaimPetMilestone: (milestone: PetMilestone) => void;
-  /** A10 — Quick Play only: return to the join screen to fix a name typo,
-   *  keeping avatar + language. Undefined for logged-in students. */
   onEditName?: () => void;
 }
 
+const MODE_META: Array<{ id: GameModeId; icon: React.ReactNode }> = [
+  { id: 'flashcards', icon: <Layers size={20} /> },
+  { id: 'classic', icon: <BookOpen size={20} /> },
+  { id: 'fill-blank', icon: <Edit3 size={20} /> },
+  { id: 'matching', icon: <Zap size={20} /> },
+  { id: 'true-false', icon: <Check size={20} /> },
+  { id: 'listening', icon: <Volume2 size={20} /> },
+  { id: 'memory-flip', icon: <Brain size={20} /> },
+  { id: 'letter-sounds', icon: <span className="text-sm font-black">Aa</span> },
+  { id: 'reverse', icon: <Repeat size={20} /> },
+  { id: 'spelling', icon: <PenTool size={20} /> },
+  { id: 'scramble', icon: <Shuffle size={20} /> },
+  { id: 'sentence-builder', icon: <span className="text-sm font-black">Aa</span> },
+  { id: 'speed-round', icon: <Zap size={20} /> },
+];
+
 export default function GameModeSelectionView({
   activeAssignment, studentProgress, isQuickPlayGuest, quickPlayCompletedModes,
-  setGameMode, setShowModeSelection, setShowModeIntro, handleExitGame,
+  setGameMode, setShowModeSelection, setShowModeIntro, onLaunchMode, handleExitGame,
   petDisplayName, petXp, petCurrentStage, petNextStage, petClaimableMilestone, onClaimPetMilestone,
   onEditName,
 }: GameModeSelectionViewProps) {
   const { language, dir } = useLanguage();
-  const reduced = useReducedMotion();
   const t = gameModesT[language] ?? gameModesT.en;
-  const qs = QUEST_STRINGS[language] ?? QUEST_STRINGS.en;
-  const journey = modeJourneyT[language];
+  const a = adventureT[language] ?? adventureT.en;
+  const [petOpen, setPetOpen] = useState(false);
 
-  const modesMeta: Array<{ id: GameMode; color: string; icon: React.ReactNode; isLearnMode?: boolean }> = [
-    { id: "flashcards", color: "cyan", icon: <Layers size={44} />, isLearnMode: true },
-    { id: "classic", color: "emerald", icon: <BookOpen size={44} /> },
-    { id: "fill-blank", color: "lime", icon: <Edit3 size={44} /> },
-    { id: "listening", color: "blue", icon: <Volume2 size={44} /> },
-    { id: "spelling", color: "purple", icon: <PenTool size={44} /> },
-    { id: "matching", color: "amber", icon: <Zap size={44} /> },
-    { id: "memory-flip", color: "pink", icon: <Brain size={44} /> },
-    { id: "true-false", color: "rose", icon: <Check size={44} /> },
-    { id: "scramble", color: "indigo", icon: <Shuffle size={44} /> },
-    { id: "reverse", color: "fuchsia", icon: <Repeat size={44} /> },
-    { id: "letter-sounds", color: "violet", icon: <span className="text-4xl">🔡</span> },
-    { id: "sentence-builder", color: "teal", icon: <span className="text-4xl">🧩</span> },
-    { id: "speed-round", color: "red", icon: <span className="text-4xl">⚡</span> },
-  ];
-
-  const modes = modesMeta.map((m) => ({
-    ...m,
-    name: t.modes[m.id as GameModeId].name,
-    desc: t.modes[m.id as GameModeId].desc,
-  }));
-
-  const allowedModes = activeAssignment?.allowedModes || modes.map((m) => m.id);
-  const filteredModes = modes.filter((m) => allowedModes.includes(m.id));
-  const learnMode = modes.find((m) => m.isLearnMode && allowedModes.includes(m.id));
-  const practiceModes = filteredModes.filter((m) => !m.isLearnMode);
-
-  const rowsFor = (id: string) =>
-    studentProgress.filter((p) => p.assignmentId === activeAssignment?.id && p.mode === id);
+  const allowedModes = activeAssignment?.allowedModes ?? MODE_META.map(mode => mode.id);
+  const available = MODE_META.filter(mode => allowedModes.includes(mode.id));
+  const practiceModes = available.filter(mode => mode.id !== 'flashcards');
+  const rowsFor = (id: string) => studentProgress.filter(row => row.assignmentId === activeAssignment?.id && row.mode === id);
   const isCompleted = (id: string) => rowsFor(id).length > 0 || (isQuickPlayGuest && quickPlayCompletedModes.has(id));
   const isLocked = (id: string) => isQuickPlayGuest && quickPlayCompletedModes.has(id);
   const bestScore = (id: string) => {
     const rows = rowsFor(id);
-    return rows.length ? Math.max(0, ...rows.map((r) => r.score ?? 0)) : null;
+    return rows.length ? Math.max(0, ...rows.map(row => row.score ?? 0)) : null;
   };
   const masteryStars = (id: string) => {
     const best = bestScore(id);
-    if (best == null) return 0;
-    return best >= 90 ? 3 : best >= 60 ? 2 : 1;
+    return best == null ? 0 : best >= 90 ? 3 : best >= 60 ? 2 : 1;
   };
 
-  const stops = [learnMode, ...practiceModes].filter(Boolean) as typeof modes;
-
-  let recommendedId: GameMode | undefined = stops.find((m) => !isLocked(m.id) && !isCompleted(m.id))?.id;
+  let recommendedId: GameModeId | undefined = available.find(mode => !isLocked(mode.id) && !isCompleted(mode.id))?.id;
   if (!recommendedId) {
-    const playable = practiceModes.filter((m) => !isLocked(m.id));
-    recommendedId = [...playable].sort((a, b) => masteryStars(a.id) - masteryStars(b.id))[0]?.id;
+    recommendedId = [...practiceModes].filter(mode => !isLocked(mode.id))
+      .sort((left, right) => masteryStars(left.id) - masteryStars(right.id))[0]?.id;
   }
-  const recommendedIndex = Math.max(0, stops.findIndex((m) => m.id === recommendedId));
 
-  const totalModes = practiceModes.length;
-  const completedCount = practiceModes.filter((m) => isCompleted(m.id)).length;
-  const totalPlays = activeAssignment ? sumPlayCountFromProgress(studentProgress, activeAssignment.id) : 0;
-  const currentRound = Math.min(MAX_ASSIGNMENT_ROUNDS, computeRoundsCompleted(totalPlays, totalModes) + 1);
-  const showRoundPill = Boolean(activeAssignment) && totalModes > 0;
-
-  const islands: MapIsland[] = stops.map((m, i) => {
-    const state: IslandState = isLocked(m.id)
-      ? "locked"
-      : i === recommendedIndex
-        ? "next"
-        : isCompleted(m.id)
-          ? "done"
-          : "todo";
+  const modes: AdventureMode[] = available.map(mode => {
+    const state: IslandState = isLocked(mode.id) ? 'locked'
+      : mode.id === recommendedId ? 'next'
+      : isCompleted(mode.id) ? 'done' : 'todo';
     return {
-      id: m.id, name: m.name, emoji: m.icon,
-      gradient: MODE_GRADIENTS[m.color] ?? "from-violet-400 to-fuchsia-500",
-      state, mastery: masteryStars(m.id),
+      id: mode.id,
+      name: t.modes[mode.id].name,
+      description: t.modes[mode.id].tooltip[0],
+      icon: mode.icon,
+      state,
+      mastery: masteryStars(mode.id),
     };
   });
 
+  const completedCount = available.filter(mode => isCompleted(mode.id)).length;
+  const totalPlays = activeAssignment ? sumPlayCountFromProgress(studentProgress, activeAssignment.id) : 0;
+  const currentRound = Math.min(MAX_ASSIGNMENT_ROUNDS, computeRoundsCompleted(totalPlays, practiceModes.length) + 1);
+  const recommended = modes.find(mode => mode.id === recommendedId);
+
   const launch = (id: GameMode) => {
+    if (onLaunchMode) {
+      onLaunchMode(id);
+      return;
+    }
+    // Standalone renderers and tests use the same single-tap path.
+    primeAudio();
     setGameMode(id);
     setShowModeSelection(false);
-    setShowModeIntro(true);
+    setShowModeIntro(false);
   };
 
-  const [sheetIndex, setSheetIndex] = useState<number | null>(null);
-  const [petOpen, setPetOpen] = useState(false);
-
-  const sheetMode: IslandSheetMode | null =
-    sheetIndex != null && stops[sheetIndex]
-      ? (() => {
-          const m = stops[sheetIndex];
-          const diff = DIFFICULTY_META[getModeDifficulty(m.id)];
-          return {
-            name: m.name, desc: m.desc, emoji: m.icon,
-            gradient: MODE_GRADIENTS[m.color] ?? "from-violet-400 to-fuchsia-500",
-            difficultyStars: diff.stars, difficultyLabel: diff.label,
-            best: bestScore(m.id),
-          };
-        })()
-      : null;
-
   return (
-    <div dir={dir} className="vb-page relative">
-      <header className="vb-header sticky top-0 z-30">
-        <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 py-3 sm:gap-3 sm:px-6 lg:px-8">
-        <button
-          type="button" onClick={handleExitGame} aria-label={t.closeAria} title={t.closeAria}
-          className="vb-icon-button"
-        >
-          <X size={20} />
-        </button>
-        <div className="min-w-0 flex-1">
-          <h1 className="line-clamp-2 text-sm font-extrabold leading-snug text-[var(--vb-text-primary)] sm:text-lg">{t.chooseYourMode}</h1>
-          {activeAssignment?.title && (
-            <p className="truncate text-xs font-semibold text-[color:var(--ios-label-secondary)]">{activeAssignment.title}</p>
-          )}
-        </div>
-        {isQuickPlayGuest && onEditName && (
-          <button
-            type="button"
-            onClick={onEditName}
-            title={t.editName}
-            aria-label={t.editName}
-            className={`${ARCADE_BUTTON_TOUCH} flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-[var(--ios-fill-tertiary)] sm:w-auto sm:px-3 text-[color:var(--ios-label)]`}
-          >
-            <Edit3 size={16} />
-            <span className="hidden text-xs font-bold sm:inline">{t.editName}</span>
+    <div dir={dir} className="min-h-screen bg-[#081B32] pb-[calc(env(safe-area-inset-bottom)+2rem)] text-white">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#081B32]/95 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-5xl items-center gap-2 px-3 py-2.5 sm:px-6">
+          <button type="button" onClick={handleExitGame} aria-label={t.closeAria} title={t.closeAria}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/10 outline-none focus-visible:ring-4 focus-visible:ring-amber-300">
+            <X size={20} />
           </button>
-        )}
-        <StudentLangButton className="shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-['Fredoka',sans-serif] text-base font-bold sm:text-xl">{a.heading}</p>
+            {activeAssignment?.title && <p className="truncate text-xs text-sky-100/75">{activeAssignment.title}</p>}
+          </div>
+          {isQuickPlayGuest && onEditName && <button type="button" onClick={onEditName} aria-label={t.editName} title={t.editName}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/10 focus-visible:ring-4 focus-visible:ring-amber-300 sm:w-auto sm:gap-2 sm:px-3">
+            <Edit3 size={17} /><span className="hidden text-sm font-bold sm:inline">{t.editName}</span>
+          </button>}
+          <StudentLangButton className="shrink-0" tone="onDark" />
         </div>
       </header>
 
-      <div className="vb-content space-y-5 py-4 pb-20 sm:space-y-6 sm:py-6">
-        <ModeQuestHero
-          completed={completedCount}
-          total={totalModes}
-          countLabel={completedCount + "/" + totalModes + " " + qs.modesDone}
-          roundLabel={showRoundPill ? qs.round + " " + currentRound + "/" + MAX_ASSIGNMENT_ROUNDS : undefined}
-          companion={<EvolutionRing currentStage={petCurrentStage} nextStage={petNextStage} xp={petXp}
-            evolutionPending={false} hasClaimable={!!petClaimableMilestone} onTap={() => setPetOpen(true)} />}
-          petName={petDisplayName}
-          petXp={petXp}
-          onOpenCompanion={() => setPetOpen(true)}
-        />
-        <section aria-label={journey.activities}>
-          <h2 className="mb-3 text-sm font-extrabold text-[var(--vb-text-primary)] sm:text-base">{journey.activities}</h2>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {islands.map((island, i) => (
-              <ModeActivityCard key={island.id} name={island.name} description={stops[i].desc}
-                icon={island.emoji} gradient={island.gradient} state={island.state}
-                stateLabel={MODE_STATE[language][island.state]} mastery={island.mastery}
-                onSelect={() => setSheetIndex(i)} />
-            ))}
+      <main className="mx-auto max-w-5xl space-y-5 px-3 pt-4 sm:space-y-7 sm:px-6 sm:pt-7">
+        <section className="relative overflow-hidden rounded-[1.75rem] border border-amber-200/20 bg-[radial-gradient(circle_at_92%_0%,#29496A_0%,#112D4D_45%,#0C233D_100%)] p-5 shadow-[0_28px_65px_-35px_rgba(0,0,0,.9)] sm:p-7">
+          <div className="relative z-10 flex items-start justify-between gap-3">
+            <div className="max-w-xl">
+              <h1 className="font-['Fredoka',sans-serif] text-3xl font-bold leading-tight sm:text-4xl">{a.heading}</h1>
+              <p className="mt-1 text-sm leading-relaxed text-sky-100/80 sm:text-base">{a.subtitle}</p>
+            </div>
+            <button type="button" onClick={() => setPetOpen(true)} aria-label={a.companionProgress(petDisplayName)}
+              className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2 border-amber-200/70 bg-[#244462] text-4xl shadow-[0_0_32px_rgba(251,191,36,.18)] outline-none focus-visible:ring-4 focus-visible:ring-amber-200 sm:h-20 sm:w-20">
+              <span aria-hidden>{petCurrentStage.emoji}</span>
+            </button>
           </div>
+          <div className="relative z-10 mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold text-sky-100/90">
+            <span>{a.modeCount(completedCount, available.length)}</span>
+            {activeAssignment && <span>{ROUND[language]} {currentRound}/{MAX_ASSIGNMENT_ROUNDS}</span>}
+          </div>
+          <div role="progressbar" aria-label={a.modeCount(completedCount, available.length)} aria-valuemin={0} aria-valuemax={available.length} aria-valuenow={completedCount}
+            className="relative z-10 mt-2 h-2 overflow-hidden rounded-full bg-white/15">
+            <span className="block h-full rounded-full bg-gradient-to-r from-amber-300 to-cyan-300 transition-[width] duration-500" style={{ width: `${available.length ? completedCount / available.length * 100 : 0}%` }} />
+          </div>
+          {recommended ? <button type="button" onClick={() => launch(recommended.id)}
+            className="relative z-10 mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#FFD875] px-5 py-3 text-sm font-extrabold text-[#142A40] shadow-[0_8px_30px_rgba(251,191,36,.25)] outline-none transition-transform focus-visible:ring-4 focus-visible:ring-white motion-safe:hover:-translate-y-0.5 sm:w-auto sm:text-base">
+            {a.playNext}: {recommended.name}<ArrowRight size={19} aria-hidden />
+          </button> : <p className="mt-5 text-sm font-semibold text-amber-100">{available.length ? a.allPlayed : a.noModes}</p>}
         </section>
-      </div>
 
-      <IslandDetailSheet
-        open={sheetIndex != null}
-        mode={sheetMode}
-        onClose={() => setSheetIndex(null)}
-        onPlay={() => {
-          if (sheetIndex != null && stops[sheetIndex]) launch(stops[sheetIndex].id);
-        }}
-        reduced={reduced}
-      />
+        <AdventureWorldMap modes={modes} onPlay={launch} petEmoji={petCurrentStage.emoji} />
+      </main>
 
-      <PetCompanion
-        open={petOpen}
-        onClose={() => setPetOpen(false)}
-        xp={petXp}
-        displayName={petDisplayName}
-        currentStage={petCurrentStage}
-        nextStage={petNextStage}
-        claimableMilestone={petClaimableMilestone}
-        onClaim={(m) => { onClaimPetMilestone(m); setPetOpen(false); }}
-      />
+      <PetCompanion open={petOpen} onClose={() => setPetOpen(false)} xp={petXp} displayName={petDisplayName}
+        currentStage={petCurrentStage} nextStage={petNextStage} claimableMilestone={petClaimableMilestone}
+        onClaim={milestone => { onClaimPetMilestone(milestone); setPetOpen(false); }} />
     </div>
   );
 }
