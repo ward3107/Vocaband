@@ -55,7 +55,7 @@ jobs:
             await requireCI({ github, context, core });
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           # Match package.json `engines.node: >=22.0.0` (wrangler 4.x,
           # miniflare 4.x and @cloudflare/kv-asset-handler 0.5 all
