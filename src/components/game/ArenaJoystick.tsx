@@ -28,6 +28,15 @@ interface ArenaJoystickProps {
 const BASE_SIZE = 128;   // px — thumb-friendly on small phones
 const KNOB_SIZE = 56;
 const MAX_TRAVEL = (BASE_SIZE - KNOB_SIZE) / 2;
+const DEAD_ZONE = 0.09;
+const RESPONSE_POWER = 1.5;
+
+export function arenaStickStrength(distance: number): number {
+  const clamped = Math.max(0, Math.min(distance, 1));
+  return clamped <= DEAD_ZONE
+    ? 0
+    : Math.pow((clamped - DEAD_ZONE) / (1 - DEAD_ZONE), RESPONSE_POWER);
+}
 
 const SIDE_STORAGE_KEY = "vocaband_arena_joystick_side";
 type JoystickSide = "left" | "right";
@@ -54,13 +63,13 @@ export default function ArenaJoystick({ inputRef, disabled = false }: ArenaJoyst
     });
   };
 
-  const setVector = (dx: number, dy: number) => {
+  const setVector = (dx: number, dy: number, knobDx = dx, knobDy = dy) => {
     inputRef.current.dx = dx;
     inputRef.current.dy = dy;
     // Knob follows the vector directly through the DOM — no re-render.
     if (knobRef.current) {
       knobRef.current.style.transform =
-        `translate3d(${dx * MAX_TRAVEL}px, ${dy * MAX_TRAVEL}px, 0)`;
+        `translate3d(${knobDx * MAX_TRAVEL}px, ${knobDy * MAX_TRAVEL}px, 0)`;
     }
   };
 
@@ -127,7 +136,13 @@ export default function ArenaJoystick({ inputRef, disabled = false }: ArenaJoyst
     let dy = (e.clientY - cy) / MAX_TRAVEL;
     const len = Math.hypot(dx, dy);
     if (len > 1) { dx /= len; dy /= len; }
-    setVector(dx, dy);
+    // Keep the thumb under the finger while easing the movement vector.
+    // Tiny accidental drags do not move the avatar; half travel is a walk,
+    // and full travel still reaches full speed without a sudden jump.
+    const clampedLen = Math.min(len, 1);
+    const strength = arenaStickStrength(clampedLen);
+    const gain = clampedLen > 0 ? strength / clampedLen : 0;
+    setVector(dx * gain, dy * gain, dx, dy);
   };
 
   // Explicit left/right (NOT logical `end-*`) — the side is the student's
