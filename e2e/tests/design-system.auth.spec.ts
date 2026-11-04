@@ -208,10 +208,11 @@ test('student destinations and card geometry work on desktop and phone', async (
   await expect(page.getByRole('dialog', { name: 'Assignments', exact: true })).toBeVisible();
   await capture(page, info, 'student-tasks');
   await page.getByRole('dialog', { name: 'Assignments', exact: true }).getByRole('button').filter({ hasText: 'Week 1 Vocabulary' }).click();
-  await expect(page.getByRole('heading', { name: /choose your mode/i })).toBeVisible();
-  await capture(page, info, 'student-game-picker');
+  await expect(page.getByRole('heading', { name: /your word adventure/i })).toBeVisible();
+  await capture(page, info, 'student-adventure-map');
   await page.getByRole('button', { name: /^Classic Mode/ }).click();
-  await capture(page, info, 'student-game-instructions');
+  await expect(page.getByRole('complementary', { name: 'How to play' })).toBeVisible();
+  await capture(page, info, 'student-game-coaching');
 
   for (const name of ['Practice', 'Daily'] as const) {
     await open(page, '/');

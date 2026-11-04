@@ -297,6 +297,7 @@ const RootApp = lazyWithRetry(() =>
 // student login.  Tree-shaken out of production by the
 // `import.meta.env.DEV` guard below.
 const StudentRtlPreview = lazyWithRetry(() => import('./dev/StudentRtlPreview'));
+const StudentAdventurePreview = lazyWithRetry(() => import('./dev/StudentAdventurePreview'));
 // Dev-only short-circuit: `/dev/teacher-affordances` mounts the
 // teacher-dashboard floating circles + trial banner with fake AppUser
 // data so the projector / theme / plan-status surfaces can be
@@ -428,16 +429,18 @@ async function bootstrap() {
 
   const devPath = import.meta.env.DEV ? window.location.pathname : '';
   const isStudentRtlPreview = devPath === '/dev/student-rtl-preview';
+  const isStudentAdventurePreview = devPath === '/dev/student-adventure';
   const isTeacherAffordancesPreview = devPath === '/dev/teacher-affordances';
   const isTeacherThemePreview = devPath === '/dev/teacher-theme';
   const isLivePodiumPreview = devPath === '/dev/live-podium';
   const isTeacherSignupPreview = devPath === '/dev/teacher-signup';
-  const isDevPreview = isStudentRtlPreview || isTeacherAffordancesPreview || isTeacherThemePreview || isLivePodiumPreview || isTeacherSignupPreview;
+  const isDevPreview = isStudentRtlPreview || isStudentAdventurePreview || isTeacherAffordancesPreview || isTeacherThemePreview || isLivePodiumPreview || isTeacherSignupPreview;
 
   createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <Suspense fallback={<Loading />}>
         {isDevPreview ? (
+          isStudentAdventurePreview ? <StudentAdventurePreview /> :
           isTeacherAffordancesPreview ? <TeacherAffordancesPreview /> :
           isTeacherThemePreview ? <TeacherThemePreview /> :
           isLivePodiumPreview ? <LivePodiumPreview /> :

@@ -36,6 +36,7 @@ export function GameRoute() {
     view, user, language,
     showModeSelection, setShowModeSelection, activeAssignment, studentProgress,
     setGameMode, setShowModeIntro, setView, handleExitGame, quickPlayCompletedModes,
+    hasChosenLanguage, setHasChosenLanguage, setTargetLanguage,
     petDisplayName, petXp, petCurrentStage, petNextStage, petClaimableMilestone, onClaimPetMilestone,
     showModeIntro,
     gameDebug, gameMode, currentIndex, isFinished, feedback, isProcessingRef, currentWord,
@@ -77,6 +78,20 @@ export function GameRoute() {
           setGameMode={setGameMode}
           setShowModeSelection={setShowModeSelection}
           setShowModeIntro={setShowModeIntro}
+          onLaunchMode={(mode) => {
+            // The map starts in one tap. Keep the audio unlock and language
+            // setup that previously happened on the separate intro screen.
+            primeAudio();
+            if (!hasChosenLanguage && (language === 'he' || language === 'ar')) {
+              const target = language === 'ar' ? 'arabic' : 'hebrew';
+              setTargetLanguage(target);
+              try { localStorage.setItem('vocaband_target_lang', target); } catch { /* storage unavailable */ }
+              setHasChosenLanguage(true);
+            }
+            setGameMode(mode);
+            setShowModeSelection(false);
+            setShowModeIntro(false);
+          }}
           handleExitGame={handleExitGame}
           petDisplayName={petDisplayName}
           petXp={petXp}

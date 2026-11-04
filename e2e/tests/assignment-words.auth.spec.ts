@@ -100,50 +100,31 @@ async function openSeededAssignment(page: import('@playwright/test').Page) {
   await expect(card).toBeVisible({ timeout: 15_000 });
   await card.click();
 
-  // Mode picker.
+  // One-tap adventure map.
   await expect(
-    page.getByRole('heading', { name: /choose your mode/i }),
+    page.getByRole('heading', { name: /your word adventure/i }),
   ).toBeVisible({ timeout: 15_000 });
 }
 
 /**
- * Launch a mode from the picker and land in the round.
+ * Launch a mode from the adventure map and land in the round.
  *
  * The mode tiles are buttons whose accessible name carries a status
  * suffix ("Classic Mode — to play", "Flashcards — recommended next"), and
  * the visible label sits in a sibling div — so a text locator matches the
  * wrapper, not the control, and the click goes nowhere. Match the ROLE.
- * A mode-intro screen may sit between the picker and the round.
+ * The student flow launches the round with one tap.
  */
 async function startMode(page: import('@playwright/test').Page, name: RegExp) {
   await page.getByRole('button', { name }).first().click({ force: true });
 
-  // The intro overlay's start control is named exactly "Play". Anchor the
-  // match: an unanchored /play/i also matches every mode tile behind it
-  // ("Classic Mode — to play"), and .first() then picks a tile in DOM
-  // order, so the round never starts and the picker stays on screen.
-  // Launching a mode walks through up to two intro sheets ("Play", then
-  // "Let's Go! \u2192"). The name is PREFIX-anchored on purpose: an
-  // unanchored /play/i also matches every mode tile behind the overlay
-  // ("Classic Mode \u2014 to play"), and .first() would then pick a tile in
-  // DOM order so the round never starts.
-  for (let i = 0; i < 3; i++) {
-    const start = page.getByRole('button', { name: /^(play|let.?s go|start)/i }).first();
-    if (!(await start.count())) break;
-    // The sheet can extend past the fold and Playwright refuses an
-    // out-of-viewport click even with force; scroll in, then fall back to
-    // dispatching the event rather than failing on geometry.
-    await start.scrollIntoViewIfNeeded().catch(() => {});
-    await start.click({ force: true, timeout: 4000 }).catch(async () => {
-      await start.dispatchEvent('click').catch(() => {});
-    });
-    await page.waitForTimeout(1200);
-  }
-  await page.waitForTimeout(800);
+  // The mode tile should leave the map immediately; coaching appears in-game.
+  await expect(page.getByRole('heading', { name: /your word adventure/i }))
+    .toHaveCount(0, { timeout: 15_000 });
 }
 
 test.describe('assignment word delivery', () => {
-  test('the mode picker is reached with the teacher\'s own words, not a sample', async ({
+  test('the adventure map launches with the teacher\'s own words, not a sample', async ({
     studentPage: page,
   }) => {
     await openSeededAssignment(page);
@@ -186,11 +167,15 @@ test.describe('assignment word delivery', () => {
     await startMode(page, /classic mode/i);
 
     // The round renders "QUESTION 1 OF 5"; other modes use "1 / 5". Match
-    // both, and ignore the picker's "Round 1/3" replay counter and its
+    // both, and ignore the map's "Round 1/3" replay counter and its
     // "0/4 modes" tally, which are different numbers entirely.
+    await expect(page.getByRole('status').filter({ hasText: /question\s+\d+\s+of\s+\d+/i }))
+      .toBeVisible({ timeout: 15_000 });
     const text = await page.locator('body').innerText();
-    expect(text, 'still on the mode picker — the mode never launched')
-      .not.toMatch(/choose your mode/i);
+    expect(text, 'still on the adventure map - the mode never launched')
+      .not.toMatch(/your word adventure/i);
+    await expect(page.getByRole('complementary', { name: 'How to play' }))
+      .toBeVisible();
 
     const ofMatch = text.match(/question\s+\d+\s+of\s+(\d+)/i);
     const slashTotals = [...text.matchAll(/\b\d+\s*\/\s*(\d+)\b/g)]
