@@ -4,11 +4,11 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { generateKeyPair, exportJWK, SignJWT } from 'jose';
 import { io, type Socket } from 'socket.io-client';
-import { QP_EVENTS as E, QP_SERVER_EVENTS as S, type QpJoinedPayload } from '../core/quickPlayProtocol';
+import { QP_EVENTS as E, QP_SERVER_EVENTS as S, type QpJoinedPayload, type QpArenaStatePayload, type QpArenaGrabDeniedPayload, type QpArenaGrabGrantedPayload, QP_ARENA_WIDTH, QP_ARENA_HEIGHT } from '../core/quickPlayProtocol';
 
 // Real Express/Socket.IO server with an isolated local Supabase fixture.
 // No production credentials, data, databases or endpoints are used.
@@ -18,6 +18,7 @@ let child: ChildProcess;
 let workdir = '';
 let base = '';
 let studentToken = '';
+let teacherToken = '';
 let serverOutput = '';
 const fixture = createServer();
 
@@ -47,6 +48,8 @@ beforeAll(async () => {
   const jwk = { ...await exportJWK(publicKey), kid: 'local-test-key', alg: 'ES256', use: 'sig' };
   studentToken = await new SignJWT({}).setProtectedHeader({ alg: 'ES256', kid: jwk.kid })
     .setSubject('test-student-account').setAudience('authenticated').setExpirationTime('10m').sign(privateKey);
+  teacherToken = await new SignJWT({}).setProtectedHeader({ alg: 'ES256', kid: jwk.kid })
+    .setSubject('test-teacher').setAudience('authenticated').setExpirationTime('10m').sign(privateKey);
   fixture.on('request', (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     if (req.url?.includes('/.well-known/jwks.json')) return res.end(JSON.stringify({ keys: [jwk] }));
@@ -63,7 +66,7 @@ beforeAll(async () => {
   await new Promise<void>(r => portProbe.close(() => r()));
   base = `http://127.0.0.1:${address.port}`;
   workdir = await mkdtemp(join(tmpdir(), 'vocaband-integration-'));
-  child = spawn(process.execPath, ['--import', resolve(root, 'node_modules/tsx/dist/loader.mjs'), resolve(root, 'server.ts')], {
+  child = spawn(process.execPath, ['--import', pathToFileURL(resolve(root, 'node_modules/tsx/dist/loader.mjs')).href, resolve(root, 'server.ts')], {
     cwd: workdir,
     env: { PATH: process.env.PATH, NODE_ENV: 'production', PORT: String(address.port), SUPABASE_URL: `http://127.0.0.1:${fixtureAddress.port}`, SUPABASE_SERVICE_ROLE_KEY: 'local-test-only-secret' },
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -91,6 +94,39 @@ afterAll(async () => {
 }, 15000);
 
 describe('real Quick Play server', () => {
+  it('keeps a predicted in-range tap subject to the last accepted server position', async () => {
+    const sessionCode = 'MNP234';
+    const player = await connect(), teacher = await connect();
+    const joined = await joinStudent(player, sessionCode);
+    const observed = once(teacher, S.LEADERBOARD);
+    teacher.emit(E.TEACHER_OBSERVE, { sessionCode, token: teacherToken });
+    await observed;
+    const started = once<QpArenaStatePayload>(player, S.ARENA_STATE);
+    teacher.emit(E.ARENA_START, { sessionCode, token: teacherToken,
+      words: [{ mode: 'classic', label: 'cat', prompt: 'cat', promptKind: 'text', options: ['cat', 'dog'], correctIndex: 0 }],
+      config: { roundSeconds: 30 } });
+    const word = (await started).words[0];
+    const far = { x: word.pos.x < QP_ARENA_WIDTH / 2 ? QP_ARENA_WIDTH : 0,
+      y: word.pos.y < QP_ARENA_HEIGHT / 2 ? QP_ARENA_HEIGHT : 0 };
+    const movedFar = once(player, S.ARENA_SNAPSHOT);
+    player.emit(E.ARENA_MOVE, { sessionCode, clientId: joined.clientId, ...far });
+    await movedFar;
+    const denied = once<QpArenaGrabDeniedPayload>(player, S.ARENA_GRAB_DENIED);
+    player.emit(E.ARENA_GRAB, { sessionCode, clientId: joined.clientId,
+      wordId: word.wordId, x: word.pos.x, y: word.pos.y });
+    expect((await denied).reason).toBe('out_of_range');
+    // An acknowledged move is committed before the claim, without waiting
+    // for the room's snapshot broadcast.
+    const moveAck = await new Promise<{ ok: boolean }>((resolveAck, reject) => {
+      player.timeout(2000).emit(E.ARENA_MOVE, { sessionCode, clientId: joined.clientId, ...word.pos },
+        (error: Error | null, result: { ok: boolean }) => error ? reject(error) : resolveAck(result));
+    });
+    expect(moveAck.ok).toBe(true);
+    const granted = once<QpArenaGrabGrantedPayload>(player, S.ARENA_GRAB_GRANTED);
+    player.emit(E.ARENA_GRAB, { sessionCode, clientId: joined.clientId, wordId: word.wordId });
+    expect((await granted).wordId).toBe(word.wordId);
+  }, 15000);
+
   it('keeps two same-name students separate and returns only public fields', async () => {
     const a = await connect(studentToken), b = await connect();
     const first = await joinStudent(a, 'ABC234');

@@ -1209,8 +1209,11 @@ export type QpArenaMapId = (typeof QP_ARENA_MAP_IDS)[number];
  *  QP_ARENA_WIDTH so the bigger world still crosses in roughly the same
  *  feel-time. Enlarged again (was 1600×1120) so a full class spreads out
  *  and every word can be on the board at once without crowding. */
-export const QP_ARENA_WIDTH = 2800;
-export const QP_ARENA_HEIGHT = 1960;
+// The teacher sees the full board; the student camera shows a smaller slice.
+export const QP_ARENA_WIDTH = 4200;
+export const QP_ARENA_HEIGHT = 2940;
+/** Token centers stay far apart even with all fifteen words visible. */
+export const QP_ARENA_MIN_WORD_DISTANCE = 420;
 
 /** Server snapshot tick (ms) — one room broadcast per tick, never
  *  per-move. ⚠️ Don't lower this (raise the rate) without re-running the

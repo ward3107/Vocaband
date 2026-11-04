@@ -166,6 +166,7 @@ export default function EnglishDashboardLayout({
           <LiveGameHero
             emoji="🌍"
             title={rt.raceTitle}
+            artwork="race"
             badge={rt.live}
             description={rt.raceDescription}
             ctaLabel={rt.raceStart}
@@ -178,6 +179,7 @@ export default function EnglishDashboardLayout({
           <LiveGameHero
             emoji="⚡"
             title={rt.speedTitle}
+            artwork="speed"
             badge={rt.live}
             description={rt.speedDescription}
             ctaLabel={rt.raceStart}
@@ -190,6 +192,7 @@ export default function EnglishDashboardLayout({
           <LiveGameHero
             emoji="🏟️"
             title={rt.arenaTitle}
+            artwork="arena"
             badge={rt.live}
             description={rt.arenaDescription}
             ctaLabel={rt.raceStart}

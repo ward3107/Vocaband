@@ -1,4 +1,5 @@
 import { ArrowRight } from "lucide-react";
+import LiveGameArtwork from "./LiveGameArtwork";
 
 interface LiveGameHeroProps {
   emoji: string;
@@ -13,11 +14,41 @@ interface LiveGameHeroProps {
   dataTour?: string;
   live?: boolean;
   hint?: string;
+  artwork?: "race" | "speed" | "arena";
 }
 
 /** Activity colors identify the game; the surface and hierarchy stay shared. */
 export default function LiveGameHero({ emoji, title, badge, description, ctaLabel,
-  onStart, background, accent, isRTL = false, dataTour, live, hint }: LiveGameHeroProps) {
+  onStart, background, accent, isRTL = false, dataTour, live, hint, artwork }: LiveGameHeroProps) {
+  if (artwork) {
+    return (
+      <button
+        type="button"
+        onClick={onStart}
+        data-tour={dataTour}
+        className="vb-card vb-interactive-card group relative flex h-full w-full flex-col overflow-hidden p-0 text-start focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--vb-accent)]"
+      >
+        <span className="relative block h-[118px] w-full overflow-hidden">
+          <LiveGameArtwork game={artwork} />
+          <span className="absolute end-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/90 px-2.5 py-1 text-xs font-bold text-slate-700 shadow-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" aria-hidden="true" />
+            {badge}
+          </span>
+        </span>
+        <span className="flex w-full flex-1 flex-col px-5 pb-4 pt-4">
+          <span className="text-xl font-extrabold leading-snug tracking-tight">{title}</span>
+          <span className="mt-2 flex-1 text-sm leading-relaxed text-[var(--vb-text-secondary)]">{description}</span>
+          {hint && <span className="mt-4 text-xs font-semibold text-[var(--vb-text-muted)]">{hint}</span>}
+          <span className="mt-4 flex min-h-11 w-full items-center justify-between border-t border-[var(--vb-border)] pt-3 text-sm font-bold" style={{ color: accent }}>
+            {ctaLabel}
+            <span className="grid h-8 w-8 place-items-center rounded-full" style={{ backgroundColor: `color-mix(in srgb, ${accent} 12%, transparent)` }}>
+              <ArrowRight size={17} className={isRTL ? "rotate-180" : undefined} aria-hidden="true" />
+            </span>
+          </span>
+        </span>
+      </button>
+    );
+  }
   return (
     <button type="button" onClick={onStart} data-tour={dataTour}
       className="vb-card vb-interactive-card group relative flex h-full w-full flex-col overflow-hidden p-5">

@@ -132,6 +132,7 @@ import {
   QP_SPEED_BONUS_MAX,
   QP_ARENA_WIDTH,
   QP_ARENA_HEIGHT,
+  QP_ARENA_MIN_WORD_DISTANCE,
   QP_ARENA_TICK_MS,
   QP_ARENA_MAX_PLAYERS,
   QP_ARENA_DEFAULT_GRAB_RADIUS,
@@ -2454,25 +2455,33 @@ async function startServer() {
     });
   }
 
-  function qpArenaSpawnPos(): { x: number; y: number } {
-    return {
-      x: 80 + Math.floor(Math.random() * (QP_ARENA_WIDTH - 160)),
-      y: 80 + Math.floor(Math.random() * (QP_ARENA_HEIGHT - 160)),
-    };
+  function qpArenaSpawnPos(avoid: QpArenaPos[] = []): QpArenaPos {
+    const roll = (): QpArenaPos => ({
+      x: 120 + Math.floor(Math.random() * (QP_ARENA_WIDTH - 240)),
+      y: 120 + Math.floor(Math.random() * (QP_ARENA_HEIGHT - 240)),
+    });
+    // With a full class, independent random spawns can pile avatars over
+    // each other or place a student directly on a word. Rejection sampling
+    // keeps the initial board legible without a costly layout pass.
+    for (let attempt = 0; attempt < 80; attempt++) {
+      const point = roll();
+      if (avoid.every(other => Math.hypot(other.x - point.x, other.y - point.y) >= 180)) return point;
+    }
+    return roll();
   }
 
   /** Scatter `count` token positions with simple rejection sampling —
-   *  min ~180 logical units apart, ~90 away from the edges — so two words
+   *  min ~420 logical units apart, ~135 away from the edges - so two words
    *  never overlap enough for one touch to be ambiguous about which token
-   *  was grabbed. Spacing + margin scale with the bigger 2800×1960 world so
+   *  was grabbed. Spacing + margin scale with the 4200×2940 world so
    *  words feel far apart (the whole batch is on the map at once now). `avoid`
    *  seeds the spacing check with positions already on the map (used by respawn
    *  so a recycled pickup doesn't land on a live token) without returning them.
    *  Falls back to a plain random spot after 40 rejected candidates (a crowded
    *  map beats an infinite loop). */
   function qpArenaScatterPositions(count: number, avoid: QpArenaPos[] = []): QpArenaPos[] {
-    const MARGIN = 90;
-    const MIN_DIST = 180;
+    const MARGIN = 135;
+    const MIN_DIST = QP_ARENA_MIN_WORD_DISTANCE;
     const roll = (): QpArenaPos => ({
       x: MARGIN + Math.floor(Math.random() * (QP_ARENA_WIDTH - 2 * MARGIN)),
       y: MARGIN + Math.floor(Math.random() * (QP_ARENA_HEIGHT - 2 * MARGIN)),
@@ -2914,7 +2923,8 @@ async function startServer() {
       }
       if (arena) {
         if (clientId && !arena.positions.has(clientId) && arena.positions.size < QP_ARENA_MAX_PLAYERS) {
-          arena.positions.set(clientId, { ...qpArenaSpawnPos(), dirty: true, lastMoveTs: Date.now() });
+          const occupied = [...arena.positions.values(), ...[...arena.words.values()].flatMap(w => w.pos ? [w.pos] : [])];
+          arena.positions.set(clientId, { ...qpArenaSpawnPos(occupied), dirty: true, lastMoveTs: Date.now() });
         }
         qpSend(socketId, QP_SERVER_EVENTS.ARENA_STATE, qpArenaStateFor(state));
         qpSend(socketId, QP_SERVER_EVENTS.ROUGH_MODE, { sessionCode: code, enabled: arena.roughMode });
@@ -3821,7 +3831,7 @@ async function startServer() {
       const now = Date.now();
       for (const clientId of state.students.keys()) {
         if (positions.size >= QP_ARENA_MAX_PLAYERS) break;
-        positions.set(clientId, { ...qpArenaSpawnPos(), dirty: true, lastMoveTs: now });
+        positions.set(clientId, { ...qpArenaSpawnPos([...scatter, ...positions.values()]), dirty: true, lastMoveTs: now });
       }
 
       // Scatter the game elements (Speed Boost / Bonus Star / Double Points /
@@ -3869,9 +3879,10 @@ async function startServer() {
     // ─── Word Hunt Arena: student avatar movement ──────────────────────
     // Persist positions separately so frequent moves cannot conflict with answers.
     // Broadcast only acknowledged writes, coalesced at the existing tick cadence.
-    qpOn(QP_EVENTS.ARENA_MOVE, async (payload: QpArenaMovePayload) => {
-      if (!payload || !isValidSessionCode(payload.sessionCode) || !isValidClientId(payload.clientId)) return;
-      if (!Number.isFinite(payload.x) || !Number.isFinite(payload.y) || !qpMoveLimiter.checkLimit(socket.id)) return;
+    qpOn(QP_EVENTS.ARENA_MOVE, async (payload: QpArenaMovePayload, ack) => {
+      if (!payload || !isValidSessionCode(payload.sessionCode) || !isValidClientId(payload.clientId)) return ack({ ok: false, code: "invalid_payload" });
+      if (!Number.isFinite(payload.x) || !Number.isFinite(payload.y)) return ack({ ok: false, code: "invalid_payload" });
+      if (!qpMoveLimiter.checkLimit(socket.id)) return ack({ ok: false, code: "rate_limited" });
       const position = { x: Math.round(Math.min(QP_ARENA_WIDTH, Math.max(0, payload.x))),
         y: Math.round(Math.min(QP_ARENA_HEIGHT, Math.max(0, payload.y))), lastMoveTs: Date.now() };
       const result = await qpStore.move(payload.sessionCode, payload.clientId, socket.id, position);
@@ -3880,6 +3891,7 @@ async function startServer() {
         if (!pending) { pending = new Map(); qpMoves.set(payload.sessionCode, pending); }
         pending.set(payload.clientId, position);
       }
+      ack(result.status === "ok" ? { ok: true } : { ok: false, code: result.status });
     });
 
     // ─── Word Hunt Arena: student grabs a word ─────────────────────────

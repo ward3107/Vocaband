@@ -8,6 +8,7 @@ import {
   QP_ARENA_HURRICANE_STUN_MS,
   QP_ARENA_WIDTH,
   QP_ARENA_HEIGHT,
+  QP_ARENA_MIN_WORD_DISTANCE,
   QP_ARENA_DEFAULT_GRAB_RADIUS,
   QP_ARENA_DEFAULT_VISIBLE,
   QP_ARENA_MAX_WORDS,
@@ -60,8 +61,8 @@ describe("arena pickup contract", () => {
  */
 describe("arena world sizing", () => {
   it("keeps the 10:7 aspect on the enlarged world", () => {
-    expect(QP_ARENA_WIDTH).toBe(2800);
-    expect(QP_ARENA_HEIGHT).toBe(1960);
+    expect(QP_ARENA_WIDTH).toBe(4200);
+    expect(QP_ARENA_HEIGHT).toBe(2940);
     // 10:7 → width / height === 10 / 7.
     expect(QP_ARENA_WIDTH / QP_ARENA_HEIGHT).toBeCloseTo(10 / 7, 5);
   });
@@ -70,6 +71,10 @@ describe("arena world sizing", () => {
     // No reserves: the default on-map count is the full ceiling so all picked
     // words are placed at start (the server sets the real count = batch size).
     expect(QP_ARENA_DEFAULT_VISIBLE).toBeGreaterThanOrEqual(QP_ARENA_MAX_WORDS);
+  });
+
+  it("spaces word tokens well beyond their touch targets", () => {
+    expect(QP_ARENA_MIN_WORD_DISTANCE).toBeGreaterThanOrEqual(400);
   });
 
   it("uses a walk-onto-the-word grab radius (tight, overlap-only)", () => {

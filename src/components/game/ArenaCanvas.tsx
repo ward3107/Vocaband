@@ -29,15 +29,15 @@ import {
 } from "../../core/quickPlayProtocol";
 import { arenaMapById } from "./arenaMaps";
 import type { ArenaInputVector } from "./ArenaJoystick";
+import { ARENA_STUDENT_STRINGS, type ArenaClaimCopy } from "../../views/arenaStrings";
 
-/** Local avatar speed in logical units/sec — tuned so crossing the arena
- *  takes ~4s: fast enough to feel like a chase, slow enough to steer.
- *  Scales with QP_ARENA_WIDTH (was 250 at 1000 wide) so the bigger world
- *  still crosses in ~4s. */
-const SELF_SPEED = (QP_ARENA_WIDTH / 1000) * 250;
+/** Local avatar speed in logical units/sec, tuned for precise phone steering. */
+// Keep full-stick screen travel close to the old feel as the student's
+// follow-camera shows a smaller slice of the larger world.
+const SELF_SPEED = (QP_ARENA_WIDTH / 1000) * 180;
 /** Easing factor for remote avatars (per frame at 60fps). */
 const EASE_K = 0.2;
-/** Leave a word's radius by this factor before auto-grab may re-fire. */
+/** Leave a pickup's radius by this factor before auto-collect may re-fire. */
 const REARM_FACTOR = 1.2;
 
 /** Each pickup medallion's face emoji. All four are floating medallions now —
@@ -62,13 +62,10 @@ interface ArenaCanvasProps {
   /** The canvas writes the local avatar's position here every frame; the
    *  parent's 10/sec send loop reads it (decoupled from the RAF rate). */
   selfPosRef?: RefObject<{ x: number; y: number }>;
-  /** Auto-grab: fired once per approach when the local avatar enters an
-   *  available word's grab radius. Also makes word tokens tappable —
-   *  tapping a word in range grabs it; tapping a far word sets it as the
-   *  run target and the avatar auto-runs there until the grab fires
-   *  (kids tap the word, not the joystick — the server's range referee
-   *  used to deny those taps outright, which read as "clicking is broken"). */
+  /** An explicit tap within the grab radius attempts a word claim.
+   *  The server decides which student claimed it first. */
   onGrab?: (wordId: string, x: number, y: number) => void;
+  claimCopy?: ArenaClaimCopy;
   /** Scattered game elements (Speed Boost / Bonus Star / Double Points / Mud).
    *  Rendered in the same scaled world layer as words, so camera zoom +
    *  counter-scale apply identically. */
@@ -122,6 +119,7 @@ interface ArenaCanvasProps {
 export default function ArenaCanvas({
   arena, positionsRef, leaderboard,
   selfClientId, inputRef, selfPosRef, onGrab,
+  claimCopy = ARENA_STUDENT_STRINGS.en.claim,
   pickups = [], onPickupCollect, speedBoostUntilRef, hurricaneStunUntilRef, stunnedUntilRef,
   dashUntilRef, onTackle,
   readOnly = false, isPaused = false, fill = false, zoom = 1, className = "",
@@ -139,18 +137,9 @@ export default function ArenaCanvas({
   // Smoothed display position per avatar — eased toward the snapshot target.
   const displayRef = useRef(new Map<string, { x: number; y: number }>());
   const selfRef = useRef<{ x: number; y: number } | null>(null);
-  // Words the local player already attempted this approach — re-armed only
-  // after leaving radius × REARM_FACTOR, so one pass can't spam the referee.
-  const attemptedRef = useRef(new Set<string>());
-  // Tap-to-run target. State drives the highlight ring (taps are rare);
-  // the ref mirror is what the 60fps loop reads.
-  const [navTargetId, setNavTargetId] = useState<string | null>(null);
-  const navTargetRef = useRef<string | null>(null);
-  const setNavTarget = useCallback((id: string | null) => {
-    if (navTargetRef.current === id) return;
-    navTargetRef.current = id;
-    setNavTargetId(id);
-  }, []);
+  // The nearby cue updates only when its target changes, not every frame.
+  const [nearbyWordId, setNearbyWordId] = useState<string | null>(null);
+  const nearbyWordRef = useRef<string | null>(null);
 
   // Mirror render-time data into refs so the RAF loop never closes over
   // stale props (and the effect doesn't restart on every word patch).
@@ -167,7 +156,7 @@ export default function ArenaCanvas({
   const onPickupCollectRef = useRef(onPickupCollect);
   useEffect(() => { onPickupCollectRef.current = onPickupCollect; }, [onPickupCollect]);
   // Consumables the local player already collected this approach — re-armed
-  // after leaving radius × REARM_FACTOR, exactly like attemptedRef for words.
+  // after leaving radius × REARM_FACTOR.
   const pickupAttemptedRef = useRef(new Set<string>());
   // Dash-tackle plumbing. onTackleRef avoids restarting the RAF effect on each
   // render; tackledThisDashRef holds the clientIds already reported during the
@@ -195,9 +184,10 @@ export default function ArenaCanvas({
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
   const paused = isPaused || tabHidden;
-  // Don't resume a stale run after the buzzer closes — the hunt restarts
-  // from wherever the player chooses next.
-  useEffect(() => { if (paused) setNavTarget(null); }, [paused, setNavTarget]);
+  // Hide the claim cue while the student's question is open.
+  useEffect(() => {
+    if (paused) nearbyWordRef.current = null;
+  }, [paused]);
 
   // Track the container's pixel size — transforms are written in pixels,
   // positions live in logical units.
@@ -238,7 +228,7 @@ export default function ArenaCanvas({
         const input = inputRef?.current;
         // Stunned (hurricane self-stun or a dash-tackle hit) → input is frozen
         // and the avatar visibly spins until the epoch-ms ref elapses. Checked
-        // first so a stun overrides any joystick / tap-run during the window.
+        // first so a stun overrides joystick movement during the window.
         const stunned = !!hurricaneStunUntilRef?.current && hurricaneStunUntilRef.current > Date.now();
         // Effective speed = base × (Speed Boost active?) × (Dash active?). Both
         // decay via their epoch-ms refs — pure client effects on the server-
@@ -254,29 +244,9 @@ export default function ArenaCanvas({
         // tackle the same target again.
         if (!dashing && dashWasActiveRef.current) tackledThisDashRef.current.clear();
         dashWasActiveRef.current = dashing;
-        if (stunned) {
-          setNavTarget(null); // a stun cancels any in-flight tap-run
-        } else if (input && (input.dx !== 0 || input.dy !== 0)) {
-          setNavTarget(null); // the joystick always overrides a tapped target
+        if (!stunned && input && (input.dx !== 0 || input.dy !== 0)) {
           self.x = Math.max(0, Math.min(QP_ARENA_WIDTH, self.x + input.dx * speed * dt));
           self.y = Math.max(0, Math.min(QP_ARENA_HEIGHT, self.y + input.dy * speed * dt));
-        } else if (navTargetRef.current) {
-          // Tap-to-run: head straight for the tapped word; the auto-grab
-          // below fires the moment its radius is entered.
-          const target = wordsRef.current.find(w => w.wordId === navTargetRef.current);
-          if (!target || target.state !== "available") {
-            setNavTarget(null); // grabbed by someone else mid-run — stop
-          } else {
-            const ddx = target.pos.x - self.x;
-            const ddy = target.pos.y - self.y;
-            const dist = Math.hypot(ddx, ddy);
-            if (dist > 1) {
-              const step = Math.min(dist, speed * dt);
-              self.x += (ddx / dist) * step;
-              self.y += (ddy / dist) * step;
-            }
-            if (dist <= grabRadiusRef.current) setNavTarget(null);
-          }
         }
         if (selfPosRef?.current) {
           selfPosRef.current.x = self.x;
@@ -305,20 +275,24 @@ export default function ArenaCanvas({
           world.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${z})`;
         }
 
-        // Auto-grab on contact — once per word per approach.
+        // Claiming requires a tap. Highlight the nearest available word in range.
         const radius = grabRadiusRef.current;
+        let nearestId: string | null = null;
+        let nearestDist = radius;
         for (const w of wordsRef.current) {
           const dist = Math.hypot(self.x - w.pos.x, self.y - w.pos.y);
-          if (w.state === "available" && dist <= radius && !attemptedRef.current.has(w.wordId)) {
-            attemptedRef.current.add(w.wordId);
-            onGrabRef.current?.(w.wordId, self.x, self.y);
-          } else if (dist > radius * REARM_FACTOR) {
-            attemptedRef.current.delete(w.wordId);
+          if (w.state === "available" && dist <= nearestDist) {
+            nearestId = w.wordId;
+            nearestDist = dist;
           }
+        }
+        if (nearestId !== nearbyWordRef.current) {
+          nearbyWordRef.current = nearestId;
+          setNearbyWordId(nearestId);
         }
 
         // Auto-collect pickups on contact — once per pickup per approach,
-        // exactly like auto-grab. All four kinds are collectible (the hurricane
+        // All four kinds are collectible (the hurricane
         // collect triggers the self-stun via ARENA_PICKUP_GONE).
         for (const pk of pickupsRef.current) {
           const dist = Math.hypot(self.x - pk.pos.x, self.y - pk.pos.y);
@@ -370,25 +344,25 @@ export default function ArenaCanvas({
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [paused, readOnly, selfClientId, positionsRef, inputRef, selfPosRef, speedBoostUntilRef, hurricaneStunUntilRef, stunnedUntilRef, dashUntilRef, setNavTarget]);
+  }, [paused, readOnly, selfClientId, positionsRef, inputRef, selfPosRef, speedBoostUntilRef, hurricaneStunUntilRef, stunnedUntilRef, dashUntilRef]);
 
-  // Tap = grab when in range, otherwise run there (auto-grab on arrival).
+  // A tap claims only within the referee's radius; distant taps never move the avatar.
   const handleWordTap = useCallback((wordId: string) => {
     const self = selfRef.current;
     const word = wordsRef.current.find(w => w.wordId === wordId);
     if (!word || word.state !== "available") return;
-    if (self && Math.hypot(self.x - word.pos.x, self.y - word.pos.y) <= grabRadiusRef.current) {
-      attemptedRef.current.add(wordId);
+    if (!paused && self && Math.hypot(self.x - word.pos.x, self.y - word.pos.y) <= grabRadiusRef.current) {
       onGrabRef.current?.(wordId, self.x, self.y);
-      return;
     }
-    setNavTarget(wordId);
-  }, [setNavTarget]);
+  }, [paused]);
 
   // Teacher-chosen themed background, synced to every client via ARENA_STATE.
   // Painted as an <img> (object-cover) under a soft scrim so the bright
   // illustrations never drown out the word pills + avatars on top.
   const themedMap = arenaMapById(arena.mapId);
+  const claimableWord = !readOnly && !paused
+    ? arena.words.find(w => w.wordId === nearbyWordId && w.state === "available")
+    : null;
 
   return (
     <div
@@ -413,13 +387,11 @@ export default function ArenaCanvas({
         </>
       )}
 
-      {/* Word tokens — React-rendered (lifecycle changes are rare). On the
-          student side, available tokens are real buttons: kids' first
-          instinct is to tap the word, not to know about the invisible
-          grab radius — so a tap runs the avatar there. */}
+      {/* Word tokens remain large touch targets. The closest available word
+          in range shows a claim cue and still requires a tap. */}
       {arena.words.map((w) => {
         const tappable = !readOnly && !!onGrab && w.state === "available";
-        const targeted = w.wordId === navTargetId && w.state === "available";
+        const claimable = w.wordId === nearbyWordId && w.state === "available" && !paused;
         // Pseudo-3D depth: a word lower on the map reads as "closer" (bigger,
         // fully opaque, drawn on top); one near the top reads as "farther"
         // (smaller, slightly faded, behind). Turns the flat sticker look into a
@@ -442,12 +414,13 @@ export default function ArenaCanvas({
                 : w.state === "locked"
                   ? "bg-stone-400/80 text-white opacity-70"
                   : "bg-emerald-100 text-emerald-600 opacity-40"
-            } ${targeted ? "ring-4 ring-fuchsia-400/80" : ""}`}
+            } ${claimable ? "ring-4 ring-fuchsia-400/80" : ""}`}
             dir="auto"
           >
             {w.state === "locked" && <Lock size={10} strokeWidth={3} />}
             {w.state === "answered" && <Check size={10} strokeWidth={3} />}
             {w.label}
+            {claimable && <span className="ml-1 rounded-full bg-white/95 px-1.5 py-0.5 text-[9px] font-black tracking-wide text-fuchsia-700">{claimCopy.tap}</span>}
           </motion.div>
         );
         return (
@@ -480,7 +453,7 @@ export default function ArenaCanvas({
               <button
                 type="button"
                 onClick={() => handleWordTap(w.wordId)}
-                aria-label={w.label}
+                aria-label={claimable ? claimCopy.tapToClaim(w.label) : claimCopy.moveCloser(w.label)}
                 // p-4 + -m-4 grows the hit box well past the visual pill
                 // without shifting layout — a fat fingertip target on the map
                 // (kids kept missing the small pill on phones).
@@ -545,19 +518,18 @@ export default function ArenaCanvas({
               if (el) avatarElsRef.current.set(p.clientId, el);
               else avatarElsRef.current.delete(p.clientId);
             }}
-            className="absolute left-0 top-0 z-20 flex flex-col items-center"
+            className="pointer-events-none absolute left-0 top-0 z-20 flex flex-col items-center"
             style={{ willChange: "transform", transform: "translate3d(-200px, -200px, 0)" }}
           >
             {/* Student devices: small avatars so the followed map feels big,
                 but the LOCAL player (isSelf) gets a noticeably larger medallion
                 + name so a kid can instantly find themselves in the crowd.
-                Teacher projector (readOnly, whole-map view): larger medallions
-                so the class can see everyone moving from across the room (the
-                projector has no "self", so no isSelf bump there). */}
+                Teacher projector (readOnly, whole-map view): compact markers
+                so thirty students and all word tokens remain distinguishable. */}
             <div
               className={`flex items-center justify-center rounded-full backdrop-blur-sm shadow-md ${
                 readOnly
-                  ? "w-11 h-11 sm:w-14 sm:h-14 text-xl sm:text-3xl"
+                  ? "w-7 h-7 sm:w-8 sm:h-8 text-sm sm:text-base"
                   : isSelf
                     ? "w-9 h-9 sm:w-12 sm:h-12 text-lg sm:text-2xl"
                     : "w-6 h-6 sm:w-8 sm:h-8 text-sm sm:text-lg"
@@ -567,12 +539,12 @@ export default function ArenaCanvas({
                   : "bg-white/60 border border-white/80"
               }`}
             >
-              <QPAvatar value={p.avatar} iconSize={readOnly ? 28 : isSelf ? 20 : 13} className="text-indigo-600" />
+              <QPAvatar value={p.avatar} iconSize={readOnly ? 17 : isSelf ? 20 : 13} className="text-indigo-600" />
             </div>
             <span
               className={`mt-0.5 px-1.5 rounded-full bg-white/70 font-black text-stone-600 whitespace-nowrap truncate ${
                 readOnly
-                  ? "text-[11px] sm:text-sm max-w-24"
+                  ? "text-[9px] sm:text-[10px] max-w-20"
                   : isSelf
                     ? "text-[10px] sm:text-xs max-w-20 ring-1 ring-fuchsia-300"
                     : "text-[8px] sm:text-[9px] max-w-16"
@@ -584,6 +556,16 @@ export default function ArenaCanvas({
         );
       })}
       </div>
+      {claimableWord && (
+          <button
+            type="button"
+            onClick={() => handleWordTap(claimableWord.wordId)}
+            className="absolute left-1/2 top-4 z-40 flex min-h-12 max-w-[85%] -translate-x-1/2 items-center gap-2 rounded-full border-2 border-white bg-fuchsia-600 px-5 py-2 font-black text-white shadow-xl shadow-fuchsia-900/30 active:scale-95"
+          >
+            <span className="truncate">{claimCopy.claim(claimableWord.label)}</span>
+            <span aria-hidden className="rounded-full bg-white/20 px-2 py-0.5 text-sm">↗</span>
+          </button>
+      )}
     </div>
   );
 }
