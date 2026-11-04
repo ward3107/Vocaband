@@ -28,13 +28,13 @@ import {
   type QpStudentEntry,
 } from "../../core/quickPlayProtocol";
 import { arenaMapById } from "./arenaMaps";
+import ArenaAtmosphere from "./ArenaAtmosphere";
 import type { ArenaInputVector } from "./ArenaJoystick";
 import { ARENA_STUDENT_STRINGS, type ArenaClaimCopy } from "../../views/arenaStrings";
 
-/** Local avatar speed in logical units/sec, tuned for precise phone steering. */
-// Keep full-stick screen travel close to the old feel as the student's
-// follow-camera shows a smaller slice of the larger world.
-const SELF_SPEED = (QP_ARENA_WIDTH / 1000) * 180;
+/** At 3.6x follow-camera zoom, this holds full-stick motion near half a phone
+ * viewport per second while the expanded world takes longer to cross. */
+const SPEED_PER_1000_UNITS = 150;
 /** Easing factor for remote avatars (per frame at 60fps). */
 const EASE_K = 0.2;
 /** Leave a pickup's radius by this factor before auto-collect may re-fire. */
@@ -124,6 +124,11 @@ export default function ArenaCanvas({
   dashUntilRef, onTackle,
   readOnly = false, isPaused = false, fill = false, zoom = 1, className = "",
 }: ArenaCanvasProps) {
+  // A reconnecting student can finish an arena started before a deployment.
+  // Render that session with its original bounds rather than new defaults.
+  const worldWidth = arena.width || QP_ARENA_WIDTH;
+  const worldHeight = arena.height || QP_ARENA_HEIGHT;
+  const selfSpeed = (worldWidth / 1000) * SPEED_PER_1000_UNITS;
   const containerRef = useRef<HTMLDivElement | null>(null);
   // The scaled/panned "world" layer (background + tokens + avatars). The RAF
   // loop writes its transform each frame to follow the local avatar.
@@ -196,11 +201,11 @@ export default function ArenaCanvas({
     if (!el) return;
     const ro = new ResizeObserver(() => {
       const r = el.getBoundingClientRect();
-      scaleRef.current = { x: r.width / QP_ARENA_WIDTH, y: r.height / QP_ARENA_HEIGHT };
+      scaleRef.current = { x: r.width / worldWidth, y: r.height / worldHeight };
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [worldWidth, worldHeight]);
 
   // ─── The single RAF loop ────────────────────────────────────────────
   useEffect(() => {
@@ -222,7 +227,7 @@ export default function ArenaCanvas({
           const seeded = positionsRef.current?.get(selfClientId);
           selfRef.current = seeded
             ? { ...seeded }
-            : { x: QP_ARENA_WIDTH / 2, y: QP_ARENA_HEIGHT / 2 };
+            : { x: worldWidth / 2, y: worldHeight / 2 };
         }
         const self = selfRef.current;
         const input = inputRef?.current;
@@ -234,7 +239,7 @@ export default function ArenaCanvas({
         // decay via their epoch-ms refs — pure client effects on the server-
         // synced position.
         const nowMs = Date.now();
-        let speed = SELF_SPEED;
+        let speed = selfSpeed;
         if (speedBoostUntilRef?.current && speedBoostUntilRef.current > nowMs) {
           speed *= QP_ARENA_SPEED_BOOST_MULT;
         }
@@ -245,8 +250,8 @@ export default function ArenaCanvas({
         if (!dashing && dashWasActiveRef.current) tackledThisDashRef.current.clear();
         dashWasActiveRef.current = dashing;
         if (!stunned && input && (input.dx !== 0 || input.dy !== 0)) {
-          self.x = Math.max(0, Math.min(QP_ARENA_WIDTH, self.x + input.dx * speed * dt));
-          self.y = Math.max(0, Math.min(QP_ARENA_HEIGHT, self.y + input.dy * speed * dt));
+          self.x = Math.max(0, Math.min(worldWidth, self.x + input.dx * speed * dt));
+          self.y = Math.max(0, Math.min(worldHeight, self.y + input.dy * speed * dt));
         }
         if (selfPosRef?.current) {
           selfPosRef.current.x = self.x;
@@ -344,7 +349,7 @@ export default function ArenaCanvas({
     };
     raf = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(raf);
-  }, [paused, readOnly, selfClientId, positionsRef, inputRef, selfPosRef, speedBoostUntilRef, hurricaneStunUntilRef, stunnedUntilRef, dashUntilRef]);
+  }, [paused, readOnly, selfClientId, positionsRef, inputRef, selfPosRef, speedBoostUntilRef, hurricaneStunUntilRef, stunnedUntilRef, dashUntilRef, selfSpeed, worldWidth, worldHeight]);
 
   // A tap claims only within the referee's radius; distant taps never move the avatar.
   const handleWordTap = useCallback((wordId: string) => {
@@ -369,7 +374,7 @@ export default function ArenaCanvas({
       ref={containerRef}
       dir="ltr" // coordinates are absolute — never mirrored for RTL
       className={`relative w-full ${fill ? "h-full" : ""} overflow-hidden rounded-3xl border border-indigo-200/60 bg-gradient-to-br from-indigo-100 via-violet-50 to-fuchsia-100 shadow-lg shadow-indigo-500/20 ${className}`}
-      style={{ ...(fill ? {} : { aspectRatio: `${QP_ARENA_WIDTH} / ${QP_ARENA_HEIGHT}` }), touchAction: "none" }}
+      style={{ ...(fill ? {} : { aspectRatio: `${worldWidth} / ${worldHeight}` }), touchAction: "none" }}
     >
       {/* The camera "world" — scaled + panned as one layer by the RAF loop so
           the whole scene (map, tokens, avatars) follows the local player. */}
@@ -386,6 +391,7 @@ export default function ArenaCanvas({
           {/* A light center and shaded edges give the stage depth while
               preserving contrast for word and player markers. */}
           <div aria-hidden className="pointer-events-none absolute inset-0 z-0" style={{ background: "radial-gradient(ellipse at 50% 45%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 48%, rgba(7,24,26,0.24) 100%)" }} />
+          <ArenaAtmosphere mapId={themedMap.id} />
         </>
       )}
 
@@ -398,7 +404,7 @@ export default function ArenaCanvas({
         // fully opaque, drawn on top); one near the top reads as "farther"
         // (smaller, slightly faded, behind). Turns the flat sticker look into a
         // scene with depth. depth: 0 = far/top … 1 = near/bottom.
-        const depth = w.pos.y / QP_ARENA_HEIGHT;
+        const depth = w.pos.y / worldHeight;
         const depthScale = 0.82 + depth * 0.36;
         const baseScale = zoom > 1 ? 1 / zoom : 1;
         const pill = (
@@ -430,8 +436,8 @@ export default function ArenaCanvas({
             key={w.wordId}
             className="absolute"
             style={{
-              left: `${(w.pos.x / QP_ARENA_WIDTH) * 100}%`,
-              top: `${(w.pos.y / QP_ARENA_HEIGHT) * 100}%`,
+              left: `${(w.pos.x / worldWidth) * 100}%`,
+              top: `${(w.pos.y / worldHeight) * 100}%`,
               // Counter-scale by 1/zoom (constant on-screen size as the camera
               // enlarges the map) times the depth scale. Nearer words sit on
               // top via z-index; farther ones fade slightly.
@@ -483,8 +489,8 @@ export default function ArenaCanvas({
             aria-hidden
             className="pointer-events-none absolute z-[15]"
             style={{
-              left: `${(pk.pos.x / QP_ARENA_WIDTH) * 100}%`,
-              top: `${(pk.pos.y / QP_ARENA_HEIGHT) * 100}%`,
+              left: `${(pk.pos.x / worldWidth) * 100}%`,
+              top: `${(pk.pos.y / worldHeight) * 100}%`,
               transform: `translate(-50%, -50%) scale(${counterScale})`,
             }}
           >

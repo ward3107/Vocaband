@@ -61,8 +61,8 @@ describe("arena pickup contract", () => {
  */
 describe("arena world sizing", () => {
   it("keeps the 10:7 aspect on the enlarged world", () => {
-    expect(QP_ARENA_WIDTH).toBe(4200);
-    expect(QP_ARENA_HEIGHT).toBe(2940);
+    expect(QP_ARENA_WIDTH).toBe(6000);
+    expect(QP_ARENA_HEIGHT).toBe(4200);
     // 10:7 → width / height === 10 / 7.
     expect(QP_ARENA_WIDTH / QP_ARENA_HEIGHT).toBeCloseTo(10 / 7, 5);
   });
@@ -74,7 +74,7 @@ describe("arena world sizing", () => {
   });
 
   it("spaces word tokens well beyond their touch targets", () => {
-    expect(QP_ARENA_MIN_WORD_DISTANCE).toBeGreaterThanOrEqual(400);
+    expect(QP_ARENA_MIN_WORD_DISTANCE).toBeGreaterThanOrEqual(540);
   });
 
   it("uses a walk-onto-the-word grab radius (tight, overlap-only)", () => {

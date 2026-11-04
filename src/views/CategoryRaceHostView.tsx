@@ -23,15 +23,13 @@ import { useBackLayer } from "../hooks/useBackLayer";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
-import { Play, Clock, Users, LogOut, Check, Copy, Maximize2, Plus, X, Monitor, Minimize2, Square, Zap, Infinity as InfinityIcon } from "lucide-react";
+import { Play, Clock, LogOut, Check, Copy, Plus, X, Monitor, Minimize2, Square, Zap, Infinity as InfinityIcon } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
 import { useAutoAdvance } from "../hooks/useAutoAdvance";
 import { CATEGORIES, categoryLabel, LETTER_POOL } from "../data/category-race-bank";
-import CategoryRacePodium from "../components/game/CategoryRacePodium";
 import GameMusicPlayer from "../components/game/GameMusicPlayer";
-import LobbyRoster from "../components/game/LobbyRoster";
 import KickConfirmModal from "../components/game/KickConfirmModal";
 import GameThemePicker from "../components/game/GameThemePicker";
 import { useGameTheme } from "../hooks/useGameTheme";
@@ -63,7 +61,7 @@ const AUTO_ADVANCE_SECONDS = 5;
  * machine, then slams onto the real letter with a spring pop so the
  * whole class feels the "and the letter is…" beat.
  */
-function SlotLetter({ letter, roundId }: { letter: string; roundId: string }) {
+function SlotLetter({ letter, roundId, hero = false }: { letter: string; roundId: string; hero?: boolean }) {
   const [display, setDisplay] = useState(letter);
   const [settled, setSettled] = useState(false);
   useEffect(() => {
@@ -85,7 +83,7 @@ function SlotLetter({ letter, roundId }: { letter: string; roundId: string }) {
       key={settled ? "settled" : "spin"}
       animate={settled ? { scale: [1.35, 1], rotate: [6, 0] } : { scale: 1 }}
       transition={{ type: "spring", stiffness: 320, damping: 14 }}
-      className={`inline-flex items-center justify-center w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-gradient-to-br ${LIVE_GAME_ACCENTS.race.grad} text-white text-7xl sm:text-8xl font-black shadow-xl ${LIVE_GAME_ACCENTS.race.shadow40} mt-1`}
+      className={hero ? "relative my-8 inline-flex h-52 w-52 items-center justify-center rounded-full border border-orange-100/40 bg-orange-200/10 text-[10rem] font-black leading-none text-orange-50 shadow-[0_20px_70px_rgba(255,170,130,.2)] sm:h-72 sm:w-72 sm:text-[14rem]" : `inline-flex items-center justify-center w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-gradient-to-br ${LIVE_GAME_ACCENTS.race.grad} text-white text-7xl sm:text-8xl font-black shadow-xl ${LIVE_GAME_ACCENTS.race.shadow40} mt-1`}
     >
       {display}
     </motion.span>
@@ -179,6 +177,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   const [hasRunRound, setHasRunRound] = useState(false);
   const [copied, setCopied] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
+  const qrOverlayRef = useRef<HTMLDivElement>(null);
   useBackLayer(() => setQrEnlarged(false), { enabled: qrEnlarged, priority: 50 });
   const [restarting, setRestarting] = useState(false);
   // Show the celebratory results overlay when ending a game that has scores.
@@ -242,12 +241,6 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   const secondsLeft = currentRace ? Math.max(0, Math.round((currentRace.deadlineTs - now) / 1000)) : 0;
   const lowTime = roundActive && secondsLeft <= 10;
 
-  // The board shows the top racers; the rest collapse into a "+N more"
-  // summary so a full class stays readable on a projector.
-  const TOP_N = 8;
-  const shownEntries = useMemo(() => sorted.slice(0, presenting ? 12 : TOP_N), [sorted, presenting]);
-  const moreCount = Math.max(0, sorted.length - shownEntries.length);
-  const classAvg = sorted.length ? Math.round(sorted.reduce((s, e) => s + e.score, 0) / sorted.length) : 0;
   const canStart = selectedCats.length > 0;
 
   const toggleCat = (id: string) =>
@@ -383,6 +376,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
               <button
                 type="button"
                 onClick={() => setPresenting(true)}
+                aria-label={t.present}
                 style={{ touchAction: "manipulation" }}
                 className="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-xl font-black text-sm bg-indigo-100 text-indigo-700 hover:bg-indigo-200 active:scale-95 transition"
               >
@@ -391,6 +385,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
               <button
                 type="button"
                 onClick={handleEndAndNew}
+                aria-label={t.endNew}
                 disabled={restarting}
                 style={{ touchAction: "manipulation" }}
                 className={`inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-xl font-black text-sm ${A.chip} active:scale-95 transition disabled:opacity-60`}
@@ -400,6 +395,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
               <button
                 type="button"
                 onClick={handleEnd}
+                aria-label={t.end}
                 style={{ touchAction: "manipulation" }}
                 className="inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-2 rounded-xl font-black text-sm bg-rose-100 text-rose-700 hover:bg-rose-200 active:scale-95 transition"
               >
@@ -548,150 +544,39 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
             </button>
           </div>
         ) : (
-          /* ─────────────── STEP 2 · The room + live play ─────────────── */
+          /* The projector stage and the teacher rail share live socket state. */
           <>
-            {/* Round banner — only shown while a round is live. */}
-            <AnimatePresence>
-              {roundActive && currentRace && (
-                <motion.section
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  className={`mb-4 rounded-3xl border p-6 sm:p-7 text-center shadow-lg ${
-                    lowTime ? "bg-red-50 border-red-200 shadow-red-500/10" : cardCls
-                  }`}
-                >
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-5 sm:gap-10">
-                    <div className="flex flex-col items-center">
-                      <span className={`text-xs font-black uppercase tracking-[0.2em] ${A.label}`}>{t.letterLabel}</span>
-                      <SlotLetter letter={currentRace.letter} roundId={currentRace.roundId} />
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <span className="text-sm font-black uppercase tracking-[0.18em] text-stone-400">{t.roundLive}</span>
-                      {currentRace.untimed ? (
-                        <>
-                          <InfinityIcon className={`mt-1 ${headingCls}`} size={64} strokeWidth={2.5} />
-                          <span className="text-sm font-bold text-stone-400 mt-1">{t.answerWhenReady}</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className={`tabular-nums font-black leading-none mt-1 ${lowTime ? "text-red-600 animate-pulse" : headingCls} text-6xl sm:text-7xl`}>
-                            {secondsLeft}
-                          </span>
-                          <span className="text-sm font-bold text-stone-400 mt-1">{t.seconds(roundSeconds)}</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </motion.section>
-              )}
-            </AnimatePresence>
-
-            {/* Live Red vs Blue total — only in team mode. */}
             {teamMode && <div className="mb-4"><TeamScoreBar entries={sorted} /></div>}
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              {/* Left: join card (QR + code) + play controls. */}
-              {!presenting && (
-                <aside className="lg:col-span-4 space-y-4">
-                  <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
-                    <div className="flex items-center justify-between mb-3">
-                      <h2 className={`text-xs font-black uppercase tracking-widest ${A.label}`}>{t.joinHeading}</h2>
-                      <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
-                        className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition active:scale-95 ${iconBtn}`} aria-label={t.enlarge}>
-                        <Maximize2 size={15} />
-                      </button>
-                    </div>
-                    <div className="flex flex-col items-center text-center">
-                      <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
-                        className="bg-white p-2 rounded-2xl border border-stone-100 shadow-sm active:scale-[0.98] transition" aria-label={t.enlarge}>
-                        <QRCodeSVG value={joinUrl} size={150} />
-                      </button>
-                      <div className="mt-3 w-full">
-                        <div className="text-xs font-bold text-stone-400 uppercase tracking-widest">{t.code}</div>
-                        <div className={`text-4xl font-black tracking-[0.15em] ${headingCls}`}>{liveCode}</div>
-                        <button
-                          type="button"
-                          onClick={handleCopy}
-                          style={{ touchAction: "manipulation" }}
-                          className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm transition active:scale-[0.98] ${
-                            copied ? "bg-emerald-100 text-emerald-700" : `bg-gradient-to-r ${A.grad} text-white shadow-md ${A.shadow30}`
-                          }`}
-                        >
-                          {copied ? <><Check size={16} /> {t.copied}</> : <><Copy size={16} /> {t.copy}</>}
-                        </button>
-                        {!hasRunRound && !roundActive && (
-                          <button
-                            type="button"
-                            onClick={() => setPhase("setup")}
-                            style={{ touchAction: "manipulation" }}
-                            className={`mt-2 w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl font-black text-xs ${A.text600} ${A.soft50} ${A.softHover100} active:scale-[0.98] transition`}
-                          >
-                            ← {t.editGame}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </section>
-
-                  {/* Play controls — start / next / end-round. */}
-                  <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
-                    <button
-                      type="button"
-                      onClick={handleStart}
-                      disabled={selectedCats.length === 0 || roundActive}
-                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                      className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${roundActive || selectedCats.length === 0 ? "bg-stone-300 cursor-not-allowed" : `bg-gradient-to-r ${A.grad} ${A.shadow30} active:scale-[0.98]`}`}
-                    >
-                      {roundActive
-                        ? <><Clock size={18} /> {t.roundLive}{currentRace?.untimed ? "" : ` · ${secondsLeft}s`}</>
-                        : autoCountdown !== null
-                          ? <><Zap size={18} /> {t.autoNextIn(autoCountdown)}</>
-                          : <><Play size={18} /> {hasRunRound ? t.nextRound : t.start}</>}
-                    </button>
-                    {roundActive && (
-                      <button
-                        type="button"
-                        onClick={handleEndRound}
-                        style={{ touchAction: "manipulation" }}
-                        className="mt-2 w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-black text-base bg-rose-100 text-rose-700 hover:bg-rose-200 active:scale-[0.98] transition"
-                      >
-                        <Square size={16} /> {t.endRound}
-                      </button>
-                    )}
-                  </section>
-                </aside>
-              )}
-
-              {/* Main: the board — live roster (pre-game) or leaderboard. */}
-              <div className={`${presenting ? "lg:col-span-12" : "lg:col-span-8"}`}>
-                {hasRunRound || roundActive ? (
-                  <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${presenting ? theme.card : cardCls}`}>
-                    <h2 className={`text-sm font-black uppercase tracking-widest ${A.label} mb-4 flex items-center gap-2`}>
-                      <Users size={18} /> {t.leaderboard}
-                      <span className="ms-auto text-stone-400 normal-case tracking-normal">{t.players(sorted.length)}</span>
-                    </h2>
-                    <CategoryRacePodium entries={shownEntries} emptyText={t.noStudents} large={presenting} onKick={onKick} theme={presenting ? theme : undefined} />
-                    {moreCount > 0 && (
-                      <div className={`mt-3 flex flex-wrap items-center justify-center gap-1.5 rounded-2xl border px-4 py-3 text-center text-xs font-bold ${presenting ? "border-white/15 text-white/80" : "border-outline-variant bg-surface-container text-on-surface-variant"}`}>
-                        {t.morePlaying(moreCount, classAvg)} · {t.ownRankHint}
-                      </div>
-                    )}
-                  </section>
-                ) : (
-                  <section className={`rounded-3xl shadow-lg border p-5 sm:p-6 ${presenting ? theme.card : cardCls}`}>
-                    <LobbyRoster
-                      players={sorted}
-                      countLabel={t.inRoom}
-                      emptyLabel={t.noStudents}
-                      accent={A.rosterGrad}
-                      large={presenting}
-                      onKick={onKick}
-                      theme={presenting ? theme : undefined}
-                    />
-                  </section>
-                )}
-              </div>
+            <div className={`grid gap-4 ${presenting ? "" : "lg:grid-cols-[minmax(0,1fr)_360px]"}`}>
+              <section className="relative flex min-h-[430px] flex-col items-center justify-center overflow-hidden rounded-[1.5rem] border border-orange-200/25 bg-[radial-gradient(circle_at_45%_36%,#623b48,#322b3b_58%,#1c2934)] px-5 py-9 text-center text-white shadow-2xl sm:min-h-[620px]" aria-live="polite">
+                <div aria-hidden className="pointer-events-none absolute left-1/2 top-[44%] h-[310px] w-[310px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-orange-200/20 sm:h-[490px] sm:w-[490px]" />
+                <div aria-hidden className="pointer-events-none absolute left-1/2 top-[44%] h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-orange-200/10 sm:h-[650px] sm:w-[650px]" />
+                <span className="relative text-xs font-black uppercase tracking-[.18em] text-orange-200">{roundActive ? t.roundLive : t.inRoom(sorted.length)}</span>
+                {currentRace ? <SlotLetter letter={currentRace.letter} roundId={currentRace.roundId} hero /> : <span className="relative my-10 text-[clamp(5rem,16vw,12rem)] font-black leading-none text-orange-100">?</span>}
+                <span className="relative text-sm font-bold text-orange-100/80">{roundActive ? t.letterLabel : hasRunRound ? t.nextRound : t.start}</span>
+                <div className="relative mt-8 inline-flex min-h-16 items-center gap-3 rounded-full border border-orange-200/35 bg-orange-200/15 px-6 text-2xl font-black tabular-nums text-orange-100">
+                  <Clock size={20} aria-hidden />
+                  {roundActive && currentRace ? currentRace.untimed ? <InfinityIcon size={32} aria-label={t.untimed} /> : <span className={lowTime ? "animate-pulse" : ""}>{secondsLeft}s</span> : <span>{t.players(sorted.length)}</span>}
+                </div>
+                <div className="relative mt-8 flex flex-wrap justify-center gap-2">{selectedCats.map(id => { const cat = CATEGORIES.find(item => item.id === id); return cat ? <span key={id} className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-bold">{cat.emoji} {categoryLabel(cat, language)}</span> : null; })}</div>
+              </section>
+              {!presenting && <aside className="flex min-w-0 flex-col gap-4 text-white">
+                <section className="rounded-[1.25rem] border border-white/10 bg-[#102532] p-5 shadow-lg">
+                  <h2 className="text-lg font-black text-orange-100">{t.catsHeading}</h2>
+                  <div className="mt-4 grid grid-cols-2 gap-2">{selectedCats.map(id => { const cat = CATEGORIES.find(item => item.id === id); return cat ? <div key={id} className="min-w-0 rounded-xl border border-white/10 bg-white/5 p-3"><span className="text-2xl" aria-hidden>{cat.emoji}</span><b className="mt-1 block truncate text-xs" title={categoryLabel(cat, language)}>{categoryLabel(cat, language)}</b></div> : null; })}</div>
+                </section>
+                <section className="flex-1 rounded-[1.25rem] border border-white/10 bg-[#102532] p-5 shadow-lg">
+                  <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-black text-orange-100">{t.leaderboard}</h2><span className="text-xs font-bold text-white/60">{t.players(sorted.length)}</span></div>
+                  <ol className="mt-3 space-y-1">{sorted.slice(0, 5).map((entry, index) => <li key={entry.clientId} className="flex items-center gap-2 border-b border-white/10 py-2 text-sm"><span className="w-6 font-black text-orange-200">{index + 1}</span><span className="min-w-0 flex-1 truncate font-bold" dir="auto">{entry.nickname}</span><strong className="tabular-nums">{entry.score}</strong><button type="button" onClick={() => onKick(entry.clientId, entry.nickname)} aria-label={`${language === "he" ? "הסר תלמיד" : language === "ar" ? "إزالة الطالب" : "Remove student"}: ${entry.nickname}`} className="rounded px-1 text-white/60 hover:text-rose-200"><X size={14} /></button></li>)}</ol>
+                  {sorted.length === 0 && <p className="mt-3 text-sm text-white/60">{t.noStudents}</p>}
+                  {sorted.length > 5 && <p className="mt-3 text-xs text-white/60">+{sorted.length - 5} {t.players(sorted.length)}</p>}
+                  <div className="mt-5 grid gap-2 border-t border-white/15 pt-4">
+                    <button type="button" onClick={handleStart} disabled={!canStart || roundActive} className="min-h-12 rounded-xl bg-orange-200 px-4 font-black text-slate-950 disabled:opacity-50">{autoCountdown !== null ? t.autoNextIn(autoCountdown) : hasRunRound ? t.nextRound : t.start}</button>
+                    {roundActive && <button type="button" onClick={handleEndRound} className="min-h-11 rounded-xl border border-rose-300/40 bg-rose-950/60 px-4 font-bold">{t.endRound}</button>}
+                    <div className="flex gap-2"><button type="button" onClick={() => setQrEnlarged(true)} className="min-h-11 flex-1 rounded-xl border border-white/20 px-3 font-bold">{t.show} · {liveCode}</button><button type="button" onClick={handleCopy} aria-label={t.copy} className="min-h-11 rounded-xl border border-white/20 px-3 font-bold">{copied ? <Check size={16} /> : <Copy size={16} />}</button>{!hasRunRound && !roundActive && <button type="button" onClick={() => setPhase("setup")} className="min-h-11 rounded-xl border border-white/20 px-3 font-bold">{t.editGame}</button>}</div>
+                  </div>
+                </section>
+              </aside>}
             </div>
           </>
         )}
@@ -762,12 +647,15 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
             onClick={() => setQrEnlarged(false)}
             className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm px-6"
             role="dialog"
+            ref={qrOverlayRef}
           >
             <motion.div
               initial={{ scale: 0.85 }} animate={{ scale: 1 }} exit={{ scale: 0.85 }}
               transition={{ type: "spring", stiffness: 240, damping: 22 }}
+              drag dragConstraints={qrOverlayRef} dragElastic={0.05} dragMomentum={false}
+              style={{ touchAction: "none" }}
               onClick={e => e.stopPropagation()}
-              className="bg-white rounded-3xl p-6 sm:p-8 text-center shadow-2xl"
+              className="cursor-grab rounded-3xl bg-white p-6 text-center shadow-2xl active:cursor-grabbing sm:p-8"
             >
               <QRCodeSVG value={joinUrl} size={Math.min(420, typeof window !== "undefined" ? window.innerWidth - 96 : 420)} />
               <div className="mt-4 text-5xl sm:text-6xl font-black tracking-[0.15em] text-stone-900">{liveCode}</div>

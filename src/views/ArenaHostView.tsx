@@ -35,6 +35,7 @@ import TeamScoreBar from "../components/game/TeamScoreBar";
 import TeamModeToggle from "../components/game/TeamModeToggle";
 import RoughModeToggle from "../components/game/RoughModeToggle";
 import ArenaCanvas from "../components/game/ArenaCanvas";
+import ArenaSoundscape from "../components/game/ArenaSoundscape";
 import { ARENA_MAPS, randomArenaMapId } from "../components/game/arenaMaps";
 import LiveWordPickerModal, { liveWordPickerT } from "../components/game/LiveWordPickerModal";
 import { useTranslate } from "../hooks/useTranslate";
@@ -109,6 +110,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   };
   const [copied, setCopied] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
+  const qrOverlayRef = useRef<HTMLDivElement>(null);
   useBackLayer(() => setQrEnlarged(false), { enabled: qrEnlarged, priority: 50 });
   // Celebratory results overlay when ending a played hunt.
   const [showResults, setShowResults] = useState(false);
@@ -275,6 +277,15 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
               <span className="truncate">{t.title}</span>
             </h1>
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setPresenting(value => !value)}
+                aria-pressed={presenting}
+                className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-xs font-black sm:text-sm ${A.chip}`}
+              >
+                {presenting ? <Minimize2 size={16} /> : <Monitor size={16} />}
+                <span className="hidden sm:inline">{presenting ? t.controls : t.present}</span>
+              </button>
               <span className={`inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl font-black text-xs sm:text-base tracking-[0.12em] ${A.chipStatic}`}>
                 {sessionCode}
               </span>
@@ -289,13 +300,10 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             </div>
           </header>
 
-          {/* Map-only board — Word Hunt Arena shows JUST the live map; students
-              roam it as moving avatars (no names, no leaderboard panel — that
-              stays on the other games). The map fills every available pixel so
-              movement reads big from the back of the room. Final standings
-              appear on the results screen when the hunt ends. A compact team
-              total floats in the corner when Red-vs-Blue is on. */}
-          <div className="flex-1 min-h-0 flex flex-col">
+          {/* The projector stays map-first. Controls mode gives the teacher a
+              compact live dashboard alongside the same full-world map. */}
+          <div className="relative flex-1 min-h-0">
+            <div className="flex h-full min-h-0 flex-col">
             {teamMode && (
               <div className="mb-2 max-w-md mx-auto w-full">
                 <TeamScoreBar entries={sorted} />
@@ -312,11 +320,46 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                   fill
                   className="h-full"
                 />
+                <div className="absolute bottom-3 start-3 z-30 max-w-[calc(100%-1.5rem)]">
+                  <ArenaSoundscape mapId={currentArena.mapId ?? "jungle"} language={language} compact />
+                </div>
               </div>
               <p className={`mt-1 text-center text-[11px] sm:text-xs font-black uppercase tracking-widest ${A.label} flex-shrink-0`}>
                 {t.wordsLeft(wordsLeft)}
               </p>
             </section>
+            </div>
+            {!presenting && (
+              <aside className="absolute end-3 top-3 z-30 max-h-[65%] w-44 overflow-y-auto rounded-2xl border border-emerald-100/50 bg-[#062c2b]/90 p-2 text-white shadow-2xl backdrop-blur-md sm:w-60 sm:p-4 lg:w-64">
+                <div className="grid grid-cols-2 gap-2 lg:gap-3">
+                  <div className="rounded-2xl bg-white/10 p-3">
+                    <strong className="block text-3xl font-black tabular-nums">{sorted.length}</strong>
+                    <span className="text-xs font-bold text-emerald-100">{t.players(sorted.length)}</span>
+                  </div>
+                  <div className="rounded-2xl bg-white/10 p-3">
+                    <strong className="block text-3xl font-black tabular-nums">{wordsLeft}</strong>
+                    <span className="text-xs font-bold text-emerald-100">{t.wordsLeft(wordsLeft)}</span>
+                  </div>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/15">
+                  <div
+                    className="h-full rounded-full bg-emerald-300 transition-[width] duration-500"
+                    style={{ width: `${currentArena.words.length ? (1 - wordsLeft / currentArena.words.length) * 100 : 0}%` }}
+                  />
+                </div>
+                <h2 className="mt-4 text-sm font-black text-emerald-100">{t.leaderboard}</h2>
+                <ol className="mt-2 space-y-1.5">
+                  {sorted.slice(0, 3).map((entry, index) => (
+                    <li key={entry.clientId} className="flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm">
+                      <span className="w-5 shrink-0 font-black text-emerald-200">{index + 1}</span>
+                      <span className="min-w-0 flex-1 truncate font-bold">{entry.nickname}</span>
+                      <span className="font-black tabular-nums">{entry.score}</span>
+                    </li>
+                  ))}
+                  {sorted.length === 0 && <li className="text-xs text-emerald-100">{t.noStudents}</li>}
+                </ol>
+              </aside>
+            )}
           </div>
         </div>
       ) : (
@@ -670,12 +713,15 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             onClick={() => setQrEnlarged(false)}
             className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm px-6"
             role="dialog"
+            ref={qrOverlayRef}
           >
             <motion.div
               initial={{ scale: 0.85 }} animate={{ scale: 1 }} exit={{ scale: 0.85 }}
               transition={{ type: "spring", stiffness: 240, damping: 22 }}
+              drag dragConstraints={qrOverlayRef} dragElastic={0.05} dragMomentum={false}
+              style={{ touchAction: "none" }}
               onClick={e => e.stopPropagation()}
-              className="bg-white rounded-3xl p-6 sm:p-8 text-center shadow-2xl"
+              className="cursor-grab rounded-3xl bg-white p-6 text-center shadow-2xl active:cursor-grabbing sm:p-8"
             >
               <QRCodeSVG value={joinUrl} size={Math.min(420, typeof window !== "undefined" ? window.innerWidth - 96 : 420)} />
               <div className="mt-4 text-5xl sm:text-6xl font-black tracking-[0.15em] text-stone-900">{sessionCode}</div>
