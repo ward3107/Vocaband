@@ -1699,8 +1699,18 @@ export default function QuickPlayMonitor({
           <button type="button" className="min-h-11 rounded-xl bg-red-700 px-3 font-bold text-white" onClick={() => setEndModal(true)}>{language === 'he' ? 'סיום שיעור' : language === 'ar' ? 'إنهاء الدرس' : 'End session'}</button>
         </div>}
       </div>
-      {showAllPlayers ? <main id="main-content" className="flex min-h-0 flex-1 px-3 pb-3">
+      {showAllPlayers ? <main id="main-content" className="flex min-h-0 flex-1 flex-col gap-3 px-3 pb-3 lg:flex-row">
         <QuickPlayBoardStage students={sorted} language={language} onRemove={setConfirmKick} onBonus={giveBonus} onHelp={clearOneHand} />
+        <aside className="max-h-40 shrink-0 overflow-y-auto rounded-2xl border border-white/15 bg-[#102532] p-4 text-white shadow-lg lg:max-h-none lg:w-72" aria-label={dashboardLabels.title}>
+          <h2 className="text-base font-black">{dashboardLabels.help}</h2>
+          <div className="mt-3 space-y-2">
+            {sorted.filter(student => student.handRaisedAt !== null).slice(0, 3).map(student => <div key={student.studentUid} className="flex items-center gap-2 rounded-xl border border-amber-300/30 bg-amber-200/10 p-2 text-sm"><span className="min-w-0 flex-1 truncate font-bold" dir="auto">{student.name}</span><button type="button" onClick={() => clearOneHand(student.studentUid)} className="min-h-9 rounded-lg bg-amber-200 px-2 text-xs font-black text-slate-950">✓</button></div>)}
+            {handRaisedCount(effectiveStudents) === 0 && <p className="text-sm text-white/60">0</p>}
+          </div>
+          <h2 className="mt-5 border-t border-white/15 pt-4 text-base font-black">{dashboardLabels.leader}</h2>
+          <ol className="mt-2 space-y-2">{sorted.slice(0, 3).map((student, index) => <li key={student.studentUid} className="flex items-center gap-2 text-sm"><span className="w-5 text-indigo-200">{index + 1}</span><span className="min-w-0 flex-1 truncate" dir="auto">{student.name}</span><strong className="tabular-nums">{student.score}</strong></li>)}</ol>
+          <button type="button" onClick={() => setShowWordsModal(true)} className="mt-5 min-h-10 w-full rounded-lg border border-white/20 px-3 text-sm font-bold">{tT.qpSelectedWords}</button>
+        </aside>
       </main> : <main id="main-content" className="flex-1 overflow-y-auto p-4 sm:p-8 pb-8">
         {/* ─── Hero: QR + Podium row ──────────────────────────────────────────
             When qrCollapsed is true the QR shrinks to a small floating

@@ -35,6 +35,7 @@ import TeamScoreBar from "../components/game/TeamScoreBar";
 import TeamModeToggle from "../components/game/TeamModeToggle";
 import RoughModeToggle from "../components/game/RoughModeToggle";
 import ArenaCanvas from "../components/game/ArenaCanvas";
+import ArenaSoundscape from "../components/game/ArenaSoundscape";
 import { ARENA_MAPS, randomArenaMapId } from "../components/game/arenaMaps";
 import LiveWordPickerModal, { liveWordPickerT } from "../components/game/LiveWordPickerModal";
 import { useTranslate } from "../hooks/useTranslate";
@@ -300,8 +301,8 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
 
           {/* The projector stays map-first. Controls mode gives the teacher a
               compact live dashboard alongside the same full-world map. */}
-          <div className={`flex-1 min-h-0 ${presenting ? "flex flex-col" : "grid grid-rows-[minmax(0,1fr)_auto] lg:grid-rows-1 lg:grid-cols-[minmax(0,1fr)_288px] gap-3"}`}>
-            <div className="min-h-0 flex flex-col">
+          <div className="relative flex-1 min-h-0">
+            <div className="flex h-full min-h-0 flex-col">
             {teamMode && (
               <div className="mb-2 max-w-md mx-auto w-full">
                 <TeamScoreBar entries={sorted} />
@@ -318,6 +319,9 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                   fill
                   className="h-full"
                 />
+                <div className="absolute bottom-3 start-3 z-30 max-w-[calc(100%-1.5rem)]">
+                  <ArenaSoundscape mapId={currentArena.mapId ?? "jungle"} language={language} compact />
+                </div>
               </div>
               <p className={`mt-1 text-center text-[11px] sm:text-xs font-black uppercase tracking-widest ${A.label} flex-shrink-0`}>
                 {t.wordsLeft(wordsLeft)}
@@ -325,7 +329,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             </section>
             </div>
             {!presenting && (
-              <aside className="min-h-0 overflow-y-auto rounded-3xl border border-emerald-200/30 bg-[#103b3b] p-3 text-white shadow-xl lg:p-5">
+              <aside className="absolute end-3 top-3 z-30 max-h-[65%] w-44 overflow-y-auto rounded-2xl border border-emerald-100/50 bg-[#062c2b]/90 p-2 text-white shadow-2xl backdrop-blur-md sm:w-60 sm:p-4 lg:w-64">
                 <div className="grid grid-cols-2 gap-2 lg:gap-3">
                   <div className="rounded-2xl bg-white/10 p-3">
                     <strong className="block text-3xl font-black tabular-nums">{sorted.length}</strong>

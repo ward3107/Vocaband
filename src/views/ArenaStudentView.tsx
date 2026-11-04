@@ -24,6 +24,7 @@ import QuickPlayErrorScreen from "../components/QuickPlayErrorScreen";
 import SpeedBuzzer, { CountUp, type SpeedBuzzerPhase } from "../components/game/SpeedBuzzer";
 import ArenaCanvas from "../components/game/ArenaCanvas";
 import ArenaMiniMap from "../components/game/ArenaMiniMap";
+import ArenaSoundscape from "../components/game/ArenaSoundscape";
 import ArenaJoystick, { type ArenaInputVector } from "../components/game/ArenaJoystick";
 import ArenaDashButton from "../components/game/ArenaDashButton";
 import TeamSwitcher from "../components/game/TeamSwitcher";
@@ -465,6 +466,9 @@ export default function ArenaStudentView({ sessionCode, setView, classStudent }:
             zoom={3.6}
           />
           <ArenaMiniMap arena={currentArena} selfPosRef={selfPosRef} zoom={3.6} />
+          <div className="absolute end-3 top-3 z-30 max-w-[calc(100%-9rem)]">
+            <ArenaSoundscape mapId={currentArena.mapId ?? "jungle"} language={language} compact duck={!!grant} />
+          </div>
           <ArenaJoystick inputRef={inputRef} disabled={!!grant} />
           {/* Dash — rough mode only. Parked on the LEFT (opposite the joystick's
               right default) so it's reachable by the off thumb. */}
