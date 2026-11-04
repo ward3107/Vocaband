@@ -2,11 +2,9 @@
 // player (useAudio.ts) and the printable QR-code resources
 // (FreeResourcesView.tsx) — keeps them from drifting.
 //
-// Strategy: prefer Cloudflare R2 + CDN when VITE_CLOUDFLARE_URL is set
-// (faster + cheaper at scale), fall back to Supabase Storage so the
-// app keeps working before the bucket is provisioned. Both sources
-// expose the same path layout (`<bucket>/<id>.mp3`), so flipping the
-// env var is a no-op for callers.
+// Curriculum words use R2 when configured. Custom-word MP3s are generated
+// into Supabase Storage, so their URLs must always point to Supabase.
+import { getPublicSupabaseUrl } from '../core/supabasePublicUrl';
 
 export type AudioLang = 'en' | 'he';
 
@@ -19,6 +17,16 @@ const EN_BUCKET = 'sound';
  * gracefully falls back to browser SpeechSynthesis when 404. */
 const HE_BUCKET = 'sound-hebrew';
 
+// Custom IDs are generated as negative timestamps or positive Date.now()
+// values. Bundled vocabulary IDs are small positive integers (currently
+// below 10,000). Keep a generous gap so future bundled sets stay on R2.
+export const isCustomWordAudioId = (wordId: number): boolean =>
+  wordId < 0 || wordId >= 1_000_000;
+
+/** Praise clips ship with the website in public/motivational/. */
+export const getMotivationalAudioUrl = (key: string): string =>
+  `/motivational/${key}.mp3`;
+
 export function getWordAudioUrl(wordId: number, lang: AudioLang = 'en'): string {
   const bucket = lang === 'he' ? HE_BUCKET : EN_BUCKET;
   // Legacy `VITE_CLOUDFRONT_URL` kept for backward compat with old
@@ -26,9 +34,9 @@ export function getWordAudioUrl(wordId: number, lang: AudioLang = 'en'): string 
   const cdn =
     (import.meta.env.VITE_CLOUDFLARE_URL as string | undefined) ||
     (import.meta.env.VITE_CLOUDFRONT_URL as string | undefined);
-  if (cdn && cdn.length > 0) {
-    return `${cdn}/${bucket}/${wordId}.mp3`;
+  if (cdn && cdn.trim().length > 0 && !isCustomWordAudioId(wordId)) {
+    return `${cdn.trim().replace(/\/+$/, '')}/${bucket}/${wordId}.mp3`;
   }
-  const base = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? '';
+  const base = getPublicSupabaseUrl();
   return `${base}/storage/v1/object/public/${bucket}/${wordId}.mp3`;
 }

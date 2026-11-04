@@ -1,4 +1,4 @@
-// Audio hook for playing word pronunciation (motivational sounds removed)
+// Audio hook for word pronunciation and recorded encouragement clips.
 //
 // howler is imported dynamically — its 35 kB raw / 10 kB gz module was
 // previously pulled into the App.tsx eager preload chain because this
@@ -9,7 +9,7 @@
 // latency of an MP3 fetch (~100–300 ms on school Wi-Fi) more than masks
 // howler's load time, so the user never perceives the deferred fetch.
 import type { Howl as HowlType } from 'howler'
-import { getWordAudioUrl } from '../utils/audioUrl'
+import { getMotivationalAudioUrl, getWordAudioUrl, isCustomWordAudioId } from '../utils/audioUrl'
 import { isSlowConnection } from './useEffectiveConnection'
 
 let HowlCtor: typeof HowlType | null = null
@@ -37,9 +37,23 @@ const MAX_WORD_CACHE_SIZE = 100
 const wordCache: Record<AudioCacheKey, HowlType> = {}
 const wordCacheOrder: AudioCacheKey[] = [] // LRU tracking
 const motivationalCache: Record<string, HowlType> = {}
-const failedWordKeys = new Set<AudioCacheKey>() // Track words that failed to load
+const failedWordAt = new Map<AudioCacheKey, number>()
+// A custom recording may arrive shortly after the first attempt. Retry it
+// later instead of keeping an early 404 in the TTS fallback for the session.
+const CUSTOM_AUDIO_RETRY_MS = 15_000
+const recordFailedWord = (key: AudioCacheKey): void => { failedWordAt.set(key, Date.now()) }
+const hasRecentFailure = (key: AudioCacheKey, wordId: number): boolean => {
+  const failedAt = failedWordAt.get(key)
+  if (failedAt === undefined) return false
+  if (!isCustomWordAudioId(wordId) || Date.now() - failedAt < CUSTOM_AUDIO_RETRY_MS) return true
+  failedWordAt.delete(key)
+  wordCache[key]?.unload()
+  delete wordCache[key]
+  const index = wordCacheOrder.indexOf(key)
+  if (index >= 0) wordCacheOrder.splice(index, 1)
+  return false
+}
 
-// Motivational sounds removed - these are now no-ops
 let currentMotivational: HowlType | null = null
 
 // The single word Howl that is currently playing. Auto-speak fires on every
@@ -200,28 +214,17 @@ const speakWithTTS = (text: string, lang: AudioLang = 'en', rateOverride?: numbe
 // of Azure HilaNeural / Google Wavenet files; until then every fetch
 // 404s and the speak() path falls back to browser TTS).
 //
-// Routing — Cloudflare R2 + CDN when VITE_CLOUDFLARE_URL is set,
-// Supabase fallback otherwise. Implementation lives in
+// Bundled words use R2 when configured; custom recordings always use
+// Supabase, where the server uploaded them. Implementation lives in
 // src/utils/audioUrl.ts and is shared with FreeResourcesView's QR-code
 // generator so the in-app player and printed QR codes always resolve
 // to the same file.
 const getAudioUrl = (wordId: number, lang: AudioLang = 'en'): string =>
   getWordAudioUrl(wordId, lang);
 
-const getMotivationalUrl = (key: string): string => {
-  // Use Cloudflare CDN for motivational audio (better caching)
-  const cloudflareUrl = import.meta.env.VITE_CLOUDFRONT_URL || import.meta.env.VITE_CLOUDFLARE_URL
-  if (cloudflareUrl) {
-    return `${cloudflareUrl}/motivational/${key}.mp3`
-  }
-  // Fallback to Supabase if Cloudflare URL not configured
-  const base = import.meta.env.VITE_SUPABASE_URL
-  return `${base}/storage/v1/object/public/motivational/${key}.mp3`
-}
-
-// All motivational phrase keys (must match generated audio files).
-// Keep in sync with MOTIVATIONAL_PHRASES in scripts/generate-motivational.ts.
-const PHRASES = [
+// Only keys with a shipped MP3 belong here. The generator defines more
+// possible phrases than public/motivational currently contains.
+export const MOTIVATIONAL_AUDIO_KEYS = [
   "great-job","well-done","awesome","keep-it-up","nailed-it","brilliant",
   "youre-on-fire","fantastic","way-to-go","superstar","amazing","perfect",
   "excellent","outstanding","incredible","wonderful","spectacular","terrific",
@@ -230,23 +233,18 @@ const PHRASES = [
   "good-thinking","nice-work","good-work","you-did-it","first-try","like-a-pro",
   "you-are-a-champion","unstoppable","on-point","crushing-it","legend","genius",
   "word-master","vocab-hero","language-champion","english-star","you-smashed-it",
-  "top-of-the-class","gold-star","hat-trick","level-up","new-high-score","on-a-roll",
-  "keep-the-streak","nothing-can-stop-you","youre-growing","brain-power",
-  "sharp-as-a-tack","quick-learner","smart-cookie","you-inspire-me",
-  "proud-of-you","you-should-be-proud","hard-work-pays-off","practice-makes-perfect",
-  "every-word-counts","building-your-future","knowledge-is-power",
-  "youre-becoming-fluent","english-unlocked","new-word-learned","vocabulary-growing",
-  "one-step-closer","making-progress","moving-forward","never-give-up",
-  "believe-in-yourself","you-can-do-it","sky-is-the-limit","dream-big",
-  "full-marks","ten-out-of-ten","hundred-percent","flawless","impeccable",
-  "immaculate","marvelous","exceptional","elite","top-tier","first-class",
-  "above-and-beyond","blowing-my-mind","impressed","wow","unbelievable",
-  "speechless","mic-drop","that-was-beautiful","pure-talent"
+  "top-of-the-class","gold-star","level-up","new-high-score","on-a-roll",
+  "nothing-can-stop-you","brain-power","quick-learner","smart-cookie",
+  "proud-of-you","hard-work-pays-off","knowledge-is-power",
+  "english-unlocked","new-word-learned","one-step-closer","making-progress",
+  "never-give-up","you-can-do-it","full-marks","ten-out-of-ten","flawless",
+  "exceptional","elite","top-tier","first-class","wow","unbelievable",
+  "mic-drop","pure-talent"
 ]
 
 let preloadedMotivational = false
 
-const pick = () => PHRASES[Math.floor(Math.random() * PHRASES.length)]
+const pick = () => MOTIVATIONAL_AUDIO_KEYS[Math.floor(Math.random() * MOTIVATIONAL_AUDIO_KEYS.length)]
 
 // Human-readable label for each phrase key (used for on-screen text)
 const PHRASE_LABELS: Record<string, string> = {
@@ -495,7 +493,7 @@ export const useAudio = (options: UseAudioOptions = {}) => {
     const key = audioKey(lang, wordId)
 
     // Skip preloading if this word failed before
-    if (failedWordKeys.has(key)) {
+    if (hasRecentFailure(key, wordId)) {
       return
     }
 
@@ -536,7 +534,7 @@ export const useAudio = (options: UseAudioOptions = {}) => {
           preload: true,
           onloaderror: () => {
             console.warn(`Audio load failed for ${key}`)
-            failedWordKeys.add(key)
+            recordFailedWord(key)
             // Clean up the failed cache entry
             delete wordCache[key]
             const idx = wordCacheOrder.indexOf(key)
@@ -546,7 +544,8 @@ export const useAudio = (options: UseAudioOptions = {}) => {
           },
           onplayerror: () => {
             console.warn(`Audio playback failed for ${key}`)
-            failedWordKeys.add(key)
+            // A blocked autoplay attempt does not mean the MP3 is missing.
+            // Let a later user-initiated play try the recording again.
           }
         })
       }).catch(() => {
@@ -554,7 +553,7 @@ export const useAudio = (options: UseAudioOptions = {}) => {
         // back to TTS on the next speak() call.
         const idx = wordCacheOrder.indexOf(key)
         if (idx > -1) wordCacheOrder.splice(idx, 1)
-        failedWordKeys.add(key)
+        recordFailedWord(key)
       })
     }
   }
@@ -595,7 +594,7 @@ export const useAudio = (options: UseAudioOptions = {}) => {
     window.speechSynthesis?.cancel()
 
     // If this word failed to load before, use TTS immediately
-    if (failedWordKeys.has(key)) {
+    if (hasRecentFailure(key, wordId)) {
       if (fallbackText) {
         speakWithTTS(fallbackText, lang)
       }
@@ -618,7 +617,7 @@ export const useAudio = (options: UseAudioOptions = {}) => {
     // to fall straight to browser TTS. Now they have real MP3s at sound/{id}.mp3
     // generated by /api/tts/custom-words. If the file doesn't exist yet (race
     // with the teacher's generation call), the onloaderror handler will add
-    // this id to failedWordKeys and future calls use TTS fallback automatically.
+    // this id to the failure cache. Custom recordings retry after a short delay.
     preload(wordId)
 
     // Wait for howler to be loaded AND for preload() to have inserted
@@ -648,24 +647,31 @@ export const useAudio = (options: UseAudioOptions = {}) => {
     sound.off('loaderror')
 
     // Add error handler for playback failures - fall back to TTS
-    const handleAudioError = () => {
+    let failureHandled = false
+    const handleAudioError = (missingRecording: boolean) => {
       // Howler can emit a spurious play/load error (e.g. a CORS-blocked
       // decode attempt) even though the html5 <audio> element is actually
       // playing the recorded clip fine. Firing TTS then layers the robotic
       // voice on top of the recorded one — the "double voice" bug. Only
       // fall back to TTS when the clip is genuinely NOT playing.
-      if (sound.playing()) return
+      if (sound.playing() || failureHandled) return
+      failureHandled = true
+      if (missingRecording) recordFailedWord(key)
+      sound.unload()
+      if (wordCache[key] === sound) delete wordCache[key]
+      const index = wordCacheOrder.indexOf(key)
+      if (index >= 0) wordCacheOrder.splice(index, 1)
       console.warn(`[Audio] Playback failed for ${key}, using TTS fallback:`, fallbackText)
       if (fallbackText) {
         speakWithTTS(fallbackText, lang)
       }
     }
 
-    sound.on('playerror', handleAudioError)
+    sound.on('playerror', () => handleAudioError(false))
     // If the MP3 404s (common for freshly-created custom words whose audio the
     // backend is still generating), play browser TTS immediately so the student
     // isn't left with silence on their first tap.
-    sound.on('loaderror', handleAudioError)
+    sound.on('loaderror', () => handleAudioError(true))
 
     // Honour the student's chosen pronunciation speed. Set on every play
     // so toggling slow/normal mid-game takes effect on the next word.
@@ -712,14 +718,13 @@ export const useAudio = (options: UseAudioOptions = {}) => {
     // Preload 5 random phrases — enough for several mode completions
     // without spending bandwidth on the whole library.
     const sample = new Set<string>()
-    while (sample.size < 5 && sample.size < PHRASES.length) sample.add(pick())
+    while (sample.size < 5 && sample.size < MOTIVATIONAL_AUDIO_KEYS.length) sample.add(pick())
     void ensureHowl().then(Howl => {
       sample.forEach(key => {
         if (!motivationalCache[key]) {
           motivationalCache[key] = new Howl({
-            src: [getMotivationalUrl(key)],
-            // See word Howl above — html5 mode avoids the CORS preflight against
-            // R2's *.r2.dev public bucket.
+            src: [getMotivationalAudioUrl(key)],
+            // Same-origin static MP3; html5 mode matches word playback.
             html5: true,
             format: ['mp3'],
             preload: true,
@@ -745,9 +750,8 @@ export const useAudio = (options: UseAudioOptions = {}) => {
     void ensureHowl().then(Howl => {
       if (!motivationalCache[key]) {
         motivationalCache[key] = new Howl({
-          src: [getMotivationalUrl(key)],
-          // See word Howl above — html5 mode avoids the CORS preflight against
-          // R2's *.r2.dev public bucket.
+          src: [getMotivationalAudioUrl(key)],
+          // Same-origin static MP3; html5 mode matches word playback.
           html5: true,
           format: ['mp3'],
           preload: true,
