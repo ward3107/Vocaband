@@ -275,6 +275,15 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
               <span className="truncate">{t.title}</span>
             </h1>
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setPresenting(value => !value)}
+                aria-pressed={presenting}
+                className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-xs font-black sm:text-sm ${A.chip}`}
+              >
+                {presenting ? <Minimize2 size={16} /> : <Monitor size={16} />}
+                <span className="hidden sm:inline">{presenting ? t.controls : t.present}</span>
+              </button>
               <span className={`inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl font-black text-xs sm:text-base tracking-[0.12em] ${A.chipStatic}`}>
                 {sessionCode}
               </span>
@@ -289,13 +298,10 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             </div>
           </header>
 
-          {/* Map-only board — Word Hunt Arena shows JUST the live map; students
-              roam it as moving avatars (no names, no leaderboard panel — that
-              stays on the other games). The map fills every available pixel so
-              movement reads big from the back of the room. Final standings
-              appear on the results screen when the hunt ends. A compact team
-              total floats in the corner when Red-vs-Blue is on. */}
-          <div className="flex-1 min-h-0 flex flex-col">
+          {/* The projector stays map-first. Controls mode gives the teacher a
+              compact live dashboard alongside the same full-world map. */}
+          <div className={`flex-1 min-h-0 ${presenting ? "flex flex-col" : "grid grid-rows-[minmax(0,1fr)_auto] lg:grid-rows-1 lg:grid-cols-[minmax(0,1fr)_288px] gap-3"}`}>
+            <div className="min-h-0 flex flex-col">
             {teamMode && (
               <div className="mb-2 max-w-md mx-auto w-full">
                 <TeamScoreBar entries={sorted} />
@@ -317,6 +323,38 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                 {t.wordsLeft(wordsLeft)}
               </p>
             </section>
+            </div>
+            {!presenting && (
+              <aside className="min-h-0 overflow-y-auto rounded-3xl border border-emerald-200/30 bg-[#103b3b] p-3 text-white shadow-xl lg:p-5">
+                <div className="grid grid-cols-2 gap-2 lg:gap-3">
+                  <div className="rounded-2xl bg-white/10 p-3">
+                    <strong className="block text-3xl font-black tabular-nums">{sorted.length}</strong>
+                    <span className="text-xs font-bold text-emerald-100">{t.players(sorted.length)}</span>
+                  </div>
+                  <div className="rounded-2xl bg-white/10 p-3">
+                    <strong className="block text-3xl font-black tabular-nums">{wordsLeft}</strong>
+                    <span className="text-xs font-bold text-emerald-100">{t.wordsLeft(wordsLeft)}</span>
+                  </div>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/15">
+                  <div
+                    className="h-full rounded-full bg-emerald-300 transition-[width] duration-500"
+                    style={{ width: `${currentArena.words.length ? (1 - wordsLeft / currentArena.words.length) * 100 : 0}%` }}
+                  />
+                </div>
+                <h2 className="mt-4 text-sm font-black text-emerald-100">{t.leaderboard}</h2>
+                <ol className="mt-2 space-y-1.5">
+                  {sorted.slice(0, 3).map((entry, index) => (
+                    <li key={entry.clientId} className="flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-sm">
+                      <span className="w-5 shrink-0 font-black text-emerald-200">{index + 1}</span>
+                      <span className="min-w-0 flex-1 truncate font-bold">{entry.nickname}</span>
+                      <span className="font-black tabular-nums">{entry.score}</span>
+                    </li>
+                  ))}
+                  {sorted.length === 0 && <li className="text-xs text-emerald-100">{t.noStudents}</li>}
+                </ol>
+              </aside>
+            )}
           </div>
         </div>
       ) : (

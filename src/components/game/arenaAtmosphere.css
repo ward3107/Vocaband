@@ -1,0 +1,66 @@
+.arena-atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+  --mote: #fff6c2;
+  --glow: rgba(255, 238, 150, .7);
+  --wash: rgba(255, 244, 186, .12);
+}
+
+.arena-atmosphere::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 22% 8%, var(--wash), transparent 53%);
+  animation: arena-breathe 12s ease-in-out infinite alternate;
+}
+
+.arena-atmosphere__mote {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mote);
+  box-shadow: 0 0 9px 2px var(--glow);
+  opacity: .68;
+  animation: arena-drift 7s ease-in-out infinite alternate;
+}
+
+.arena-atmosphere__mote:nth-child(3n) { width: 4px; height: 4px; animation-duration: 9s; }
+.arena-atmosphere__mote:nth-child(4n) { width: 10px; height: 10px; animation-duration: 11s; }
+
+.arena-atmosphere--bubble {
+  --mote: transparent;
+  --glow: rgba(215, 250, 255, .48);
+  --wash: rgba(142, 245, 255, .12);
+}
+.arena-atmosphere--bubble .arena-atmosphere__mote {
+  border: 2px solid rgba(235, 255, 255, .83);
+  box-shadow: inset 2px 1px 2px rgba(255, 255, 255, .6), 0 0 8px var(--glow);
+  width: 11px;
+  height: 11px;
+  animation-name: arena-rise;
+}
+.arena-atmosphere--star { --mote: #fff; --glow: rgba(188, 195, 255, .9); --wash: rgba(154, 129, 255, .14); }
+.arena-atmosphere--star .arena-atmosphere__mote { animation-name: arena-twinkle; }
+.arena-atmosphere--snow { --mote: #fff; --glow: rgba(220, 243, 255, .72); --wash: rgba(227, 248, 255, .17); }
+.arena-atmosphere--snow .arena-atmosphere__mote { animation-name: arena-fall; }
+.arena-atmosphere--ember { --mote: #ffce73; --glow: rgba(255, 88, 28, .9); --wash: rgba(255, 85, 40, .16); }
+.arena-atmosphere--ember .arena-atmosphere__mote { animation-name: arena-rise; }
+.arena-atmosphere--sand { --mote: #ffe0a1; --glow: rgba(255, 198, 113, .75); --wash: rgba(255, 212, 138, .13); }
+.arena-atmosphere--sand .arena-atmosphere__mote { animation-name: arena-sweep; }
+.arena-atmosphere--sparkle { --mote: #fff; --glow: rgba(255, 190, 229, .85); --wash: rgba(255, 209, 243, .12); }
+.arena-atmosphere--sparkle .arena-atmosphere__mote { animation-name: arena-twinkle; }
+
+@keyframes arena-breathe { from { opacity: .45; } to { opacity: 1; } }
+@keyframes arena-drift { from { transform: translate3d(-8px, 8px, 0); opacity: .25; } to { transform: translate3d(11px, -13px, 0); opacity: .8; } }
+@keyframes arena-rise { from { transform: translate3d(-6px, 13px, 0); opacity: .2; } to { transform: translate3d(7px, -20px, 0); opacity: .75; } }
+@keyframes arena-fall { from { transform: translate3d(-8px, -13px, 0); opacity: .25; } to { transform: translate3d(10px, 18px, 0); opacity: .75; } }
+@keyframes arena-sweep { from { transform: translate3d(-19px, 5px, 0); opacity: .2; } to { transform: translate3d(17px, -4px, 0); opacity: .7; } }
+@keyframes arena-twinkle { from { transform: scale(.65); opacity: .22; } to { transform: scale(1.2); opacity: .9; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .arena-atmosphere::before, .arena-atmosphere__mote { animation: none; }
+}

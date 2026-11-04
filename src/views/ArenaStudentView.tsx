@@ -23,6 +23,7 @@ import QPAvatar from "../components/QPAvatar";
 import QuickPlayErrorScreen from "../components/QuickPlayErrorScreen";
 import SpeedBuzzer, { CountUp, type SpeedBuzzerPhase } from "../components/game/SpeedBuzzer";
 import ArenaCanvas from "../components/game/ArenaCanvas";
+import ArenaMiniMap from "../components/game/ArenaMiniMap";
 import ArenaJoystick, { type ArenaInputVector } from "../components/game/ArenaJoystick";
 import ArenaDashButton from "../components/game/ArenaDashButton";
 import TeamSwitcher from "../components/game/TeamSwitcher";
@@ -281,12 +282,12 @@ export default function ArenaStudentView({ sessionCode, setView, classStudent }:
       const dx = me.x - dasher.x;
       const dy = me.y - dasher.y;
       const len = Math.hypot(dx, dy) || 1;
-      me.x = Math.max(0, Math.min(QP_ARENA_WIDTH, me.x + (dx / len) * 110));
-      me.y = Math.max(0, Math.min(QP_ARENA_HEIGHT, me.y + (dy / len) * 110));
+      me.x = Math.max(0, Math.min(currentArena?.width ?? QP_ARENA_WIDTH, me.x + (dx / len) * 110));
+      me.y = Math.max(0, Math.min(currentArena?.height ?? QP_ARENA_HEIGHT, me.y + (dy / len) * 110));
     }
     setPickupToast(t.tackled);
     playGentle();
-  }), [onTackled, clientId, arenaPositionsRef, t]);
+  }), [onTackled, clientId, arenaPositionsRef, currentArena?.width, currentArena?.height, t]);
 
   // Dash — gated on rough mode (the button only mounts when on, but guard the
   // handler too). Sets the burst window; the canvas reads it per frame and the
@@ -461,8 +462,9 @@ export default function ArenaStudentView({ sessionCode, setView, classStudent }:
             // Big-map feel: enlarge the world and follow the player's avatar
             // (the map scrolls as they move) so the class spreads out and has
             // to roam to hunt words. The host projector stays at 1×.
-            zoom={3.1}
+            zoom={3.6}
           />
+          <ArenaMiniMap arena={currentArena} selfPosRef={selfPosRef} zoom={3.6} />
           <ArenaJoystick inputRef={inputRef} disabled={!!grant} />
           {/* Dash — rough mode only. Parked on the LEFT (opposite the joystick's
               right default) so it's reachable by the off thumb. */}

@@ -2457,30 +2457,30 @@ async function startServer() {
 
   function qpArenaSpawnPos(avoid: QpArenaPos[] = []): QpArenaPos {
     const roll = (): QpArenaPos => ({
-      x: 120 + Math.floor(Math.random() * (QP_ARENA_WIDTH - 240)),
-      y: 120 + Math.floor(Math.random() * (QP_ARENA_HEIGHT - 240)),
+      x: 180 + Math.floor(Math.random() * (QP_ARENA_WIDTH - 360)),
+      y: 180 + Math.floor(Math.random() * (QP_ARENA_HEIGHT - 360)),
     });
     // With a full class, independent random spawns can pile avatars over
     // each other or place a student directly on a word. Rejection sampling
     // keeps the initial board legible without a costly layout pass.
     for (let attempt = 0; attempt < 80; attempt++) {
       const point = roll();
-      if (avoid.every(other => Math.hypot(other.x - point.x, other.y - point.y) >= 180)) return point;
+      if (avoid.every(other => Math.hypot(other.x - point.x, other.y - point.y) >= 240)) return point;
     }
     return roll();
   }
 
   /** Scatter `count` token positions with simple rejection sampling —
-   *  min ~420 logical units apart, ~135 away from the edges - so two words
+   *  min 560 logical units apart, 180 away from the edges - so two words
    *  never overlap enough for one touch to be ambiguous about which token
-   *  was grabbed. Spacing + margin scale with the 4200×2940 world so
+   *  was grabbed. Spacing + margin fit the 6000×4200 world so
    *  words feel far apart (the whole batch is on the map at once now). `avoid`
    *  seeds the spacing check with positions already on the map (used by respawn
    *  so a recycled pickup doesn't land on a live token) without returning them.
-   *  Falls back to a plain random spot after 40 rejected candidates (a crowded
-   *  map beats an infinite loop). */
+   *  If a full 60-word board cannot meet the target, use the best candidate
+   *  found rather than a new random spot that could overlap another token. */
   function qpArenaScatterPositions(count: number, avoid: QpArenaPos[] = []): QpArenaPos[] {
-    const MARGIN = 135;
+    const MARGIN = 180;
     const MIN_DIST = QP_ARENA_MIN_WORD_DISTANCE;
     const roll = (): QpArenaPos => ({
       x: MARGIN + Math.floor(Math.random() * (QP_ARENA_WIDTH - 2 * MARGIN)),
@@ -2489,11 +2489,16 @@ async function startServer() {
     const out: QpArenaPos[] = [...avoid];
     for (let i = 0; i < count; i++) {
       let placed: QpArenaPos | null = null;
-      for (let attempt = 0; attempt < 40 && !placed; attempt++) {
+      let best: QpArenaPos | null = null;
+      let bestDistance = -1;
+      for (let attempt = 0; attempt < 80 && !placed; attempt++) {
         const cand = roll();
-        if (out.every((p) => Math.hypot(p.x - cand.x, p.y - cand.y) >= MIN_DIST)) placed = cand;
+        let distance = Infinity;
+        for (const p of out) distance = Math.min(distance, Math.hypot(p.x - cand.x, p.y - cand.y));
+        if (distance > bestDistance) { best = cand; bestDistance = distance; }
+        if (distance >= MIN_DIST) placed = cand;
       }
-      out.push(placed ?? roll());
+      out.push(placed ?? best ?? roll());
     }
     return out.slice(avoid.length); // drop the seeded avoid positions
   }
@@ -3883,8 +3888,9 @@ async function startServer() {
       if (!payload || !isValidSessionCode(payload.sessionCode) || !isValidClientId(payload.clientId)) return ack({ ok: false, code: "invalid_payload" });
       if (!Number.isFinite(payload.x) || !Number.isFinite(payload.y)) return ack({ ok: false, code: "invalid_payload" });
       if (!qpMoveLimiter.checkLimit(socket.id)) return ack({ ok: false, code: "rate_limited" });
-      const position = { x: Math.round(Math.min(QP_ARENA_WIDTH, Math.max(0, payload.x))),
-        y: Math.round(Math.min(QP_ARENA_HEIGHT, Math.max(0, payload.y))), lastMoveTs: Date.now() };
+      const activeBounds = qpRoundState(payload.sessionCode)?.currentArena?.config;
+      const position = { x: Math.round(Math.min(activeBounds?.width ?? QP_ARENA_WIDTH, Math.max(0, payload.x))),
+        y: Math.round(Math.min(activeBounds?.height ?? QP_ARENA_HEIGHT, Math.max(0, payload.y))), lastMoveTs: Date.now() };
       const result = await qpStore.move(payload.sessionCode, payload.clientId, socket.id, position);
       if (result.status === "ok") {
         let pending = qpMoves.get(payload.sessionCode);
