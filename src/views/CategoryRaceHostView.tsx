@@ -177,6 +177,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   const [hasRunRound, setHasRunRound] = useState(false);
   const [copied, setCopied] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
+  const qrOverlayRef = useRef<HTMLDivElement>(null);
   useBackLayer(() => setQrEnlarged(false), { enabled: qrEnlarged, priority: 50 });
   const [restarting, setRestarting] = useState(false);
   // Show the celebratory results overlay when ending a game that has scores.
@@ -646,12 +647,15 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
             onClick={() => setQrEnlarged(false)}
             className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm px-6"
             role="dialog"
+            ref={qrOverlayRef}
           >
             <motion.div
               initial={{ scale: 0.85 }} animate={{ scale: 1 }} exit={{ scale: 0.85 }}
               transition={{ type: "spring", stiffness: 240, damping: 22 }}
+              drag dragConstraints={qrOverlayRef} dragElastic={0.05} dragMomentum={false}
+              style={{ touchAction: "none" }}
               onClick={e => e.stopPropagation()}
-              className="bg-white rounded-3xl p-6 sm:p-8 text-center shadow-2xl"
+              className="cursor-grab rounded-3xl bg-white p-6 text-center shadow-2xl active:cursor-grabbing sm:p-8"
             >
               <QRCodeSVG value={joinUrl} size={Math.min(420, typeof window !== "undefined" ? window.innerWidth - 96 : 420)} />
               <div className="mt-4 text-5xl sm:text-6xl font-black tracking-[0.15em] text-stone-900">{liveCode}</div>
