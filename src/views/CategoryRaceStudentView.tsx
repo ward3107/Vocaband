@@ -417,7 +417,9 @@ export default function CategoryRaceStudentView({ sessionCode, setView, classStu
             <p className="mt-1 text-stone-500 font-semibold">{t.joinSub}</p>
           </div>
 
+          <label htmlFor="race-student-name" className="mb-2 block text-sm font-bold text-stone-700">{t.namePlaceholder}</label>
           <input
+            id="race-student-name"
             type="text"
             value={name}
             onChange={e => { setName(e.target.value); setJoinError(null); }}
@@ -434,7 +436,7 @@ export default function CategoryRaceStudentView({ sessionCode, setView, classStu
           <QPAvatarPicker selected={avatar} onSelect={setAvatar} />
           </div>
 
-          {joinError && <p className="mt-4 text-sm font-bold text-rose-600 text-center">{joinError}</p>}
+          {joinError && <p role="alert" className="mt-4 text-sm font-bold text-rose-600 text-center">{joinError}</p>}
 
           <button
             type="button"
@@ -664,7 +666,7 @@ function Shell({ children, dir, status, onLeave, leaveLabel, reconnectingLabel }
   reconnectingLabel?: string;
 }) {
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center px-5 bg-gradient-to-br from-fuchsia-50 via-white to-pink-50" dir={dir}>
+    <div className="min-h-[100dvh] flex items-center justify-center px-5 py-6 bg-gradient-to-br from-fuchsia-50 via-white to-pink-50" dir={dir}>
       {status === "disconnected" && (
         <div role="status" className="fixed top-0 inset-x-0 z-50 flex items-center justify-center gap-2 bg-amber-500 text-white font-black text-sm py-2 px-4 shadow-md">
           <Loader2 size={15} className="animate-spin" /> {reconnectingLabel}
