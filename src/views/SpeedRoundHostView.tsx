@@ -411,8 +411,8 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                 className={`w-full inline-flex items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-3 font-black text-sm transition ${
                   pickedWords.length > 0
-                    ? "border-violet-300 text-violet-700 hover:border-violet-400 hover:bg-violet-50"
-                    : "border-stone-300 text-stone-600 hover:border-violet-400 hover:text-violet-700"
+                    ? "border-amber-300 text-amber-800 hover:border-amber-400 hover:bg-amber-50"
+                    : "border-stone-300 text-stone-600 hover:border-amber-400 hover:text-amber-700"
                 }`}
               >
                 <Plus size={16} />
