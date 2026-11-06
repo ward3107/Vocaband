@@ -79,13 +79,14 @@ export interface SpeedBuzzerProps {
   /** Sizing for the outer container — the Speed Round view passes a
    *  full-screen min-height; the arena passes modal-panel sizing. */
   className?: string;
+  game?: "speed" | "arena";
 }
 
 export default function SpeedBuzzer({
   phase, mode, prompt, promptKind, options,
   roundId, deadlineTs, roundSeconds,
   onSubmit, onExpired, result,
-  title, className = "",
+  title, className = "", game = "speed",
 }: SpeedBuzzerProps) {
   const { language, dir } = useLanguage();
   const t = SPEED_STUDENT_STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
@@ -140,17 +141,20 @@ export default function SpeedBuzzer({
     onSubmit(index);
   };
 
-  const shell = `flex flex-col bg-gradient-to-br from-fuchsia-50 via-white to-pink-50 ${className}`;
+  const palette = game === "arena"
+    ? { shell: "from-emerald-50 via-white to-teal-50", text: "text-emerald-700", icon: "text-emerald-600" }
+    : { shell: "from-amber-50 via-white to-orange-50", text: "text-amber-800", icon: "text-amber-600" };
+  const shell = `flex flex-col bg-gradient-to-br ${palette.shell} ${className}`;
 
   if (phase === "answering") {
     const isAudio = promptKind === "audio";
     return (
       <div className={`${shell} px-4 py-5`} dir={dir}>
         <div className="flex items-center justify-between mb-4">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white shadow-sm font-black text-xs text-fuchsia-600">
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white shadow-sm font-black text-xs ${palette.text}`}>
             {SPEED_MODE_META[mode].emoji} {title ?? t.joinTitle}
           </span>
-          <span className={`tabular-nums font-black text-2xl ${secondsLeft <= 3 ? "text-red-600 animate-pulse" : "text-fuchsia-600"}`}>
+          <span className={`tabular-nums font-black text-2xl ${secondsLeft <= 3 ? "text-red-600 animate-pulse" : palette.text}`}>
             {secondsLeft}
           </span>
         </div>
@@ -163,7 +167,7 @@ export default function SpeedBuzzer({
               style={{ touchAction: "manipulation" }}
               className="inline-flex flex-col items-center gap-2 px-8 py-6 rounded-3xl bg-white shadow-lg active:scale-95 transition"
             >
-              <Volume2 size={48} className="text-fuchsia-500" />
+              <Volume2 size={48} className={palette.icon} />
               <span className="font-black text-stone-500 text-sm">{t.tapToHear}</span>
             </button>
           ) : (
@@ -204,7 +208,7 @@ export default function SpeedBuzzer({
     return (
       <div className={`${shell} items-center justify-center px-5`} dir={dir}>
         <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center">
-          <Loader2 size={56} className="text-fuchsia-500 animate-spin mx-auto mb-4" />
+          <Loader2 size={56} className={`${palette.icon} animate-spin mx-auto mb-4`} />
           <h1 className="text-2xl font-black text-stone-900">{t.locked}</h1>
         </motion.div>
       </div>
@@ -239,7 +243,7 @@ export default function SpeedBuzzer({
         )}
 
         {correct && (
-          <p className="mt-3 font-black text-fuchsia-600 text-2xl">
+          <p className={`mt-3 font-black text-2xl ${palette.text}`}>
             +<CountUp value={result.roundPoints + result.speedBonus} /> · {t.yourScore} <CountUp value={result.totalScore} />
           </p>
         )}

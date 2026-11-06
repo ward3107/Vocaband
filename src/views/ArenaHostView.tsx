@@ -55,6 +55,7 @@ import type { View } from "../core/views";
 import { SPEED_MODE_META } from "./speedRoundStrings";
 import { ARENA_HOST_STRINGS } from "./arenaStrings";
 import { LIVE_GAME_ACCENTS } from "./liveGameAccents";
+import LiveHostSteps from "../components/game/LiveHostSteps";
 
 interface ArenaHostViewProps {
   sessionCode: string;
@@ -405,6 +406,14 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
           )}
         </header>
 
+        {!presenting && (
+          <LiveHostSteps
+            game="arena"
+            language={language === "he" ? "he" : language === "ar" ? "ar" : "en"}
+            stage={canStart ? "room" : "setup"}
+          />
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Main: the big leaderboard / lobby (the live map has its own
               one-screen layout above while a hunt runs) */}
@@ -499,8 +508,8 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
                 className={`w-full inline-flex items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-3 font-black text-sm transition ${
                   pickedWords.length > 0
-                    ? "border-violet-300 text-violet-700 hover:border-violet-400 hover:bg-violet-50"
-                    : "border-stone-300 text-stone-600 hover:border-violet-400 hover:text-violet-700"
+                    ? "border-emerald-300 text-emerald-800 hover:border-emerald-400 hover:bg-emerald-50"
+                    : "border-stone-300 text-stone-600 hover:border-emerald-400 hover:text-emerald-700"
                 }`}
               >
                 <Plus size={16} />

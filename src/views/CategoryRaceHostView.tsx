@@ -40,6 +40,7 @@ import { primeAudio } from "../utils/primeAudio";
 import { playRoundStart } from "../utils/raceSfx";
 import { QP_RACE_ROUND_SECONDS, QP_CATEGORY_RACE_MODE } from "../core/quickPlayProtocol";
 import { LIVE_GAME_ACCENTS } from "./liveGameAccents";
+import LiveHostSteps from "../components/game/LiveHostSteps";
 import type { View } from "../core/views";
 
 interface CategoryRaceHostViewProps {
@@ -405,25 +406,12 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
           )}
         </header>
 
-        {/* Step indicator — Adjust game → Open room. Hidden in projector mode. */}
         {!presenting && (
-          <div className="flex items-center justify-center gap-2 mb-5 text-xs font-black">
-            {([["setup", "1", t.stepAdjust], ["room", "2", t.stepRoom]] as const).map(([p, num, label], i) => {
-              const active = phase === p;
-              const done = phase === "room" && p === "setup";
-              return (
-                <div key={p} className="flex items-center gap-2">
-                  {i > 0 && <span className="w-7 h-px bg-stone-300" />}
-                  <span className={`inline-flex items-center gap-1.5 ${active ? A.stepText : done ? "text-emerald-600" : "text-stone-400"}`}>
-                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] ${active ? `${A.stepBg} text-white` : done ? "bg-emerald-500 text-white" : "bg-stone-200 text-stone-500"}`}>
-                      {done ? <Check size={12} strokeWidth={3} /> : num}
-                    </span>
-                    {label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          <LiveHostSteps
+            game="race"
+            language={language === "he" ? "he" : language === "ar" ? "ar" : "en"}
+            stage={phase === "setup" ? "setup" : roundActive ? "play" : "room"}
+          />
         )}
 
         {/* Background music — draggable corner pill in the room/projector so it
