@@ -16,6 +16,24 @@ const LABELS = {
   ar: { nav: "مراحل اللعبة", setup: "إعداد اللعبة", room: "دعوة الصف", play: "اللعب" },
 } as const;
 
+const GUIDANCE: Record<Language, Record<Game, Record<Stage, string>>> = {
+  en: {
+    race: { setup: "Choose categories and a round timer.", room: "Share the code, then start when your class is ready.", play: "Follow the letter, timer and live scores." },
+    speed: { setup: "Add words, choose question modes and set the timer.", room: "Share the code, then start the first word.", play: "Watch the countdown and fastest answers." },
+    arena: { setup: "Add words, question modes and a map.", room: "Share the code, then start the hunt.", play: "Follow players and remaining words on the map." },
+  },
+  he: {
+    race: { setup: "בחרו קטגוריות וזמן לסיבוב.", room: "שתפו את הקוד והתחילו כשהכיתה מוכנה.", play: "עקבו אחר האות, הזמן והניקוד החי." },
+    speed: { setup: "הוסיפו מילים, בחרו סוגי שאלות וקבעו זמן.", room: "שתפו את הקוד והתחילו במילה הראשונה.", play: "עקבו אחר הספירה והתגובות המהירות." },
+    arena: { setup: "הוסיפו מילים, סוגי שאלות ומפה.", room: "שתפו את הקוד והתחילו בציד.", play: "עקבו אחר המשתתפים והמילים שנותרו במפה." },
+  },
+  ar: {
+    race: { setup: "اختاروا الفئات ووقت الجولة.", room: "شاركوا الرمز وابدؤوا عندما يصبح الصف جاهزًا.", play: "تابعوا الحرف والوقت والنتائج المباشرة." },
+    speed: { setup: "أضيفوا الكلمات واختاروا أنواع الأسئلة والوقت.", room: "شاركوا الرمز ثم ابدؤوا بالكلمة الأولى.", play: "تابعوا العد التنازلي وأسرع الإجابات." },
+    arena: { setup: "أضيفوا الكلمات وأنواع الأسئلة والخريطة.", room: "شاركوا الرمز ثم ابدؤوا الصيد.", play: "تابعوا اللاعبين والكلمات المتبقية على الخريطة." },
+  },
+};
+
 const COLORS: Record<Game, string> = {
   race: "#A80F58",
   speed: "#B54716",
@@ -59,6 +77,9 @@ export default function LiveHostSteps({ game, stage, language }: LiveHostStepsPr
           );
         })}
       </ol>
+      <p className="mt-2 px-2 text-xs font-medium leading-relaxed text-on-surface-variant sm:px-3 sm:text-sm">
+        {GUIDANCE[language][game][stage]}
+      </p>
     </nav>
   );
 }
