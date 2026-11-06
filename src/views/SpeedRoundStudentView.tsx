@@ -213,7 +213,7 @@ export default function SpeedRoundStudentView({ sessionCode, setView, classStude
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="w-full max-w-sm rounded-[32px] bg-white shadow-2xl shadow-fuchsia-500/20 border border-fuchsia-100 p-7"
+          className="w-full max-w-sm rounded-[32px] bg-white shadow-2xl shadow-amber-500/20 border border-amber-100 p-7"
         >
           <div className="text-center mb-6">
             <div className="text-6xl mb-2">⚡</div>
@@ -229,7 +229,7 @@ export default function SpeedRoundStudentView({ sessionCode, setView, classStude
             maxLength={30}
             autoComplete="off"
             dir="auto"
-            className="w-full bg-stone-50 rounded-2xl border-2 border-stone-200 focus:border-fuchsia-400 outline-none px-5 py-4 text-xl font-bold text-stone-900 placeholder-stone-300 text-center transition"
+            className="w-full bg-stone-50 rounded-2xl border-2 border-stone-200 focus:border-amber-500 outline-none px-5 py-4 text-xl font-bold text-stone-900 placeholder-stone-300 text-center transition"
           />
           <div className="mt-5">
             <ClassStudentJoinNotice student={classStudent} />
@@ -241,7 +241,7 @@ export default function SpeedRoundStudentView({ sessionCode, setView, classStude
             onClick={handleContinue}
             disabled={!canContinue || joining}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className={`mt-6 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-lg text-white shadow-lg transition ${canContinue && !joining ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-fuchsia-500/30 active:scale-[0.98]" : "bg-stone-300 cursor-not-allowed"}`}
+            className={`mt-6 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-lg text-white shadow-lg transition ${canContinue && !joining ? "bg-gradient-to-r from-amber-500 to-orange-600 shadow-amber-500/30 active:scale-[0.98]" : "bg-stone-300 cursor-not-allowed"}`}
           >
             {joining ? (
               <><Loader2 size={20} className="animate-spin" /> {t.joining}</>
@@ -293,7 +293,7 @@ export default function SpeedRoundStudentView({ sessionCode, setView, classStude
           <div className="text-7xl mb-3">{myIndex === 0 ? "🥇" : myIndex === 1 ? "🥈" : myIndex === 2 ? "🥉" : "🎉"}</div>
           <h1 className="text-3xl font-black text-stone-900">{t.endedTitle}</h1>
           {myEntry && (
-            <p className="mt-2 text-lg font-black text-fuchsia-600">
+            <p className="mt-2 text-lg font-black text-amber-800">
               {t.yourScore}: <CountUp value={myEntry.score} /> {language === "he" ? "נק'" : language === "ar" ? "نقطة" : "pts"}
               {myIndex >= 0 ? ` · ${t.rank(myIndex + 1)}` : ""}
             </p>
@@ -303,7 +303,7 @@ export default function SpeedRoundStudentView({ sessionCode, setView, classStude
             type="button"
             onClick={() => setView("public-landing")}
             style={{ touchAction: "manipulation" }}
-            className="mt-6 inline-flex items-center justify-center px-6 py-3 rounded-2xl font-black text-white bg-gradient-to-r from-fuchsia-500 to-pink-600 shadow-lg active:scale-95"
+            className="mt-6 inline-flex items-center justify-center px-6 py-3 rounded-2xl font-black text-white bg-gradient-to-r from-amber-500 to-orange-600 shadow-lg active:scale-95"
           >
             {t.backHome}
           </button>
@@ -334,7 +334,7 @@ export default function SpeedRoundStudentView({ sessionCode, setView, classStude
         {teamMode && <TeamSwitcher team={myTeam} onSwitch={switchTeam} className="mt-5" />}
         <div className="mt-6 flex items-center justify-center gap-1.5">
           {[0, 1, 2].map(i => (
-            <motion.span key={i} className="w-2.5 h-2.5 rounded-full bg-fuchsia-400"
+            <motion.span key={i} className="w-2.5 h-2.5 rounded-full bg-amber-500"
               animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }} />
           ))}
         </div>
@@ -345,7 +345,7 @@ export default function SpeedRoundStudentView({ sessionCode, setView, classStude
 
 function Shell({ children, dir }: { children: ReactNode; dir: "ltr" | "rtl" }) {
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center px-5 bg-gradient-to-br from-fuchsia-50 via-white to-pink-50" dir={dir}>
+    <div className="min-h-[100dvh] flex items-center justify-center px-5 py-6 bg-gradient-to-br from-amber-50 via-white to-orange-50" dir={dir}>
       {children}
     </div>
   );
