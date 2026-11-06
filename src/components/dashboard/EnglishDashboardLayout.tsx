@@ -8,24 +8,14 @@ import LiveGameHero from "./LiveGameHero";
 import MgmtCard from "./MgmtCard";
 import FrostedEmoji from "./FrostedEmoji";
 import { DASHBOARD_SECTION } from "./dashboardScroll";
-import { accentForClass, HERO_AURORA } from "./dashboardAccents";
+import { accentForClass } from "./dashboardAccents";
 
-// Per-game color identity; neutral card surfaces come from the shared component.
-const QP_HERO = {
-  background: HERO_AURORA,
-  accent: "#5B21B6",
-} as const;
-const RACE_HERO = {
-  background: "radial-gradient(120% 140% at 0% 0%, #D946EF 0%, #EC4899 45%, #F43F5E 80%, #FB7185 100%)",
-  accent: "#9D174D",
-} as const;
-const SPEED_HERO = {
-  background: "radial-gradient(120% 140% at 0% 0%, #F59E0B 0%, #F97316 45%, #EF4444 80%, #F43F5E 100%)",
-  accent: "#9A3412",
-} as const;
-const ARENA_HERO = {
-  background: "radial-gradient(120% 140% at 0% 0%, #10B981 0%, #14B8A6 45%, #06B6D4 80%, #0EA5E9 100%)",
-  accent: "#115E59",
+// One card system with a distinct, high-contrast accent for each mode.
+const LIVE_GAME_ACCENT = {
+  quick: "#5B21B6",
+  race: "#A80F58",
+  speed: "#B54716",
+  arena: "#08756F",
 } as const;
 
 // Strings for the "Live games" pairing (Quick Play hero + Category
@@ -148,9 +138,9 @@ export default function EnglishDashboardLayout({
           the Management utilities below). */}
       <section id={DASHBOARD_SECTION.liveGames}>
         <SectionLabel>{rt.liveGames}</SectionLabel>
-        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 xl:grid-cols-4 gap-4 items-stretch">
+        <div className="grid grid-cols-1 min-[480px]:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5 items-stretch">
           <LiveGameHero
-            emoji="⚡"
+            artwork="quick"
             title={t.qpTitle}
             badge={t.qpInstantBadge}
             description={t.qpDescription}
@@ -158,12 +148,10 @@ export default function EnglishDashboardLayout({
             onStart={onQuickPlayClick}
             isRTL={isRTL}
             dataTour="quick-play"
-            live
             hint={rt.qpHint}
-            {...QP_HERO}
+            accent={LIVE_GAME_ACCENT.quick}
           />
           <LiveGameHero
-            emoji="🌍"
             title={rt.raceTitle}
             artwork="race"
             badge={rt.live}
@@ -173,10 +161,9 @@ export default function EnglishDashboardLayout({
             isRTL={isRTL}
             dataTour="category-race"
             hint={rt.raceHint}
-            {...RACE_HERO}
+            accent={LIVE_GAME_ACCENT.race}
           />
           <LiveGameHero
-            emoji="⚡"
             title={rt.speedTitle}
             artwork="speed"
             badge={rt.live}
@@ -186,10 +173,9 @@ export default function EnglishDashboardLayout({
             isRTL={isRTL}
             dataTour="speed-round"
             hint={rt.speedHint}
-            {...SPEED_HERO}
+            accent={LIVE_GAME_ACCENT.speed}
           />
           <LiveGameHero
-            emoji="🏟️"
             title={rt.arenaTitle}
             artwork="arena"
             badge={rt.live}
@@ -199,7 +185,7 @@ export default function EnglishDashboardLayout({
             isRTL={isRTL}
             dataTour="word-hunt-arena"
             hint={rt.arenaHint}
-            {...ARENA_HERO}
+            accent={LIVE_GAME_ACCENT.arena}
           />
         </div>
       </section>
