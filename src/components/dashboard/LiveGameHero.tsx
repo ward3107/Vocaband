@@ -25,7 +25,8 @@ export default function LiveGameHero({
       onClick={onStart}
       data-tour={dataTour}
       data-game={artwork}
-      className="vb-card vb-interactive-card group relative flex h-full min-h-[320px] w-full flex-col overflow-hidden p-0 text-start focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+      style={{ outlineColor: accent }}
+      className="vb-card vb-interactive-card group relative flex h-full min-h-[320px] w-full flex-col overflow-hidden p-0 text-start focus-visible:outline-2 focus-visible:outline-offset-2"
     >
       <span className="relative block h-[132px] w-full shrink-0 overflow-hidden">
         <LiveGameArtwork game={artwork} />
