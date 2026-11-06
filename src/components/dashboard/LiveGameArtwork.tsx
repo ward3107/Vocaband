@@ -1,68 +1,90 @@
 type LiveGameArtworkProps = {
-  game: "race" | "speed" | "arena";
+  game: "quick" | "race" | "speed" | "arena";
 };
 
-/** Small diagrams of the actual play mechanic, rather than decorative emoji. */
-export default function LiveGameArtwork({ game }: LiveGameArtworkProps) {
-  if (game === "race") {
-    return (
-      <svg viewBox="0 0 300 132" className="h-full w-full" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <rect width="300" height="132" fill="#FCE9F1" />
-        <path d="M0 104c55-35 94-35 143-11s99 21 157-12v51H0Z" fill="#F7D7E5" />
-        <rect x="90" y="16" width="188" height="104" rx="16" fill="#fff" stroke="#EBB7CE" strokeWidth="1.5" />
-        <rect x="106" y="31" width="155" height="20" rx="7" fill="#FBE6EE" />
-        <circle cx="120" cy="41" r="5" fill="#D94A86" />
-        <path d="M137 41h41m9 0h33" stroke="#CD86A5" strokeWidth="4" strokeLinecap="round" />
-        <rect x="106" y="58" width="155" height="20" rx="7" fill="#FDF2F6" />
-        <circle cx="120" cy="68" r="5" fill="#E987AC" />
-        <path d="M137 68h60m9 0h22" stroke="#D5A5B8" strokeWidth="4" strokeLinecap="round" />
-        <rect x="106" y="85" width="155" height="20" rx="7" fill="#FDF2F6" />
-        <circle cx="120" cy="95" r="5" fill="#E987AC" />
-        <path d="M137 95h34m9 0h50" stroke="#D5A5B8" strokeWidth="4" strokeLinecap="round" />
-        <rect x="25" y="32" width="70" height="70" rx="20" fill="#9D174D" />
-        <rect x="31" y="38" width="58" height="58" rx="16" fill="#BB245F" />
-        <text x="60" y="80" textAnchor="middle" fill="white" fontFamily="Arial, sans-serif" fontSize="45" fontWeight="800">B</text>
-        <path d="m29 110 11-4 8 8" fill="none" stroke="#D94A86" strokeWidth="3" strokeLinecap="round" />
-        <circle cx="273" cy="14" r="3" fill="#D94A86" />
-      </svg>
-    );
-  }
+const PALETTE = {
+  quick: { from: "#4727C7", to: "#A34CF5", deep: "#422298" },
+  race: { from: "#BD1D67", to: "#F54898", deep: "#8C1354" },
+  speed: { from: "#B84016", to: "#FF8F3D", deep: "#823011" },
+  arena: { from: "#087C75", to: "#22C8B1", deep: "#065D59" },
+} as const;
 
-  if (game === "speed") {
-    return (
-      <svg viewBox="0 0 300 132" className="h-full w-full" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <rect width="300" height="132" fill="#FFF0E1" />
-        <path d="M0 111c60-29 94-21 145 3s98 17 155-16v34H0Z" fill="#FFE2C4" />
-        <path d="M87 23h-26m18 11H45m48 75H59" stroke="#F6BD88" strokeWidth="4" strokeLinecap="round" />
-        <circle cx="153" cy="67" r="48" fill="#FFF9F2" stroke="#F7C693" strokeWidth="2" />
-        <circle cx="153" cy="67" r="39" fill="none" stroke="#E86130" strokeWidth="8" strokeDasharray="181 65" strokeLinecap="round" transform="rotate(-90 153 67)" />
-        <rect x="145" y="7" width="16" height="9" rx="3" fill="#9C3415" />
-        <text x="153" y="77" textAnchor="middle" fill="#9C3415" fontFamily="Arial, sans-serif" fontSize="34" fontWeight="800">03</text>
-        <path d="m215 35 17-8m-7 24 24-3m-31 42 22 12" stroke="#EFB780" strokeWidth="3" strokeLinecap="round" />
-        <rect x="225" y="58" width="51" height="15" rx="7.5" fill="#E86130" />
-        <rect x="225" y="80" width="41" height="15" rx="7.5" fill="#F5BA87" />
-        <circle cx="236" cy="65.5" r="3" fill="#fff" />
-        <circle cx="236" cy="87.5" r="3" fill="#A44B2E" />
-      </svg>
-    );
-  }
+/** One visual language for the four games, with a diagram of each play mechanic. */
+export default function LiveGameArtwork({ game }: LiveGameArtworkProps) {
+  const color = PALETTE[game];
+  const gradientId = "live-game-" + game;
 
   return (
-    <svg viewBox="0 0 300 132" className="h-full w-full" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <rect width="300" height="132" fill="#E1F5F1" />
-      <path d="M-10 42c61-31 86 16 141 6s77-48 179-15v-43H-10Z" fill="#C8EAE2" />
-      <path d="M-8 112c62-32 91-7 141 2s103-20 178-43v68H-8Z" fill="#C8EAE2" />
-      <path d="M20 84c48-4 52-48 104-48s53 64 104 53 39-52 76-51" fill="none" stroke="#fff" strokeWidth="24" strokeLinecap="round" />
-      <path d="M20 84c48-4 52-48 104-48s53 64 104 53 39-52 76-51" fill="none" stroke="#92C9BE" strokeWidth="2" strokeDasharray="3 6" strokeLinecap="round" />
-      <circle cx="58" cy="68" r="18" fill="#fff" stroke="#72C6B8" strokeWidth="2" />
-      <path d="m52 68 4 4 8-9" fill="none" stroke="#0C7A6B" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="176" cy="68" r="18" fill="#fff" stroke="#72C6B8" strokeWidth="2" />
-      <rect x="171" y="61" width="11" height="14" rx="2" fill="#12A591" />
-      <circle cx="261" cy="62" r="18" fill="#fff" stroke="#72C6B8" strokeWidth="2" />
-      <path d="m261 53 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z" fill="#12A591" />
-      <circle cx="115" cy="35" r="11" fill="#075E58" stroke="#fff" strokeWidth="3" />
-      <circle cx="115" cy="33" r="3" fill="#fff" />
-      <path d="M107 42c2-4 14-4 16 0" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+    <svg viewBox="0 0 320 150" className="h-full w-full" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <linearGradient id={gradientId} x1="0" x2="1" y1="1" y2="0">
+          <stop stopColor={color.from} />
+          <stop offset="1" stopColor={color.to} />
+        </linearGradient>
+      </defs>
+      <rect width="320" height="150" fill={"url(#" + gradientId + ")"} />
+      <circle cx="285" cy="-18" r="94" fill="#fff" opacity=".10" />
+      <circle cx="26" cy="130" r="82" fill="#fff" opacity=".08" />
+      <path d="M0 125c66-28 104 17 163 2s98-30 157-2v25H0Z" fill="#fff" opacity=".13" />
+      <circle cx="28" cy="25" r="3" fill="#fff" opacity=".55" />
+      <circle cx="292" cy="115" r="4" fill="#fff" opacity=".5" />
+
+      {game === "quick" && (
+        <>
+          <rect x="96" y="16" width="126" height="126" rx="22" fill="#fff" opacity=".96" transform="rotate(-6 159 79)" />
+          <rect x="111" y="29" width="96" height="97" rx="13" fill={color.deep} opacity=".11" transform="rotate(-6 159 79)" />
+          <path d="M126 50h21v21h-21zm47 0h21v21h-21zm-47 45h21v21h-21zm30-24h11v11h-11zm17 20h21v7h-21zm0 13h8v12h-8zm13 0h8v12h-8z" fill={color.deep} />
+          <path d="M132 56h9v9h-9zm47 0h9v9h-9zm-47 45h9v9h-9z" fill="#fff" />
+          <circle cx="230" cy="96" r="30" fill="#fff" opacity=".96" />
+          <path d="m233 75-16 24h12l-5 20 18-27h-12z" fill={color.from} />
+        </>
+      )}
+
+      {game === "race" && (
+        <>
+          <rect x="93" y="22" width="196" height="113" rx="19" fill="#fff" opacity=".95" />
+          {[0, 1, 2].map((row) => (
+            <g key={row}>
+              <rect x="112" y={39 + row * 28} width="157" height="20" rx="8" fill={color.deep} opacity={row === 0 ? ".16" : ".09"} />
+              <circle cx="127" cy={49 + row * 28} r="5" fill={color.from} opacity={row === 0 ? "1" : ".5"} />
+              <path d={"M143 " + (49 + row * 28) + "h65m10 0h29"} stroke={color.deep} strokeWidth="4" strokeLinecap="round" opacity=".42" />
+            </g>
+          ))}
+          <rect x="28" y="38" width="78" height="78" rx="20" fill="#fff" />
+          <rect x="35" y="45" width="64" height="64" rx="16" fill={color.deep} />
+          <text x="67" y="91" textAnchor="middle" fill="#fff" fontFamily="Arial, sans-serif" fontSize="50" fontWeight="800">B</text>
+        </>
+      )}
+
+      {game === "speed" && (
+        <>
+          <circle cx="153" cy="79" r="57" fill="#fff" opacity=".95" />
+          <circle cx="153" cy="79" r="44" fill="none" stroke={color.to} strokeWidth="9" opacity=".35" />
+          <circle cx="153" cy="79" r="44" fill="none" stroke={color.from} strokeWidth="9" strokeDasharray="205 75" strokeLinecap="round" transform="rotate(-90 153 79)" />
+          <rect x="143" y="12" width="20" height="11" rx="4" fill="#fff" />
+          <text x="153" y="92" textAnchor="middle" fill={color.deep} fontFamily="Arial, sans-serif" fontSize="38" fontWeight="800">03</text>
+          <path d="M63 48H39m34 13H51m25 57H48" stroke="#fff" strokeWidth="5" strokeLinecap="round" opacity=".7" />
+          <rect x="224" y="49" width="60" height="17" rx="8.5" fill="#fff" opacity=".96" />
+          <rect x="224" y="75" width="48" height="17" rx="8.5" fill="#fff" opacity=".67" />
+          <rect x="224" y="101" width="38" height="17" rx="8.5" fill="#fff" opacity=".4" />
+        </>
+      )}
+
+      {game === "arena" && (
+        <>
+          <path d="M20 108c55-13 62-71 123-66s52 72 101 60 42-60 75-58" fill="none" stroke="#fff" strokeWidth="28" strokeLinecap="round" opacity=".94" />
+          <path d="M20 108c55-13 62-71 123-66s52 72 101 60 42-60 75-58" fill="none" stroke={color.deep} strokeWidth="2" strokeDasharray="4 7" strokeLinecap="round" opacity=".5" />
+          <circle cx="60" cy="80" r="22" fill="#fff" />
+          <path d="m50 80 7 7 14-17" fill="none" stroke={color.deep} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="166" cy="69" r="22" fill="#fff" />
+          <path d="m166 56 4 8 9 1-7 7 2 9-8-4-8 4 2-9-7-7 9-1z" fill={color.from} />
+          <circle cx="272" cy="82" r="22" fill="#fff" />
+          <rect x="266" y="72" width="12" height="19" rx="3" fill={color.deep} />
+          <circle cx="123" cy="39" r="12" fill={color.deep} stroke="#fff" strokeWidth="3" />
+          <circle cx="123" cy="36" r="3" fill="#fff" />
+          <path d="M114 47c2-6 16-6 18 0" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
+        </>
+      )}
     </svg>
   );
 }
