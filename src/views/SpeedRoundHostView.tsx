@@ -46,6 +46,7 @@ import GameThemePicker from "../components/game/GameThemePicker";
 import { useGameTheme } from "../hooks/useGameTheme";
 import { SPEED_HOST_STRINGS, SPEED_MODE_META } from "./speedRoundStrings";
 import { LIVE_GAME_ACCENTS } from "./liveGameAccents";
+import LiveHostSteps from "../components/game/LiveHostSteps";
 
 /** Enough words for distractor options (questions need 2–4 choices). */
 const MIN_WORDS = 4;
@@ -375,25 +376,12 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
           )}
         </header>
 
-        {/* Step indicator — Adjust game → Open room. Hidden in projector mode. */}
         {!presenting && (
-          <div className="flex items-center justify-center gap-2 mb-5 text-xs font-black">
-            {([["setup", "1", t.stepAdjust], ["room", "2", t.stepRoom]] as const).map(([p, num, label], i) => {
-              const active = phase === p;
-              const done = phase === "room" && p === "setup";
-              return (
-                <div key={p} className="flex items-center gap-2">
-                  {i > 0 && <span className="w-7 h-px bg-stone-300" />}
-                  <span className={`inline-flex items-center gap-1.5 ${active ? A.stepText : done ? "text-emerald-600" : "text-stone-400"}`}>
-                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] ${active ? `${A.stepBg} text-white` : done ? "bg-emerald-500 text-white" : "bg-stone-200 text-stone-500"}`}>
-                      {done ? <Check size={12} strokeWidth={3} /> : num}
-                    </span>
-                    {label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          <LiveHostSteps
+            game="speed"
+            language={language === "he" ? "he" : language === "ar" ? "ar" : "en"}
+            stage={phase === "setup" ? "setup" : roundActive ? "play" : "room"}
+          />
         )}
 
         {/* Background music — teacher can play/pause, skip, and adjust volume
