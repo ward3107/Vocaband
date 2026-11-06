@@ -220,7 +220,9 @@ export default function SpeedRoundStudentView({ sessionCode, setView, classStude
             <h1 className="text-3xl font-black text-stone-900">{t.joinTitle}</h1>
             <p className="mt-1 text-stone-500 font-semibold">{t.joinSub}</p>
           </div>
+          <label htmlFor="speed-student-name" className="mb-2 block text-sm font-bold text-stone-700">{t.namePlaceholder}</label>
           <input
+            id="speed-student-name"
             type="text"
             value={name}
             onChange={e => { setName(e.target.value); setJoinError(null); }}
@@ -235,7 +237,7 @@ export default function SpeedRoundStudentView({ sessionCode, setView, classStude
             <ClassStudentJoinNotice student={classStudent} />
           <QPAvatarPicker selected={avatar} onSelect={setAvatar} />
           </div>
-          {joinError && <p className="mt-4 text-sm font-bold text-rose-600 text-center">{joinError}</p>}
+          {joinError && <p role="alert" className="mt-4 text-sm font-bold text-rose-600 text-center">{joinError}</p>}
           <button
             type="button"
             onClick={handleContinue}
