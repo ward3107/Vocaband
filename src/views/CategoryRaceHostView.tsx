@@ -41,6 +41,7 @@ import { playRoundStart } from "../utils/raceSfx";
 import { QP_RACE_ROUND_SECONDS, QP_CATEGORY_RACE_MODE } from "../core/quickPlayProtocol";
 import { LIVE_GAME_ACCENTS } from "./liveGameAccents";
 import LiveHostSteps from "../components/game/LiveHostSteps";
+import LiveHostHero from "../components/game/LiveHostHero";
 import type { View } from "../core/views";
 
 interface CategoryRaceHostViewProps {
@@ -327,7 +328,7 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   // single source of truth, and brand-coloured accents (fuchsia/indigo/
   // rose buttons) auto-adapt to dark via the global utility remap.
   const A = LIVE_GAME_ACCENTS.race;
-  const cardCls = "bg-surface border-outline-variant shadow-lg";
+  const cardCls = "live-host-panel bg-surface border-outline-variant shadow-lg";
   const headingCls = "text-on-surface";
   const pillIdle = "bg-surface border-outline-variant text-on-surface-variant hover:border-outline";
   const iconBtn = `bg-surface ${A.text600} hover:bg-surface-container border border-outline-variant`;
@@ -338,9 +339,9 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
   const onKick = (clientId: string, nickname: string) => setConfirmKick({ clientId, nickname });
 
   return (
-    <div className="min-h-[100dvh] transition-colors" dir={dir} style={presenting ? theme.page : { backgroundColor: 'var(--vb-surface-alt)' }}>
+    <div className="live-host min-h-[100dvh] transition-colors" dir={dir} data-game="race" data-presenting={presenting} style={presenting ? theme.page : { backgroundColor: 'var(--vb-surface-alt)' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <header className="flex items-center justify-between gap-2 mb-3">
+        <header className="live-host-toolbar flex items-center justify-between gap-2 mb-3">
           <h1 className={`min-w-0 font-black flex items-center gap-2 ${presenting ? `${theme.name} text-3xl sm:text-5xl min-[1700px]:text-7xl drop-shadow-lg` : `${headingCls} text-xl sm:text-3xl`}`}>
             <span className={`flex-shrink-0 ${presenting ? "text-4xl sm:text-6xl min-[1700px]:text-8xl" : "text-2xl sm:text-3xl"}`}>🌍</span>
             <span className="truncate">{t.title}</span>
@@ -407,6 +408,15 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
         </header>
 
         {!presenting && (
+          <LiveHostHero
+            game="race"
+            title={t.title}
+            language={language === "he" ? "he" : language === "ar" ? "ar" : "en"}
+            stage={phase === "setup" ? "setup" : roundActive ? "play" : "room"}
+          />
+        )}
+
+        {!presenting && (
           <LiveHostSteps
             game="race"
             language={language === "he" ? "he" : language === "ar" ? "ar" : "en"}
@@ -421,35 +431,8 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
         {phase === "setup" ? (
           /* ─────────────── STEP 1 · Adjust the game ─────────────── */
           <div className="max-w-3xl mx-auto space-y-4 pb-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Teams toggle — Solo vs Red/Blue (in-memory, per session) */}
-              <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
-                <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mb-3`}>{t.teams}</h2>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => tokenRef.current && setTeamMode(false, tokenRef.current)}
-                    style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                    className={`px-3 py-2.5 rounded-xl font-black text-sm border-2 transition ${!teamMode ? `bg-gradient-to-r ${A.grad} text-white border-transparent shadow-md` : pillIdle}`}
-                  >
-                    {t.teamsOff}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => tokenRef.current && setTeamMode(true, tokenRef.current)}
-                    style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                    className={`px-3 py-2.5 rounded-xl font-black text-sm border-2 transition ${teamMode ? "bg-gradient-to-r from-rose-500 to-sky-600 text-white border-transparent shadow-md" : pillIdle}`}
-                  >
-                    🟥🟦 {t.teamsOn}
-                  </button>
-                </div>
-              </section>
-
-              <GameThemePicker themeId={themeId} onSelect={setThemeId} language={language} />
-            </div>
-
             {/* Round setup */}
-            <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+            <section className={`live-host-panel--primary rounded-3xl shadow-lg border p-5 ${cardCls}`}>
               <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mb-3`}>{t.catsHeading}</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {CATEGORIES.map(cat => {
@@ -519,6 +502,33 @@ export default function CategoryRaceHostView({ sessionCode, setView }: CategoryR
                 </span>
               </button>
             </section>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Teams toggle — Solo vs Red/Blue (in-memory, per session) */}
+              <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+                <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mb-3`}>{t.teams}</h2>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => tokenRef.current && setTeamMode(false, tokenRef.current)}
+                    style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                    className={`px-3 py-2.5 rounded-xl font-black text-sm border-2 transition ${!teamMode ? `bg-gradient-to-r ${A.grad} text-white border-transparent shadow-md` : pillIdle}`}
+                  >
+                    {t.teamsOff}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => tokenRef.current && setTeamMode(true, tokenRef.current)}
+                    style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                    className={`px-3 py-2.5 rounded-xl font-black text-sm border-2 transition ${teamMode ? "bg-gradient-to-r from-rose-500 to-sky-600 text-white border-transparent shadow-md" : pillIdle}`}
+                  >
+                    🟥🟦 {t.teamsOn}
+                  </button>
+                </div>
+              </section>
+
+              <GameThemePicker themeId={themeId} onSelect={setThemeId} language={language} />
+            </div>
 
             {/* Open the room → moves to Step 2 (students can now scan in). */}
             <button
