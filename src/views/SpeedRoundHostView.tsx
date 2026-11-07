@@ -401,7 +401,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
 
         {phase === "setup" ? (
           /* ─────────────── STEP 1 · Adjust the game ─────────────── */
-          <div className="max-w-3xl mx-auto space-y-4 pb-8">
+          <div className="live-host-setup-grid max-w-3xl mx-auto space-y-4 pb-8">
             <section className={`live-host-panel--primary rounded-3xl shadow-lg border p-5 ${cardCls}`}>
               {/* The teacher's word list — typed / picked from the library. */}
               <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mb-3`}>{t.wordsHeading}</h2>
@@ -525,6 +525,8 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               </button>
             </section>
 
+            <details className="live-host-advanced">
+              <summary>{language === "he" ? "אפשרויות נוספות: קבוצות ועיצוב" : language === "ar" ? "خيارات إضافية: الفرق والتصميم" : "More options: teams and theme"}</summary>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <TeamModeToggle
                 teamMode={teamMode}
@@ -534,6 +536,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               />
               <GameThemePicker themeId={themeId} onSelect={setThemeId} language={language} />
             </div>
+            </details>
 
             {/* Open the room → moves to Step 2 (students can now scan in). */}
             <button
