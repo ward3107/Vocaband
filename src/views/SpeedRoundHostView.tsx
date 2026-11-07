@@ -47,6 +47,7 @@ import { useGameTheme } from "../hooks/useGameTheme";
 import { SPEED_HOST_STRINGS, SPEED_MODE_META } from "./speedRoundStrings";
 import { LIVE_GAME_ACCENTS } from "./liveGameAccents";
 import LiveHostSteps from "../components/game/LiveHostSteps";
+import LiveHostHero from "../components/game/LiveHostHero";
 
 /** Enough words for distractor options (questions need 2–4 choices). */
 const MIN_WORDS = 4;
@@ -309,7 +310,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   };
 
   const A = LIVE_GAME_ACCENTS.speed;
-  const cardCls = "bg-surface border-outline-variant shadow-lg";
+  const cardCls = "live-host-panel bg-surface border-outline-variant shadow-lg";
   const headingCls = "text-on-surface";
   const pillIdle = "bg-surface border-outline-variant text-on-surface-variant hover:border-outline";
   const iconBtn = `bg-surface ${A.text600} hover:bg-surface-container border border-outline-variant`;
@@ -322,9 +323,9 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   const onKick = (clientId: string, nickname: string) => setConfirmKick({ clientId, nickname });
 
   return (
-    <div className="min-h-[100dvh] transition-colors" dir={dir} style={presenting ? theme.page : { backgroundColor: 'var(--vb-surface-alt)' }}>
+    <div className="live-host min-h-[100dvh] transition-colors" dir={dir} data-game="speed" data-presenting={presenting} style={presenting ? theme.page : { backgroundColor: 'var(--vb-surface-alt)' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
-        <header className="flex items-center justify-between gap-2 mb-3">
+        <header className="live-host-toolbar flex items-center justify-between gap-2 mb-3">
           <h1 className={`min-w-0 font-black flex items-center gap-2 ${presenting ? `${theme.name} text-3xl sm:text-5xl min-[1700px]:text-7xl drop-shadow-lg` : `${headingCls} text-xl sm:text-3xl`}`}>
             <span className={`flex-shrink-0 ${presenting ? "text-4xl sm:text-6xl min-[1700px]:text-8xl" : "text-2xl sm:text-3xl"}`}>⚡</span>
             <span className="truncate">{t.title}</span>
@@ -377,6 +378,15 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
         </header>
 
         {!presenting && (
+          <LiveHostHero
+            game="speed"
+            title={t.title}
+            language={language === "he" ? "he" : language === "ar" ? "ar" : "en"}
+            stage={phase === "setup" ? "setup" : roundActive ? "play" : "room"}
+          />
+        )}
+
+        {!presenting && (
           <LiveHostSteps
             game="speed"
             language={language === "he" ? "he" : language === "ar" ? "ar" : "en"}
@@ -392,17 +402,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
         {phase === "setup" ? (
           /* ─────────────── STEP 1 · Adjust the game ─────────────── */
           <div className="max-w-3xl mx-auto space-y-4 pb-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <TeamModeToggle
-                teamMode={teamMode}
-                onToggle={(en) => tokenRef.current && setTeamMode(en, tokenRef.current)}
-                idleClass={pillIdle}
-                cardClass={cardCls}
-              />
-              <GameThemePicker themeId={themeId} onSelect={setThemeId} language={language} />
-            </div>
-
-            <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+            <section className={`live-host-panel--primary rounded-3xl shadow-lg border p-5 ${cardCls}`}>
               {/* The teacher's word list — typed / picked from the library. */}
               <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mb-3`}>{t.wordsHeading}</h2>
               <button
@@ -519,6 +519,16 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                 </span>
               </button>
             </section>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <TeamModeToggle
+                teamMode={teamMode}
+                onToggle={(en) => tokenRef.current && setTeamMode(en, tokenRef.current)}
+                idleClass={pillIdle}
+                cardClass={cardCls}
+              />
+              <GameThemePicker themeId={themeId} onSelect={setThemeId} language={language} />
+            </div>
 
             {/* Open the room → moves to Step 2 (students can now scan in). */}
             <button
