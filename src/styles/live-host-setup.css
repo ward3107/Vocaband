@@ -2,6 +2,8 @@
    Keep these rules scoped to setup so the projected game boards retain their
    own high-contrast themes. */
 .live-host.live-host-config {
+  /* The teacher shell above the game is 76px tall on desktop. */
+  min-height: calc(100dvh - 76px);
   --live-host-accent: #4c38ba;
   --live-host-accent-end: #765ee1;
   --host-violet: #6650d8;
@@ -335,6 +337,117 @@
 .live-host.live-host-config[data-game="arena"] .live-host-arena-controls .live-host-map-choice[aria-pressed="true"] {
   outline: 3px solid #8f74e8;
   outline-offset: 2px;
+}
+
+/* Secondary settings stay available without pushing the main action below
+   the fold. Native details keeps them operable by keyboard and touch. */
+.live-host.live-host-config :is(.live-host-advanced, .live-host-rule-disclosure) {
+  min-width: 0;
+  border: 1px solid var(--host-border);
+  border-radius: 14px;
+  background: var(--vb-surface);
+  box-shadow: var(--host-shadow);
+}
+
+.live-host.live-host-config :is(.live-host-advanced, .live-host-rule-disclosure) > summary {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  color: var(--host-violet-dark);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+
+.live-host.live-host-config :is(.live-host-advanced, .live-host-rule-disclosure) > summary::after { content: "⌄"; font-size: 18px; }
+.live-host.live-host-config :is(.live-host-advanced, .live-host-rule-disclosure)[open] > summary::after { transform: rotate(180deg); }
+.live-host.live-host-config :is(.live-host-advanced, .live-host-rule-disclosure) > summary::-webkit-details-marker { display: none; }
+.live-host.live-host-config :is(.live-host-advanced, .live-host-rule-disclosure) > summary:focus-visible { outline: 3px solid #9b83f2; outline-offset: 2px; }
+.live-host.live-host-config .live-host-advanced > div { padding: 0 14px 14px; }
+.live-host.live-host-config .live-host-rule-disclosure > section { margin: 0; border: 0; border-top: 1px solid var(--host-border); border-radius: 0 0 14px 14px; box-shadow: none; }
+
+@media (min-width: 900px) {
+  .live-host.live-host-config > .max-w-7xl { padding-top: 10px; padding-bottom: 10px; }
+  .live-host.live-host-config .live-host-toolbar {
+    width: min(100%, 1100px);
+    min-height: 44px;
+    margin-bottom: 8px;
+    padding-block: 5px;
+  }
+  .live-host.live-host-config .vb-hero {
+    width: min(100%, 1100px);
+    padding: 11px 20px;
+  }
+  .live-host.live-host-config .vb-hero > div > span { width: 40px; height: 40px; }
+  .live-host.live-host-config .vb-hero h2 { font-size: 20px; margin-top: 0; }
+  .live-host.live-host-config .vb-hero p:last-child { font-size: 12px; margin-top: 0; }
+  .live-host.live-host-config .live-host-steps {
+    margin-top: 6px;
+    margin-bottom: 9px;
+  }
+  .live-host.live-host-config .live-host-steps li { gap: 0; }
+  .live-host.live-host-config .live-host-steps li > span:first-child { width: 24px; height: 24px; }
+  .live-host.live-host-config .live-host-music,
+  .live-host.live-host-config .live-host-music > div:not(.fixed) { margin-bottom: 8px; }
+  .live-host.live-host-config .live-host-music { width: min(100%, 1100px); }
+  .live-host.live-host-config .live-host-choice { min-height: 40px; padding-block: 6px; }
+  .live-host.live-host-config .live-host-word-picker { min-height: 64px; }
+  .live-host.live-host-config .live-host-panel--primary { padding-bottom: 14px; }
+  .live-host.live-host-config .live-host-panel--primary > h2:first-of-type {
+    min-height: 42px;
+    margin-bottom: 12px;
+    padding-block: 9px;
+  }
+  .live-host.live-host-config .live-host-setup-grid {
+    width: min(100%, 1100px);
+    max-width: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "primary rules"
+      "advanced rules"
+      "action rules";
+    align-items: start;
+    gap: 12px;
+    padding-bottom: 0;
+  }
+  .live-host.live-host-config .live-host-setup-grid > * { margin-top: 0; min-width: 0; }
+  .live-host.live-host-config .live-host-setup-grid > section:first-child { grid-area: primary; }
+  .live-host.live-host-config .live-host-setup-grid > section:nth-child(2) { grid-area: rules; }
+  .live-host.live-host-config .live-host-setup-grid > .live-host-advanced { grid-area: advanced; }
+  .live-host.live-host-config .live-host-setup-grid > .live-host-next { grid-area: action; }
+  .live-host.live-host-config[data-game="race"] .live-host-setup-grid > section:first-child .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .live-host.live-host-config[data-game="speed"] .live-host-setup-grid > section:nth-child(2) h2.mt-5 { margin-top: 12px; }
+  .live-host.live-host-config[data-game="arena"] .live-host-arena-layout {
+    width: min(100%, 1100px);
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr);
+    grid-template-areas:
+      "words join"
+      "rules lobby"
+      "advanced lobby"
+      "action lobby";
+    align-items: start;
+    gap: 12px;
+  }
+  .live-host.live-host-config[data-game="arena"] .live-host-arena-controls { display: contents; }
+  .live-host.live-host-config[data-game="arena"] .live-host-arena-controls > section:nth-child(1) { grid-area: words; }
+  .live-host.live-host-config[data-game="arena"] .live-host-arena-controls > .live-host-rule-disclosure { grid-area: rules; }
+  .live-host.live-host-config[data-game="arena"] .live-host-arena-controls > .live-host-advanced { grid-area: advanced; }
+  .live-host.live-host-config[data-game="arena"] .live-host-arena-controls > .live-host-join { grid-area: join; }
+  .live-host.live-host-config[data-game="arena"] .live-host-arena-controls > .live-host-action { grid-area: action; }
+  .live-host.live-host-config[data-game="arena"] .live-host-arena-lobby { grid-area: lobby; align-self: start; }
+  .live-host.live-host-config[data-game="arena"] .live-host-arena-controls .live-host-word-picker { min-height: 60px; }
+  .live-host.live-host-config[data-game="arena"] .live-host-arena-controls .live-host-join { padding: 14px; }
+  .live-host.live-host-config[data-game="arena"] .live-host-join > div:last-child { gap: 12px; }
+  .live-host.live-host-config[data-game="arena"] .live-host-join > div:last-child .mt-3 { margin-top: 5px; }
+  .live-host.live-host-config[data-game="arena"] .live-host-arena-controls .live-host-action button { margin-top: 0; }
 }
 
 @media (max-width: 640px) {

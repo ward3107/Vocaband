@@ -461,6 +461,10 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
               )}
 
             </section>
+            <details className="live-host-rule-disclosure">
+              <summary>
+                {t.modeHeading} · {enabledModes.size} · {t.seconds(roundSeconds)} · {mapChoice === "random" ? t.randomMap : ARENA_MAPS.find(m => m.id === mapChoice)?.name[language === "he" ? "he" : language === "ar" ? "ar" : "en"]}
+              </summary>
             <section className={`live-host-panel rounded-3xl shadow-lg border p-5 ${cardCls}`}>
 
               {/* Mode mix — multi-toggle, unlike Speed Round's single pick */}
@@ -570,7 +574,10 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
 
 
             </section>
+            </details>
 
+            <details className="live-host-advanced">
+              <summary>{language === "he" ? "אפשרויות נוספות: קבוצות ועיצוב" : language === "ar" ? "خيارات إضافية: الفرق والتصميم" : "More options: teams and theme"}</summary>
             <div className="live-host-optional-grid">
             <GameThemePicker themeId={themeId} onSelect={setThemeId} language={language} />
 
@@ -593,6 +600,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
               disabled={!arenaActive}
             />
             </div>
+            </details>
 
             <section className={`live-host-join rounded-3xl shadow-lg border p-5 ${cardCls}`}>
               <div className="flex items-center justify-between mb-3">

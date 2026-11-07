@@ -66,6 +66,29 @@ test.beforeEach(async ({}, info) => {
   await mkdir(path.join('e2e/test-results/design', info.project.name.replaceAll(' ', '-')), { recursive: true });
 });
 
+test('live game setup keeps the next action on a desktop screen', async ({ teacherPage: page }, info) => {
+  test.skip(info.project.name !== 'chromium', 'Desktop viewport assertion');
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockClassEntryChannel(page);
+  await page.route('https://test-project.supabase.co/rest/v1/rpc/create_quick_play_session', route => route.fulfill({ json: { id: 'viewport-session', session_code: 'DESIGN01' } }));
+  await prepare(page);
+
+  for (const tour of ['category-race', 'speed-round', 'word-hunt-arena']) {
+    await open(page, '/');
+    await page.locator(`[data-tour="${tour}"]`).first().click();
+    await expect(page.locator('.live-host-config')).toBeVisible();
+    const advanced = page.locator('.live-host-advanced');
+    await expect(advanced).not.toHaveAttribute('open');
+    const action = page.locator('.live-host-next, .live-host-action button').first();
+    const bounds = await action.boundingBox();
+    expect(bounds, `${tour}: action button exists`).not.toBeNull();
+    expect(bounds!.y + bounds!.height, `${tour}: action stays in view`).toBeLessThanOrEqual(900);
+    const pageHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+    expect(pageHeight, `${tour}: setup fits the desktop viewport`).toBeLessThanOrEqual(901);
+    await page.screenshot({ path: path.join('e2e/test-results/design/chromium', `${tour}-viewport.png`), animations: 'disabled' });
+  }
+});
+
 test('teacher workspace and creation screens share the new frame', async ({ teacherPage: page }, info) => {
   test.setTimeout(180_000);
   await mockClassEntryChannel(page);
@@ -97,6 +120,7 @@ test('teacher workspace and creation screens share the new frame', async ({ teac
     }
     await capture(page, info, name);
     if (view === 'word-hunt-arena-host') {
+      await page.locator('.live-host-rule-disclosure > summary').click();
       const mapChoices = page.locator('.live-host-map-disclosure');
       await expect(mapChoices).not.toHaveAttribute('open');
       await mapChoices.locator('summary').click();
