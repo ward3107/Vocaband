@@ -96,6 +96,13 @@ test('teacher workspace and creation screens share the new frame', async ({ teac
       expect(entry!.height, 'Collapsed class entry should only occupy the button height').toBeLessThanOrEqual(button!.height + 1);
     }
     await capture(page, info, name);
+    if (view === 'word-hunt-arena-host') {
+      const mapChoices = page.locator('.live-host-map-disclosure');
+      await expect(mapChoices).not.toHaveAttribute('open');
+      await mapChoices.locator('summary').click();
+      await mapChoices.getByRole('button', { name: 'Tropical Islands' }).click();
+      await expect(mapChoices.locator('summary')).toContainText('Tropical Islands');
+    }
   }
   for (const [url, name] of [['/vocabulary-library', 'teacher-library'], ['/create-assignment?classId=class-001', 'teacher-assignment'], ['/class-show?assignmentId=assignment-001', 'teacher-class-show'], ['/worksheet?assignmentId=assignment-001', 'teacher-worksheet'], ['/vocabagrut', 'teacher-vocabagrut']] as const) {
     await open(page, url);
