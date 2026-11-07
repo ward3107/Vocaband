@@ -114,11 +114,11 @@
     box-shadow: var(--vb-shadow);
   }
   .live-host[data-presenting="false"] .live-host-panel:not(.live-host-panel--primary) > h2:first-of-type {
-    color: var(--live-host-accent);
-    font-size: .85rem;
-    letter-spacing: 0;
+    color: var(--live-host-accent) !important;
+    font-size: .85rem !important;
+    letter-spacing: 0 !important;
     line-height: 1.4;
-    text-transform: none;
+    text-transform: none !important;
   }
   .live-host[data-presenting="false"] .live-host-panel--primary {
     overflow: hidden;
@@ -128,11 +128,12 @@
     margin: 0 -1.25rem 1.1rem;
     padding: .95rem 1.25rem;
     background: linear-gradient(100deg, var(--live-host-accent), var(--live-host-accent-end));
-    color: #fff;
-    font-size: .9rem;
-    letter-spacing: 0;
+    color: #fff !important;
+    font-size: .9rem !important;
+    letter-spacing: 0 !important;
     line-height: 1.4;
-    text-transform: none;
+    max-width: none !important;
+    text-transform: none !important;
   }
   .live-host-steps li:not(:last-child)::after {
     content: "";
