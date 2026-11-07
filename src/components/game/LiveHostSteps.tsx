@@ -1,8 +1,8 @@
 import { Check } from "lucide-react";
 
-type Game = "race" | "speed" | "arena";
-type Stage = "setup" | "room" | "play";
-type Language = "en" | "he" | "ar";
+export type Game = "race" | "speed" | "arena";
+export type Stage = "setup" | "room" | "play";
+export type Language = "en" | "he" | "ar";
 
 interface LiveHostStepsProps {
   game: Game;
@@ -34,52 +34,46 @@ const GUIDANCE: Record<Language, Record<Game, Record<Stage, string>>> = {
   },
 };
 
-const COLORS: Record<Game, string> = {
-  race: "#A80F58",
-  speed: "#B54716",
-  arena: "#08756F",
-};
-
 const STAGES: Stage[] = ["setup", "room", "play"];
 
-/** Shared, non-interactive progress guide for all three live-game hosts. */
-export default function LiveHostSteps({ game, stage, language }: LiveHostStepsProps) {
+export function liveHostStageCopy(game: Game, stage: Stage, language: Language) {
+  return {
+    nav: LABELS[language].nav,
+    label: LABELS[language][stage],
+    guidance: GUIDANCE[language][game][stage],
+    number: STAGES.indexOf(stage) + 1,
+  };
+}
+
+/** Non-interactive three-step progress, paired with the host hero. */
+export default function LiveHostSteps({ stage, language }: LiveHostStepsProps) {
   const labels = LABELS[language];
   const current = STAGES.indexOf(stage);
-  const color = COLORS[game];
 
   return (
-    <nav aria-label={labels.nav} className="mb-6 rounded-2xl border border-outline-variant bg-surface px-3 py-3 shadow-sm sm:px-5">
-      <ol className="grid grid-cols-3 gap-1 sm:gap-3">
+    <nav aria-label={labels.nav} className="live-host-steps mx-auto mb-7 max-w-3xl px-2">
+      <ol className="grid grid-cols-3">
         {STAGES.map((item, index) => {
           const active = item === stage;
           const complete = index < current;
           return (
-            <li
-              key={item}
-              aria-current={active ? "step" : undefined}
-              className="flex min-w-0 items-center gap-2 rounded-xl px-1.5 py-1 sm:px-3"
-              style={active ? { backgroundColor: "color-mix(in srgb, " + color + " 10%, transparent)" } : undefined}
-            >
+            <li key={item} aria-current={active ? "step" : undefined} className="relative flex min-w-0 flex-col items-center gap-1.5 text-center">
               <span
-                className="grid h-7 w-7 shrink-0 place-items-center rounded-full border text-xs font-black sm:h-8 sm:w-8"
-                style={active || complete
-                  ? { backgroundColor: color, borderColor: color, color: "#fff" }
-                  : { borderColor: "var(--vb-border)", color: "var(--vb-text-muted)" }}
+                className={"relative z-10 grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-extrabold " +
+                  (active ? "bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white shadow-md shadow-violet-500/20" :
+                    complete ? "bg-violet-100 text-violet-700" : "bg-surface text-on-surface-variant")}
                 aria-hidden="true"
               >
                 {complete ? <Check size={15} strokeWidth={3} /> : index + 1}
               </span>
-              <span className={"min-w-0 text-xs leading-tight sm:text-sm " + (active ? "font-extrabold text-on-surface" : complete ? "font-bold text-on-surface-variant" : "font-semibold text-on-surface-variant")}>
+              <span className={"max-w-full px-1 text-[11px] leading-tight sm:text-xs " +
+                (active ? "font-extrabold text-on-surface" : "font-medium text-on-surface-variant")}>
                 {labels[item]}
               </span>
             </li>
           );
         })}
       </ol>
-      <p className="mt-2 px-2 text-xs font-medium leading-relaxed text-on-surface-variant sm:px-3 sm:text-sm">
-        {GUIDANCE[language][game][stage]}
-      </p>
     </nav>
   );
 }

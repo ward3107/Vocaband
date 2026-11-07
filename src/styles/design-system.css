@@ -97,6 +97,51 @@
     border-radius: 50%;
     pointer-events: none;
   }
+  /* Quick Play's calm page hierarchy, shared by the other live-game hosts. */
+  .live-host[data-game="race"] { --live-host-accent: #a80f58; --live-host-accent-end: #a61a61; }
+  .live-host[data-game="speed"] { --live-host-accent: #a44913; --live-host-accent-end: #a64a10; }
+  .live-host[data-game="arena"] { --live-host-accent: #08756f; --live-host-accent-end: #0a746d; }
+  .live-host[data-presenting="false"] .live-host-toolbar {
+    padding: .65rem .85rem;
+    border: 1px solid var(--vb-border);
+    border-radius: .9rem;
+    background: var(--vb-surface);
+  }
+  .live-host[data-presenting="false"] .live-host-panel {
+    border-color: var(--vb-border);
+    border-radius: 1.15rem;
+    background: var(--vb-surface);
+    box-shadow: var(--vb-shadow);
+  }
+  .live-host[data-presenting="false"] .live-host-panel:not(.live-host-panel--primary) > h2:first-of-type {
+    color: var(--live-host-accent);
+    font-size: .85rem;
+    letter-spacing: 0;
+    line-height: 1.4;
+    text-transform: none;
+  }
+  .live-host[data-presenting="false"] .live-host-panel--primary {
+    overflow: hidden;
+    padding-top: 0;
+  }
+  .live-host[data-presenting="false"] .live-host-panel--primary > h2:first-of-type {
+    margin: 0 -1.25rem 1.1rem;
+    padding: .95rem 1.25rem;
+    background: linear-gradient(100deg, var(--live-host-accent), var(--live-host-accent-end));
+    color: #fff;
+    font-size: .9rem;
+    letter-spacing: 0;
+    line-height: 1.4;
+    text-transform: none;
+  }
+  .live-host-steps li:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    inset-inline-start: calc(50% + 1.1rem);
+    top: 1rem;
+    width: calc(100% - 2.2rem);
+    border-top: 1px solid var(--vb-border);
+  }
   .vb-field {
     @apply min-h-11 w-full border px-3.5 py-3 text-base;
     border-radius: var(--vb-radius-control);

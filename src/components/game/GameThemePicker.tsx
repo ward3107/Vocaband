@@ -21,7 +21,7 @@ interface GameThemePickerProps {
 export default function GameThemePicker({ themeId, onSelect, language }: GameThemePickerProps) {
   const label = STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
   return (
-    <section className="rounded-3xl shadow-lg border p-5 bg-surface border-outline-variant">
+    <section className="live-host-panel rounded-3xl shadow-lg border p-5 bg-surface border-outline-variant">
       <h2 className="text-xs font-black uppercase tracking-widest text-fuchsia-500 mb-3">{label}</h2>
       <div className="grid grid-cols-3 gap-2">
         {GAME_THEME_LIST.map((t) => {
