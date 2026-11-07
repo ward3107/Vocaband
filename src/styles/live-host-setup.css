@@ -1,0 +1,356 @@
+/* The three live-game setup screens follow Quick Play's teaching flow.
+   Keep these rules scoped to setup so the projected game boards retain their
+   own high-contrast themes. */
+.live-host.live-host-config {
+  --live-host-accent: #4c38ba;
+  --live-host-accent-end: #765ee1;
+  --host-violet: #6650d8;
+  --host-violet-dark: #4c38ba;
+  --host-violet-soft: #f2efff;
+  --host-border: #dce2ec;
+  --host-shadow: 0 12px 26px -20px rgba(44, 49, 89, .34);
+}
+
+.live-host.live-host-config .live-host-toolbar,
+.live-host.live-host-config .live-host-music {
+  width: min(100%, 860px);
+  margin-inline: auto;
+}
+
+.live-host.live-host-config .live-host-toolbar {
+  min-height: 52px;
+  margin-bottom: 18px;
+  padding: 9px 14px;
+  border: 1px solid var(--host-border);
+  border-radius: 12px;
+  background: var(--vb-surface);
+  box-shadow: none;
+}
+
+.live-host.live-host-config .live-host-toolbar h1 {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+
+.live-host.live-host-config .live-host-music > div:not(.fixed) {
+  margin-bottom: 24px;
+  border: 1px solid var(--host-border);
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.live-host.live-host-config .vb-hero {
+  width: min(100%, 860px);
+  margin-inline: auto;
+  padding: 24px 28px;
+  border-radius: 18px;
+  background: linear-gradient(105deg, #3733a5 0%, #4d40cb 53%, #6a28d8 100%);
+  box-shadow: 0 12px 22px -18px #38319b;
+}
+
+.live-host.live-host-config .vb-hero h2 {
+  font-size: clamp(22px, 3vw, 27px);
+}
+
+.live-host.live-host-config .vb-hero p:last-child {
+  color: rgba(255, 255, 255, .88);
+}
+
+.live-host.live-host-config .live-host-steps {
+  max-width: 520px;
+  margin-top: 28px;
+  margin-bottom: 35px;
+}
+
+.live-host.live-host-config .live-host-steps li > span:first-child {
+  width: 32px;
+  height: 32px;
+}
+
+.live-host.live-host-config .live-host-panel,
+.live-host.live-host-config .live-host-panel--primary,
+.live-host.live-host-config .live-host-arena-controls > section {
+  border: 1px solid var(--host-border);
+  border-radius: 18px;
+  background: var(--vb-surface);
+  box-shadow: var(--host-shadow);
+}
+
+.live-host.live-host-config .live-host-panel--primary {
+  padding: 0 22px 22px;
+  overflow: hidden;
+}
+
+.live-host.live-host-config .live-host-panel--primary > h2:first-of-type {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  margin: 0 -22px 21px;
+  padding: 13px 22px;
+  max-width: none;
+  border-radius: 0;
+  background: linear-gradient(100deg, #7b62d5, #9e82ea);
+  color: white;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.live-host.live-host-config .live-host-panel--primary h2:not(:first-of-type) {
+  color: var(--host-violet-dark);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.live-host.live-host-config .live-host-panel--primary > h2:not(:first-of-type) {
+  padding-top: 19px;
+  border-top: 1px solid var(--host-border);
+}
+
+.live-host.live-host-config .live-host-panel:not(.live-host-panel--primary) > h2:first-of-type,
+.live-host.live-host-config .live-host-arena-controls > section:not(.live-host-panel--primary) h2:first-of-type {
+  color: var(--host-violet-dark);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.live-host.live-host-config .live-host-panel:not(.live-host-panel--primary) h2 {
+  color: var(--host-violet-dark);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.live-host.live-host-config .live-host-panel:not(.live-host-panel--primary) h2:first-of-type { margin-top: 0; }
+
+.live-host.live-host-config .live-host-choice {
+  min-height: 46px;
+  padding: 9px 13px;
+  border: 1px solid var(--host-border);
+  border-radius: 12px;
+  background: var(--vb-surface);
+  color: var(--vb-text-primary);
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.live-host.live-host-config .live-host-choice:is(:hover, :focus-visible) {
+  border-color: var(--host-violet);
+  background: var(--host-violet-soft);
+}
+
+.live-host.live-host-config .live-host-choice:is([aria-pressed="true"], [aria-checked="true"]) {
+  border-color: var(--host-violet);
+  background: linear-gradient(105deg, #6252d4, #8965e3);
+  color: white;
+  box-shadow: 0 4px 10px -7px #4636a8;
+}
+
+.live-host.live-host-config .live-host-panel button[aria-pressed="true"]:not(.live-host-choice),
+.live-host.live-host-config .live-host-optional-grid button[aria-pressed="true"]:not(.live-host-choice) {
+  border-color: var(--host-violet);
+  background: var(--host-violet-soft);
+}
+
+.live-host.live-host-config[data-game="race"] .live-host-panel--primary .live-host-choice[aria-pressed="true"],
+.live-host.live-host-config[data-game="arena"] .live-host-arena-controls .live-host-choice[aria-pressed="true"] {
+  border-color: #8d78e5;
+  background: var(--host-violet-soft);
+  color: var(--host-violet-dark);
+  box-shadow: none;
+}
+
+.live-host.live-host-config .live-host-word-picker {
+  min-height: 96px;
+  border: 1px dashed #a7a9dd;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--vb-surface) 93%, #e9e3ff);
+  color: var(--host-violet-dark);
+  font-size: 14px;
+}
+
+.live-host.live-host-config .live-host-word-picker:hover {
+  border-color: var(--host-violet);
+  background: var(--host-violet-soft);
+}
+
+.live-host.live-host-config .live-host-switch {
+  min-height: 48px;
+  border: 1px solid #d9d1fb;
+  border-radius: 12px;
+  background: var(--host-violet-soft);
+  color: var(--host-violet-dark);
+}
+
+.live-host.live-host-config .live-host-switch > span:first-child {
+  color: var(--host-violet-dark);
+  font-size: 13px;
+}
+
+.live-host.live-host-config .live-host-switch > span:last-child {
+  background: #a9a5bd;
+}
+
+.live-host.live-host-config .live-host-switch[aria-checked="true"] > span:last-child {
+  background: var(--host-violet);
+}
+
+.live-host.live-host-config .live-host-next,
+.live-host.live-host-config .live-host-action button:not(:disabled) {
+  min-height: 50px;
+  border-radius: 12px;
+  background: linear-gradient(100deg, #6352d7, #8964e6);
+  color: white;
+  box-shadow: 0 8px 18px -12px #5143bc;
+}
+
+.live-host.live-host-config .live-host-next:disabled,
+.live-host.live-host-config .live-host-action button:disabled {
+  min-height: 50px;
+  border-radius: 12px;
+  background: #c9c4eb;
+  color: white;
+  box-shadow: none;
+}
+
+.live-host.live-host-config .live-host-panel button:focus-visible,
+.live-host.live-host-config .live-host-action button:focus-visible {
+  outline: 3px solid #9b83f2;
+  outline-offset: 2px;
+}
+
+/* Arena creates its room early, but teachers still configure it in the same
+   order: words and play rules, optional controls, joining, then start. */
+.live-host.live-host-config[data-game="arena"] .live-host-arena-layout {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 860px);
+  margin-inline: auto;
+  gap: 18px;
+}
+
+.live-host.live-host-config[data-game="arena"] .live-host-arena-controls,
+.live-host.live-host-config[data-game="arena"] .live-host-arena-lobby {
+  width: 100%;
+  min-width: 0;
+}
+
+.live-host.live-host-config[data-game="arena"] .live-host-arena-controls { order: 0; }
+.live-host.live-host-config[data-game="arena"] .live-host-arena-lobby { order: 1; }
+
+.live-host.live-host-config[data-game="arena"] .live-host-arena-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.live-host.live-host-config[data-game="arena"] .live-host-arena-controls > section,
+.live-host.live-host-config[data-game="arena"] .live-host-arena-controls > .live-host-action {
+  margin: 0;
+}
+
+.live-host.live-host-config[data-game="arena"] .live-host-optional-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.live-host.live-host-config[data-game="arena"] .live-host-optional-grid > section {
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--host-border);
+  border-radius: 18px;
+  background: var(--vb-surface);
+  box-shadow: var(--host-shadow);
+}
+
+.live-host.live-host-config[data-game="arena"] .live-host-optional-grid > section:last-child {
+  grid-column: 1 / -1;
+}
+
+.live-host.live-host-config[data-game="arena"] .live-host-optional-grid h2 {
+  color: var(--host-violet-dark);
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.live-host.live-host-config[data-game="arena"] .live-host-map-disclosure {
+  margin-top: 4px;
+  border: 1px solid var(--host-border);
+  border-radius: 12px;
+  background: var(--vb-surface);
+}
+
+.live-host.live-host-config[data-game="arena"] .live-host-map-disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 11px 14px;
+  color: var(--vb-text-primary);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.live-host.live-host-config[data-game="arena"] .live-host-map-disclosure > summary::-webkit-details-marker { display: none; }
+.live-host.live-host-config[data-game="arena"] .live-host-map-disclosure > summary:focus-visible { outline: 3px solid #9b83f2; outline-offset: 2px; }
+.live-host.live-host-config[data-game="arena"] .live-host-map-disclosure[open] > summary { border-bottom: 1px solid var(--host-border); }
+.live-host.live-host-config[data-game="arena"] .live-host-map-disclosure > div { padding: 13px; }
+
+.live-host.live-host-config[data-game="arena"] .live-host-join > div:last-child {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  align-items: center;
+  justify-items: stretch;
+  gap: 24px;
+}
+
+.live-host.live-host-config[data-game="arena"] .live-host-join > div:last-child > button {
+  justify-self: center;
+}
+
+.live-host.live-host-config[data-game="arena"] .live-host-copy[data-copied="false"] {
+  border-radius: 12px;
+  background: linear-gradient(100deg, #6352d7, #8964e6);
+  color: white;
+  box-shadow: 0 8px 18px -12px #5143bc;
+}
+
+.live-host.live-host-config[data-game="arena"] .live-host-arena-controls .live-host-map-choice {
+  min-height: 100px;
+  border-radius: 12px;
+}
+
+.live-host.live-host-config[data-game="arena"] .live-host-arena-controls .live-host-map-choice[aria-pressed="true"] {
+  outline: 3px solid #8f74e8;
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .live-host.live-host-config .vb-hero { padding: 21px 18px; }
+  .live-host.live-host-config .live-host-panel--primary { padding-inline: 16px; }
+  .live-host.live-host-config .live-host-panel--primary > h2:first-of-type {
+    margin-inline: -16px;
+    padding-inline: 16px;
+  }
+  .live-host.live-host-config .live-host-choice { min-height: 48px; }
+  .live-host.live-host-config[data-game="arena"] .live-host-optional-grid { grid-template-columns: 1fr; }
+  .live-host.live-host-config[data-game="arena"] .live-host-optional-grid > section:last-child { grid-column: auto; }
+  .live-host.live-host-config[data-game="arena"] .live-host-join > div:last-child { grid-template-columns: 1fr; gap: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-host.live-host-config .live-host-choice,
+  .live-host.live-host-config .live-host-word-picker { transition: none; }
+}

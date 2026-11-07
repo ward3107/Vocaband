@@ -323,7 +323,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   const onKick = (clientId: string, nickname: string) => setConfirmKick({ clientId, nickname });
 
   return (
-    <div className="live-host min-h-[100dvh] transition-colors" dir={dir} data-game="speed" data-presenting={presenting} style={presenting ? theme.page : { backgroundColor: 'var(--vb-surface-alt)' }}>
+    <div className={`live-host min-h-[100dvh] transition-colors ${phase === "setup" && !presenting ? "live-host-config" : ""}`} dir={dir} data-game="speed" data-stage={phase} data-presenting={presenting} style={presenting ? theme.page : { backgroundColor: 'var(--vb-surface-alt)' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
         <header className="live-host-toolbar flex items-center justify-between gap-2 mb-3">
           <h1 className={`min-w-0 font-black flex items-center gap-2 ${presenting ? `${theme.name} text-3xl sm:text-5xl min-[1700px]:text-7xl drop-shadow-lg` : `${headingCls} text-xl sm:text-3xl`}`}>
@@ -397,7 +397,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
         {/* Background music — teacher can play/pause, skip, and adjust volume
             for the room while the round runs. Docks to a compact draggable
             corner pill in the room/projector, so it never covers the board. */}
-        <GameMusicPlayer language={language} floating={presenting || phase === "room"} />
+        <div className="live-host-music"><GameMusicPlayer language={language} floating={presenting || phase === "room"} /></div>
 
         {phase === "setup" ? (
           /* ─────────────── STEP 1 · Adjust the game ─────────────── */
@@ -409,7 +409,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                 type="button"
                 onClick={() => setWordPickerOpen(true)}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`w-full inline-flex items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-3 font-black text-sm transition ${
+                className={`live-host-word-picker w-full inline-flex items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-3 font-black text-sm transition ${
                   pickedWords.length > 0
                     ? "border-amber-300 text-amber-800 hover:border-amber-400 hover:bg-amber-50"
                     : "border-stone-300 text-stone-600 hover:border-amber-400 hover:text-amber-700"
@@ -432,6 +432,9 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                 <p className="mt-2 text-[11px] font-bold text-stone-400">{lwt.need(MIN_WORDS)}</p>
               )}
 
+            </section>
+            <section className={`live-host-panel rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+
               {/* Modes — multi-select; each word draws a random one */}
               <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mt-5 mb-1`}>{t.modeHeading}</h2>
               <p className="text-[11px] font-bold text-stone-400 mb-3">{t.modeHint}</p>
@@ -446,7 +449,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                       role="checkbox"
                       aria-checked={picked}
                       style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                      className={`relative rounded-xl p-2.5 text-start border-2 transition-all ${picked ? `bg-gradient-to-br ${A.grad} border-transparent text-white shadow-md` : pillIdle}`}
+                      className={`live-host-choice relative rounded-xl p-2.5 text-start border-2 transition-all ${picked ? `bg-gradient-to-br ${A.grad} border-transparent text-white shadow-md` : pillIdle}`}
                     >
                       <div className="flex items-center gap-2">
                         <span className="text-lg">{SPEED_MODE_META[m].emoji}</span>
@@ -471,7 +474,8 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                           type="button"
                           onClick={() => setRoundSeconds(opt)}
                           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                          className={`px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? `bg-gradient-to-r ${A.grad} text-white border-transparent shadow-md` : pillIdle}`}
+                          aria-pressed={picked}
+                          className={`live-host-choice px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? `bg-gradient-to-r ${A.grad} text-white border-transparent shadow-md` : pillIdle}`}
                         >
                           {t.seconds(opt)}
                         </button>
@@ -493,7 +497,8 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                           type="button"
                           onClick={() => setPasses(opt)}
                           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                          className={`px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? `bg-gradient-to-r ${A.grad} text-white border-transparent shadow-md` : pillIdle}`}
+                          aria-pressed={picked}
+                          className={`live-host-choice px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? `bg-gradient-to-r ${A.grad} text-white border-transparent shadow-md` : pillIdle}`}
                         >
                           {t.repeatsLabel(opt)}
                         </button>
@@ -511,7 +516,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
                 aria-checked={autoPlay}
                 onClick={() => setAutoPlay(v => !v)}
                 style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`mt-5 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border-2 transition-all ${autoPlay ? `${A.soft50} ${A.borderActive}` : pillIdle}`}
+                className={`live-host-switch mt-5 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border-2 transition-all ${autoPlay ? `${A.soft50} ${A.borderActive}` : pillIdle}`}
               >
                 <span className={`font-black text-xs ${autoPlay ? A.text700 : ""}`}>⚡ {t.autoPlayLabel}</span>
                 <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${autoPlay ? A.switchOn : "bg-stone-300"}`}>
@@ -536,7 +541,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               onClick={() => canStart && setPhase("room")}
               disabled={!canStart}
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-              className={`w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${canStart ? `bg-gradient-to-r ${A.grad} ${A.shadow30} active:scale-[0.98]` : "bg-stone-300 cursor-not-allowed"}`}
+              className={`live-host-next w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${canStart ? `bg-gradient-to-r ${A.grad} ${A.shadow30} active:scale-[0.98]` : "bg-stone-300 cursor-not-allowed"}`}
             >
               {canStart ? <>{t.openRoom} →</> : t.needWordsShort(MIN_WORDS)}
             </button>

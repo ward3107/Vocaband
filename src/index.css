@@ -3,6 +3,7 @@
 /* Shared primitives use the same tokens on teacher and student routes. */
 @import "./styles/ios.css";
 @import "./styles/design-system.css";
+@import "./styles/live-host-setup.css";
 
 /* `tall:` — viewport-HEIGHT variant for above-the-fold layouts (landing hero).
    Width breakpoints alone can't tell a 1280×720 laptop from a 1280×1024

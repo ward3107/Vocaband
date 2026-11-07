@@ -306,7 +306,7 @@ export default defineConfig(() => {
           // to breathe while still excluding the big lazy chunks if a
           // glob ever accidentally matches them — lib (~497 kB),
           // vocabulary (~596 kB), html2pdf (~736 kB), exceljs (~930 kB).
-          maximumFileSizeToCacheInBytes: 460_000,
+          maximumFileSizeToCacheInBytes: 480_000,
           // Clean up any caches left behind by the previous (broken)
           // SW so returning users don't carry stale entries forward.
           cleanupOutdatedCaches: true,

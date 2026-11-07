@@ -40,16 +40,18 @@ export default function TeamModeToggle({
         <button
           type="button"
           onClick={() => onToggle(false)}
+          aria-pressed={!teamMode}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className={`px-3 py-2.5 rounded-xl font-black text-sm border-2 transition ${!teamMode ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white border-transparent shadow-md" : idleClass}`}
+          className={`live-host-choice px-3 py-2.5 rounded-xl font-black text-sm border-2 transition ${!teamMode ? "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white border-transparent shadow-md" : idleClass}`}
         >
           {t.solo}
         </button>
         <button
           type="button"
           onClick={() => onToggle(true)}
+          aria-pressed={teamMode}
           style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-          className={`px-3 py-2.5 rounded-xl font-black text-sm border-2 transition ${teamMode ? "bg-gradient-to-r from-rose-500 to-sky-600 text-white border-transparent shadow-md" : idleClass}`}
+          className={`live-host-choice px-3 py-2.5 rounded-xl font-black text-sm border-2 transition ${teamMode ? "bg-gradient-to-r from-rose-500 to-sky-600 text-white border-transparent shadow-md" : idleClass}`}
         >
           🟥🟦 {t.redBlue}
         </button>

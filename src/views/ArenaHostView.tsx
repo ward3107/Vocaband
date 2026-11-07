@@ -257,7 +257,8 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
 
   return (
     <div
-      className={`live-host transition-colors ${arenaActive ? "h-[100dvh] overflow-hidden flex flex-col" : "min-h-[100dvh]"}`}
+      className={`live-host transition-colors ${arenaActive ? "h-[100dvh] overflow-hidden flex flex-col" : "min-h-[100dvh]"} ${!arenaActive && !presenting ? "live-host-config" : ""}`}
+      data-stage={arenaActive ? "play" : canStart ? "room" : "setup"}
       dir={dir}
       data-game="arena"
       data-presenting={presenting || arenaActive}
@@ -267,7 +268,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
           never cuts when a hunt starts. Slate accents keep it calmer than the
           brand-fuchsia bar on the other live games; floats to a compact corner
           pill while presenting or during a live hunt. */}
-      <GameMusicPlayer language={language} theme="slate" floating={presenting || arenaActive} />
+      <div className="live-host-music"><GameMusicPlayer language={language} theme="slate" floating={presenting || arenaActive} /></div>
 
       {arenaActive && currentArena ? (
         /* ── Live hunt: ONE screen, no scrolling. The map fills the space and
@@ -426,10 +427,232 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
           />
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Main: the big leaderboard / lobby (the live map has its own
-              one-screen layout above while a hunt runs) */}
-          <div className={`${presenting ? "lg:col-span-12" : "lg:col-span-8"} space-y-4 order-2 lg:order-1`}>
+        <div className="live-host-arena-layout grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Teacher flow: words, game rules, optional controls, joining, start. */}
+          <aside className={`live-host-arena-controls lg:col-span-4 space-y-4 order-1 lg:order-2 ${presenting ? "hidden" : ""}`}>
+            <section className={`live-host-panel--primary rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+              {/* The teacher's word list — typed / picked from the library. */}
+              <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mb-3`}>{t.wordsHeading}</h2>
+              <button
+                type="button"
+                onClick={() => setWordPickerOpen(true)}
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                className={`live-host-word-picker w-full inline-flex items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-3 font-black text-sm transition ${
+                  pickedWords.length > 0
+                    ? "border-emerald-300 text-emerald-800 hover:border-emerald-400 hover:bg-emerald-50"
+                    : "border-stone-300 text-stone-600 hover:border-emerald-400 hover:text-emerald-700"
+                }`}
+              >
+                <Plus size={16} />
+                {pickedWords.length > 0 ? `${lwt.words(pickedWords.length)} · ${lwt.edit}` : lwt.addFirst}
+              </button>
+              {pickedWords.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {pickedWords.slice(0, 12).map((w) => (
+                    <span key={w.id} className="rounded-md bg-stone-100 px-2 py-0.5 text-xs font-bold text-stone-600">{w.english}</span>
+                  ))}
+                  {pickedWords.length > 12 && (
+                    <span className="rounded-md px-2 py-0.5 text-xs font-bold text-stone-400">+{pickedWords.length - 12}</span>
+                  )}
+                </div>
+              )}
+              {pickedWords.length < MIN_WORDS && (
+                <p className="mt-2 text-[11px] font-bold text-stone-400">{lwt.need(MIN_WORDS)}</p>
+              )}
+
+            </section>
+            <section className={`live-host-panel rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+
+              {/* Mode mix — multi-toggle, unlike Speed Round's single pick */}
+              <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mt-5 mb-3`}>{t.modeHeading}</h2>
+              <div className="grid grid-cols-2 gap-2">
+                {QP_SPEED_MODES.map((m) => {
+                  const picked = enabledModes.has(m);
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => toggleMode(m)}
+                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                      aria-pressed={picked}
+                      className={`live-host-choice relative rounded-xl p-2.5 text-start border-2 transition-all ${picked ? `bg-gradient-to-br ${A.grad} border-transparent text-white shadow-md` : pillIdle}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{SPEED_MODE_META[m].emoji}</span>
+                        <span className="font-black text-xs truncate">{t.modeNames[m]}</span>
+                        {picked && <Check size={13} strokeWidth={3} className="ms-auto flex-shrink-0" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              {enabledModes.size === 0 && <p className="mt-2 text-xs font-bold text-rose-600">{t.pickMode}</p>}
+
+              {/* Timer (per grabbed word) */}
+              <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mt-5 mb-3`}>{t.timerHeading}</h2>
+              <div className="grid grid-cols-5 gap-2">
+                {QP_SPEED_ROUND_SECONDS.map((opt) => {
+                  const picked = roundSeconds === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setRoundSeconds(opt)}
+                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                      aria-pressed={picked}
+                      className={`live-host-choice px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? `bg-gradient-to-r ${A.grad} text-white border-transparent shadow-md` : pillIdle}`}
+                    >
+                      {t.seconds(opt)}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Arena map — themed background the whole class sees. "Surprise
+                  me" rolls a fresh scene per hunt; tapping a tile locks it. */}
+              <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mt-5 mb-3`}>{t.mapHeading}</h2>
+              <details className="live-host-map-disclosure">
+                <summary>
+                  <span>{mapChoice === "random" ? "🎲" : ARENA_MAPS.find(m => m.id === mapChoice)?.emoji} {mapChoice === "random" ? t.randomMap : ARENA_MAPS.find(m => m.id === mapChoice)?.name[language === "he" ? "he" : language === "ar" ? "ar" : "en"]}</span>
+                  <span aria-hidden="true">⌄</span>
+                </summary>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => selectMap("random")}
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  aria-pressed={mapChoice === "random"}
+                  className={`live-host-map-choice relative aspect-[10/7] rounded-xl overflow-hidden border-2 flex flex-col items-center justify-center gap-0.5 bg-gradient-to-br ${A.grad} text-white transition ${mapChoice === "random" ? "border-amber-400 ring-2 ring-amber-300" : "border-transparent opacity-90 hover:opacity-100"}`}
+                >
+                  <span className="text-xl">🎲</span>
+                  <span className="text-[10px] font-black leading-tight px-1 text-center">{t.randomMap}</span>
+                </button>
+                {ARENA_MAPS.map((m) => {
+                  const picked = mapChoice === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => selectMap(m.id)}
+                      aria-label={m.name[language === "he" ? "he" : language === "ar" ? "ar" : "en"]}
+                      title={m.name[language === "he" ? "he" : language === "ar" ? "ar" : "en"]}
+                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                      aria-pressed={picked}
+                      className={`live-host-map-choice relative aspect-[10/7] rounded-xl overflow-hidden border-2 transition ${picked ? "border-amber-400 ring-2 ring-amber-300" : "border-transparent opacity-80 hover:opacity-100"}`}
+                    >
+                      <img src={m.thumb} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+                      <span className="absolute bottom-0 inset-x-0 bg-black/45 text-white text-[9px] font-black leading-tight px-1 py-0.5 truncate flex items-center justify-center gap-0.5">
+                        <span>{m.emoji}</span>
+                        <span className="truncate">{m.name[language === "he" ? "he" : language === "ar" ? "ar" : "en"]}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              </details>
+
+              {/* Auto-play toggle — hunts chain themselves after the first. */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoPlay}
+                onClick={() => setAutoPlay(v => !v)}
+                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                className={`live-host-switch mt-5 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border-2 transition-all ${autoPlay ? `${A.soft50} ${A.borderActive}` : pillIdle}`}
+              >
+                <span className={`font-black text-xs ${autoPlay ? A.text700 : ""}`}>⚡ {t.autoPlayLabel}</span>
+                <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${autoPlay ? A.switchOn : "bg-stone-300"}`}>
+                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${autoPlay ? "start-[18px]" : "start-0.5"}`} />
+                </span>
+              </button>
+
+              {buildError && <p className="mt-3 text-xs font-bold text-rose-600">{t.buildError}</p>}
+
+
+            </section>
+
+            <div className="live-host-optional-grid">
+            <GameThemePicker themeId={themeId} onSelect={setThemeId} language={language} />
+
+            <TeamModeToggle
+              teamMode={teamMode}
+              onToggle={(en) => tokenRef.current && setTeamMode(en, tokenRef.current)}
+              headingClass={A.label}
+              idleClass={pillIdle}
+              cardClass={cardCls}
+            />
+
+            {/* Dash-tackle PvP. The server only honours the toggle on a LIVE
+                arena, so it's disabled until a hunt is running. */}
+            <RoughModeToggle
+              roughMode={roughMode}
+              onToggle={(en) => tokenRef.current && setRoughMode(en, tokenRef.current)}
+              headingClass={A.label}
+              idleClass={pillIdle}
+              cardClass={cardCls}
+              disabled={!arenaActive}
+            />
+            </div>
+
+            <section className={`live-host-join rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className={`text-xs font-black uppercase tracking-widest ${A.label}`}>{t.joinHeading}</h2>
+                <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
+                  className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition active:scale-95 ${iconBtn}`} aria-label={t.enlarge}>
+                  <Maximize2 size={15} />
+                </button>
+              </div>
+              <div className="flex flex-col items-center text-center">
+                <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
+                  className="bg-white p-2 rounded-2xl border border-stone-100 shadow-sm active:scale-[0.98] transition" aria-label={t.enlarge}>
+                  <QRCodeSVG value={joinUrl} size={132} />
+                </button>
+                <div className="mt-3 w-full">
+                  <div className="text-xs font-bold text-stone-400 uppercase tracking-widest">{t.code}</div>
+                  <div className={`text-4xl font-black tracking-[0.15em] ${headingCls}`}>{sessionCode}</div>
+                  <button
+                    type="button"
+                    onClick={handleCopy}
+                    data-copied={copied}
+                    style={{ touchAction: "manipulation" }}
+                    className={`live-host-copy mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm transition active:scale-[0.98] ${
+                      copied ? "bg-emerald-100 text-emerald-700" : `bg-gradient-to-r ${A.grad} text-white shadow-md ${A.shadow30}`
+                    }`}
+                  >
+                    {copied ? <><Check size={16} /> {t.copied}</> : <><Copy size={16} /> {t.copy}</>}
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <div className="live-host-action">
+              {arenaActive ? (
+                <button
+                  type="button"
+                  onClick={handleEndArena}
+                  style={{ touchAction: "manipulation" }}
+                  className="mt-3 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base bg-rose-100 text-rose-700 hover:bg-rose-200 active:scale-[0.98] transition"
+                >
+                  <Square size={18} /> {t.endArena}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleStart}
+                  disabled={!canStart}
+                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+                  className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${!canStart ? "bg-stone-300 cursor-not-allowed" : `bg-gradient-to-r ${A.grad} ${A.shadow30} active:scale-[0.98]`}`}
+                >
+                  {autoCountdown !== null
+                    ? <><Zap size={18} /> {t.autoNextIn(autoCountdown)}</>
+                    : <><Play size={18} /> {hasStarted ? t.restart : t.start}</>}
+                </button>
+              )}
+            </div>
+          </aside>
+
+          {/* The roster follows setup; the live map has its own screen above. */}
+          <div className={`live-host-arena-lobby ${presenting ? "lg:col-span-12" : "lg:col-span-8"} space-y-4 order-2 lg:order-1`}>
             {/* Live Red vs Blue total — only in team mode. */}
             {teamMode && <TeamScoreBar entries={sorted} />}
 
@@ -458,208 +681,6 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             )}
           </div>
 
-          {/* Sidebar: join + setup controls */}
-          <aside className={`lg:col-span-4 space-y-4 order-1 lg:order-2 ${presenting ? "hidden" : ""}`}>
-            <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className={`text-xs font-black uppercase tracking-widest ${A.label}`}>{t.joinHeading}</h2>
-                <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
-                  className={`inline-flex items-center justify-center w-8 h-8 rounded-lg transition active:scale-95 ${iconBtn}`} aria-label={t.enlarge}>
-                  <Maximize2 size={15} />
-                </button>
-              </div>
-              <div className="flex flex-col items-center text-center">
-                <button type="button" onClick={() => setQrEnlarged(true)} style={{ touchAction: "manipulation" }}
-                  className="bg-white p-2 rounded-2xl border border-stone-100 shadow-sm active:scale-[0.98] transition" aria-label={t.enlarge}>
-                  <QRCodeSVG value={joinUrl} size={132} />
-                </button>
-                <div className="mt-3 w-full">
-                  <div className="text-xs font-bold text-stone-400 uppercase tracking-widest">{t.code}</div>
-                  <div className={`text-4xl font-black tracking-[0.15em] ${headingCls}`}>{sessionCode}</div>
-                  <button
-                    type="button"
-                    onClick={handleCopy}
-                    style={{ touchAction: "manipulation" }}
-                    className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-black text-sm transition active:scale-[0.98] ${
-                      copied ? "bg-emerald-100 text-emerald-700" : `bg-gradient-to-r ${A.grad} text-white shadow-md ${A.shadow30}`
-                    }`}
-                  >
-                    {copied ? <><Check size={16} /> {t.copied}</> : <><Copy size={16} /> {t.copy}</>}
-                  </button>
-                </div>
-              </div>
-            </section>
-
-            <GameThemePicker themeId={themeId} onSelect={setThemeId} language={language} />
-
-            <TeamModeToggle
-              teamMode={teamMode}
-              onToggle={(en) => tokenRef.current && setTeamMode(en, tokenRef.current)}
-              headingClass={A.label}
-              idleClass={pillIdle}
-              cardClass={cardCls}
-            />
-
-            {/* Dash-tackle PvP. The server only honours the toggle on a LIVE
-                arena, so it's disabled until a hunt is running. */}
-            <RoughModeToggle
-              roughMode={roughMode}
-              onToggle={(en) => tokenRef.current && setRoughMode(en, tokenRef.current)}
-              headingClass={A.label}
-              idleClass={pillIdle}
-              cardClass={cardCls}
-              disabled={!arenaActive}
-            />
-
-            <section className={`live-host-panel--primary rounded-3xl shadow-lg border p-5 ${cardCls}`}>
-              {/* The teacher's word list — typed / picked from the library. */}
-              <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mb-3`}>{t.wordsHeading}</h2>
-              <button
-                type="button"
-                onClick={() => setWordPickerOpen(true)}
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`w-full inline-flex items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-3 font-black text-sm transition ${
-                  pickedWords.length > 0
-                    ? "border-emerald-300 text-emerald-800 hover:border-emerald-400 hover:bg-emerald-50"
-                    : "border-stone-300 text-stone-600 hover:border-emerald-400 hover:text-emerald-700"
-                }`}
-              >
-                <Plus size={16} />
-                {pickedWords.length > 0 ? `${lwt.words(pickedWords.length)} · ${lwt.edit}` : lwt.addFirst}
-              </button>
-              {pickedWords.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {pickedWords.slice(0, 12).map((w) => (
-                    <span key={w.id} className="rounded-md bg-stone-100 px-2 py-0.5 text-xs font-bold text-stone-600">{w.english}</span>
-                  ))}
-                  {pickedWords.length > 12 && (
-                    <span className="rounded-md px-2 py-0.5 text-xs font-bold text-stone-400">+{pickedWords.length - 12}</span>
-                  )}
-                </div>
-              )}
-              {pickedWords.length < MIN_WORDS && (
-                <p className="mt-2 text-[11px] font-bold text-stone-400">{lwt.need(MIN_WORDS)}</p>
-              )}
-
-              {/* Mode mix — multi-toggle, unlike Speed Round's single pick */}
-              <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mt-5 mb-3`}>{t.modeHeading}</h2>
-              <div className="grid grid-cols-2 gap-2">
-                {QP_SPEED_MODES.map((m) => {
-                  const picked = enabledModes.has(m);
-                  return (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => toggleMode(m)}
-                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                      className={`relative rounded-xl p-2.5 text-start border-2 transition-all ${picked ? `bg-gradient-to-br ${A.grad} border-transparent text-white shadow-md` : pillIdle}`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{SPEED_MODE_META[m].emoji}</span>
-                        <span className="font-black text-xs truncate">{t.modeNames[m]}</span>
-                        {picked && <Check size={13} strokeWidth={3} className="ms-auto flex-shrink-0" />}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-              {enabledModes.size === 0 && <p className="mt-2 text-xs font-bold text-rose-600">{t.pickMode}</p>}
-
-              {/* Timer (per grabbed word) */}
-              <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mt-5 mb-3`}>{t.timerHeading}</h2>
-              <div className="grid grid-cols-5 gap-2">
-                {QP_SPEED_ROUND_SECONDS.map((opt) => {
-                  const picked = roundSeconds === opt;
-                  return (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => setRoundSeconds(opt)}
-                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                      className={`px-1 py-2 rounded-lg font-black text-sm border-2 transition ${picked ? `bg-gradient-to-r ${A.grad} text-white border-transparent shadow-md` : pillIdle}`}
-                    >
-                      {t.seconds(opt)}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Arena map — themed background the whole class sees. "Surprise
-                  me" rolls a fresh scene per hunt; tapping a tile locks it. */}
-              <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mt-5 mb-3`}>{t.mapHeading}</h2>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => selectMap("random")}
-                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                  className={`relative aspect-[10/7] rounded-xl overflow-hidden border-2 flex flex-col items-center justify-center gap-0.5 bg-gradient-to-br ${A.grad} text-white transition ${mapChoice === "random" ? "border-amber-400 ring-2 ring-amber-300" : "border-transparent opacity-90 hover:opacity-100"}`}
-                >
-                  <span className="text-xl">🎲</span>
-                  <span className="text-[10px] font-black leading-tight px-1 text-center">{t.randomMap}</span>
-                </button>
-                {ARENA_MAPS.map((m) => {
-                  const picked = mapChoice === m.id;
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => selectMap(m.id)}
-                      aria-label={m.name[language === "he" ? "he" : language === "ar" ? "ar" : "en"]}
-                      title={m.name[language === "he" ? "he" : language === "ar" ? "ar" : "en"]}
-                      style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                      className={`relative aspect-[10/7] rounded-xl overflow-hidden border-2 transition ${picked ? "border-amber-400 ring-2 ring-amber-300" : "border-transparent opacity-80 hover:opacity-100"}`}
-                    >
-                      <img src={m.thumb} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
-                      <span className="absolute bottom-0 inset-x-0 bg-black/45 text-white text-[9px] font-black leading-tight px-1 py-0.5 truncate flex items-center justify-center gap-0.5">
-                        <span>{m.emoji}</span>
-                        <span className="truncate">{m.name[language === "he" ? "he" : language === "ar" ? "ar" : "en"]}</span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Auto-play toggle — hunts chain themselves after the first. */}
-              <button
-                type="button"
-                role="switch"
-                aria-checked={autoPlay}
-                onClick={() => setAutoPlay(v => !v)}
-                style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                className={`mt-5 w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border-2 transition-all ${autoPlay ? `${A.soft50} ${A.borderActive}` : pillIdle}`}
-              >
-                <span className={`font-black text-xs ${autoPlay ? A.text700 : ""}`}>⚡ {t.autoPlayLabel}</span>
-                <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${autoPlay ? A.switchOn : "bg-stone-300"}`}>
-                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all ${autoPlay ? "start-[18px]" : "start-0.5"}`} />
-                </span>
-              </button>
-
-              {buildError && <p className="mt-3 text-xs font-bold text-rose-600">{t.buildError}</p>}
-
-              {arenaActive ? (
-                <button
-                  type="button"
-                  onClick={handleEndArena}
-                  style={{ touchAction: "manipulation" }}
-                  className="mt-3 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base bg-rose-100 text-rose-700 hover:bg-rose-200 active:scale-[0.98] transition"
-                >
-                  <Square size={18} /> {t.endArena}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleStart}
-                  disabled={!canStart}
-                  style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-                  className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-black text-base text-white shadow-lg transition ${!canStart ? "bg-stone-300 cursor-not-allowed" : `bg-gradient-to-r ${A.grad} ${A.shadow30} active:scale-[0.98]`}`}
-                >
-                  {autoCountdown !== null
-                    ? <><Zap size={18} /> {t.autoNextIn(autoCountdown)}</>
-                    : <><Play size={18} /> {hasStarted ? t.restart : t.start}</>}
-                </button>
-              )}
-            </section>
-          </aside>
         </div>
         </div>
       )}
