@@ -56,6 +56,7 @@ import { SPEED_MODE_META } from "./speedRoundStrings";
 import { ARENA_HOST_STRINGS } from "./arenaStrings";
 import { LIVE_GAME_ACCENTS } from "./liveGameAccents";
 import LiveHostSteps from "../components/game/LiveHostSteps";
+import LiveHostHero from "../components/game/LiveHostHero";
 
 interface ArenaHostViewProps {
   sessionCode: string;
@@ -244,7 +245,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   };
 
   const A = LIVE_GAME_ACCENTS.arena;
-  const cardCls = "bg-surface border-outline-variant shadow-lg";
+  const cardCls = "live-host-panel bg-surface border-outline-variant shadow-lg";
   const headingCls = "text-on-surface";
   const pillIdle = "bg-surface border-outline-variant text-on-surface-variant hover:border-outline";
   const iconBtn = `bg-surface ${A.text600} hover:bg-surface-container border border-outline-variant`;
@@ -256,8 +257,10 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
 
   return (
     <div
-      className={`transition-colors ${arenaActive ? "h-[100dvh] overflow-hidden flex flex-col" : "min-h-[100dvh]"}`}
+      className={`live-host transition-colors ${arenaActive ? "h-[100dvh] overflow-hidden flex flex-col" : "min-h-[100dvh]"}`}
       dir={dir}
+      data-game="arena"
+      data-presenting={presenting || arenaActive}
       style={presenting || arenaActive ? theme.page : { backgroundColor: 'var(--vb-surface-alt)' }}
     >
       {/* Background music — kept mounted across the setup⇄live switch so it
@@ -365,7 +368,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
         </div>
       ) : (
         <div className="max-w-7xl mx-auto px-4 py-6">
-        <header className="flex items-center justify-between gap-2 mb-5">
+        <header className="live-host-toolbar flex items-center justify-between gap-2 mb-5">
           <h1 className={`min-w-0 font-black flex items-center gap-2 ${presenting ? `${theme.name} text-3xl sm:text-5xl min-[1700px]:text-7xl drop-shadow-lg` : `${headingCls} text-xl sm:text-3xl`}`}>
             <span className={`flex-shrink-0 ${presenting ? "text-4xl sm:text-6xl min-[1700px]:text-8xl" : "text-2xl sm:text-3xl"}`}>🏟️</span>
             <span className="truncate">{t.title}</span>
@@ -405,6 +408,15 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
             </div>
           )}
         </header>
+
+        {!presenting && (
+          <LiveHostHero
+            game="arena"
+            title={t.title}
+            language={language === "he" ? "he" : language === "ar" ? "ar" : "en"}
+            stage={canStart ? "room" : "setup"}
+          />
+        )}
 
         {!presenting && (
           <LiveHostSteps
@@ -499,7 +511,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
               disabled={!arenaActive}
             />
 
-            <section className={`rounded-3xl shadow-lg border p-5 ${cardCls}`}>
+            <section className={`live-host-panel--primary rounded-3xl shadow-lg border p-5 ${cardCls}`}>
               {/* The teacher's word list — typed / picked from the library. */}
               <h2 className={`text-xs font-black uppercase tracking-widest ${A.label} mb-3`}>{t.wordsHeading}</h2>
               <button
