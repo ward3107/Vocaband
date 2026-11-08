@@ -14,8 +14,11 @@
 }
 
 .live-host.live-host-config .live-host-toolbar,
-.live-host.live-host-config .live-host-music {
+.live-host.live-host-config .live-host-music,
+.live-host.live-host-config .live-host-hero,
+.live-host.live-host-config .live-host-setup-grid {
   width: min(100%, 860px);
+  max-width: none;
   margin-inline: auto;
 }
 
@@ -372,6 +375,7 @@
 
 @media (min-width: 900px) {
   .live-host.live-host-config > .max-w-7xl { padding-top: 10px; padding-bottom: 10px; }
+  .live-host.live-host-config .live-host-hero { width: min(100%, 1100px); }
   .live-host.live-host-config .live-host-toolbar {
     width: min(100%, 1100px);
     min-height: 44px;
