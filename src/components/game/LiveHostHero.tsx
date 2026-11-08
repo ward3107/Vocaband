@@ -21,7 +21,7 @@ export default function LiveHostHero({ game, stage, language, title }: LiveHostH
   const Icon = ICONS[game];
 
   return (
-    <div className="mx-auto mb-6 max-w-5xl">
+    <div className="live-host-hero mx-auto mb-6 max-w-5xl">
       <div className="vb-hero">
         <div className="relative z-10 flex items-center gap-4">
           <span className={"grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br text-white shadow-sm sm:h-14 sm:w-14 " + ICON_GRADIENT[game]} aria-hidden="true">
