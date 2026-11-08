@@ -119,6 +119,14 @@ test('teacher workspace and creation screens share the new frame', async ({ teac
       expect(entry!.height, 'Collapsed class entry should only occupy the button height').toBeLessThanOrEqual(button!.height + 1);
     }
     await capture(page, info, name);
+    if (view.endsWith('-host')) {
+      const hero = await page.locator('.live-host-config .vb-hero').boundingBox();
+      const content = await page.locator('.live-host-setup-grid, .live-host-arena-layout').boundingBox();
+      expect(hero).not.toBeNull();
+      expect(content).not.toBeNull();
+      expect(Math.abs(hero!.x - content!.x), `${name}: heading aligns with content`).toBeLessThanOrEqual(1);
+      expect(Math.abs(hero!.width - content!.width), `${name}: heading matches content width`).toBeLessThanOrEqual(1);
+    }
     if (view === 'word-hunt-arena-host') {
       await page.locator('.live-host-rule-disclosure > summary').click();
       const mapChoices = page.locator('.live-host-map-disclosure');
