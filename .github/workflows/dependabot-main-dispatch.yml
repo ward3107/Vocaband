@@ -105,9 +105,9 @@ jobs:
               const runtime = normalized.slice(runtimeStart + runtimeMarker.length).split('\n')
                 .map(line => line.startsWith('          ') ? line.slice(10) : line).join('\n');
               prove(hash(runtime) === expectedRuntimeHash, 'controller runtime is not the reviewed implementation.');
-              const policyLine = definition.match(/^\s*REFRESH_POLICY_JSON:\s*>-\s*\r?\n[ \t]*(\{[^\r\n]+\})[ \t]*$/m);
-              prove(policyLine, 'controller source has no single-line reviewed policy.');
-              const policy = JSON.parse(policyLine[1]);
+              const policyBlocks = [...normalized.matchAll(/^ {6}REFRESH_POLICY_JSON: >-\n((?: {8}[^\n]*(?:\n|$))+)/gm)];
+              prove(policyBlocks.length === 1, 'controller source has no unique reviewed JSON policy block.');
+              const policy = JSON.parse(policyBlocks[0][1].replace(/^ {8}/gm, '').trim());
               prove(policy.repository === fullName && policy.default_branch === 'main' && policy.enabled === true &&
                 policy.native_run_approval_authorized === true && policy.controller_path === controllerPath &&
                 policy.ci_continuation === 'native_run_approval', 'source policy is not activated for this repository.');

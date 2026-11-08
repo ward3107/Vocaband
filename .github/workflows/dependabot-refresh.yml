@@ -28,7 +28,91 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       REFRESH_POLICY_JSON: >-
-        {"repository":"ward3107/Vocaband","default_branch":"main","reviewed_base_sha":"10450c4c2bc46fc1664e790edf86e82568bca2c5","required_checks":[{"context":"Typecheck + tests + build","integration_id":15368},{"context":"Playwright smoke","integration_id":15368},{"context":"Playwright auth suite","integration_id":15368},{"context":"Quick Play projector + WebKit","integration_id":15368},{"context":"Browser test gate","integration_id":15368}],"external_required_contexts_not_dispatched":[],"adapter_installation_required":false,"workflows":[{"id":270117061,"path":".github/workflows/ci-e2e.yml","credential_free_reviewed":true,"reviewed_sha256":"13af1f9b318891f89840ed4ac6f6fe43218baa4f25e4e796b246e4285a8acfa9","reviewed_blob_sha":"4897bdf6006944543a4fc91c771cee58c2f0fea8","original_source_blob_sha":"4897bdf6006944543a4fc91c771cee58c2f0fea8","required_contexts":["Browser test gate","Playwright auth suite","Playwright smoke","Quick Play projector + WebKit"],"conditional_exceptions":[],"adapter_changes":[],"reviewed_structure_sha256":"3e2ad1a5d683203e6f9453cb37732d27dd6c28803abc009ba6fe5fe3a4d569bc","name":"CI \u2014 e2e"},{"id":270117062,"path":".github/workflows/ci.yml","credential_free_reviewed":true,"reviewed_sha256":"4d2db7c363287ccd4f94b095ec76b928ffcd3d47f3d512ad72152de474ff1079","reviewed_blob_sha":"f1a4dc017ff43c8838ca2a7905e76999d082da24","original_source_blob_sha":"f1a4dc017ff43c8838ca2a7905e76999d082da24","required_contexts":["Typecheck + tests + build"],"conditional_exceptions":[],"adapter_changes":[],"reviewed_structure_sha256":"3e1bfdd8f41c8dea47d3060deb7a79818fb4f79e2696b6d3b6e203a2c7c11a20","name":"CI"}],"enabled":true,"native_run_approval_authorized":true,"human_authorization":"call_d8b3b03cce5c41caa13c900ad76792be","rollout_gate":"actual-token proof before rollout","ci_continuation":"native_run_approval","controller_path":".github/workflows/dependabot-refresh.yml","dependency_path_patterns":["(?:.*/)?package(?:-lock)?\\.json","(?:.*/)?npm-shrinkwrap\\.json","(?:.*/)?pnpm-lock\\.yaml","(?:.*/)?yarn\\.lock","(?:.*/)?bun\\.lockb?","(?:.*/)?requirements(?:[-.][A-Za-z0-9_-]+)?\\.txt","(?:.*/)?pyproject\\.toml","(?:.*/)?(?:Pipfile(?:\\.lock)?|poetry\\.lock|uv\\.lock|setup\\.cfg|setup\\.py)"],"classic_review_required":true,"canonical_workflow_names":["CI","CI \u2014 e2e"]}
+        {
+          "repository": "ward3107/Vocaband",
+          "default_branch": "main",
+          "reviewed_base_sha": "10450c4c2bc46fc1664e790edf86e82568bca2c5",
+          "required_checks": [
+            {
+              "context": "Typecheck + tests + build",
+              "integration_id": 15368
+            },
+            {
+              "context": "Playwright smoke",
+              "integration_id": 15368
+            },
+            {
+              "context": "Playwright auth suite",
+              "integration_id": 15368
+            },
+            {
+              "context": "Quick Play projector + WebKit",
+              "integration_id": 15368
+            },
+            {
+              "context": "Browser test gate",
+              "integration_id": 15368
+            }
+          ],
+          "external_required_contexts_not_dispatched": [],
+          "adapter_installation_required": false,
+          "workflows": [
+            {
+              "id": 270117061,
+              "path": ".github/workflows/ci-e2e.yml",
+              "credential_free_reviewed": true,
+              "reviewed_sha256": "13af1f9b318891f89840ed4ac6f6fe43218baa4f25e4e796b246e4285a8acfa9",
+              "reviewed_blob_sha": "4897bdf6006944543a4fc91c771cee58c2f0fea8",
+              "original_source_blob_sha": "4897bdf6006944543a4fc91c771cee58c2f0fea8",
+              "required_contexts": [
+                "Browser test gate",
+                "Playwright auth suite",
+                "Playwright smoke",
+                "Quick Play projector + WebKit"
+              ],
+              "conditional_exceptions": [],
+              "adapter_changes": [],
+              "reviewed_structure_sha256": "3e2ad1a5d683203e6f9453cb37732d27dd6c28803abc009ba6fe5fe3a4d569bc",
+              "name": "CI \u2014 e2e"
+            },
+            {
+              "id": 270117062,
+              "path": ".github/workflows/ci.yml",
+              "credential_free_reviewed": true,
+              "reviewed_sha256": "4d2db7c363287ccd4f94b095ec76b928ffcd3d47f3d512ad72152de474ff1079",
+              "reviewed_blob_sha": "f1a4dc017ff43c8838ca2a7905e76999d082da24",
+              "original_source_blob_sha": "f1a4dc017ff43c8838ca2a7905e76999d082da24",
+              "required_contexts": [
+                "Typecheck + tests + build"
+              ],
+              "conditional_exceptions": [],
+              "adapter_changes": [],
+              "reviewed_structure_sha256": "3e1bfdd8f41c8dea47d3060deb7a79818fb4f79e2696b6d3b6e203a2c7c11a20",
+              "name": "CI"
+            }
+          ],
+          "enabled": true,
+          "native_run_approval_authorized": true,
+          "human_authorization": "call_d8b3b03cce5c41caa13c900ad76792be",
+          "rollout_gate": "actual-token proof before rollout",
+          "ci_continuation": "native_run_approval",
+          "controller_path": ".github/workflows/dependabot-refresh.yml",
+          "dependency_path_patterns": [
+            "(?:.*/)?package(?:-lock)?\\.json",
+            "(?:.*/)?npm-shrinkwrap\\.json",
+            "(?:.*/)?pnpm-lock\\.yaml",
+            "(?:.*/)?yarn\\.lock",
+            "(?:.*/)?bun\\.lockb?",
+            "(?:.*/)?requirements(?:[-.][A-Za-z0-9_-]+)?\\.txt",
+            "(?:.*/)?pyproject\\.toml",
+            "(?:.*/)?(?:Pipfile(?:\\.lock)?|poetry\\.lock|uv\\.lock|setup\\.cfg|setup\\.py)"
+          ],
+          "classic_review_required": true,
+          "canonical_workflow_names": [
+            "CI",
+            "CI \u2014 e2e"
+          ]
+        }
     steps:
       - name: Inspect metadata and advance at most one trusted update
         shell: python
