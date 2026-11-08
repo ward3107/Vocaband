@@ -461,6 +461,9 @@ test('actual active Vocaband policy matches Python canonical SHA with Unicode an
 });
 // END ACTUAL PYTHON POLICY FIXTURE
 
+test('release completion events use the native pending queue instead of replacement', () => {
+  assert.match(text, /concurrency:\n  group: dependency-main-dispatch\n  queue: max\n  cancel-in-progress: false/);
+});
 test('pretty JSON controller policy retains the trusted canonical fingerprint', async () => {
   const f = controllerFixture();
   const originalDefinition = f.definition;

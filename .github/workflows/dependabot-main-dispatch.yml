@@ -12,6 +12,7 @@ permissions:
 
 concurrency:
   group: dependency-main-dispatch
+  queue: max
   cancel-in-progress: false
 
 jobs:
