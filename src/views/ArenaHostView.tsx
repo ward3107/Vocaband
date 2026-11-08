@@ -1,4 +1,3 @@
-import { useBackLayer } from "../hooks/useBackLayer";
 /**
  * ArenaHostView — the teacher's control room for Word Hunt Arena, laid out
  * for a classroom projector. A sibling of SpeedRoundHostView on the same
@@ -17,7 +16,7 @@ import { useBackLayer } from "../hooks/useBackLayer";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
-import { Play, Users, LogOut, Check, Copy, Maximize2, X, Monitor, Minimize2, Square, Zap, Plus } from "lucide-react";
+import { Play, Users, LogOut, Check, Copy, Maximize2, Monitor, Minimize2, Square, Zap, Plus } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { useQuickPlaySocket } from "../hooks/useQuickPlaySocket";
@@ -57,6 +56,7 @@ import { ARENA_HOST_STRINGS } from "./arenaStrings";
 import { LIVE_GAME_ACCENTS } from "./liveGameAccents";
 import LiveHostSteps from "../components/game/LiveHostSteps";
 import LiveHostHero from "../components/game/LiveHostHero";
+import { JoinCodeButton, LiveJoinDialog } from "../components/game/LiveJoinPanel";
 
 interface ArenaHostViewProps {
   sessionCode: string;
@@ -112,8 +112,6 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
   };
   const [copied, setCopied] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
-  const qrOverlayRef = useRef<HTMLDivElement>(null);
-  useBackLayer(() => setQrEnlarged(false), { enabled: qrEnlarged, priority: 50 });
   // Celebratory results overlay when ending a played hunt.
   const [showResults, setShowResults] = useState(false);
   const [presenting, setPresenting] = useState(false);
@@ -268,7 +266,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
           never cuts when a hunt starts. Slate accents keep it calmer than the
           brand-fuchsia bar on the other live games; floats to a compact corner
           pill while presenting or during a live hunt. */}
-      <div className="live-host-music"><GameMusicPlayer language={language} theme="slate" floating={presenting || arenaActive} /></div>
+      <GameMusicPlayer language={language} theme="slate" collapseKey={`${arenaActive}:${presenting}`} />
 
       {arenaActive && currentArena ? (
         /* ── Live hunt: ONE screen, no scrolling. The map fills the space and
@@ -291,9 +289,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
                 {presenting ? <Minimize2 size={16} /> : <Monitor size={16} />}
                 <span className="hidden sm:inline">{presenting ? t.controls : t.present}</span>
               </button>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl font-black text-xs sm:text-base tracking-[0.12em] ${A.chipStatic}`}>
-                {sessionCode}
-              </span>
+              <JoinCodeButton code={sessionCode} url={joinUrl} language={language} onClick={() => setQrEnlarged(true)} />
               <button
                 type="button"
                 onClick={handleEndArena}
@@ -376,9 +372,7 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
           </h1>
           {presenting ? (
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-              <span className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-black text-base sm:text-lg tracking-[0.12em] ${A.chipStatic}`}>
-                {t.code}: {sessionCode}
-              </span>
+              <JoinCodeButton code={sessionCode} url={joinUrl} language={language} onClick={() => setQrEnlarged(true)} />
               <button
                 type="button"
                 onClick={() => setPresenting(false)}
@@ -755,38 +749,10 @@ export default function ArenaHostView({ sessionCode, setView }: ArenaHostViewPro
         )}
       </AnimatePresence>
 
-      {/* Enlarged QR overlay */}
-      <AnimatePresence>
-        {qrEnlarged && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setQrEnlarged(false)}
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm px-6"
-            role="dialog"
-            ref={qrOverlayRef}
-          >
-            <motion.div
-              initial={{ scale: 0.85 }} animate={{ scale: 1 }} exit={{ scale: 0.85 }}
-              transition={{ type: "spring", stiffness: 240, damping: 22 }}
-              drag dragConstraints={qrOverlayRef} dragElastic={0.05} dragMomentum={false}
-              style={{ touchAction: "none" }}
-              onClick={e => e.stopPropagation()}
-              className="cursor-grab rounded-3xl bg-white p-6 text-center shadow-2xl active:cursor-grabbing sm:p-8"
-            >
-              <QRCodeSVG value={joinUrl} size={Math.min(420, typeof window !== "undefined" ? window.innerWidth - 96 : 420)} />
-              <div className="mt-4 text-5xl sm:text-6xl font-black tracking-[0.15em] text-stone-900">{sessionCode}</div>
-            </motion.div>
-            <button
-              type="button"
-              onClick={() => setQrEnlarged(false)}
-              style={{ touchAction: "manipulation" }}
-              className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-white bg-white/15 hover:bg-white/25 active:scale-95 transition"
-            >
-              <X size={18} /> {t.hide}
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <LiveJoinDialog open={qrEnlarged} onClose={() => setQrEnlarged(false)}
+        code={sessionCode} url={joinUrl} language={language}
+        players={sorted.map(player => ({ id: player.clientId, name: player.nickname, avatar: player.avatar }))} />
+
     </div>
   );
 }

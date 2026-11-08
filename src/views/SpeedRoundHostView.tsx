@@ -1,4 +1,3 @@
-import { useBackLayer } from "../hooks/useBackLayer";
 /**
  * SpeedRoundHostView — the teacher's control room for a live Speed Round,
  * laid out for a classroom projector. A sibling of CategoryRaceHostView,
@@ -18,7 +17,6 @@ import { useBackLayer } from "../hooks/useBackLayer";
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { QRCodeSVG } from "qrcode.react";
 import { Play, LogOut, Check, Copy, X, Monitor, Minimize2, Square, Zap, Plus } from "lucide-react";
 import { supabase } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
@@ -48,6 +46,7 @@ import { SPEED_HOST_STRINGS, SPEED_MODE_META } from "./speedRoundStrings";
 import { LIVE_GAME_ACCENTS } from "./liveGameAccents";
 import LiveHostSteps from "../components/game/LiveHostSteps";
 import LiveHostHero from "../components/game/LiveHostHero";
+import { JoinCodeButton, LiveJoinDialog, LiveJoinRoom } from "../components/game/LiveJoinPanel";
 
 /** Enough words for distractor options (questions need 2–4 choices). */
 const MIN_WORDS = 4;
@@ -99,8 +98,6 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   const [hasRunRound, setHasRunRound] = useState(false);
   const [copied, setCopied] = useState(false);
   const [qrEnlarged, setQrEnlarged] = useState(false);
-  const qrOverlayRef = useRef<HTMLDivElement>(null);
-  useBackLayer(() => setQrEnlarged(false), { enabled: qrEnlarged, priority: 50 });
   // Celebratory results overlay when ending a played game.
   const [showResults, setShowResults] = useState(false);
   const [presenting, setPresenting] = useState(false);
@@ -323,7 +320,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
   const onKick = (clientId: string, nickname: string) => setConfirmKick({ clientId, nickname });
 
   return (
-    <div className={`live-host min-h-[100dvh] transition-colors ${phase === "setup" && !presenting ? "live-host-config" : ""}`} dir={dir} data-game="speed" data-stage={phase} data-presenting={presenting} style={presenting ? theme.page : { backgroundColor: 'var(--vb-surface-alt)' }}>
+    <div className={`live-host min-h-[100dvh] transition-colors ${!presenting && (phase === "setup" || !hasRunRound) ? "live-host-config" : ""}`} dir={dir} data-game="speed" data-stage={phase} data-presenting={presenting} style={presenting ? theme.page : { backgroundColor: 'var(--vb-surface-alt)' }}>
       <div className="max-w-7xl mx-auto px-4 py-6">
         <header className="live-host-toolbar flex items-center justify-between gap-2 mb-3">
           <h1 className={`min-w-0 font-black flex items-center gap-2 ${presenting ? `${theme.name} text-3xl sm:text-5xl min-[1700px]:text-7xl drop-shadow-lg` : `${headingCls} text-xl sm:text-3xl`}`}>
@@ -341,9 +338,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
             </button>
           ) : presenting ? (
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-              <span className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-black text-base sm:text-lg tracking-[0.12em] ${A.chipStatic}`}>
-                {t.code}: {sessionCode}
-              </span>
+              <JoinCodeButton code={sessionCode} url={joinUrl} language={language} onClick={() => setQrEnlarged(true)} />
               <button
                 type="button"
                 onClick={() => setPresenting(false)}
@@ -394,10 +389,8 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
           />
         )}
 
-        {/* Background music — teacher can play/pause, skip, and adjust volume
-            for the room while the round runs. Docks to a compact draggable
-            corner pill in the room/projector, so it never covers the board. */}
-        <div className="live-host-music"><GameMusicPlayer language={language} floating={presenting || phase === "room"} /></div>
+        {/* Audio stays mounted; only the controls reset when a round starts. */}
+        <GameMusicPlayer language={language} collapseKey={`${phase}:${presenting}:${currentSpeed?.roundId ?? "lobby"}`} />
 
         {phase === "setup" ? (
           /* ─────────────── STEP 1 · Adjust the game ─────────────── */
@@ -549,6 +542,14 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
               {canStart ? <>{t.openRoom} →</> : t.needWordsShort(MIN_WORDS)}
             </button>
           </div>
+        ) : !hasRunRound && !roundActive ? (
+          <LiveJoinRoom code={sessionCode} url={joinUrl} language={language}
+            players={sorted.map(player => ({ id: player.clientId, name: player.nickname, avatar: player.avatar }))}
+            onEnlarge={() => setQrEnlarged(true)}
+            actions={<>
+              {!presenting && <button type="button" onClick={() => setPhase("setup")} className="min-h-12 rounded-xl border border-violet-200 bg-white px-5 font-bold text-violet-800">{t.editGame}</button>}
+              <button type="button" onClick={handleStart} disabled={!canStart} className="min-h-12 rounded-xl bg-violet-700 px-7 font-black text-white disabled:opacity-50">{t.start}</button>
+            </>} />
         ) : (
           /* A large prompt stage and a separate teacher control rail. */
           <>
@@ -584,7 +585,7 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
 
       {/* Presentation mode floating start / play-again / end-round */}
       <AnimatePresence>
-        {presenting && !roundActive && (
+        {presenting && hasRunRound && !roundActive && (
           <motion.button
             type="button"
             initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 16 }}
@@ -666,38 +667,10 @@ export default function SpeedRoundHostView({ sessionCode, setView }: SpeedRoundH
         )}
       </AnimatePresence>
 
-      {/* Enlarged QR overlay */}
-      <AnimatePresence>
-        {qrEnlarged && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setQrEnlarged(false)}
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm px-6"
-            role="dialog"
-            ref={qrOverlayRef}
-          >
-            <motion.div
-              initial={{ scale: 0.85 }} animate={{ scale: 1 }} exit={{ scale: 0.85 }}
-              transition={{ type: "spring", stiffness: 240, damping: 22 }}
-              drag dragConstraints={qrOverlayRef} dragElastic={0.05} dragMomentum={false}
-              style={{ touchAction: "none" }}
-              onClick={e => e.stopPropagation()}
-              className="cursor-grab rounded-3xl bg-white p-6 text-center shadow-2xl active:cursor-grabbing sm:p-8"
-            >
-              <QRCodeSVG value={joinUrl} size={Math.min(420, typeof window !== "undefined" ? window.innerWidth - 96 : 420)} />
-              <div className="mt-4 text-5xl sm:text-6xl font-black tracking-[0.15em] text-stone-900">{sessionCode}</div>
-            </motion.div>
-            <button
-              type="button"
-              onClick={() => setQrEnlarged(false)}
-              style={{ touchAction: "manipulation" }}
-              className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-white bg-white/15 hover:bg-white/25 active:scale-95 transition"
-            >
-              <X size={18} /> {t.hide}
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <LiveJoinDialog open={qrEnlarged} onClose={() => setQrEnlarged(false)}
+        code={sessionCode} url={joinUrl} language={language}
+        players={sorted.map(player => ({ id: player.clientId, name: player.nickname, avatar: player.avatar }))} />
+
     </div>
   );
 }

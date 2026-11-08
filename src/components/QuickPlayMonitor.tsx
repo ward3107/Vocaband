@@ -22,6 +22,8 @@ import { useFirstTimeGuide } from '../hooks/useFirstTimeGuide';
 import FirstTimeGuide from './onboarding/FirstTimeGuide';
 import GuideTriggerButton from './onboarding/GuideTriggerButton';
 import { teacherGuidesT } from '../locales/teacher/guides';
+import MusicDock from './game/MusicDock';
+import { JoinCodeCard, LiveJoinDialog } from './game/LiveJoinPanel';
 
 // Match the flag in QuickPlayStudentView. When on, this monitor
 // observes the /quick-play socket.io namespace for leaderboard
@@ -822,9 +824,6 @@ export default function QuickPlayMonitor({
   const [spotlightStudent, setSpotlightStudent] = useState<Student | null>(null);
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [, setShowMusicPicker] = useState(false);
-  // Value is never read (drag feature was removed) but the open-reset effect still
-  // calls the setter; keep the slot so behavior is unchanged.
-  const [, setQrModalDragControls] = useState({ x: 0, y: 0 });
   const [confirmKick, setConfirmKick] = useState<string | null>(null);
   const [currentTrack, setCurrentTrack] = useState(() => {
     try { return parseInt(localStorage.getItem('vocaband-music-track') || '0') || 0; } catch { return 0; }
@@ -834,13 +833,6 @@ export default function QuickPlayMonitor({
   });
   const musicRef = useRef<Howl | null>(null);
 
-
-  // Reset position when modal opens
-  useEffect(() => {
-    if (qrEnlarged) {
-      setQrModalDragControls({ x: 0, y: 0 });
-    }
-  }, [qrEnlarged]);
 
   // ─── Mouse wheel volume control ───────────────────────────────────────────
   const handleVolumeWheel = (e: React.WheelEvent<HTMLInputElement>) => {
@@ -1611,16 +1603,13 @@ export default function QuickPlayMonitor({
             </div>
           </div>
         </div>
-        {/* Bottom row: music player (own line on mobile) */}
-        <div className={`flex items-center mt-2 gap-2 w-full rounded-xl px-3 py-2 ${
-          theme === 'neon' || theme === 'forest' || theme === 'galaxy' ? 'bg-white/10' : 'bg-[var(--vb-surface-alt)]'
-        }`}>
+        <MusicDock key={`${session.sessionCode}:${showAllPlayers}`} language={language} playing={musicPlaying}>
           {/* Now playing info */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <span className="text-lg shrink-0">{MUSIC_TRACKS[currentTrack].icon}</span>
             <div className="min-w-0">
-              <p className={`text-[11px] font-bold truncate ${t.headerText}`}>{MUSIC_TRACKS[currentTrack].name}</p>
-              <p className={`text-[9px] ${t.headerText} opacity-50`}>{tT.qpBackgroundMusic}</p>
+              <p className="text-[11px] font-bold truncate text-slate-900">{MUSIC_TRACKS[currentTrack].name}</p>
+              <p className="text-[9px] text-slate-500">{tT.qpBackgroundMusic}</p>
             </div>
           </div>
 
@@ -1628,7 +1617,7 @@ export default function QuickPlayMonitor({
           <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={() => changeTrack((currentTrack - 1 + MUSIC_TRACKS.length) % MUSIC_TRACKS.length)}
-              className={`p-1.5 rounded-full ${t.headerText} opacity-60 hover:opacity-100 transition-opacity`}
+              className="p-1.5 rounded-full text-slate-600 hover:text-slate-900 transition-colors"
               title={tT.qpPrevTrackTitle}
             >
               <SkipBack size={14} fill="currentColor" />
@@ -1637,16 +1626,16 @@ export default function QuickPlayMonitor({
               onClick={toggleMusic}
               className={`p-2 rounded-full ${
                 musicPlaying
-                  ? 'bg-white/20 shadow-inner'
+                  ? 'bg-violet-600 shadow-inner'
                   : 'bg-gradient-to-br from-primary to-primary-dim shadow-md'
-              } ${t.headerText} transition-all active:scale-90`}
+              } text-white transition-all active:scale-90`}
               title={musicPlaying ? 'Pause' : 'Play'}
             >
               {musicPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
             </button>
             <button
               onClick={() => changeTrack((currentTrack + 1) % MUSIC_TRACKS.length)}
-              className={`p-1.5 rounded-full ${t.headerText} opacity-60 hover:opacity-100 transition-opacity`}
+              className="p-1.5 rounded-full text-slate-600 hover:text-slate-900 transition-colors"
               title={tT.qpNextTrackTitle}
             >
               <SkipForward size={14} fill="currentColor" />
@@ -1655,7 +1644,7 @@ export default function QuickPlayMonitor({
 
           {/* Volume slider */}
           <div className="flex items-center gap-1.5 shrink-0">
-            <button onClick={toggleMusic} className={`${t.headerText} opacity-60`}>
+            <button type="button" onClick={() => setMusicVolume(value => value === 0 ? 0.5 : 0)} aria-label={tT.qpBackgroundMusicVolume} className="text-slate-600">
               {musicVolume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
             </button>
             <input
@@ -1673,7 +1662,7 @@ export default function QuickPlayMonitor({
               title={`Volume: ${Math.round(musicVolume * 100)}% — scroll to adjust`}
             />
           </div>
-        </div>
+        </MusicDock>
       </header>
 
       {/* ─── Main content ──────────────────────────────────────────────────── */}
@@ -1701,8 +1690,9 @@ export default function QuickPlayMonitor({
       </div>
       {showAllPlayers ? <main id="main-content" className="flex min-h-0 flex-1 flex-col gap-3 px-3 pb-3 lg:flex-row">
         <QuickPlayBoardStage students={sorted} language={language} onRemove={setConfirmKick} onBonus={giveBonus} onHelp={clearOneHand} />
-        <aside className="max-h-40 shrink-0 overflow-y-auto rounded-2xl border border-white/15 bg-[#102532] p-4 text-white shadow-lg lg:max-h-none lg:w-72" aria-label={dashboardLabels.title}>
-          <h2 className="text-base font-black">{dashboardLabels.help}</h2>
+        <aside className="max-h-[40dvh] shrink-0 overflow-y-auto rounded-2xl border border-white/15 bg-[#102532] p-4 text-white shadow-lg lg:max-h-none lg:w-72" aria-label={dashboardLabels.title}>
+          <JoinCodeCard code={session.sessionCode} url={qrUrl} language={language} compact onEnlarge={() => setQrEnlarged(true)} />
+          <h2 className="mt-4 text-base font-black">{dashboardLabels.help}</h2>
           <div className="mt-3 space-y-2">
             {sorted.filter(student => student.handRaisedAt !== null).slice(0, 3).map(student => <div key={student.studentUid} className="flex items-center gap-2 rounded-xl border border-amber-300/30 bg-amber-200/10 p-2 text-sm"><span className="min-w-0 flex-1 truncate font-bold" dir="auto">{student.name}</span><button type="button" onClick={() => clearOneHand(student.studentUid)} className="min-h-9 rounded-lg bg-amber-200 px-2 text-xs font-black text-slate-950">✓</button></div>)}
             {handRaisedCount(effectiveStudents) === 0 && <p className="text-sm text-white/60">0</p>}
@@ -1721,44 +1711,14 @@ export default function QuickPlayMonitor({
             inline expanded card view, plus Share / Copy / Close.
             Tapping the inline expanded card's "Hide" button collapses
             it back to the floating icon. */}
-        <section className={`grid grid-cols-1 ${qrCollapsed ? '' : 'lg:grid-cols-12'} gap-4 sm:gap-6 items-stretch mb-6 sm:mb-8 relative`}>
+        <section className={`grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-stretch mb-6 sm:mb-8 relative`}>
           {qrCollapsed ? (
             // Compact corner QR — a REAL, scannable code (not just an icon)
             // pinned top-right so latecomers can scan it straight from the
             // board without the teacher having to open or enlarge anything.
             // Tapping still opens the big modal for whole-class scanning,
             // and the modal's "Show as card" brings back the full controls.
-            <div className="absolute top-0 right-0 z-10 flex flex-col items-stretch w-28 sm:w-36">
-              <button
-                type="button"
-                onClick={() => setQrEnlarged(true)}
-                aria-label={tT.qpShowQrAria}
-                className="relative bg-white rounded-t-xl shadow-xl hover:shadow-2xl hover:scale-[1.03] active:scale-95 transition-all p-2 ring-4 ring-white/30"
-                style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-              >
-                <div className="w-full aspect-square flex items-center justify-center">
-                  <QRCodeSVG
-                    value={qrUrl}
-                    size={176}
-                    level="M"
-                    marginSize={1}
-                    style={{ width: '100%', height: '100%' }}
-                    aria-label={tT.qpQrCodeAria}
-                  />
-                </div>
-                {effectiveStudents.length > 0 && (
-                  <span className="absolute -top-2 -right-2 min-w-[24px] h-6 px-1.5 bg-green-500 text-white text-[11px] font-black rounded-full flex items-center justify-center shadow-md ring-2 ring-white/30">
-                    {effectiveStudents.length}
-                  </span>
-                )}
-              </button>
-              {/* Code + "Scan to join" on the gradient so it reads against
-                  the dark board; doubles as the type-by-hand fallback. */}
-              <div className={`bg-gradient-to-br ${t.qrCard} rounded-b-xl px-2 py-1.5 text-white text-center shadow-xl`}>
-                <div className="font-headline text-base sm:text-lg font-black tracking-tight leading-none">{session.sessionCode}</div>
-                <div className="text-[8px] sm:text-[9px] font-bold uppercase tracking-wider opacity-85 leading-tight mt-0.5">{tT.qpScanToJoin}</div>
-              </div>
-            </div>
+            <div className="lg:col-span-4"><JoinCodeCard code={session.sessionCode} url={qrUrl} language={language} compact onEnlarge={() => setQrEnlarged(true)} /></div>
           ) : (
           /* Inner layout: QR beside the controls only where the card is
              actually wide enough.  Below lg the grid is single-column so
@@ -1883,7 +1843,7 @@ export default function QuickPlayMonitor({
                                 Bigger podium so first 3 places are
                                 clearly readable from across the room.
                                 Per teacher request 2026-04-30. */}
-          <div className={`${qrCollapsed ? '' : 'lg:col-span-8'} ${t.podiumCard} rounded-lg px-4 sm:px-6 min-[1700px]:px-10 pt-10 sm:pt-14 min-[1700px]:pt-20 pb-4 sm:pb-6 min-[1700px]:pb-10 flex items-end justify-center gap-3 sm:gap-6 min-[1700px]:gap-10 relative overflow-hidden border shadow-inner min-h-[220px] sm:min-h-[280px] min-[1700px]:min-h-[420px]`}>
+          <div className={`lg:col-span-8 ${t.podiumCard} rounded-lg px-4 sm:px-6 min-[1700px]:px-10 pt-10 sm:pt-14 min-[1700px]:pt-20 pb-4 sm:pb-6 min-[1700px]:pb-10 flex items-end justify-center gap-3 sm:gap-6 min-[1700px]:gap-10 relative overflow-hidden border shadow-inner min-h-[220px] sm:min-h-[280px] min-[1700px]:min-h-[420px]`}>
             {/* Stage atmosphere — spotlight cone from above + a low crowd
                 silhouette along the bottom edge. Both are pointer-events:none
                 and live below the podium content (z-0), so they never block
@@ -2270,123 +2230,9 @@ export default function QuickPlayMonitor({
           Session moved into the QR card so every action lives in one
           place and the podium owns the full vertical space. */}
 
-      {/* ─── Enlarged QR Modal ───────────────────────────────────────────────
-          Acts as the primary "show me the QR" surface when qrCollapsed
-          is true (the icon-button route).  Includes Share / Copy /
-          Show-as-card / Close so the teacher can do everything from
-          inside the modal without re-tapping the small icon. */}
-      <AnimatePresence>
-        {qrEnlarged && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-transparent flex items-center justify-center p-4 z-[100] cursor-pointer"
-            onClick={() => setQrEnlarged(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              drag
-              dragMomentum={false}
-              dragElastic={0}
-              whileDrag={{ scale: 1.02 }}
-              className="bg-[var(--vb-surface)] rounded-2xl max-w-lg w-full shadow-2xl cursor-default relative overflow-hidden"
-              onClick={e => e.stopPropagation()}
-            >
-              {/* Draggable header area - grab anywhere here to move */}
-              <div className="bg-[var(--vb-surface-alt)] px-6 py-3 cursor-grab active:cursor-grabbing border-b border-[var(--vb-border)] flex items-center justify-center select-none">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 bg-[var(--vb-border)] rounded-full" />
-                  <div className="w-3 h-3 bg-[var(--vb-border)] rounded-full" />
-                  <div className="w-3 h-3 bg-[var(--vb-border)] rounded-full" />
-                </div>
-                <span className="ml-2 text-xs font-semibold text-[var(--vb-text-muted)] uppercase tracking-wider">{tT.qpDragToMove}</span>
-              </div>
-
-              <div className="p-6 sm:p-10">
-                <div className="aspect-square w-full mx-auto flex items-center justify-center">
-                {/* Enlarged QR (click-to-zoom).  Same client-side generator
-                    as the header version — SVG scales cleanly to any
-                    projector resolution. */}
-                <QRCodeSVG
-                  value={qrUrl}
-                  size={600}
-                  level="M"
-                  marginSize={2}
-                  style={{ width: '100%', height: '100%' }}
-                  aria-label={tT.qpQrCodeEnlargedAria}
-                />
-              </div>
-              <p className="text-center text-purple-600 font-mono font-black text-2xl sm:text-3xl mt-4">
-                {session.sessionCode}
-              </p>
-              <p className="text-center text-[var(--vb-text-muted)] text-sm mt-1">{tT.qpScanToJoin}</p>
-
-              {/* Share row — Web Share API on mobile (AirDrop /
-                  Messages / WhatsApp), clipboard fallback elsewhere.
-                  Mirrors the inline expanded card's share affordances
-                  so kids can be invited via a copy/paste link too. */}
-              <div className="mt-5 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const shareData = {
-                      title: 'Join my Vocaband game',
-                      text: `Join my Vocaband Quick Play (code ${session.sessionCode}):`,
-                      url: qrUrl,
-                    };
-                    if (typeof navigator.share === 'function') {
-                      try { await navigator.share(shareData); return; } catch { /* fall through */ }
-                    }
-                    handleCopyLink();
-                  }}
-                  className="flex-1 inline-flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-primary-dim text-white font-bold py-3 rounded-xl shadow-md active:scale-[0.97] transition-all"
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                >
-                  <Share2 size={16} /> Share
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="px-4 py-3 bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold transition-colors inline-flex items-center gap-2"
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                >
-                  {copiedLink ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
-                  {copiedLink ? 'Copied!' : 'Copy'}
-                </button>
-              </div>
-
-              {/* Pin / Close row.  "Show as card" sets qrCollapsed=false
-                  and dismisses the modal so the inline expanded QR card
-                  is back on the page (for teachers who prefer the QR
-                  always visible to late joiners).  "Close" goes back to
-                  the small floating icon. */}
-              <div className="mt-3 flex items-center gap-2">
-                {qrCollapsed && (
-                  <button
-                    type="button"
-                    onClick={() => { setQrCollapsed(false); try { localStorage.setItem('vocaband-qp-qr-collapsed', '0'); } catch { /* best-effort */ } setQrEnlarged(false); }}
-                    className="flex-1 py-3 bg-[var(--vb-surface-alt)] hover:bg-[var(--vb-surface-alt)] text-[var(--vb-text-secondary)] rounded-xl font-bold transition-colors text-sm"
-                    style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                  >
-                    Pin to page
-                  </button>
-                )}
-                <button
-                  onClick={() => setQrEnlarged(false)}
-                  className="flex-1 py-3 bg-stone-900 hover:bg-black text-white rounded-xl font-bold transition-colors"
-                  style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
-                >
-                  Close
-                </button>
-              </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <LiveJoinDialog open={qrEnlarged} onClose={() => setQrEnlarged(false)}
+        code={session.sessionCode} url={qrUrl} language={language}
+        players={sorted.map(player => ({ id: player.studentUid, name: player.name, avatar: player.avatar }))} />
 
       {/* ─── Kick Confirmation Modal ───────────────────────────────────────── */}
       <AnimatePresence>

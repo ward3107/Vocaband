@@ -15,10 +15,10 @@
  * gesture — the Play button is that gesture, so nothing autoplays.
  */
 import { useEffect, useRef, useState, type WheelEvent } from "react";
-import { motion, useMotionValue, useDragControls } from "motion/react";
 import { Howl } from "howler";
-import { SkipBack, SkipForward, Play, Pause, Volume2, VolumeX, Music, Minimize2, GripVertical } from "lucide-react";
+import { SkipBack, SkipForward, Play, Pause, Volume2, VolumeX } from "lucide-react";
 import type { Language } from "../../hooks/useLanguage";
+import MusicDock from "./MusicDock";
 
 // Instrumental background loops in public/game-music/. Mirrors the Quick
 // Play monitor list so the teacher gets the same library everywhere.
@@ -50,13 +50,6 @@ const STRINGS = {
   ar: { label: "موسيقى الخلفية", prev: "المقطع السابق", next: "المقطع التالي", play: "تشغيل", pause: "إيقاف مؤقت", volume: "مستوى صوت الموسيقى", collapse: "تصغير المشغل", drag: "اسحب للتحريك" },
 } as const;
 
-// Persisted drag offset for the floating dock (shared across all live games
-// so the teacher's chosen corner sticks everywhere).
-const num = (key: string, fallback: number): number => {
-  try { const v = parseFloat(localStorage.getItem(key) ?? ""); return Number.isFinite(v) ? v : fallback; }
-  catch { return fallback; }
-};
-
 // Accent theme. Category Race / Speed Round use the brand fuchsia; Word
 // Hunt Arena asked for a calmer, grayer look — same bar, slate accents.
 type MusicTheme = "fuchsia" | "slate";
@@ -78,24 +71,16 @@ interface GameMusicPlayerProps {
   language: Language;
   /** Accent color. Defaults to the brand fuchsia used by the other hosts. */
   theme?: MusicTheme;
-  /** Presentation mode — instead of the inline bar, dock the player as a
-   *  compact, collapsible pill in the top-end corner so the projector stays
-   *  clean but the music keeps playing and the teacher keeps control. The
-   *  component stays mounted across the lobby→present switch, so the audio
-   *  never cuts out (the old `{!presenting && …}` gate unmounted it, which
-   *  is exactly why music "stopped" when a game started). */
+  /** Retained for the other host entry points; all players now use the dock. */
   floating?: boolean;
+  /** A new round or display mode collapses controls while the audio continues. */
+  collapseKey?: string | number;
 }
 
-export default function GameMusicPlayer({ language, theme = "fuchsia", floating = false }: GameMusicPlayerProps) {
+export default function GameMusicPlayer({ language, theme = "fuchsia", floating = false, collapseKey }: GameMusicPlayerProps) {
   const tr = STRINGS[language === "he" ? "he" : language === "ar" ? "ar" : "en"];
   const accent = THEMES[theme];
 
-  // Floating dock starts EXPANDED so the teacher can see the music control the
-  // moment a game enters presentation mode (a collapsed pill was too easy to
-  // miss — teachers thought the player had disappeared). They can minimize it
-  // to a corner button to keep the projected board clean.
-  const [expanded, setExpanded] = useState(true);
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(() => {
     try { return parseInt(localStorage.getItem("vocaband-music-track") || "0") || 0; } catch { return 0; }
@@ -104,19 +89,6 @@ export default function GameMusicPlayer({ language, theme = "fuchsia", floating 
     try { return parseFloat(localStorage.getItem("vocaband-music-volume") || "0.5") || 0.5; } catch { return 0.5; }
   });
   const musicRef = useRef<Howl | null>(null);
-
-  // Draggable floating dock: teacher can grab it (by the grip when expanded,
-  // or anywhere on the collapsed pill) and park it anywhere on screen. Offset
-  // from the top-end anchor, persisted so it stays put across games/sessions.
-  const dockX = useMotionValue(num("vocaband-music-dock-x", 0));
-  const dockY = useMotionValue(num("vocaband-music-dock-y", 0));
-  const dragControls = useDragControls();
-  const persistDock = () => {
-    try {
-      localStorage.setItem("vocaband-music-dock-x", String(dockX.get()));
-      localStorage.setItem("vocaband-music-dock-y", String(dockY.get()));
-    } catch { /* storage blocked */ }
-  };
 
   const toggleMusic = () => {
     if (musicPlaying && musicRef.current) {
@@ -278,68 +250,9 @@ export default function GameMusicPlayer({ language, theme = "fuchsia", floating 
     </>
   );
 
-  // Presentation mode: a corner dock. Collapsed = one round button (pulses
-  // while playing); expanded = the full transport pill. Kept mounted either
-  // way so the audio rides through the lobby→present switch.
-  if (floating) {
-    // One draggable container for both states. When expanded, only the grip
-    // handle starts a drag (dragListener=false) so the volume slider and
-    // transport buttons work normally; when collapsed, the whole pill is the
-    // drag surface (a tap still toggles it open — motion separates tap/drag).
-    return (
-      <motion.div
-        drag
-        dragControls={dragControls}
-        dragListener={!expanded}
-        dragMomentum={false}
-        style={{ x: dockX, y: dockY }}
-        onDragEnd={persistDock}
-        className="fixed top-4 end-4 z-40 touch-none"
-      >
-        {expanded ? (
-          <div className="flex items-center gap-2 rounded-2xl px-3 py-2 w-[min(92vw,340px)] bg-[var(--vb-surface)] border border-[var(--vb-border)] shadow-xl">
-            <div
-              onPointerDown={e => dragControls.start(e)}
-              className="cursor-grab active:cursor-grabbing text-[var(--vb-text-primary)] opacity-40 hover:opacity-80 transition-opacity shrink-0"
-              style={{ touchAction: "none" }}
-              title={tr.drag}
-              aria-label={tr.drag}
-            >
-              <GripVertical size={16} />
-            </div>
-            {bar}
-            <button
-              type="button"
-              onClick={() => setExpanded(false)}
-              className="p-1.5 rounded-full text-[var(--vb-text-primary)] opacity-60 hover:opacity-100 transition-opacity shrink-0"
-              style={{ touchAction: "manipulation" }}
-              title={tr.collapse}
-              aria-label={tr.collapse}
-            >
-              <Minimize2 size={14} />
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            className={`w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg active:scale-90 transition-all cursor-grab active:cursor-grabbing ${
-              musicPlaying ? `${accent.playIdle} animate-pulse` : accent.playIdle
-            }`}
-            style={{ touchAction: "none" }}
-            title={tr.label}
-            aria-label={tr.label}
-          >
-            <Music size={20} fill={musicPlaying ? "currentColor" : "none"} />
-          </button>
-        )}
-      </motion.div>
-    );
-  }
-
   return (
-    <div className="flex items-center gap-2 w-full rounded-xl px-3 py-2 mb-5 bg-[var(--vb-surface)] border border-[var(--vb-border)] shadow-sm">
+    <MusicDock key={collapseKey ?? String(floating)} language={language} playing={musicPlaying}>
       {bar}
-    </div>
+    </MusicDock>
   );
 }

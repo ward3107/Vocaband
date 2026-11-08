@@ -1,6 +1,6 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
-import type { Page, TestInfo } from '@playwright/test';
+import type { Page, TestInfo, WebSocketRoute } from '@playwright/test';
 import { test, expect } from '../fixtures/auth.fixture';
 import { mockSupabase, presetLocalStorage } from '../fixtures/supabase-mock';
 import { waitForAppLoad } from '../helpers/navigation';
@@ -31,6 +31,36 @@ async function mockClassEntryChannel(page: Page) {
       socket.send(JSON.stringify([joinRef, ref, topic, 'phx_reply', { status: 'ok', response }]));
     });
   });
+}
+
+async function mockLiveRoom(page: Page) {
+  let active: WebSocketRoute | undefined;
+  let code = '';
+  let names = ['Maya', 'Ali'];
+  const board = () => active?.send('42/quick-play,' + JSON.stringify(['qp:leaderboard', {
+    sessionCode: code, students: names.map((nickname, index) => ({ clientId: `student-${index}`, nickname, avatar: '🦊', score: 0, lastSeen: Date.now() })),
+  }]));
+  await page.routeWebSocket(/\/socket\.io\//, ws => {
+    active = ws;
+    ws.send('0' + JSON.stringify({ sid: 'teacher-test', upgrades: [], pingInterval: 120000, pingTimeout: 120000 }));
+    ws.onMessage(raw => {
+      if (typeof raw !== 'string') return;
+      if (raw.startsWith('40/quick-play')) { ws.send('40/quick-play,' + JSON.stringify({ sid: 'teacher-namespace' })); return; }
+      if (!raw.startsWith('42/quick-play,')) return;
+      const [event, payload] = JSON.parse(raw.slice(raw.indexOf('[')));
+      if (event === 'qp:teacher:observe') { code = payload.sessionCode; board(); }
+      const send = (name: string, value: unknown) => ws.send('42/quick-play,' + JSON.stringify([name, value]));
+      if (event === 'qp:teacher:race:start') send('qp:race:round', { ...payload, roundId: 'race-test', letter: 'A', deadlineTs: Date.now() + 60000, serverTs: Date.now() });
+      if (event === 'qp:teacher:speed:start') send('qp:speed:round', { ...payload, roundId: 'speed-test', deadlineTs: Date.now() + 60000, serverTs: Date.now() });
+      if (event === 'qp:teacher:arena:start') send('qp:arena:state', { sessionCode: code, width: 1200, height: 800, grabRadius: 70, roundSeconds: 10, words: [], positions: [], pickups: [], mapId: 'jungle' });
+    });
+  });
+  return { join: (name: string) => { names = [...names, name]; board(); } };
+}
+
+async function addLessonWords(page: Page) {
+  await page.locator('textarea').first().fill('apple, banana, orange, grape');
+  await page.getByRole('button', { name: 'Analyze & Add Words', exact: true }).click();
 }
 
 async function open(page: Page, url: string) {
@@ -64,6 +94,87 @@ async function capture(page: Page, info: TestInfo, name: string) {
 
 test.beforeEach(async ({}, info) => {
   await mkdir(path.join('e2e/test-results/design', info.project.name.replaceAll(' ', '-')), { recursive: true });
+});
+
+test('live join screen shows new students beside enlarged QR and minimizes music on play', async ({ teacherPage: page }, info) => {
+  test.setTimeout(180000);
+  if (info.project.name === 'chromium') await page.setViewportSize({ width: 1440, height: 900 });
+  await mockClassEntryChannel(page);
+  const room = await mockLiveRoom(page);
+  await page.route('https://test-project.supabase.co/rest/v1/rpc/create_quick_play_session', route => route.fulfill({ json: { id: 'join-session', session_code: 'JOIN01' } }));
+  await prepare(page);
+  for (const tour of ['category-race', 'speed-round', 'word-hunt-arena']) {
+    await open(page, '/');
+    await page.locator(`[data-tour="${tour}"]`).first().click();
+    await expect(page.locator('.live-host')).toBeVisible();
+    if (tour === 'category-race') {
+      await page.getByRole('button', { name: /Color/, exact: false }).first().click();
+    } else {
+      await page.getByRole('button', { name: 'Add words', exact: true }).click();
+      await addLessonWords(page);
+      await page.getByRole('button', { name: /^Done · 4 words$/ }).click();
+    }
+    if (tour !== 'word-hunt-arena') await page.getByRole('button', { name: /Open the room/ }).click();
+    await expect(page.getByText('Maya', { exact: true }).first()).toBeVisible();
+    const dock = page.locator('[data-music-dock]');
+    await expect(dock).toHaveAttribute('data-expanded', 'false');
+    if (tour === 'word-hunt-arena') await page.getByRole('button', { name: 'Enlarge', exact: true }).first().click();
+    else await page.getByRole('button', { name: 'Enlarge QR and participants', exact: true }).first().click();
+    const dialog = page.getByRole('dialog', { name: 'Invite your class', exact: true });
+    await expect(dialog).toBeVisible();
+    expect(await dialog.evaluate(element => element.matches(':modal'))).toBe(true);
+    await expect(dialog.locator('[data-live-join-code] svg[role="img"]')).toBeVisible();
+    await expect(dialog.getByText('Maya', { exact: true })).toBeVisible();
+    const newcomer = `Noor-${tour}`;
+    room.join(newcomer);
+    await expect(dialog.getByText(newcomer, { exact: true })).toBeVisible();
+    await capture(page, info, `${tour}-join-dialog`);
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await capture(page, info, `${tour}-join-room`);
+    if (info.project.name === 'chromium') expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(901);
+    await dock.getByRole('button', { name: 'Music', exact: true }).click();
+    await expect(dock).toHaveAttribute('data-expanded', 'true');
+    if (tour === 'category-race') await dock.getByRole('button', { name: 'Play', exact: true }).click();
+    await page.getByRole('button', { name: tour === 'category-race' ? 'Start round' : tour === 'speed-round' ? 'Start word' : 'Start arena', exact: true }).click();
+    await expect(dock).toHaveAttribute('data-expanded', 'false');
+    if (tour === 'category-race') {
+      await dock.getByRole('button', { name: 'Music', exact: true }).click();
+      await expect(dock.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+      await dock.getByRole('button', { name: 'Music', exact: true }).click();
+    }
+    const position = await dock.boundingBox();
+    expect(position).not.toBeNull();
+    expect(position!.y + position!.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+    await page.getByRole('button', { name: 'Enlarge QR and participants', exact: true }).first().click();
+    await expect(dialog.getByText(newcomer, { exact: true })).toBeVisible();
+    await page.keyboard.press('Escape');
+  }
+});
+
+test('Quick Play keeps a scannable code visible with the class and live QR roster', async ({ teacherPage: page }, info) => {
+  test.setTimeout(120000);
+  await mockClassEntryChannel(page);
+  const room = await mockLiveRoom(page);
+  await page.route('https://test-project.supabase.co/rest/v1/rpc/create_quick_play_session', route => route.fulfill({ json: { id: 'join-session', session_code: 'JOIN01' } }));
+  await prepare(page);
+  await open(page, '/');
+  await page.locator('[data-tour="quick-play"]').first().click();
+  await addLessonWords(page);
+  await page.getByRole('button', { name: /Continue/ }).last().click();
+  await page.getByRole('button', { name: 'Skip to QR', exact: true }).click();
+  await page.getByRole('button', { name: 'Generate QR Code', exact: true }).click();
+  await page.getByRole('button', { name: 'Open live podium', exact: true }).click();
+  await expect(page.locator('[data-live-join-code] svg[role="img"]').first()).toBeVisible();
+  await expect(page.locator('[data-music-dock]')).toHaveAttribute('data-expanded', 'false');
+  await page.getByRole('button', { name: 'Enlarge QR and participants', exact: true }).first().click();
+  const dialog = page.getByRole('dialog', { name: 'Invite your class', exact: true });
+  await expect(dialog.getByText('Maya', { exact: true })).toBeVisible();
+  room.join('New Quick Play student');
+  await expect(dialog.getByText('New Quick Play student', { exact: true })).toBeVisible();
+  await capture(page, info, 'quick-play-join-dialog');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
 });
 
 test('live game setup keeps the next action on a desktop screen', async ({ teacherPage: page }, info) => {
