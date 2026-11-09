@@ -8,15 +8,29 @@ const LABEL = { en: "Music", he: "מוזיקה", ar: "الموسيقى" };
 const CLOSE = { en: "Minimize music", he: "מזעור נגן המוזיקה", ar: "تصغير مشغل الموسيقى" };
 
 /** A stable corner control. Remount only this UI on stage changes, never audio. */
-export default function MusicDock({ language, playing, children }: { language: Language; playing: boolean; children: ReactNode }) {
+export default function MusicDock({
+  language,
+  playing,
+  children,
+  panelPlacement = "top",
+}: {
+  language: Language;
+  playing: boolean;
+  children: ReactNode;
+  panelPlacement?: "top" | "above-toggle";
+}) {
   const [expanded, setExpanded] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const lang = language === "he" ? "he" : language === "ar" ? "ar" : "en";
   const close = () => { setExpanded(false); buttonRef.current?.focus(); };
   useBackLayer(close, { enabled: expanded, priority: 35 });
+  const panelPosition = panelPlacement === "above-toggle"
+    ? "absolute bottom-full end-0 mb-2 max-h-[calc(100dvh-4.5rem)] overflow-y-auto"
+    : "fixed top-20 end-3";
+
   return createPortal(
     <aside data-music-dock data-expanded={expanded} className="pointer-events-none fixed bottom-3 end-3 z-40 flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2" dir={lang === "en" ? "ltr" : "rtl"}>
-      {expanded && <div role="group" aria-label={LABEL[lang]} className="pointer-events-auto fixed top-20 end-3 w-[min(340px,calc(100vw-1.5rem))] rounded-2xl border border-slate-200 bg-white p-3 text-slate-900 shadow-xl">
+      {expanded && <div role="group" aria-label={LABEL[lang]} className={`pointer-events-auto ${panelPosition} w-[min(340px,calc(100vw-1.5rem))] rounded-2xl border border-slate-200 bg-white p-3 text-slate-900 shadow-xl`}>
         <div className="mb-2 flex items-center justify-between gap-2"><strong className="text-sm">{LABEL[lang]}</strong><button type="button" onClick={close} aria-label={CLOSE[lang]} className="grid h-9 w-9 place-items-center rounded-lg hover:bg-slate-100"><X size={17} /></button></div>
         <div className="flex flex-wrap items-center gap-2">{children}</div>
       </div>}

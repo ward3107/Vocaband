@@ -166,7 +166,20 @@ test('Quick Play keeps a scannable code visible with the class and live QR roste
   await page.getByRole('button', { name: 'Generate QR Code', exact: true }).click();
   await page.getByRole('button', { name: 'Open live podium', exact: true }).click();
   await expect(page.locator('[data-live-join-code] svg[role="img"]').first()).toBeVisible();
-  await expect(page.locator('[data-music-dock]')).toHaveAttribute('data-expanded', 'false');
+  const dock = page.locator('[data-music-dock]');
+  await expect(dock).toHaveAttribute('data-expanded', 'false');
+  const musicToggle = dock.getByRole('button', { name: 'Music', exact: true });
+  await musicToggle.click();
+  const musicPanel = dock.getByRole('group', { name: 'Music', exact: true });
+  await expect(musicPanel).toBeVisible();
+  const toggleTop = await musicToggle.evaluate(button => button.getBoundingClientRect().top);
+  const panelBottom = await musicPanel.evaluate(panel => panel.getBoundingClientRect().bottom);
+  expect(toggleTop - panelBottom).toBeGreaterThanOrEqual(0);
+  expect(toggleTop - panelBottom).toBeLessThanOrEqual(16);
+  await musicPanel.getByRole('button', { name: 'Minimize music', exact: true }).click();
+  await expect(dock).toHaveAttribute('data-expanded', 'false');
+  await expect(musicToggle).toBeFocused();
+
   await page.getByRole('button', { name: 'Enlarge QR and participants', exact: true }).first().click();
   const dialog = page.getByRole('dialog', { name: 'Invite your class', exact: true });
   await expect(dialog.getByText('Maya', { exact: true })).toBeVisible();

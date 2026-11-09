@@ -1603,7 +1603,7 @@ export default function QuickPlayMonitor({
             </div>
           </div>
         </div>
-        <MusicDock key={`${session.sessionCode}:${showAllPlayers}`} language={language} playing={musicPlaying}>
+        <MusicDock key={`${session.sessionCode}:${showAllPlayers}`} language={language} playing={musicPlaying} panelPlacement="above-toggle">
           {/* Now playing info */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <span className="text-lg shrink-0">{MUSIC_TRACKS[currentTrack].icon}</span>
