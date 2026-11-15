@@ -51,7 +51,7 @@
     "@types/canvas-confetti": "^1.9.0",
     "@types/multer": "^2.3.0",
     "@types/web-push": "^3.6.4",
-    "@vitejs/plugin-react": "^6.1.1",
+    "@vitejs/plugin-react": "^6.3.0",
     "canvas-confetti": "^1.9.4",
     "client-zip": "^2.5.1",
     "csvtojson": "^2.0.14",
