@@ -53,7 +53,7 @@ describe('teacher invitations', () => {
     expect(text).toContain('🏫 Class code: ABCD2345');
     expect(text).not.toContain('&pin=');
   });
-  it('opens the roster from the preparation step and closes the invitation', () => {
+  it('shows the class QR and code immediately and opens the roster from the same invitation', () => {
     const onClose = vi.fn();
     const onOpenRoster = vi.fn();
     render(
@@ -65,9 +65,12 @@ describe('teacher invitations', () => {
         code="ABCD2345"
       />
     );
-    fireEvent.click(
-      screen.getAllByRole('button', { name: classEntryT.en.manage, hidden: true })[0]
-    );
+    expect(screen.getByRole('img', { name: 'QR · Year 7' }).closest('details')).toBeNull();
+    const code = screen.getByRole('button', { name: classEntryT.en.copyCode });
+    expect(code.textContent).toContain('ABCD2345');
+    fireEvent.click(code);
+    expect(writeText).toHaveBeenCalledWith('ABCD2345');
+    fireEvent.click(screen.getByRole('button', { name: classEntryT.en.manage }));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onOpenRoster).toHaveBeenCalledTimes(1);
   });

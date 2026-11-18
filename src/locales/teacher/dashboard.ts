@@ -136,7 +136,6 @@ export interface TeacherDashboardT {
   shareTeams: string;
   copyClassCode: string;
   printPoster: string;
-  shareClassLink: string;
   shareClassLinkEyebrow: string;
   shareClassLinkSubtitle: string;
   shareClassLinkCodeLabel: string;
@@ -265,7 +264,6 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     shareTeams: "Post to Microsoft Teams",
     copyClassCode: "Copy class code",
     printPoster: "Print classroom poster",
-    shareClassLink: "Share class link & QR",
     shareClassLinkEyebrow: "Class join link",
     shareClassLinkSubtitle: "Students scan the QR or open the link to land directly on the class join screen — no marketing detour, no extra typing.",
     shareClassLinkCodeLabel: "Class code",
@@ -390,7 +388,6 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     shareTeams: "פרסם ב-Microsoft Teams",
     copyClassCode: "העתק קוד כיתה",
     printPoster: "הדפס פוסטר לכיתה",
-    shareClassLink: "שתף קישור וקוד QR",
     shareClassLinkEyebrow: "קישור להצטרפות לכיתה",
     shareClassLinkSubtitle: "תלמידים סורקים את ה־QR או פותחים את הקישור ומגיעים ישר למסך ההצטרפות לכיתה — בלי עקיפים, בלי הקלדה מיותרת.",
     shareClassLinkCodeLabel: "קוד כיתה",
@@ -515,7 +512,6 @@ export const teacherDashboardT: Record<Language, TeacherDashboardT> = {
     shareTeams: "انشر في Microsoft Teams",
     copyClassCode: "انسخ رمز الفصل",
     printPoster: "اطبع ملصق الفصل",
-    shareClassLink: "شارك رابط ورمز QR للفصل",
     shareClassLinkEyebrow: "رابط الانضمام إلى الفصل",
     shareClassLinkSubtitle: "يقوم الطلاب بمسح رمز QR أو فتح الرابط للوصول مباشرة إلى شاشة الانضمام للفصل — دون مرور بصفحات تسويقية أو كتابة إضافية.",
     shareClassLinkCodeLabel: "رمز الفصل",

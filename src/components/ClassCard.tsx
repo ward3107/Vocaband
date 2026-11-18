@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Copy, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode, Share2, Timer, Users, Trophy, Palette } from "lucide-react";
+import { Check, Copy, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, ChevronDown, Pencil, CheckCircle2, X, Printer, Tv2, QrCode, Share2, Timer, Trophy, Palette } from "lucide-react";
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
 import type { Word } from "../data/vocabulary";
 import type { VocaId } from "../core/subject";
@@ -708,19 +708,6 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     Edit class
                   </button>
                 )}
-                {/* "Manage roster" used to live here — removed in
-                    favour of the dedicated Roster button on the
-                    primary action row, so teachers have one obvious
-                    path instead of two. */}
-                <button
-                  onClick={() => { setShareModalOpen(true); setMenuOpen(false); }}
-                  type="button"
-                  style={{ color: 'var(--vb-text-secondary)' }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-[var(--vb-surface-alt)]"
-                >
-                  <QrCode size={14} className="text-indigo-600" />
-                  {t.shareClassLink}
-                </button>
                 <button
                   onClick={() => { setShareClassMinuteOpen(true); setMenuOpen(false); }}
                   type="button"
@@ -797,41 +784,11 @@ const ClassCard: React.FC<ClassCardProps> = ({
               ? "inline-flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl min-h-12 font-bold text-base transition-transform active:scale-95"
               : "inline-flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl min-h-12 font-semibold text-base transition-colors hover:opacity-90"
             }
-            title={entry.invite}
-            aria-label={entry.invite}
+            aria-haspopup="dialog"
           >
-            <QrCode size={15} />
+            <QrCode size={16} className="shrink-0" aria-hidden="true" />
             <span>{entry.invite}</span>
           </button>
-          {onOpenRoster && (
-            <button
-              onClick={onOpenRoster}
-              type="button"
-              style={isPastel
-                ? {
-                    touchAction: 'manipulation',
-                    backgroundColor: 'rgba(255,255,255,0.7)',
-                    color: '#202641',
-                    backdropFilter: 'blur(6px)',
-                    WebkitBackdropFilter: 'blur(6px)',
-                  }
-                : {
-                    touchAction: 'manipulation',
-                    backgroundColor: 'var(--vb-surface-alt)',
-                    color: 'var(--vb-text-secondary)',
-                  }
-              }
-              className={isPastel
-                ? "inline-flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl min-h-11 font-bold text-sm transition-transform active:scale-95"
-                : "inline-flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl min-h-11 font-semibold text-sm transition-colors hover:opacity-90"
-              }
-              title={entry.manage}
-              aria-label={entry.manage}
-            >
-              <Users size={15} />
-              <span>{entry.manage}</span>
-            </button>
-          )}
           {assignments.length > 0 && (
             <button
               onClick={handleToggleAssignments}
@@ -851,8 +808,8 @@ const ClassCard: React.FC<ClassCardProps> = ({
                   }
               }
               className={isPastel
-                ? "inline-flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl min-h-11 font-bold text-sm transition-transform active:scale-95"
-                : "inline-flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl min-h-11 font-semibold text-sm transition-colors hover:opacity-90"
+                ? "col-span-2 inline-flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl min-h-11 font-bold text-sm transition-transform active:scale-95"
+                : "col-span-2 inline-flex items-center justify-center gap-1.5 py-3 px-3 rounded-xl min-h-11 font-semibold text-sm transition-colors hover:opacity-90"
               }
               aria-expanded={showAssignments}
             >

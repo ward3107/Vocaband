@@ -72,6 +72,33 @@ function ShareClassLinkContent({
     }
   };
   const openShare = (href: string) => window.open(href, '_blank', 'noopener,noreferrer');
+  const qrCode = (
+    <QRCodeSVG
+      value={url}
+      size={208}
+      level="M"
+      marginSize={4}
+      fgColor="#1F2937"
+      bgColor="#FFFFFF"
+      className="h-auto w-40 max-w-full rounded-xl sm:w-52"
+      role="img"
+      aria-label={`QR · ${className}`}
+    />
+  );
+  const classCode = (
+    <div>
+      <p className="text-sm font-semibold">{t.shareClassLinkCodeLabel}</p>
+      <button
+        type="button"
+        aria-label={entry.copyCode}
+        onClick={() => void copy(code, 'code')}
+        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 font-mono text-xl font-bold"
+      >
+        <bdi dir="ltr" className="select-all">{code}</bdi>
+        {copied === 'code' ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
+      </button>
+    </div>
+  );
 
   return (
     <ModalShell
@@ -96,25 +123,28 @@ function ShareClassLinkContent({
     >
       <ClassEntryLanguagePicker language={language} onChange={setLanguage} />
       {baseInvite && (
-        <div className="mb-4 rounded-2xl border border-[#e1e5d6] bg-[#f6f8ee] p-4 text-[#1d2940]">
-          <p className="font-bold">1. {entry.prepare}</p>
-          <p className="mt-1 text-sm leading-relaxed">{entry.prepareHint}</p>
-          {onOpenRoster && (
-            <button
-              type="button"
-              className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-bold"
-              onClick={() => {
-                onClose();
-                onOpenRoster();
-              }}
-            >
-              <Users size={18} aria-hidden="true" />
-              {entry.manage}
-            </button>
-          )}
+        <div className="mb-4 flex flex-wrap items-center justify-evenly gap-3 rounded-2xl bg-[#f6f8ee] p-3 text-center text-[#1d2940]">
+          {qrCode}
+          <div className="min-w-0">
+            {classCode}
+            {onOpenRoster && (
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-2 text-sm font-bold underline underline-offset-4"
+                onClick={() => {
+                  onClose();
+                  onOpenRoster();
+                }}
+              >
+                <Users size={16} className="shrink-0" aria-hidden="true" />
+                {entry.manage}
+              </button>
+            )}
+          </div>
         </div>
       )}
-      <p className="mb-3 text-base font-bold">{baseInvite ? `2. ${entry.share}` : entry.share}</p>
+      {!baseInvite && <p className="mb-3 text-base font-bold">{entry.share}</p>}
       <a
         href={`https://wa.me/?text=${encodeURIComponent(instructions)}`}
         target="_blank"
@@ -149,47 +179,21 @@ function ShareClassLinkContent({
         onFocus={(e) => e.currentTarget.select()}
         className="mt-2 min-h-11 w-full rounded-lg border border-[var(--vb-border)] bg-[var(--vb-surface)] px-3 py-2 text-sm text-[var(--vb-text-secondary)]"
       />
-      {baseInvite && (
-        <div className="mt-4 rounded-xl bg-[var(--vb-surface-alt)] p-4">
-          <p className="font-bold">3. {entry.explain}</p>
-          <p className="mt-1 text-sm leading-relaxed">{entry.explainHint}</p>
-        </div>
+      {!baseInvite && (
+        <details className="mt-3 rounded-xl border border-[var(--vb-border)] px-4 py-1">
+          <summary className="min-h-11 cursor-pointer py-3 text-base font-bold">
+            {entry.showQr}
+          </summary>
+          <div className="mx-auto mb-4 w-fit">{qrCode}</div>
+        </details>
       )}
-      <details className="mt-3 rounded-xl border border-[var(--vb-border)] px-4 py-1">
-        <summary className="min-h-11 cursor-pointer py-3 text-base font-bold">
-          {entry.showQr}
-        </summary>
-        <div className="mx-auto mb-4 w-fit rounded-xl bg-white p-3">
-          <QRCodeSVG
-            value={url}
-            size={184}
-            level="M"
-            fgColor="#1F2937"
-            bgColor="#FFFFFF"
-            aria-label={`${entry.invite}: ${className}`}
-          />
-        </div>
-      </details>
       {baseInvite && (
         <details className="mt-3 rounded-xl border border-[var(--vb-border)] px-4 py-1">
           <summary className="min-h-11 cursor-pointer py-3 text-base font-bold">
             {entry.teacherHelp}
           </summary>
           <div className="pb-3">
-            <ClassEntryGuide
-              language={language}
-              className={className}
-              classCode={code}
-              url={url}
-              onOpenRoster={
-                onOpenRoster
-                  ? () => {
-                      onClose();
-                      onOpenRoster();
-                    }
-                  : undefined
-              }
-            />
+            <ClassEntryGuide language={language} className={className} classCode={code} url={url} />
           </div>
         </details>
       )}
@@ -197,18 +201,7 @@ function ShareClassLinkContent({
         <summary className="min-h-11 cursor-pointer py-3 text-sm font-bold">
           {entry.moreWays}
         </summary>
-        <p className="mb-2 text-sm">
-          {t.shareClassLinkCodeLabel}: <bdi className="font-mono text-lg font-bold">{code}</bdi>
-        </p>
-        <button
-          type="button"
-          onClick={() => {
-            void copy(code, 'code');
-          }}
-          className="mb-2 min-h-11 rounded-xl border border-[var(--vb-border)] px-3 py-2 text-sm font-bold"
-        >
-          {copied === 'code' ? entry.copied : entry.copyCode}
-        </button>
+        {!baseInvite && classCode}
         <div className="mb-3 grid grid-cols-2 gap-2">
           <button
             type="button"
