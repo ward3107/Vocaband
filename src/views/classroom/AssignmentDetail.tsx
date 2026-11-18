@@ -1,335 +1,278 @@
-/**
- * AssignmentDetail — the drill for the v2 Classroom Assignments tab.
- *
- * Shown as an AdaptiveDrawer (right drawer on desktop, fullscreen on
- * mobile) when the teacher taps an assignment row. Answers the core
- * question "how did my class do on this one?" with three visible
- * buckets:
- *
- *   ✅ Done        — students with at least one play, listed with their
- *                   best / avg score.
- *   ⏳ Stuck       — students who played but averaged < 70%, the
- *                   candidates for a re-assign nudge.
- *   ⚫ Not started — students in the class who have zero plays on this
- *                   assignment yet.
- *
- * Primary action: "Reassign to the N students who haven't finished" —
- * the button is the plan's headline feature for this drill; it lets
- * the teacher skip the bury-at-bottom-of-Pulse path from today's UI.
- * Wiring the one-click reassign is Phase 3; for now the CTA emits an
- * `onReassign` callback so the parent can decide what to do (and today
- * just surfaces a toast).
- *
- * All data is passed in as props — pure component, no RPC of its own.
- */
-import { useMemo, type ReactNode } from "react";
-import { CheckCircle2, Clock, Moon, Users, Send } from "lucide-react";
-import AdaptiveDrawer from "../../components/classroom/AdaptiveDrawer";
-import type { ProgressData } from "../../core/supabase";
-import { useLanguage } from "../../hooks/useLanguage";
-import { teacherDrilldownsT } from "../../locales/teacher/drilldowns";
+import { useEffect, useState } from 'react';
+import { supabase, type ClassData, type ProgressData } from '../../core/supabase';
+import { useLanguage } from '../../hooks/useLanguage';
+import { assignmentWorkflowT } from '../../locales/teacher/assignment-workflows';
+import AdaptiveDrawer from '../../components/classroom/AdaptiveDrawer';
 
-interface ClassStudent {
+export type FollowupKind = 'reminder' | 'practice';
+interface Member {
+  id: string;
   name: string;
-  classCode: string;
-  lastActive: string;
+  avatar: string | null;
+  plays: number;
+  accuracy: number | null;
+  best_points?: number | null;
+  missed: number[];
+  reminder_sent: boolean;
+  practice_sent: boolean;
 }
-
-interface StudentScore {
-  name: string;
-  avatar: string;
+interface Report {
+  assignment_id: string;
+  title: string;
+  expected: number;
+  participated: number;
   attempts: number;
-  bestScore: number;
+  students: Member[] | null;
+}
+const action =
+  'min-h-11 rounded-xl bg-violet-700 px-4 py-2 font-bold text-white disabled:opacity-60';
+const secondary = 'min-h-11 rounded-xl border border-[var(--vb-border)] px-4 py-2 font-bold';
+const panel =
+  'space-y-3 rounded-xl border border-[var(--vb-border)] bg-[var(--vb-surface)] p-4 text-[var(--vb-text-primary)]';
+const needsPractice = (s: Member) =>
+  s.plays > 0 && (s.missed.length > 0 || (s.accuracy !== null && s.accuracy < 70));
+type History = {
+  assignmentId: string;
+  title: string;
+  attempts: number;
   avgScore: number;
-  lastDate: string;
-}
-
-interface AssignmentDetailProps {
-  open: boolean;
-  onClose: () => void;
-  assignment: {
-    id: string;
-    title: string;
-    classCode: string;
-  } | null;
-  /** All ProgressData rows scoped to this assignment, already filtered. */
-  scores: ProgressData[];
-  /** Roster of the class this assignment belongs to, so we can flag
-   *  students who haven't started. */
-  classStudents: ClassStudent[];
-  /** Fires when the teacher taps the reassign CTA. Receives the names
-   *  of students who haven't finished (zero plays OR avg < 70). Parent
-   *  decides what to do (open a flow, show a toast, …). Phase 3 will
-   *  wire this to a real one-click reassign RPC. */
-  onReassign?: (strugglerNames: string[]) => void;
-}
-
-const scoreColor = (s: number): string => {
-  if (s >= 90) return "from-emerald-400 to-emerald-600";
-  if (s >= 70) return "from-sky-400 to-blue-600";
-  if (s >= 50) return "from-amber-400 to-orange-500";
-  return "from-rose-400 to-rose-600";
+  uniqueStudents: Set<string>;
 };
 
-export default function AssignmentDetail({
-  open, onClose, assignment, scores, classStudents, onReassign,
-}: AssignmentDetailProps) {
-  const { language } = useLanguage();
-  const t = teacherDrilldownsT[language];
-  const { done, stuck, notStarted, classAvg } = useMemo(() => {
-    const byStudent = new Map<string, StudentScore>();
-    // Raw running sum per student. Rounding the mean on every attempt (the old
-    // `Math.round((avg*n + s)/(n+1))`) accumulated error that could flip a
-    // student across the 70% done/stuck line; sum now, divide + round once.
-    const sumByStudent = new Map<string, number>();
-    scores.forEach(s => {
-      const key = (s.studentUid || s.studentName).toLowerCase();
-      if (!byStudent.has(key)) {
-        byStudent.set(key, {
-          name: s.studentName,
-          avatar: s.avatar || "🦊",
-          attempts: 0,
-          bestScore: 0,
-          avgScore: 0,
-          lastDate: s.completedAt,
-        });
-        sumByStudent.set(key, 0);
+function useReports(classId: string, assignmentId: string | null, scores: ProgressData[]) {
+  const [rows, setRows] = useState<Report[] | null>(null);
+  const [error, setError] = useState(false);
+  const [refresh, setRefresh] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    setError(false);
+    void (async () => {
+      try {
+        const result = await supabase
+          .rpc('teacher_assignment_report', {
+            p_class_id: classId,
+            p_assignment_id: assignmentId,
+          })
+          .abortSignal(controller.signal);
+        if (result.error) throw result.error;
+        if (!controller.signal.aborted) setRows(result.data ?? []);
+      } catch {
+        if (!controller.signal.aborted) setError(true);
       }
-      const r = byStudent.get(key)!;
-      sumByStudent.set(key, sumByStudent.get(key)! + s.score);
-      r.attempts += 1;
-      r.bestScore = Math.max(r.bestScore, s.score);
-      if (new Date(s.completedAt) > new Date(r.lastDate)) {
-        r.lastDate = s.completedAt;
-        if (s.avatar) r.avatar = s.avatar;
-      }
-    });
-    byStudent.forEach((r, key) => {
-      r.avgScore = r.attempts > 0 ? Math.round(sumByStudent.get(key)! / r.attempts) : 0;
-    });
-
-    const allStudents = Array.from(byStudent.values()).sort(
-      (a, b) => b.avgScore - a.avgScore
-    );
-    const done = allStudents.filter(s => s.avgScore >= 70);
-    const stuck = allStudents.filter(s => s.avgScore < 70);
-
-    const playedNames = new Set(
-      Array.from(byStudent.values()).map(v => v.name.trim().toLowerCase())
-    );
-    const notStarted = (assignment
-      ? classStudents.filter(cs =>
-          cs.classCode === assignment.classCode &&
-          !playedNames.has(cs.name.trim().toLowerCase())
-        )
-      : []
-    ).map(cs => cs.name);
-
-    const classAvg =
-      scores.length === 0
-        ? 0
-        : Math.round(scores.reduce((s, r) => s + r.score, 0) / scores.length);
-
-    return { done, stuck, notStarted, classAvg };
-  }, [scores, classStudents, assignment]);
-
-  const totalExpected = done.length + stuck.length + notStarted.length;
-  const completionPct =
-    totalExpected === 0 ? 0 : Math.round(((done.length + stuck.length) / totalExpected) * 100);
-
-  const strugglerNames = useMemo(
-    () => [...stuck.map(s => s.name), ...notStarted],
-    [stuck, notStarted]
-  );
-
-  return (
-    <AdaptiveDrawer
-      open={open && !!assignment}
-      onClose={onClose}
-      title={assignment?.title ?? ""}
-      subtitle={assignment ? t.assignmentSubtitle(classAvg, completionPct) : ""}
-      avatar="📝"
-    >
-      {!assignment ? null : (
-        <div className="p-4 sm:p-5 space-y-4 pb-24">
-          {/* ── Headline completion ────────────────────────────────── */}
-          <div
-            className="rounded-xl p-4 border"
-            style={{ backgroundColor: 'var(--vb-accent-soft)', borderColor: 'var(--vb-accent)' }}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <div className="text-[11px] font-black uppercase tracking-wider text-[var(--vb-text-muted)]">
-                  Completion
-                </div>
-                <div className="text-3xl font-black mt-1" style={{ color: 'var(--vb-accent)' }}>
-                  {done.length + stuck.length}
-                  <span className="text-[var(--vb-text-muted)] text-xl"> / {totalExpected}</span>
-                </div>
-                <div className="text-[10px] text-[var(--vb-text-muted)] mt-1">
-                  students who've played at least once
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-[11px] font-black uppercase tracking-wider text-[var(--vb-text-muted)]">
-                  Class avg
-                </div>
-                <div className={`text-3xl font-black mt-1 ${
-                  classAvg >= 80 ? "text-emerald-600" :
-                  classAvg >= 70 ? "text-amber-600" : "text-rose-600"
-                }`}>
-                  {classAvg}%
-                </div>
-                <div className="text-[10px] text-[var(--vb-text-muted)] mt-1">
-                  average across every play
-                </div>
-              </div>
-            </div>
-            <div className="h-2 bg-[var(--vb-surface)] rounded-full overflow-hidden mt-2">
-              <div
-                className="h-full bg-gradient-to-r from-indigo-500 to-violet-500"
-                style={{ width: `${completionPct}%` }}
-              />
-            </div>
-          </div>
-
-          {/* ── Three buckets ──────────────────────────────────────── */}
-          <Bucket
-            icon={<CheckCircle2 size={18} className="text-emerald-600" />}
-            title={t.doneTitle}
-            subtitle={t.doneSubtitle}
-            count={done.length}
-            tone="emerald"
-          >
-            {done.length === 0 ? (
-              <Empty text={t.doneEmpty} />
-            ) : (
-              done.slice(0, 20).map(s => (
-                <StudentRow key={s.name} student={s} showScore />
-              ))
-            )}
-          </Bucket>
-
-          <Bucket
-            icon={<Clock size={18} className="text-amber-600" />}
-            title={t.stuckTitle}
-            subtitle={t.stuckSubtitle}
-            count={stuck.length}
-            tone="amber"
-          >
-            {stuck.length === 0 ? (
-              <Empty text={t.stuckEmpty} />
-            ) : (
-              stuck.slice(0, 20).map(s => (
-                <StudentRow key={s.name} student={s} showScore />
-              ))
-            )}
-          </Bucket>
-
-          <Bucket
-            icon={<Moon size={18} className="text-[var(--vb-text-secondary)]" />}
-            title={t.notStartedTitle}
-            subtitle={t.notStartedSubtitle}
-            count={notStarted.length}
-            tone="stone"
-          >
-            {notStarted.length === 0 ? (
-              <Empty text={t.notStartedEmpty} />
-            ) : (
-              notStarted.slice(0, 20).map(name => (
-                <div
-                  key={name}
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg"
-                  style={{ backgroundColor: 'var(--vb-surface-alt)' }}
-                >
-                  <span className="text-lg" aria-hidden>🦊</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-[var(--vb-text-primary)] truncate">{name}</p>
-                    <p className="text-[11px] text-[var(--vb-text-muted)]">{t.hasntOpenedIt}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </Bucket>
-        </div>
-      )}
-
-      {/* Sticky footer CTA — the plan's headline action. Only shows
-          when there's someone to nudge. */}
-      {assignment && strugglerNames.length > 0 && (
-        <div
-          className="sticky bottom-0 left-0 right-0 p-3 backdrop-blur-md border-t border-[var(--vb-border)] pb-[calc(env(safe-area-inset-bottom)+12px)]"
-          style={{ backgroundColor: 'color-mix(in srgb, var(--vb-surface) 95%, transparent)' }}
-        >
-          <button
-            type="button"
-            onClick={() => onReassign?.(strugglerNames)}
-            className="w-full px-4 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/30 hover:shadow-xl transition-shadow"
-            style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" as never }}
-          >
-            <Send size={16} />
-            {t.reassignCta(strugglerNames.length)}
-          </button>
-        </div>
-      )}
-    </AdaptiveDrawer>
-  );
+    })();
+    return () => controller.abort();
+  }, [classId, assignmentId, refresh, scores]);
+  return { rows, error, reload: () => setRefresh((v) => v + 1) };
 }
 
-// ── Shared sub-components ──────────────────────────────────────────────
-
-function Bucket({
-  icon, title, subtitle, count, tone, children,
+export default function AssignmentReports({
+  classroom,
+  scores,
+  history,
 }: {
-  icon: ReactNode;
-  title: string;
-  subtitle: string;
-  count: number;
-  tone: "emerald" | "amber" | "stone";
-  children: ReactNode;
+  classroom: ClassData;
+  scores: ProgressData[];
+  history: History[];
 }) {
-  const toneRing: Record<string, string> = {
-    emerald: "border-[color:var(--vb-success)]/30",
-    amber:   "border-[color:var(--vb-warning)]/30",
-    stone:   "border-[var(--vb-border)]",
-  };
+  const { language } = useLanguage();
+  const t = assignmentWorkflowT[language];
+  const { rows, error, reload } = useReports(classroom.id, null, scores);
+  const [selected, setSelected] = useState<Report | null>(null);
+  const [past, setPast] = useState<History | null>(null);
+  const published = new Set(rows?.map((r) => r.assignment_id));
+  const previous = history.filter((r) => !published.has(r.assignmentId));
   return (
-    <section className={`bg-[var(--vb-surface)] rounded-xl p-4 border ${toneRing[tone]}`}>
-      <header className="flex items-center gap-2 mb-3">
-        {icon}
-        <h3 className="text-sm font-black text-[var(--vb-text-primary)]">{title}</h3>
-        <span className="text-xs font-bold text-[var(--vb-text-muted)]">· {count}</span>
-        <span className="text-[11px] text-[var(--vb-text-muted)] ml-auto truncate">{subtitle}</span>
-      </header>
-      <div className="space-y-1.5">{children}</div>
+    <section className={panel}>
+      <h3 className="text-lg font-black">{t.assignments}</h3>
+      {error && (
+        <p role="alert">
+          {t.error}{' '}
+          <button className={secondary} onClick={reload}>
+            {t.retry}
+          </button>
+        </p>
+      )}
+      {!error && !rows && <p role="status">{t.loading}</p>}
+      {!error && rows?.length === 0 && <p>{t.empty}</p>}
+      {rows?.map((r) => (
+        <button
+          key={r.assignment_id}
+          onClick={() => setSelected(r)}
+          className="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl bg-[var(--vb-surface-alt)] p-3 text-start"
+        >
+          <strong>{r.title}</strong>
+          <span>{t.total(r.participated, r.expected)}</span>
+        </button>
+      ))}
+      {rows && previous.length > 0 && (
+        <details>
+          <summary>{t.historical}</summary>
+          {previous.map((r) => (
+            <button className={secondary} key={r.assignmentId} onClick={() => setPast(r)}>
+              {r.title} · {t.rounds(r.attempts)}
+            </button>
+          ))}
+        </details>
+      )}
+      {past && (
+        <AdaptiveDrawer
+          open
+          onClose={() => setPast(null)}
+          title={past.title}
+          subtitle={t.rounds(past.attempts)}
+        >
+          <ul className="p-4">
+            {scores
+              .filter((s) => s.classCode === classroom.code && s.assignmentId === past.assignmentId)
+              .map((s) => (
+                <li key={s.id}>
+                  {s.studentName} · {s.score}
+                </li>
+              ))}
+          </ul>
+        </AdaptiveDrawer>
+      )}
+      {selected && (
+        <ReportDetail
+          key={selected.assignment_id}
+          classroom={classroom}
+          initial={selected}
+          scores={scores}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </section>
   );
 }
 
-function StudentRow({ student, showScore }: { student: StudentScore; showScore?: boolean }) {
+function ReportDetail({
+  classroom,
+  initial,
+  scores,
+  onClose,
+}: {
+  classroom: ClassData;
+  initial: Report;
+  scores: ProgressData[];
+  onClose: () => void;
+}) {
+  const { language } = useLanguage();
+  const t = assignmentWorkflowT[language];
+  const { rows, error, reload } = useReports(classroom.id, initial.assignment_id, scores);
+  const report = rows?.[0];
+  const [confirm, setConfirm] = useState<{ kind: FollowupKind; members: Member[] } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [sentIds, setSentIds] = useState<Set<string>>(new Set());
+  async function send() {
+    if (!confirm || busy) return;
+    setBusy(true);
+    setNotice('');
+    try {
+      const { data, error: sendError } = await supabase.rpc('send_assignment_followup', {
+        p_assignment_id: initial.assignment_id,
+        p_kind: confirm.kind,
+        p_profile_ids: confirm.members.map((m) => m.id),
+      });
+      if (sendError || typeof data !== 'number')
+        throw sendError ?? new Error('Missing delivery count');
+      if (data === confirm.members.length) {
+        setSentIds(
+          (prev) => new Set([...prev, ...confirm.members.map((m) => confirm.kind + m.id)])
+        );
+      }
+      setNotice(t.sent(data));
+      setConfirm(null);
+      reload();
+    } catch {
+      setNotice(t.failed);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const members = report?.students ?? [];
+  const groups: { title: string; kind?: FollowupKind; members: Member[] }[] = [
+    { title: t.waiting, kind: 'reminder', members: members.filter((s) => !s.plays) },
+    { title: t.needsPractice, kind: 'practice', members: members.filter(needsPractice) },
+    { title: t.started, members: members.filter((s) => s.plays && !needsPractice(s)) },
+  ];
   return (
-    <div className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ backgroundColor: 'var(--vb-surface-alt)' }}>
-      <span className="text-lg shrink-0" aria-hidden>{student.avatar}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-[var(--vb-text-primary)] truncate">{student.name}</p>
-        <p className="text-[11px] text-[var(--vb-text-muted)]">
-          {student.attempts} {student.attempts === 1 ? "play" : "plays"} · best {student.bestScore}
-        </p>
+    <AdaptiveDrawer open onClose={onClose} title={initial.title} subtitle={classroom.name}>
+      <div className="space-y-4 p-4">
+        {error || (rows && !report) ? (
+          <p role="alert">
+            {t.error}{' '}
+            <button className={secondary} onClick={reload}>
+              {t.retry}
+            </button>
+          </p>
+        ) : !report ? (
+          <p role="status">{t.loading}</p>
+        ) : (
+          <>
+            <h3 className="text-xl font-black">{t.total(report.participated, report.expected)}</h3>
+            {groups.map((group) => {
+              const kind = group.kind;
+              const pending = kind
+                ? group.members.filter(
+                    (s) =>
+                      !(kind === 'reminder' ? s.reminder_sent : s.practice_sent) &&
+                      !sentIds.has(kind + s.id)
+                  )
+                : [];
+              return (
+                <section className={panel} key={group.title}>
+                  <h4 className="font-black">
+                    {group.title} · {group.members.length}
+                  </h4>
+                  <ul>
+                    {group.members.map((s) => (
+                      <li
+                        key={s.id}
+                        className="flex flex-wrap items-center justify-between gap-2 py-1"
+                      >
+                        <bdi>{s.name}</bdi>
+                        <small>
+                          {s.plays ? t.rounds(s.plays) : ''}
+                          {s.best_points != null && ' · ' + t.bestPoints(s.best_points)}
+                          {s.accuracy !== null && ' · ' + t.accuracy(s.accuracy)}
+                        </small>
+                      </li>
+                    ))}
+                  </ul>
+                  {kind && pending.length > 0 && !confirm && (
+                    <button
+                      className={action}
+                      onClick={() => {
+                        setNotice('');
+                        setConfirm({ kind, members: pending });
+                      }}
+                    >
+                      {kind === 'reminder' ? t.reminder : t.practice}
+                    </button>
+                  )}
+                  {kind && group.members.length > 0 && !pending.length && <small>{t.all}</small>}
+                </section>
+              );
+            })}
+          </>
+        )}
+        {confirm && (
+          <section className={panel} aria-live="polite">
+            <strong>{t.confirm(confirm.members.length, classroom.name)}</strong>
+            <p>{confirm.members.map((s) => s.name).join(', ')}</p>
+            <div className="flex gap-2">
+              <button className={action} disabled={busy} onClick={() => void send()}>
+                {t.send}
+              </button>
+              <button className={secondary} disabled={busy} onClick={() => setConfirm(null)}>
+                {t.cancel}
+              </button>
+            </div>
+          </section>
+        )}
+        <p role="status">{notice}</p>
       </div>
-      {showScore && (
-        <div className={`px-2.5 py-1 rounded-lg bg-gradient-to-br text-white font-black text-sm shrink-0 ${scoreColor(student.avgScore)}`}>
-          {student.avgScore}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Empty({ text }: { text: string }) {
-  return (
-    <div className="flex items-center gap-2 px-3 py-3 text-[var(--vb-text-muted)] text-sm">
-      <Users size={14} />
-      <span>{text}</span>
-    </div>
+    </AdaptiveDrawer>
   );
 }

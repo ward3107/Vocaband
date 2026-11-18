@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { SavedTask } from "./useSavedTasks";
 
 /**
  * The assignment-builder form fields: title, deadline, chosen modes, generated
@@ -8,6 +9,7 @@ import { useState } from "react";
  * hook.
  */
 export function useAssignmentBuilderState() {
+  const [assignmentTemplate, setAssignmentTemplate] = useState<SavedTask | null>(null);
   const [assignmentTitle, setAssignmentTitle] = useState("");
   const [assignmentDeadline, setAssignmentDeadline] = useState("");
   const [assignmentModes, setAssignmentModes] = useState<string[]>([]);
@@ -18,6 +20,7 @@ export function useAssignmentBuilderState() {
   const [showTopicPacks, setShowTopicPacks] = useState(false);
 
   return {
+    assignmentTemplate, setAssignmentTemplate,
     assignmentTitle, setAssignmentTitle,
     assignmentDeadline, setAssignmentDeadline,
     assignmentModes, setAssignmentModes,

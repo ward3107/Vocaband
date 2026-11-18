@@ -14,7 +14,7 @@
  * persists the row.  That function already branches on the parent
  * class's subject and pulls the `words` JSONB from HEBREW_LEMMAS.
  */
-import { useMemo, useRef, useState, type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { motion } from "motion/react";
 import { ArrowLeft, ArrowRight, Check, BookOpen, Camera, Upload, FolderOpen, Loader2, Pin, Repeat } from "lucide-react";
 import { HEBREW_LEMMAS, HEBREW_LEMMAS_BY_ID } from "../data/vocabulary-hebrew";
@@ -61,7 +61,9 @@ export const HEBREW_MODE_OPTIONS: ReadonlyArray<{
   { id: "scramble",    emoji: "🔀", titleHe: "ערבוב אותיות",         blurbHe: "סדרו מחדש את האותיות",          gradient: "from-teal-500 to-emerald-600",  comingSoon: true },
 ];
 
+import type { DraftBinding } from '../views/CreateAssignmentView';
 export interface HebrewAssignmentWizardProps {
+  draft?: DraftBinding;
   selectedClass: ClassData;
   selectedWords: number[];
   setSelectedWords: Dispatch<SetStateAction<number[]>>;
@@ -87,11 +89,24 @@ export default function HebrewAssignmentWizard(props: HebrewAssignmentWizardProp
     assignmentTitle, setAssignmentTitle,
     assignmentDeadline, setAssignmentDeadline,
     assignmentModes, setAssignmentModes,
-    handleSaveAssignment, onBack, isEditing,
+    handleSaveAssignment, onBack, isEditing, draft,
   } = props;
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [gradePackId, setGradePackId] = useState<string | null>(null);
+  const [step, setStep] = useState<1 | 2 | 3>(draft?.initial?.step ?? 1);
+  const [gradePackId, setGradePackId] = useState<string | null>(draft?.initial?.pack ?? null);
+
+  const saveDraft = draft?.save;
+  const draftStarted = useRef(!!draft?.initial);
+  useEffect(() => {
+    if (!saveDraft) return;
+    if (!selectedWords.length && !assignmentTitle && !gradePackId && !draftStarted.current) return;
+    draftStarted.current = true;
+    saveDraft({
+      step, words: [], ids: selectedWords, modes: assignmentModes,
+      title: assignmentTitle, deadline: assignmentDeadline, pack: gradePackId,
+      instructions: '', sentences: [], difficulty: 2,
+    });
+  }, [saveDraft, step, selectedWords, assignmentModes, assignmentTitle, assignmentDeadline, gradePackId]);
 
   // Word-source picker. "packs" is the existing browse-by-theme flow.
   // "ocr" / "upload" both call /api/ocr with lang=he and pre-select

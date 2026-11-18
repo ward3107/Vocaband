@@ -135,7 +135,7 @@ interface TeacherDashboardViewProps {
   /** Open the roster modal for a given class. */
   onOpenRoster?: (c: ClassData) => void;
 
-  // Saved-task templates (localStorage-backed, see useSavedTasks).
+  // Saved-task templates (account sync and local cache via useSavedTasks).
   savedTasks?: SavedTask[];
   onUseSavedTask?: (task: SavedTask) => void;
   onTogglePinSavedTask?: (id: string) => void;

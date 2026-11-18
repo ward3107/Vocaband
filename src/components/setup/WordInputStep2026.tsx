@@ -85,6 +85,9 @@ export interface WordWithStatus {
 }
 
 export interface WordInputStep2026Props {
+  pasteText?: string;
+  onPasteChange?: (text: string) => void;
+
   allWords: Word[];
   selectedWords: Word[];
   onSelectedWordsChange: (words: Word[]) => void;
@@ -137,6 +140,9 @@ export type TranslationLang = 'both' | 'hebrew' | 'arabic';
 
 // Hero Paste Area
 interface HeroPasteAreaProps {
+  pasteText?: string;
+  onPasteChange?: (text: string) => void;
+
   onAnalyze: (text: string) => void;
   isAnalyzing: boolean;
   allWords: Word[];
@@ -146,10 +152,12 @@ interface HeroPasteAreaProps {
   takenEnglish: Set<string>;
 }
 
-const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, allWords, takenEnglish }) => {
+const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, allWords, takenEnglish, pasteText, onPasteChange }) => {
   const TEXT = useStepTexts();
   const isDesktop = useIsDesktopPointer();
-  const [text, setText] = useState('');
+  const [localText, setLocalText] = useState('');
+  const text = pasteText ?? localText;
+  const setText = onPasteChange ?? setLocalText;
   const [suggestions, setSuggestions] = useState<SpellSuggestion[]>([]);
   const [ignored, setIgnored] = useState<Set<string>>(new Set());
   // Caret position drives the as-you-type autocomplete strip. We track
@@ -194,7 +202,7 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
   }, [text, allWords, ignored, takenEnglish]);
 
   const acceptSuggestion = (s: SpellSuggestion) => {
-    setText(prev => applySuggestion(prev, s.typo, s.suggestion));
+    setText(applySuggestion(text, s.typo, s.suggestion));
   };
 
   const dismissSuggestion = (typo: string) => {
@@ -229,7 +237,7 @@ const HeroPasteArea: React.FC<HeroPasteAreaProps> = ({ onAnalyze, isAnalyzing, a
       setText(newText);
       setPendingCaret(caret);
     },
-    [text, currentToken.start, currentToken.end]
+    [text, currentToken.start, currentToken.end, setText]
   );
 
   // Restore caret + keep focus after a programmatic insertion.
@@ -1818,6 +1826,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   onRenameSavedGroup,
   onDeleteSavedGroup,
   hideContinueButton = false,
+  pasteText, onPasteChange,
   translationLang: controlledTranslationLang,
   onTranslationLangChange,
 }) => {
@@ -2298,7 +2307,7 @@ export const WordInputStep2026: React.FC<WordInputStep2026Props> = ({
   return (
     <div>
       {/* Hero Paste Area */}
-      <HeroPasteArea onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} allWords={allWords} takenEnglish={takenEnglish} />
+      <HeroPasteArea pasteText={pasteText} onPasteChange={onPasteChange} onAnalyze={handleAnalyze} isAnalyzing={isAnalyzing} allWords={allWords} takenEnglish={takenEnglish} />
 
       {/* OR Separator */}
       <div className="flex items-center gap-4 my-8">

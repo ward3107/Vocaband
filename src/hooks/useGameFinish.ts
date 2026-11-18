@@ -42,6 +42,7 @@ import {
   isAssignmentLocked,
   resolveAssignmentPlays,
 } from "./useAssignmentPlays";
+import { finishAssignedPractice } from "../utils/assignmentPracticeReceipt";
 import { celebrate } from "../utils/celebrate";
 import { trackAutoError } from "../errorTracking";
 import { coinsForGame } from "../utils/coins";
@@ -196,7 +197,7 @@ export function useGameFinish(params: UseGameFinishParams) {
     if (hasTeacherAccess(user)) {
       setView("teacher-dashboard");
     } else if (user?.role === "student") {
-      if (showModeSelection || isDirectLaunchMode) {
+      if (showModeSelection || isDirectLaunchMode || activeAssignment?.followupProfileId) {
         if (quickPlayActiveSession) {
           cleanupSessionData();
           setQuickPlayActiveSession(null);
@@ -237,6 +238,13 @@ export function useGameFinish(params: UseGameFinishParams) {
     if (!user) return;
     setIsSaving(true);
     setSaveError(null);
+
+    if (activeAssignment?.followupProfileId) {
+      const saved = await finishAssignedPractice(user.uid, activeAssignment.id, activeAssignment.followupProfileId);
+      if (!saved) setSaveError("practice-receipt-pending");
+      setIsSaving(false);
+      return;
+    }
 
     // Quick Play (guest) mode: score lives on the /quick-play socket's
     // in-memory leaderboard, not in the progress table.  Emit a final

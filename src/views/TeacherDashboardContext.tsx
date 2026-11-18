@@ -127,6 +127,7 @@ export interface TeacherDashboardSectionDeps {
   setRosterModalClass: React.Dispatch<React.SetStateAction<ClassData | null>>;
   rosterModalClass: ClassData | null;
 
+  setAssignmentTemplate: React.Dispatch<React.SetStateAction<SavedTask | null>>;
   savedTasks: {
     tasks: SavedTask[];
     togglePin: (id: string) => void;

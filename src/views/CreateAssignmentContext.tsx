@@ -15,7 +15,7 @@ import { createContext, useContext, type ReactNode } from 'react';
 import type React from 'react';
 import type { Word } from '../data/vocabulary';
 import type { AppUser, ClassData, AssignmentData } from '../core/supabase';
-import type { SavedTaskInput } from '../hooks/useSavedTasks';
+import type { SavedTaskInput, SavedTask } from '../hooks/useSavedTasks';
 import type { View } from '../core/views';
 
 export interface CreateAssignmentSectionDeps {
@@ -28,6 +28,7 @@ export interface CreateAssignmentSectionDeps {
 
   customWords: Word[];
   setCustomWords: React.Dispatch<React.SetStateAction<Word[]>>;
+  assignmentTemplate: SavedTask | null;
   assignmentTitle: string;
   setAssignmentTitle: React.Dispatch<React.SetStateAction<string>>;
   assignmentDeadline: string;

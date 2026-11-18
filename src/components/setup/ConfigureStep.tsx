@@ -312,8 +312,12 @@ export const ConfigureStep: React.FC<ConfigureStepProps> = ({
   // flips the ref below). Typing into the title field later never gets
   // stomped by mode changes because titleManuallyEditedRef stays true
   // for the rest of the session once the teacher touches the field.
-  const titleManuallyEditedRef = useRef(false);
-  const instructionsManuallyEditedRef = useRef(false);
+  // A draft, copied assignment or template may already contain teacher-authored text.
+  const [initialMeta] = useState(() => deriveAssignmentMeta(selectedModes));
+  const titleManuallyEditedRef = useRef(!!assignmentTitle && assignmentTitle !== initialMeta.title);
+  const instructionsManuallyEditedRef = useRef(
+    !!assignmentInstructions && assignmentInstructions !== initialMeta.instructions
+  );
   const lastAutoTitleRef = useRef('');
   const lastAutoInstrRef = useRef('');
 

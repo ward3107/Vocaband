@@ -10,6 +10,7 @@ import { EndgameStanding, EndgamePracticeWords, MAX_PRACTICE_WORDS } from "../co
 import RatingPrompt from "../components/RatingPrompt";
 import StudentLangButton from "../components/StudentLangButton";
 import { useLanguage } from "../hooks/useLanguage";
+import { assignmentWorkflowT } from "../locales/teacher/assignment-workflows";
 import { useQuickPlayEndgameBack } from "../hooks/useQuickPlayEndgameBack";
 import { gameFinishedT } from "../locales/student/game-finished";
 import { useGameRoute } from "./GameRouteContext";
@@ -284,7 +285,7 @@ export default function GameFinishedView({
       ) : saveError ? (
         <div className="flex items-center gap-2 text-red-500 mb-4">
           <AlertTriangle size={18} />
-          <span className="text-sm">{saveError}</span>
+          <span className="text-sm">{saveError === 'practice-receipt-pending' ? assignmentWorkflowT[language].receiptError : saveError}</span>
         </div>
       ) : null}
       </div>{/* end celebration block */}

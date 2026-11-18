@@ -24,7 +24,7 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Users, Trophy, GraduationCap, ChevronDown, Download, Gift, Award,
+  Users, GraduationCap, ChevronDown, Download, Gift, Award,
   AlertTriangle, CheckCircle2, Moon, Flame, Calendar,
 } from "lucide-react";
 import TopAppBar from "../components/TopAppBar";
@@ -39,7 +39,7 @@ import { TeacherRewardModal, type StudentInfo } from "../components/dashboard/Te
 import { useLanguage } from "../hooks/useLanguage";
 import { gradebookT } from "../locales/teacher/gradebook";
 import StudentProfile from "./classroom/StudentProfile";
-import AssignmentDetail from "./classroom/AssignmentDetail";
+import AssignmentReports from "./classroom/AssignmentDetail";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface ClassStudent {
@@ -192,7 +192,7 @@ export default function GradebookView({
   // Drill-mode state (v2 classroom only). Kept local so the inline-
   // expand path is untouched on the standalone /gradebook route.
   const [drillStudent, setDrillStudent] = useState<StudentRollup | null>(null);
-  const [drillAssignmentId, setDrillAssignmentId] = useState<string | null>(null);
+
 
   // Class selection is controlled when the parent passes it in (4-tab
   // classroom) and uncontrolled otherwise (standalone /gradebook route).
@@ -200,6 +200,7 @@ export default function GradebookView({
     controlledClassCode ?? classes[0]?.code ?? ''
   );
   const selectedClassCode = controlledClassCode ?? localClassCode;
+  const reportClass = classes.find(c => c.code === selectedClassCode);
   const setSelectedClassCode = (code: string) => {
     if (onSelectedClassChange) onSelectedClassChange(code);
     else setLocalClassCode(code);
@@ -818,52 +819,8 @@ export default function GradebookView({
         )}
 
         {/* ── 4. PER-ASSIGNMENT rollup ───────────────────────────────────── */}
-        {showAssignments && assignmentRollups.length > 0 && (
-          <div className="bg-[var(--vb-surface)] rounded-xl p-5 shadow-sm border border-[var(--vb-border)]">
-            <h3 className="text-base font-black text-[var(--vb-text-primary)] mb-4 flex items-center gap-2">
-              <Trophy size={16} className="text-amber-500" />
-              {t.assignmentsHeading}
-              <span className="text-xs font-bold text-[var(--vb-text-muted)]">· {assignmentRollups.length}</span>
-            </h3>
-            <div className="space-y-2">
-              {assignmentRollups.map(a => {
-                const RowInner = (
-                  <>
-                    <div className="flex-1 min-w-0 text-left">
-                      <p className="font-bold text-[var(--vb-text-primary)] truncate">{a.title}</p>
-                      <p className="text-xs text-[var(--vb-text-muted)]">
-                        {t.assignmentMetaRow(a.uniqueStudents.size, a.attempts)}
-                      </p>
-                    </div>
-                    <div className={`px-3 py-1.5 rounded-lg bg-gradient-to-br text-white font-black text-sm ${scoreColor(a.avgScore)}`}>
-                      {a.avgScore}
-                    </div>
-                  </>
-                );
-                return useDrawerDrill ? (
-                  <button
-                    key={a.assignmentId}
-                    type="button"
-                    onClick={() => setDrillAssignmentId(a.assignmentId)}
-                    style={{ backgroundColor: 'var(--vb-surface-alt)', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' as never }}
-                    className="w-full flex items-center gap-3 p-3 hover:opacity-90 rounded-lg transition-colors"
-                  >
-                    {RowInner}
-                    <ChevronDown size={16} className="text-[var(--vb-border)] -rotate-90 shrink-0" aria-hidden />
-                  </button>
-                ) : (
-                  <div
-                    key={a.assignmentId}
-                    style={{ backgroundColor: 'var(--vb-surface-alt)' }}
-                    className="flex items-center gap-3 p-3 rounded-lg"
-                  >
-                    {RowInner}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {showAssignments && reportClass && <AssignmentReports key={reportClass.id} classroom={reportClass}
+          scores={allScores} history={assignmentRollups} />}
       </main>
 
       <TeacherRewardModal
@@ -932,28 +889,7 @@ export default function GradebookView({
                 : undefined
             }
           />
-          <AssignmentDetail
-            open={!!drillAssignmentId}
-            onClose={() => setDrillAssignmentId(null)}
-            assignment={
-              drillAssignmentId
-                ? {
-                    id: drillAssignmentId,
-                    title:
-                      teacherAssignments.find(a => a.id === drillAssignmentId)?.title
-                      ?? t.quickPlayFallback,
-                    classCode: selectedClassCode,
-                  }
-                : null
-            }
-            scores={allScores.filter(
-              s => s.assignmentId === drillAssignmentId && s.classCode === selectedClassCode
-            )}
-            classStudents={classStudents}
-            onReassign={(names) => {
-              showToast(t.reassignToast(names.length), 'info');
-            }}
-          />
+
         </>
       )}
     </div>

@@ -140,6 +140,10 @@ export async function mockSupabase(page: Page, scenario: MockScenario = 'public'
     }
   });
 
+  // A fresh teacher has no saved draft. Tests of persistence override this
+  // route with a stateful store shared between two browser contexts.
+  await page.route(`${BASE}/rest/v1/assignment_drafts**`, route => route.fulfill({ json: [] }));
+
   // GET /rest/v1/assignments
   await page.route(`${BASE}/rest/v1/assignments**`, (route) => {
     if (route.request().method() === 'GET') {

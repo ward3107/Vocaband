@@ -24,7 +24,12 @@ import { useLanguage } from '../hooks/useLanguage';
 import { teacherWizardsT } from '../locales/teacher/wizards';
 
 
+import type { SavedTask } from '../hooks/useSavedTasks';
+import type { DraftBinding } from '../views/CreateAssignmentView';
+
 export interface CreateAssignmentWizardProps {
+  draft?: DraftBinding;
+  template?: SavedTask | null;
   selectedClass: { name: string; code: string; studentCount?: number; id?: string };
   allWords: Word[];
   set1Words: Word[];
@@ -47,7 +52,7 @@ export interface CreateAssignmentWizardProps {
   // avoid the async-state timing issue noted there.  The prop type
   // was declared as `() => void` and silently accepted any args at
   // the JS level, but TypeScript caught the discrepancy.
-  handleSaveAssignment: (wordsOverride?: number[], modesOverride?: string[], enableCompetition?: boolean) => void | Promise<void>;
+  handleSaveAssignment: (wordsOverride?: number[], modesOverride?: string[], enableCompetition?: boolean, wordSnapshot?: Word[]) => void | Promise<void>;
   assignmentSentences: string[];
   setAssignmentSentences: (sentences: string[]) => void;
   sentenceDifficulty: SentenceDifficulty;
@@ -105,6 +110,7 @@ export interface CreateAssignmentWizardProps {
     title: string;
     mode: 'quick-play' | 'assignment';
     wordIds: number[];
+    words?: Word[];
     modes: string[];
     instructions?: string;
     sentenceDifficulty?: SentenceDifficulty;
@@ -118,7 +124,7 @@ export interface CreateAssignmentWizardProps {
 }
 
 export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
-  selectedClass,
+  selectedClass, draft, template,
   allWords,
   set1Words,
   set2Words,
@@ -157,7 +163,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   // ── Local State ─────────────────────────────────────────────────────────────
   const [showSuccess, setShowSuccess] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [instructions, setInstructions] = useState('');
+  const [instructions, setInstructions] = useState(draft?.initial?.instructions ?? template?.instructions ?? '');
 
   // Gemini-backed translator shared across the whole wizard — replaces
   // the older mymemory.translated.net path which gave worse results
@@ -176,11 +182,12 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
     // — a ~6.5k-word scan with a nested array search on every word toggle,
     // the wizard's hottest interaction.
     const selectedSet = new Set(selectedWordsIds);
-    const words = allWords.filter(w => selectedSet.has(w.id));
-    // Include custom words
-    const customSelected = customWords.filter(w => selectedSet.has(w.id));
-    return [...words, ...customSelected];
-  }, [allWords, customWords, selectedWordsIds]);
+    const matches = new Map(allWords.filter(w => selectedSet.has(w.id)).map(w => [w.id, w]));
+    for (const w of [...customWords, ...(template?.words ?? [])]) {
+      if (selectedSet.has(w.id)) matches.set(w.id, w);
+    }
+    return Array.from(selectedSet, id => matches.get(id)).filter((w): w is Word => !!w);
+  }, [allWords, customWords, selectedWordsIds, template]);
 
   // ── Handle SetupWizard completion ───────────────────────────────────────────
   const handleWizardComplete = async (result: { words: Word[]; modes: string[]; enableCompetition?: boolean }) => {
@@ -194,7 +201,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
     // the hook now rejects (and toasts) on a failed insert instead of
     // silently resolving, which used to let us show a false "created!" screen.
     try {
-      await handleSaveAssignment(wordIds, result.modes, result.enableCompetition);
+      await handleSaveAssignment(wordIds, result.modes, result.enableCompetition, result.words);
     } catch {
       return; // the hook already surfaced an error toast
     }
@@ -367,6 +374,7 @@ export const CreateAssignmentWizard: React.FC<CreateAssignmentWizardProps> = ({
   return (
     <SetupWizard
       mode="assignment"
+      draft={draft}
       allWords={allWords}
       set1Words={set1Words}
       set2Words={set2Words}

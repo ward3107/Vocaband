@@ -393,6 +393,8 @@ export interface ClassData {
 }
 
 export interface AssignmentData {
+  /** A personal practice round records its own receipt, separate from assignment scores. */
+  followupProfileId?: string;
   id: string;
   classId: string;
   wordIds: number[];
