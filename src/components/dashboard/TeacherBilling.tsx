@@ -1,12 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { supabase } from '../../core/supabase';
+import type { TeacherBillingQuote } from '../../core/plan';
 import type { Language } from '../../hooks/useLanguage';
 
 const strings = {
   he: {
     support: 'פנייה לגבי המנוי',
     cancelPending: 'בקשת הביטול התקבלה. כאן יופיע אישור כשהחידוש יופסק.',
-    other: 'התחלת תשלום למסלול אחר. אפשר לחזור אליו עכשיו או לבחור מסלול חדש בעוד 30 דקות.',
+    other: 'כבר פתוח עבורך קישור לתשלום. אפשר להשלים אותו או לנסות שוב כשיפוג.',
+    prepare: 'קישור התשלום בהכנה. אפשר לנסות שוב בעוד רגע.',
+    updated: 'מספר התלמידים השתנה. בדקו את המחיר המעודכן לפני המעבר לתשלום.',
+    verify: 'כדי לקבל קבלה, יש לאמת את כתובת המייל בחשבון.',
     title: 'המנוי שלי',
     close: 'סגירה',
     loading: 'טוענים את פרטי המנוי…',
@@ -18,11 +22,15 @@ const strings = {
     paid: 'הגישה בתשלום זמינה עד ',
     year: 'Pro שנתי',
     month: 'Pro חודשי',
-    once: '12 חודשי Pro בתשלום אחד',
-    monthly: 'בכל חודש, עד ביטול',
-    annually: 'בכל שנה, עד ביטול',
-    prepaid: 'תשלום אחד, ללא חידוש אוטומטי',
-    sale: 'המבצע עד ',
+    students: 'תלמידים מאושרים בכיתות שלך',
+    monthly: 'לחודש',
+    annually: 'לשנה',
+    perStudent: 'לתלמיד',
+    cap: 'תקרה שנתית לכל הכיתות יחד',
+    saveAmount: 'חיסכון לעומת 12 תשלומים חודשיים',
+    prepaid: 'תשלום אחד לתקופה שבחרת. אפשר לחדש בסופה לפי מספר התלמידים שיהיה אז.',
+    buyAfterTrial: 'אפשר לבחור ולשלם כשהניסיון החינמי מסתיים.',
+    noStudents: 'אחרי שתאשרו תלמיד בכיתה, יופיע כאן המחיר.',
     buy: 'המשך לתשלום',
     off: 'רכישה עצמאית תיפתח לאחר חיבור הסליקה.',
     cancel: 'ביטול החידוש',
@@ -38,7 +46,10 @@ const strings = {
   ar: {
     support: 'تواصل بخصوص الاشتراك',
     cancelPending: 'استلمنا طلب الإلغاء. سيظهر التأكيد هنا عند إيقاف التجديد.',
-    other: 'بدأت دفعًا لخطة أخرى. يمكنك إكماله أو اختيار خطة جديدة بعد 30 دقيقة.',
+    other: 'لديك رابط دفع مفتوح. يمكنك إتمام الدفع عبره أو المحاولة بعد انتهاء صلاحيته.',
+    prepare: 'يجري إعداد رابط الدفع. حاول مرة أخرى بعد قليل.',
+    updated: 'تغيّر عدد الطلاب. راجع السعر المحدّث قبل متابعة الدفع.',
+    verify: 'أكّد عنوان البريد الإلكتروني في حسابك لاستلام الإيصال.',
     title: 'اشتراكي',
     close: 'إغلاق',
     loading: 'جارٍ تحميل الاشتراك…',
@@ -50,11 +61,15 @@ const strings = {
     paid: 'الاشتراك مدفوع حتى ',
     year: 'Pro سنوي',
     month: 'Pro شهري',
-    once: '12 شهرًا بدفعة واحدة',
-    monthly: 'كل شهر حتى الإلغاء',
-    annually: 'كل سنة حتى الإلغاء',
-    prepaid: 'دفعة واحدة دون تجديد تلقائي',
-    sale: 'العرض حتى ',
+    students: 'طالبًا معتمدًا في صفوفك',
+    monthly: 'شهريًا',
+    annually: 'سنويًا',
+    perStudent: 'لكل طالب',
+    cap: 'الحد السنوي لجميع الصفوف',
+    saveAmount: 'التوفير مقارنةً بـ 12 دفعة شهرية',
+    prepaid: 'دفعة واحدة للفترة التي تختارها. يمكنك التجديد حسب عدد الطلاب عند انتهائها.',
+    buyAfterTrial: 'يمكنك اختيار الخطة والدفع بعد انتهاء الفترة التجريبية المجانية.',
+    noStudents: 'سيظهر السعر هنا بعد اعتماد طالب في أحد صفوفك.',
     buy: 'متابعة الدفع',
     off: 'سيُتاح الشراء بعد ربط خدمة الدفع.',
     cancel: 'إلغاء التجديد',
@@ -72,8 +87,10 @@ const strings = {
     support: 'Contact us about your subscription',
     cancelPending:
       'We received your cancellation request. Confirmation will appear here when renewal stops.',
-    other:
-      'You started checkout for a different plan. Return to that plan or choose another in 30 minutes.',
+    other: 'You already have an open payment link. Complete it or try again after it expires.',
+    prepare: 'Your payment link is being prepared. Try again in a moment.',
+    updated: 'Your student count changed. Review the updated price before continuing.',
+    verify: 'Verify your account email address to receive a receipt.',
     title: 'My subscription',
     close: 'Close',
     loading: 'Loading your subscription…',
@@ -85,11 +102,16 @@ const strings = {
     paid: 'Paid access through ',
     year: 'Yearly Pro',
     month: 'Monthly Pro',
-    once: '12 months of prepaid Pro',
-    monthly: 'Every month until canceled',
-    annually: 'Every year until canceled',
-    prepaid: 'One payment, no automatic renewal',
-    sale: 'Offer ends ',
+    students: 'approved students in your classes',
+    monthly: 'per month',
+    annually: 'per year',
+    perStudent: 'per student',
+    cap: 'Yearly cap across all your classes',
+    saveAmount: 'Savings compared with 12 monthly payments',
+    prepaid:
+      'One payment for the period you choose. You can renew based on your student count when it ends.',
+    buyAfterTrial: 'You can choose and pay when your free trial ends.',
+    noStudents: 'Your price will appear here once you approve a student in one of your classes.',
     buy: 'Continue to checkout',
     off: 'Self-service checkout opens once the merchant account is connected.',
     cancel: 'Cancel renewal',
@@ -103,15 +125,9 @@ const strings = {
     saved: 'Preferences saved.',
   },
 };
-type Offer = {
-  code: string;
-  agorot: number;
-  months: 1 | 12;
-  recurring: boolean;
-  endsAt: string | null;
-};
 type State = {
-  offers: Offer[];
+  quote: TeacherBillingQuote | null;
+  checkoutEnabled: boolean;
   covered: boolean;
   until: string | null;
   trialEndsAt: string | null;
@@ -151,13 +167,13 @@ export default function TeacherBilling({
   onAccess: (until: string | null) => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
-  const access = useRef(onAccess);
-  access.current = onAccess;
+  const access = useEffectEvent(onAccess);
   const [state, setState] = useState<State | null>(null);
+  const [quotedAt, setQuotedAt] = useState(0);
   const [lang, setLang] = useState(language);
   const [enabled, setEnabled] = useState(false);
   const [message, setMessage] = useState<
-    '' | 'saved' | 'pending' | 'confirmed' | 'other' | 'error'
+    '' | 'saved' | 'pending' | 'confirmed' | 'other' | 'prepare' | 'updated' | 'verify' | 'error'
   >('');
   const [busy, setBusy] = useState(false);
   const [load, setLoad] = useState(0);
@@ -166,6 +182,13 @@ export default function TeacherBilling({
     new Intl.DateTimeFormat(lang, { dateStyle: 'medium', timeZone: 'Asia/Jerusalem' }).format(
       new Date(s)
     );
+  const money = (agorot: number) =>
+    new Intl.NumberFormat(lang, {
+      style: 'currency',
+      currency: 'ILS',
+      minimumFractionDigits: agorot % 100 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
+    }).format(agorot / 100);
   useEffect(() => {
     const dialog = ref.current;
     dialog?.showModal();
@@ -175,9 +198,11 @@ export default function TeacherBilling({
     let current = true;
     async function start() {
       try {
-        const url = new URL(location.href);
-        const payment = url.searchParams.get('og-paymentid'),
-          order = url.searchParams.get('og-externalidentifier');
+        const params = new Map(
+          [...new URL(location.href).searchParams].map(([key, value]) => [key.toLowerCase(), value])
+        );
+        const payment = params.get('og-paymentid'),
+          order = params.get('og-externalidentifier');
         if (payment && order) {
           const verified = await request<{ state: 'confirmed' | 'pending' }>('/confirm', {
             payment,
@@ -188,9 +213,10 @@ export default function TeacherBilling({
         const data = await request<State>('');
         if (!current) return;
         setState(data);
+        setQuotedAt(Date.now());
         setLang(data.language ?? language);
         setEnabled(data.emailEnabled);
-        access.current(data.until);
+        access(data.until);
       } catch {
         if (current) setMessage('error');
       }
@@ -207,9 +233,23 @@ export default function TeacherBilling({
     try {
       await fn();
     } catch (error) {
-      setMessage(
-        error instanceof Error && error.message === 'Other checkout pending' ? 'other' : 'error'
-      );
+      switch (error instanceof Error ? error.message : '') {
+        case 'Different checkout pending':
+          setMessage('other');
+          break;
+        case 'Checkout being prepared':
+          setMessage('prepare');
+          break;
+        case 'Student count changed':
+          setMessage('updated');
+          setLoad((n) => n + 1);
+          break;
+        case 'Verify your email':
+          setMessage('verify');
+          break;
+        default:
+          setMessage('error');
+      }
     } finally {
       setBusy(false);
     }
@@ -217,12 +257,14 @@ export default function TeacherBilling({
   const close = () => {
     const url = new URL(location.href);
     for (const k of [...url.searchParams.keys()])
-      if (k === 'billing' || k.startsWith('og-')) url.searchParams.delete(k);
+      if (k === 'billing' || k.toLowerCase().startsWith('og-')) url.searchParams.delete(k);
     history.replaceState(history.state, '', url);
     onClose();
   };
-  const hasPaid = Date.parse(state?.until ?? '') > Date.now();
+  const hasPaid = Date.parse(state?.until ?? '') > quotedAt;
+  const trialing = Date.parse(state?.trialEndsAt ?? '') > quotedAt;
   const renewing = !!state?.subscription?.recurring && !state.subscription.canceled_at;
+  const quote = state?.quote;
   const button = 'min-h-11 rounded-xl border px-4 py-2 font-semibold';
   return (
     <dialog
@@ -260,7 +302,7 @@ export default function TeacherBilling({
               ? t.covered
               : hasPaid
                 ? t.paid + date(state.until!)
-                : Date.parse(state.trialEndsAt ?? '') > Date.now()
+                : trialing
                   ? t.trial + date(state.trialEndsAt!)
                   : t.free}
           </p>
@@ -283,46 +325,73 @@ export default function TeacherBilling({
               {t.cancel}
             </button>
           )}
-          {!state.covered &&
-            !hasPaid &&
-            !renewing &&
-            (state.offers.length ? (
-              state.offers.map((o) => (
-                <section key={o.code} className="my-3 rounded-xl border p-3">
-                  <h3 className="font-bold">
-                    {o.recurring ? (o.months === 1 ? t.month : t.year) : t.once}
-                  </h3>
-                  <p>
-                    {new Intl.NumberFormat(lang, { style: 'currency', currency: 'ILS' }).format(
-                      o.agorot / 100
-                    )}{' '}
-                    · {o.recurring ? (o.months === 1 ? t.monthly : t.annually) : t.prepaid}
+          {!state.covered && !hasPaid && !renewing && quote && (
+            <div className="my-4">
+              {quote.students === 0 ? (
+                <p>{t.noStudents}</p>
+              ) : (
+                <>
+                  <p className="font-semibold">
+                    {quote.students} {t.students}
                   </p>
-                  {o.endsAt && (
-                    <p>
-                      {t.sale}
-                      {date(o.endsAt)}
-                    </p>
+                  {(['annual', 'monthly'] as const).map((offer) => {
+                    const annual = offer === 'annual';
+                    const amount = annual ? quote.annualAgorot : quote.monthlyAgorot;
+                    const rate = annual ? quote.annualUnitAgorot : quote.monthlyUnitAgorot;
+                    const period = annual ? t.annually : t.monthly;
+                    return (
+                      <section
+                        key={offer}
+                        className={`my-3 space-y-2 rounded-xl border p-3 ${annual ? 'border-violet-300 bg-violet-50' : ''}`}
+                      >
+                        <h3 className="font-bold">{annual ? t.year : t.month}</h3>
+                        <p>
+                          <strong className="text-2xl">{money(amount)}</strong> {period}
+                        </p>
+                        <p className="text-sm">
+                          {money(rate)} {t.perStudent} {period}
+                        </p>
+                        {annual && (
+                          <div className="text-sm">
+                            <p>
+                              {t.cap} · {money(quote.annualCapAgorot)}
+                            </p>
+                            <p className="font-semibold">
+                              {t.saveAmount} · {money(12 * quote.monthlyAgorot - amount)}
+                            </p>
+                          </div>
+                        )}
+                        {state.checkoutEnabled && !trialing && (
+                          <button
+                            className={button}
+                            disabled={busy}
+                            onClick={() =>
+                              void action(async () => {
+                                const result = await request<{ url: string }>('/checkout', {
+                                  offer,
+                                  students: quote.students,
+                                  amount,
+                                });
+                                location.assign(result.url);
+                              })
+                            }
+                          >
+                            {t.buy}
+                          </button>
+                        )}
+                      </section>
+                    );
+                  })}
+                  <p className="text-sm">{t.prepaid}</p>
+                  {trialing ? (
+                    <p className="mt-2">{t.buyAfterTrial}</p>
+                  ) : (
+                    !state.checkoutEnabled && <p className="mt-2">{t.off}</p>
                   )}
-                  <button
-                    className={button}
-                    disabled={busy}
-                    onClick={() =>
-                      void action(async () => {
-                        const { url } = await request<{ url: string }>('/checkout', {
-                          offer: o.code,
-                        });
-                        location.assign(url);
-                      })
-                    }
-                  >
-                    {t.buy}
-                  </button>
-                </section>
-              ))
-            ) : (
-              <p className="my-3">{t.off}</p>
-            ))}
+                </>
+              )}
+            </div>
+          )}
           <label className="my-4 flex items-start gap-2">
             <input
               className="mt-1"
@@ -349,7 +418,7 @@ export default function TeacherBilling({
       {((!state && message === 'error') ||
         (state &&
           !state.covered &&
-          (!state.offers.length || state.subscription?.cancel_requested_at))) && (
+          (!state.checkoutEnabled || state.subscription?.cancel_requested_at))) && (
         <a
           className="my-3 inline-block underline"
           href="mailto:contact@vocaband.com?subject=Vocaband%20Pro"

@@ -8,10 +8,14 @@ CREATE TABLE public.teacher_billing_orders (
   offer text NOT NULL,
   item_id bigint NOT NULL,
   amount_agorot integer NOT NULL CHECK (amount_agorot > 0),
+  student_count integer CHECK (student_count > 0),
   months integer NOT NULL CHECK (months IN (1,12)),
   recurring boolean NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   pending_until timestamptz NOT NULL,
+  checkout_url text,
+  checkout_attempt uuid,
+  checkout_lease_until timestamptz,
   customer_id bigint,
   recurring_id bigint,
   paid_at timestamptz,
@@ -146,26 +150,85 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$ SELECT public.bill
 REVOKE ALL ON FUNCTION public.billing_my_access_until() FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.billing_my_access_until() TO authenticated;
 
-CREATE FUNCTION public.billing_open_order(p_teacher text,p_offer text,p_item bigint,p_amount integer,p_months integer,p_recurring boolean,p_end timestamptz)
-RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE result uuid; existing public.teacher_billing_orders;
+-- Count approved accounts once across the teacher's active classrooms. A
+-- pending enrollment, archived class or class owned by someone else is not billed.
+CREATE FUNCTION public.billing_teacher_quote(p_teacher text) RETURNS jsonb
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path='' AS $$
+ SELECT jsonb_build_object(
+   'students', student_count,
+   'monthlyAgorot', student_count*50,
+   'annualAgorot', least(student_count*200,6900),
+   'monthlyUnitAgorot', 50,
+   'annualUnitAgorot', 200,
+   'annualCapAgorot', 6900
+ )
+ FROM (
+   SELECT count(DISTINCT coalesce(s.auth_uid,s.id)) AS student_count
+   FROM public.classes c
+   JOIN public.student_profiles s ON s.class_code=c.code
+   WHERE c.teacher_uid=p_teacher AND c.archived_at IS NULL
+     AND s.status IN ('approved','active')
+ ) AS roster
+$$;
+REVOKE ALL ON FUNCTION public.billing_teacher_quote(text) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.billing_teacher_quote(text) TO service_role;
+
+-- Only one live checkout link per teacher. A short lease lets the server retry
+-- provider outages without handing the browser two payable links.
+CREATE FUNCTION public.billing_open_order(p_teacher text,p_offer text,p_item bigint,p_students integer,p_amount integer)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+DECLARE
+  quote jsonb;
+  expected integer;
+  trial_end timestamptz;
+  existing public.teacher_billing_orders;
+  attempt uuid := gen_random_uuid();
 BEGIN
- PERFORM 1 FROM public.users WHERE uid=p_teacher AND role='teacher' FOR UPDATE;
+ SELECT trial_ends_at INTO trial_end FROM public.users WHERE uid=p_teacher AND role='teacher' FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'Teacher required'; END IF;
+ IF trial_end>now() THEN RAISE EXCEPTION 'Trial is active'; END IF;
  IF EXISTS(SELECT FROM public.users u LEFT JOIN public.schools s ON s.id=u.school_id WHERE u.uid=p_teacher
   AND (u.plan IN ('pro','school') OR s.plan='school' OR s.trial_ends_at>now()))
   OR public.billing_access_until(p_teacher)>now() OR EXISTS(SELECT FROM public.teacher_billing_orders
   WHERE teacher_uid=p_teacher AND recurring AND paid_at IS NOT NULL AND canceled_at IS NULL)
  THEN RAISE EXCEPTION 'Already covered'; END IF;
+ IF p_offer IS NULL OR p_offer NOT IN ('monthly','annual') OR p_item IS NULL OR p_item<=0
+   THEN RAISE EXCEPTION 'Offer unavailable'; END IF;
+ quote:=public.billing_teacher_quote(p_teacher);
+ expected:=(quote->>CASE WHEN p_offer='annual' THEN 'annualAgorot' ELSE 'monthlyAgorot' END)::integer;
+ IF expected<=0 OR p_students IS DISTINCT FROM (quote->>'students')::integer OR p_amount IS DISTINCT FROM expected
+   THEN RAISE EXCEPTION 'Student count changed'; END IF;
  SELECT * INTO existing FROM public.teacher_billing_orders WHERE teacher_uid=p_teacher
-   AND paid_at IS NULL AND pending_until>now() ORDER BY created_at DESC LIMIT 1;
- IF FOUND AND existing.offer=p_offer AND existing.item_id=p_item AND existing.amount_agorot=p_amount
-   AND existing.months=p_months AND existing.recurring=p_recurring THEN RETURN existing.id; END IF;
- IF FOUND THEN RAISE EXCEPTION 'Different checkout pending'; END IF;
- INSERT INTO public.teacher_billing_orders(teacher_uid,offer,item_id,amount_agorot,months,recurring,pending_until)
- VALUES(p_teacher,p_offer,p_item,p_amount,p_months,p_recurring,least(now()+interval '30 minutes',p_end))
- RETURNING id INTO result;
- RETURN result;
+   AND paid_at IS NULL AND pending_until>now() ORDER BY created_at DESC LIMIT 1 FOR UPDATE;
+ IF FOUND THEN
+   IF existing.offer<>p_offer OR existing.item_id<>p_item OR existing.amount_agorot<>p_amount
+     OR existing.student_count IS DISTINCT FROM p_students OR existing.recurring
+   THEN RAISE EXCEPTION 'Different checkout pending'; END IF;
+   IF existing.checkout_url IS NOT NULL THEN RETURN jsonb_build_object('url',existing.checkout_url); END IF;
+   IF existing.checkout_lease_until>now() THEN RAISE EXCEPTION 'Checkout being prepared'; END IF;
+   UPDATE public.teacher_billing_orders
+   SET checkout_attempt=attempt,checkout_lease_until=now()+interval '45 seconds'
+   WHERE id=existing.id;
+ ELSE
+   INSERT INTO public.teacher_billing_orders(teacher_uid,offer,item_id,amount_agorot,student_count,months,recurring,
+     pending_until,checkout_attempt,checkout_lease_until)
+   VALUES(p_teacher,p_offer,p_item,expected,p_students,CASE WHEN p_offer='annual' THEN 12 ELSE 1 END,false,
+     now()+interval '1 minute',attempt,now()+interval '45 seconds')
+   RETURNING * INTO existing;
+ END IF;
+ RETURN jsonb_build_object('id',existing.id,'attempt',attempt);
+END $$;
+
+CREATE FUNCTION public.billing_store_checkout(p_id uuid,p_attempt uuid,p_url text)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
+BEGIN
+ UPDATE public.teacher_billing_orders
+ SET checkout_url=p_url,
+     pending_until=CASE WHEN p_url IS NULL THEN now() ELSE now()+interval '65 minutes' END,
+     checkout_attempt=null,checkout_lease_until=null
+ WHERE id=p_id AND checkout_attempt=p_attempt AND checkout_lease_until>now()
+   AND checkout_url IS NULL AND paid_at IS NULL;
+ RETURN FOUND;
 END $$;
 
 -- Called only after checking the merchant's payment and accounting document
@@ -189,6 +252,7 @@ BEGIN
  IF NOT FOUND OR o.item_id<>p_item OR o.amount_agorot<>p_amount OR p_customer IS NULL
    OR NOT p_accepted OR p_at IS NULL OR p_at>now()+interval '10 minutes'
    OR p_at<o.created_at-interval '10 minutes'
+   OR (o.student_count IS NOT NULL AND (o.checkout_url IS NULL OR p_at>o.pending_until))
    OR (o.customer_id IS NOT NULL AND o.customer_id<>p_customer)
    OR (o.recurring_id IS NOT NULL AND p_recurring IS NOT NULL AND o.recurring_id<>p_recurring)
    OR (o.paid_at IS NOT NULL AND o.recurring AND p_recurring IS NULL)
@@ -201,9 +265,9 @@ BEGIN
  ON CONFLICT(payment_id) DO NOTHING;
  RETURN true;
 END $$;
-REVOKE ALL ON FUNCTION public.billing_open_order(text,text,bigint,integer,integer,boolean,timestamptz),
+REVOKE ALL ON FUNCTION public.billing_open_order(text,text,bigint,integer,integer),public.billing_store_checkout(uuid,uuid,text),
  public.billing_apply_payment(bigint,bigint,uuid,bigint,bigint,bigint,integer,timestamptz,boolean) FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION public.billing_open_order(text,text,bigint,integer,integer,boolean,timestamptz),
+GRANT EXECUTE ON FUNCTION public.billing_open_order(text,text,bigint,integer,integer),public.billing_store_checkout(uuid,uuid,text),
  public.billing_apply_payment(bigint,bigint,uuid,bigint,bigint,bigint,integer,timestamptz,boolean) TO service_role;
 
 CREATE FUNCTION public.claim_teacher_lifecycle_mail() RETURNS TABLE(

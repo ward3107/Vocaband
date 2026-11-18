@@ -23,24 +23,38 @@ async function prepare(page: Page) {
     [PRIVACY_POLICY_VERSION, STUDENT_VISIBILITY_VERSION]
   );
 }
-const trial = {
+const billing = {
   covered: false,
   until: null,
-  trialEndsAt: '2099-06-01',
+  trialEndsAt: '2000-06-01',
   subscription: null,
   emailEnabled: false,
   language: 'en',
-  offers: [
-    { code: 'month', months: 1, agorot: 2900, recurring: true, endsAt: null },
-    { code: 'year', months: 12, agorot: 29000, recurring: true, endsAt: null },
-    { code: 'launch', months: 12, agorot: 24900, recurring: false, endsAt: '2098-01-01' },
-  ],
+  checkoutEnabled: true,
+  quote: {
+    students: 30,
+    monthlyAgorot: 1500,
+    annualAgorot: 6000,
+    monthlyUnitAgorot: 50,
+    annualUnitAgorot: 200,
+    annualCapAgorot: 6900,
+  },
 };
-test('teacher can choose an ILS plan and save explicit email consent', async ({
+test('teacher compares prices for the approved roster and sends the selected quote', async ({
   teacherPage: page,
 }) => {
   await prepare(page);
-  await page.route('**/api/teacher/billing', (route) => route.fulfill({ json: trial }));
+  let rosterChanged = false;
+  await page.route('**/api/teacher/billing', (route) =>
+    route.fulfill({
+      json: rosterChanged
+        ? {
+            ...billing,
+            quote: { ...billing.quote, students: 31, monthlyAgorot: 1550, annualAgorot: 6200 },
+          }
+        : billing,
+    })
+  );
   let preference: unknown;
   await page.route('**/api/teacher/billing/preferences', (route) => {
     preference = route.request().postDataJSON();
@@ -49,29 +63,62 @@ test('teacher can choose an ILS plan and save explicit email consent', async ({
   let offer: unknown;
   await page.route('**/api/teacher/billing/checkout', (route) => {
     offer = route.request().postDataJSON();
+    if (!rosterChanged) {
+      rosterChanged = true;
+      return route.fulfill({ status: 409, json: { error: 'Student count changed' } });
+    }
     return route.fulfill({ json: { url: new URL('/test-order', route.request().url()).href } });
   });
   await page.route('**/test-order', (route) => route.fulfill({ body: 'Test checkout' }));
   await page.goto('/');
   await page.getByRole('button', { name: 'Manage subscription' }).click();
   const dialog = page.getByRole('dialog', { name: 'My subscription' });
-  await expect(dialog.getByRole('heading', { name: 'Yearly Pro' })).toBeVisible();
-  await expect(
-    dialog.getByText('One payment, no automatic renewal', { exact: false })
-  ).toBeVisible();
+  const annual = dialog
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { name: 'Yearly Pro' }) });
+  const monthly = dialog
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { name: 'Monthly Pro' }) });
+  await expect(dialog.getByText('30 approved students in your classes')).toBeVisible();
+  await expect(annual.locator('strong')).toHaveText(/₪60/);
+  await expect(annual.getByText(/Yearly cap/)).toHaveText(/₪69/);
+  await expect(annual.getByText(/Savings/)).toHaveText(/₪120/);
+  await expect(monthly.locator('strong')).toHaveText(/₪15/);
   const emails = dialog.getByRole('checkbox');
   await expect(emails).not.toBeChecked();
   await emails.check();
   await dialog.getByRole('button', { name: 'Save preferences' }).click();
   await expect(dialog.getByText('Preferences saved.')).toBeVisible();
   expect(preference).toEqual({ enabled: true, language: 'en' });
-  await dialog
-    .locator('section')
-    .filter({ has: page.getByRole('heading', { name: 'Monthly Pro' }) })
-    .getByRole('button')
-    .click();
+  await annual.getByRole('button').click();
+  await expect(dialog.getByText(/Your student count changed/)).toBeVisible();
+  expect(offer).toEqual({ offer: 'annual', students: 30, amount: 6000 });
+  await expect(annual.locator('strong')).toHaveText(/₪62/);
+  await annual.getByRole('button').click();
   await expect(page).toHaveURL(/test-order/);
-  expect(offer).toEqual({ offer: 'month' });
+  expect(offer).toEqual({ offer: 'annual', students: 31, amount: 6200 });
+});
+test('teacher can review the capped annual price in Hebrew during the free trial', async ({
+  teacherPage: page,
+}) => {
+  await prepare(page);
+  await page.route('**/api/teacher/billing', (route) =>
+    route.fulfill({
+      json: {
+        ...billing,
+        language: 'he',
+        trialEndsAt: '2099-06-01',
+        quote: { ...billing.quote, students: 60, monthlyAgorot: 3000, annualAgorot: 6900 },
+      },
+    })
+  );
+  await page.goto('/?billing=1');
+  const dialog = page.getByRole('dialog', { name: 'המנוי שלי' });
+  await expect(dialog).toHaveAttribute('dir', 'rtl');
+  await expect(dialog.getByText('60 תלמידים מאושרים בכיתות שלך')).toBeVisible();
+  await expect(dialog.getByText(/תקרה שנתית לכל הכיתות יחד/)).toHaveText(/69/);
+  await expect(dialog.getByText(/אפשר לבחור ולשלם כשהניסיון/)).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'המשך לתשלום' })).toHaveCount(0);
 });
 test('a teacher can stop renewal and keep the date already paid through', async ({
   teacherPage: page,
@@ -81,7 +128,7 @@ test('a teacher can stop renewal and keep the date already paid through', async 
   await page.route('**/api/teacher/billing', (route) =>
     route.fulfill({
       json: {
-        ...trial,
+        ...billing,
         until: '2099-09-01',
         subscription: { recurring: true, canceled_at: canceled ? '2026-11-18' : null },
       },

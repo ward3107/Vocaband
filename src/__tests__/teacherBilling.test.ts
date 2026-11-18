@@ -6,24 +6,22 @@ import { deliverTeacherMail } from '../../server/billing/teacherMail';
 import { readFileSync } from 'node:fs';
 import { PGlite } from '@electric-sql/pglite';
 import {
-  checkoutUrl,
+  checkoutCatalog,
   confirmedCredit,
   confirmedPayment,
-  loadOffers,
   merchantApi,
 } from '../../server/billing/sumit';
 import { getEffectivePlan } from '../core/plan';
 import type { AppUser } from '../core/supabase';
 
 const uid = '11111111-1111-4111-8111-111111111111';
-const offer = {
-  code: 'annual',
-  months: 12 as const,
-  agorot: 29000,
-  recurring: true,
-  itemId: 345,
-  page: 'https://pay.sumit.co.il/example',
-  endsAt: null,
+const merchant = {
+  SUMIT_COMPANY_ID: '1',
+  SUMIT_API_KEY: 'sandbox',
+  SUMIT_MONTHLY_ITEM_ID: '344',
+  SUMIT_ANNUAL_ITEM_ID: '345',
+  VOCABAND_CHECKOUT_ENABLED: 'true',
+  VOCABAND_BILLING_ORIGIN: 'https://staging.example.test',
 };
 const payment = {
   ID: 123,
@@ -43,28 +41,40 @@ const doc = {
 };
 
 describe('teacher billing', () => {
-  it('serves only configured offers in their enrollment window and sends an opaque order reference', () => {
-    const config = {
-      SUMIT_COMPANY_ID: '1',
-      SUMIT_API_KEY: 'test',
-      VOCABAND_CHECKOUT_ENABLED: 'true',
-      VOCABAND_BILLING_OFFERS: JSON.stringify([
-        offer,
-        { ...offer, code: 'closed', endsAt: '2025-01-01' },
-      ]),
+  it('requires checkout configuration and creates a one-time SUMIT link for the exact verified total', async () => {
+    expect(checkoutCatalog({})).toBeNull();
+    expect(checkoutCatalog({ ...merchant, VOCABAND_CHECKOUT_ENABLED: 'false' })).toBeNull();
+    expect(checkoutCatalog({ ...merchant, SUMIT_MONTHLY_ITEM_ID: '345' })).toBeNull();
+    expect(checkoutCatalog(merchant)).toEqual({ monthly: 344, annual: 345 });
+    let host = 'https://pay.sumit.co.il';
+    const transport = vi.fn(
+      async (_url: string | Request | URL, _options?: RequestInit) =>
+        new Response(JSON.stringify({ Status: 0, Data: { RedirectURL: host + '/checkout' } }))
+    );
+    const api = merchantApi(merchant, transport);
+    const order = {
+      id: uid,
+      teacher: 'teacher-1',
+      name: 'Test Teacher',
+      email: 'teacher@example.test',
+      term: 'annual' as const,
+      item: 345,
+      students: 60,
+      amount: 6900,
     };
-    expect(loadOffers({})).toEqual([]);
-    expect(loadOffers(config)).toEqual([offer]);
-    const url = new URL(checkoutUrl(offer, uid));
-    expect([...url.searchParams]).toEqual([['externalidentifier', uid]]);
-    expect(() =>
-      loadOffers({
-        ...config,
-        VOCABAND_BILLING_OFFERS: JSON.stringify([
-          { ...offer, page: 'https://example.org/checkout' },
-        ]),
-      })
-    ).toThrow();
+    await expect(api.beginCheckout(order)).resolves.toBe('https://pay.sumit.co.il/checkout');
+    const [url, payload] = transport.mock.calls[0];
+    expect(url).toBe('https://api.sumit.co.il/billing/payments/beginredirect/');
+    expect(JSON.parse(String(payload?.body))).toMatchObject({
+      Items: [{ Item: { ID: 345 }, Quantity: 1, UnitPrice: 69, Currency: 0 }],
+      VATIncluded: true,
+      ExternalIdentifier: uid,
+      ExpirationHours: 1,
+      PreventSavingPaymentMethod: true,
+      RedirectURL: 'https://staging.example.test/?billing=1',
+    });
+    host = 'https://pay.sumit.co.il.example.test';
+    await expect(api.beginCheckout(order)).rejects.toThrow('Invalid merchant payment page');
   });
   it('reads payment data from the merchant and requires a real invoice item and ILS', async () => {
     const transport = vi.fn(
@@ -227,6 +237,8 @@ describe('teacher billing', () => {
       CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$SELECT '${uid}'::uuid$$;
       CREATE TABLE public.schools(id uuid primary key, plan text,trial_ends_at timestamptz);
       CREATE TABLE public.users(uid text primary key,role text,email text,plan text,school_id uuid,trial_ends_at timestamptz);
+      CREATE TABLE public.classes(code text primary key,teacher_uid text,archived_at timestamptz);
+      CREATE TABLE public.student_profiles(id uuid primary key DEFAULT gen_random_uuid(),auth_uid uuid,class_code text,status text);
       CREATE TABLE public.announcements(id uuid primary key,title text,message text,audience text,starts_at timestamptz,ends_at timestamptz);
       CREATE TABLE auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);
       INSERT INTO public.users VALUES('${uid}','teacher','school@example.test','free',null,now()+interval '2 days');
@@ -241,24 +253,17 @@ describe('teacher billing', () => {
       );
       expect((await db.query('SELECT * FROM claim_teacher_lifecycle_mail()')).rows).toHaveLength(1);
       expect((await db.query('SELECT * FROM claim_teacher_lifecycle_mail()')).rows).toHaveLength(0);
-      const order = await get("SELECT billing_open_order($1,'monthly',345,2900,1,true,null)", [
-        uid,
-      ]);
-      expect(await get("SELECT billing_open_order($1,'monthly',345,2900,1,true,null)", [uid])).toBe(
-        order
-      );
-      await db.query(
-        "UPDATE teacher_billing_orders SET created_at=now()-interval '29 days' WHERE id=$1",
-        [order]
+      const order = await get(
+        `INSERT INTO teacher_billing_orders(teacher_uid,offer,item_id,amount_agorot,months,recurring,
+          created_at,pending_until) VALUES($1,'monthly',345,2900,1,true,now()-interval '29 days',now()+interval '1 hour')
+          RETURNING id`,
+        [uid]
       );
       const write = (id: number, ref: unknown, standing: number | null, value: number) =>
         get(
           "SELECT billing_apply_payment($1,$2,$3,234,$4,345,$5,now()-CASE WHEN $1::bigint=1 THEN interval '28 days' ELSE interval '0 days' END,true)",
           [id, id + 500, ref, standing, value]
         );
-      await expect(
-        get("SELECT billing_open_order($1,'annual',346,29000,12,true,null)", [uid])
-      ).rejects.toThrow('Different checkout pending');
       expect(await write(1, order, 888, 999)).toBe(false);
       expect(await write(1, order, 888, 2900)).toBe(true);
       expect(await write(1, order, 888, 2900)).toBe(true);
@@ -283,7 +288,11 @@ describe('teacher billing', () => {
       await db.exec('UPDATE teacher_mail_preferences SET offers=false');
       expect((await db.query('SELECT * FROM claim_teacher_lifecycle_mail()')).rows).toHaveLength(0);
       await db.query('UPDATE teacher_billing_orders SET canceled_at=now() WHERE id=$1', [order]);
-      const next = await get("SELECT billing_open_order($1,'monthly',345,2900,1,true,null)", [uid]);
+      const next = await get(
+        `INSERT INTO teacher_billing_orders(teacher_uid,offer,item_id,amount_agorot,months,recurring,pending_until)
+          VALUES($1,'monthly',345,2900,1,true,now()+interval '1 hour') RETURNING id`,
+        [uid]
+      );
       expect(await write(6, next, null, 2900)).toBe(true);
       expect(await get('SELECT billing_my_access_until()>now()')).toBe(true);
       expect(await write(7, null, 999, 2900)).toBe(false);
@@ -293,6 +302,99 @@ describe('teacher billing', () => {
       await expect(
         db.query('SELECT billing_apply_payment(3,503,null,2,8,4,100,now(),true)')
       ).rejects.toThrow();
+    } finally {
+      await db.close();
+    }
+  }, 20000);
+  it('charges only approved seats, caps the annual total per teacher and reserves a single checkout', async () => {
+    const db = new PGlite();
+    try {
+      await db.exec(`
+        CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+        CREATE SCHEMA auth;
+        CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$SELECT null::uuid$$;
+        CREATE TABLE schools(id uuid,plan text,trial_ends_at timestamptz);
+        CREATE TABLE users(uid text PRIMARY KEY,role text,email text,plan text,school_id uuid,trial_ends_at timestamptz);
+        CREATE TABLE announcements(id uuid,title text,message text,audience text,starts_at timestamptz,ends_at timestamptz);
+        CREATE TABLE auth.users(id uuid,email text,email_confirmed_at timestamptz);
+        CREATE TABLE classes(code text PRIMARY KEY,teacher_uid text,archived_at timestamptz);
+        CREATE TABLE student_profiles(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),auth_uid uuid,class_code text,status text);
+        INSERT INTO users VALUES ('teacher-a','teacher','teacher@example.test','free',null,now()+interval '1 day');
+        INSERT INTO classes VALUES
+          ('first','teacher-a',null),('second','teacher-a',null),('archived','teacher-a',now()),
+          ('other','teacher-b',null);
+        INSERT INTO student_profiles(auth_uid,class_code,status) VALUES
+          ('${uid}','first','approved'),('${uid}','second','active'),
+          (null,'first','pending_approval'),(null,'archived','approved'),(null,'other','approved');`);
+      await db.exec(readFileSync('supabase/migrations/20261118010000_teacher_billing.sql', 'utf8'));
+      async function quote() {
+        return (
+          await db.query<{
+            quote: { students: number; monthlyAgorot: number; annualAgorot: number };
+          }>("SELECT billing_teacher_quote('teacher-a') AS quote")
+        ).rows[0].quote;
+      }
+      const reserve = (offer: string, count: number, amount: number) =>
+        db.query<{ order: { id?: string; attempt?: string; url?: string } }>(
+          "SELECT billing_open_order('teacher-a',$1,345,$2,$3) AS order",
+          [offer, count, amount]
+        );
+      expect(await quote()).toMatchObject({ students: 1, monthlyAgorot: 50, annualAgorot: 200 });
+      await expect(reserve('annual', 1, 200)).rejects.toThrow('Trial is active');
+      await db.exec("UPDATE users SET trial_ends_at=now()-interval '1 second'");
+      await db.exec(
+        "INSERT INTO student_profiles(class_code,status) SELECT 'second','approved' FROM generate_series(1,29)"
+      );
+      expect(await quote()).toMatchObject({
+        students: 30,
+        monthlyAgorot: 1500,
+        annualAgorot: 6000,
+      });
+      await expect(reserve('annual', 1, 200)).rejects.toThrow('Student count changed');
+      await db.exec(
+        "INSERT INTO student_profiles(class_code,status) SELECT 'first','active' FROM generate_series(1,4)"
+      );
+      expect((await quote()).annualAgorot).toBe(6800);
+      await db.exec("INSERT INTO student_profiles(class_code,status) VALUES ('first','approved')");
+      expect(await quote()).toMatchObject({
+        students: 35,
+        monthlyAgorot: 1750,
+        annualAgorot: 6900,
+      });
+      await expect(reserve('annual', 35, 6800)).rejects.toThrow('Student count changed');
+      const { id, attempt } = (await reserve('annual', 35, 6900)).rows[0].order;
+      expect(id).toBeTruthy();
+      await expect(reserve('annual', 35, 6900)).rejects.toThrow('Checkout being prepared');
+      await expect(reserve('monthly', 35, 1750)).rejects.toThrow('Different checkout pending');
+      await db.exec(
+        "UPDATE teacher_billing_orders SET checkout_lease_until=now()-interval '1 second'"
+      );
+      const retry = (await reserve('annual', 35, 6900)).rows[0].order;
+      expect(retry.id).toBe(id);
+      expect(retry.attempt).not.toBe(attempt);
+      const url = 'https://pay.sumit.co.il/example';
+      const save = (token: string | undefined) =>
+        db.query<{ saved: boolean }>('SELECT billing_store_checkout($1,$2,$3) AS saved', [
+          id,
+          token,
+          url,
+        ]);
+      expect((await save(attempt)).rows[0].saved).toBe(false);
+      expect((await save(retry.attempt)).rows[0].saved).toBe(true);
+      expect((await reserve('annual', 35, 6900)).rows[0].order).toEqual({ url });
+      const post = (amount: number) =>
+        db.query<{ accepted: boolean }>(
+          'SELECT billing_apply_payment(41,42,$1,2,null,345,$2,now(),true) AS accepted',
+          [id, amount]
+        );
+      expect((await post(6800)).rows[0].accepted).toBe(false);
+      expect((await post(6900)).rows[0].accepted).toBe(true);
+      const period = await db.query<{ valid: boolean }>(
+        "SELECT billing_access_until('teacher-a')>now()+interval '11 months' AS valid"
+      );
+      expect(period.rows[0].valid).toBe(true);
+      await db.exec('SET ROLE authenticated');
+      await expect(quote()).rejects.toThrow();
     } finally {
       await db.close();
     }

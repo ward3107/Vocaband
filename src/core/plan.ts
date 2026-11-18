@@ -19,6 +19,15 @@ import type { AppUser } from "./supabase";
 
 export type EffectivePlan = "free" | "pro" | "school";
 
+export type TeacherBillingQuote = {
+  students: number;
+  monthlyAgorot: number;
+  annualAgorot: number;
+  monthlyUnitAgorot: number;
+  annualUnitAgorot: number;
+  annualCapAgorot: number;
+};
+
 /**
  * What plan should this teacher experience RIGHT NOW?
  *

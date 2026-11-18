@@ -1,18 +1,11 @@
-export type Offer = {
-  code: string;
-  months: 1 | 12;
-  agorot: number;
-  recurring: boolean;
-  itemId: number;
-  page: string;
-  endsAt: string | null;
-};
 type Environment = Record<string, string | undefined>;
+export type BillingTerm = 'monthly' | 'annual';
 
 export function hostedPage(value: string): URL {
   const url = new URL(value);
   if (
     url.protocol !== 'https:' ||
+    url.port ||
     url.username ||
     url.password ||
     !['pay.sumit.co.il', 'app.sumit.co.il', 'www.myofficeguy.com', 'app.myofficeguy.com'].includes(
@@ -24,42 +17,17 @@ export function hostedPage(value: string): URL {
   return url;
 }
 
-export function loadOffers(env: Environment, now = Date.now()): Offer[] {
-  if (!env.SUMIT_COMPANY_ID || !env.SUMIT_API_KEY || env.VOCABAND_CHECKOUT_ENABLED !== 'true')
-    return [];
-  const entries: unknown = JSON.parse(env.VOCABAND_BILLING_OFFERS ?? '[]');
-  if (!Array.isArray(entries)) throw new Error('Invalid billing offers');
-  const seen = new Set<string>();
-  return entries
-    .map((v: Offer) => {
-      if (
-        !v ||
-        !/^[a-z0-9_-]{1,40}$/.test(v.code) ||
-        seen.has(v.code) ||
-        ![1, 12].includes(v.months) ||
-        !Number.isSafeInteger(v.agorot) ||
-        v.agorot <= 0 ||
-        !Number.isSafeInteger(v.itemId) ||
-        v.itemId <= 0 ||
-        typeof v.recurring !== 'boolean' ||
-        (!v.recurring && v.months !== 12) ||
-        (v.endsAt != null && !Number.isFinite(Date.parse(v.endsAt)))
-      )
-        throw new Error('Invalid billing offer');
-      hostedPage(v.page);
-      seen.add(v.code);
-      return { ...v, endsAt: v.endsAt ?? null };
-    })
-    .filter((v) => !v.endsAt || Date.parse(v.endsAt) > now);
-}
-
-export function checkoutUrl(offer: Offer, order: string) {
-  const url = hostedPage(offer.page);
-  url.searchParams.set('externalidentifier', order);
-  return url.href;
-}
-export function publicOffer({ code, months, agorot, recurring, endsAt }: Offer) {
-  return { code, months, agorot, recurring, endsAt };
+export function checkoutCatalog(env: Environment) {
+  const monthly = Number(env.SUMIT_MONTHLY_ITEM_ID);
+  const annual = Number(env.SUMIT_ANNUAL_ITEM_ID);
+  return env.VOCABAND_CHECKOUT_ENABLED === 'true' &&
+    positive(Number(env.SUMIT_COMPANY_ID)) &&
+    !!env.SUMIT_API_KEY &&
+    positive(monthly) &&
+    positive(annual) &&
+    monthly !== annual
+    ? { monthly, annual }
+    : null;
 }
 
 type MerchantPayment = {
@@ -107,6 +75,48 @@ export function merchantApi(env: Environment, transport = fetch) {
     return body.Data as T;
   }
   return {
+    async beginCheckout(order: {
+      id: string;
+      teacher: string;
+      name: string;
+      email: string;
+      term: BillingTerm;
+      item: number;
+      students: number;
+      amount: number;
+    }) {
+      const origin = new URL(env.VOCABAND_BILLING_ORIGIN ?? 'https://vocaband.com');
+      if (origin.protocol !== 'https:' || origin.username || origin.password)
+        throw new Error('Invalid billing return origin');
+      const returnUrl = new URL('/?billing=1', origin.origin).href;
+      const data = await call<{ RedirectURL: string }>('/billing/payments/beginredirect/', {
+        Customer: {
+          Name: order.name,
+          EmailAddress: order.email,
+          ExternalIdentifier: 'vocaband-teacher-' + order.teacher,
+          SearchMode: 2, // Match only the Vocaband teacher reference.
+        },
+        Items: [
+          {
+            Item: { ID: order.item },
+            Quantity: 1,
+            UnitPrice: order.amount / 100,
+            Currency: 0,
+            Description: `Vocaband Pro · ${order.term} · ${order.students} students`,
+          },
+        ],
+        VATIncluded: true,
+        DraftDocument: false,
+        ExternalIdentifier: order.id,
+        RedirectURL: returnUrl,
+        CancelRedirectURL: returnUrl,
+        SendUpdateByEmailAddress: order.email,
+        MaximumPayments: 0,
+        ExpirationHours: 1,
+        PreventSavingPaymentMethod: true,
+      });
+      return hostedPage(data.RedirectURL).href;
+    },
     async get(id: number) {
       const data = await call<{ Payment: MerchantPayment }>('/billing/payments/get/', {
         PaymentID: id,

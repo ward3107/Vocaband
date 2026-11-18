@@ -1,5 +1,7 @@
 # Vocaband — Pricing Model
 
+The proposed individual teacher checkout and roster-based prices are documented in [Teacher subscriptions and notices](./teacher-billing-and-notices.md). The pricing below records the earlier go-to-market plan.
+
 > Hybrid go-to-market pricing for Vocaband's first 12-24 months.
 > **Public face**: individual teacher prices ARE published on landing
 > (Free + Pro at ₪290/yr or ₪29/mo, with a 14-day no-card trial).

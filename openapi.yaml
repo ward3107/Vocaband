@@ -63,22 +63,29 @@ paths:
   /api/teacher/billing:
     get:
       tags: [Teacher subscriptions]
-      summary: Read the signed-in teacher's trial, paid term, ILS offers and preferences
+      summary: Read the signed-in teacher's trial, paid term, roster-based ILS quote and preferences
       responses:
         '200': {description: Subscription status with amounts in agorot}
         '403': {description: Teacher access required}
   /api/teacher/billing/checkout:
     post:
       tags: [Teacher subscriptions]
-      summary: Reserve a catalog offer and return its hosted SUMIT URL
+      summary: Verify the teacher's roster quote and reserve its hosted SUMIT URL
       requestBody:
         required: true
         content:
           application/json:
-            schema: {type: object, required: [offer], properties: {offer: {type: string}}}
+            schema:
+              type: object
+              required: [offer, students, amount]
+              properties:
+                offer: {type: string, enum: [monthly, annual]}
+                students: {type: integer, minimum: 1, description: Approved students shown in the quote}
+                amount: {type: integer, minimum: 1, description: Quoted total in agorot}
       responses:
         '200': {description: Hosted checkout URL}
-        '409': {description: 'Offer unavailable, account already covered or different checkout pending'}
+        '400': {description: Missing or invalid quote parameters}
+        '409': {description: 'Quote changed, trial active, coverage active or checkout unavailable'}
   /api/teacher/billing/confirm:
     post:
       tags: [Teacher subscriptions]

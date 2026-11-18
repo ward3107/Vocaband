@@ -1,15 +1,13 @@
 # Teacher subscriptions and notices in Israel
 
-The default 14-day teacher trial needs no card and becomes Free at expiry. A free teacher can keep one class with up to 30 pupils. A school license covers its teachers. The catalog below is a proposed first price test. All amounts are the total shown to the teacher in shekels.
+The 14-day teacher trial needs no card and becomes Free at expiry. A free teacher can keep one class with up to 30 pupils. A school license covers its teachers.
 
-| Offer | Suggested price | Renewal |
-| --- | --- | --- |
-| Individual Pro | ₪29 per month | Monthly until canceled |
-| Individual Pro annual | ₪290 per year | Yearly until canceled |
-| Launch offer | ₪249 for 12 months | One payment with a published closing date |
-| Student | Free | None |
+| Individual teacher Pro | Price per student | 30 students | 60 students |
+| --- | --- | --- | --- |
+| Monthly | ₪0.50 a month | ₪15 | ₪30 |
+| Annual | ₪2 a year, capped at ₪69 for the teacher | ₪60 | ₪69 |
 
-Annual Pro saves ₪58 against twelve monthly payments. Compare the percentage of trial teachers who create a class, invite a student, complete their first activity and choose a paid subscription. Compare annual uptake and contribution after clearing fees and AI/OCR usage before making a launch discount permanent.
+The quote counts each approved account once across all active classes the teacher owns, including accounts that have never signed in. Pending requests and archived classes are excluded. A quote is available during the trial and checkout opens after it. Each purchase is one payment for the selected term. Changes to the roster are reflected when the teacher next purchases a term. For a teacher with 30 students, the annual term saves ₪120 compared with 12 monthly payments.
 
 ## What gets delivered
 
@@ -20,25 +18,16 @@ Annual Pro saves ₪58 against twelve monthly payments. Compare the percentage o
 | Teacher news by email | Verified teacher email with active consent | Publish an announcement with the teachers audience. The hourly job picks it up within two days of publication. |
 | Trial ending | Teacher dashboard and optional teacher email | During the last three days of a 14-day trial. |
 | Trial ended | Teacher dashboard and optional teacher email | In the first two days after expiry. |
-| First charge, renewal and receipt | Paying teacher | Confirm the payment server-to-server, grant the paid period and configure SUMIT to deliver the receipt. |
-| Cancellation | Paying teacher, subscription dialog | Stop the standing order and retain the paid period. A pending request stays visible until confirmed. |
+| Payment and receipt | Paying teacher | Verify the payment with SUMIT, grant the paid term and have SUMIT deliver the receipt. |
+| Standing order cancellation | Teacher with an existing standing order | Stop renewal and retain the paid period. A pending request stays visible until confirmed. |
 
 Enrollment and payment are independent. Students can join a named class by QR, link or class code. There is no student checkout or marketing-email collection in the subscription flow.
 
 ## Configure a test merchant
 
-1. Create fixed-price ILS catalog items and separate hosted checkout pages in the merchant account for the chosen offers. Set quantity to one, VAT treatment to match the displayed total, monthly or twelve-month recurrence on the two renewal pages, and a single payment and end date on the promotional page. Configure credit-card payment, actual capture, automatic receipt delivery, and a finalized receipt or tax-invoice receipt. Display the renewal amount, cadence, merchant contact and cancellation terms. The merchant should disable price or quantity overrides. Use a dedicated Vocaband merchant or dedicated catalog products for reliable reconciliation.
-2. Configure the post-payment redirect to `https://vocaband.com/?billing=1`. The server creates the order and passes its UUID as `externalidentifier`. A signed-in teacher's return and an hourly payment listing both use bookings fetched from the merchant. A card number never passes through Vocaband. SUMIT documents its [redirect fields and their limitations](https://help.sumit.co.il/he/articles/5836159) and [API](https://developers.sumit.co.il/).
-3. Apply the SQL migration to an isolated staging database, then deploy the staging API and frontend. In the Fly secret store set `SUMIT_COMPANY_ID`, `SUMIT_API_KEY`, `VOCABAND_BILLING_OFFERS`, and `VOCABAND_LIFECYCLE_TOKEN`. Give the corresponding scheduler the same job token. Keep credentials server-side. Use a staging-specific scheduler URL when running a staging build. The repository's hourly workflow targets the production domain. Checkout also requires `VOCABAND_CHECKOUT_ENABLED=true`.
-4. Set the catalog JSON below using the account's actual numeric item IDs and hosted page URLs. The example values are placeholders. Set an actual campaign closing timestamp and enforce it on the hosted catalog page too. The displayed price and the merchant's gross charge must agree exactly.
-
-```json
-[
-  {"code":"monthly","months":1,"agorot":2900,"recurring":true,"itemId":101,"page":"https://pay.sumit.co.il/replace-monthly","endsAt":null},
-  {"code":"annual","months":12,"agorot":29000,"recurring":true,"itemId":102,"page":"https://pay.sumit.co.il/replace-annual","endsAt":null},
-  {"code":"launch","months":12,"agorot":24900,"recurring":false,"itemId":103,"page":"https://pay.sumit.co.il/replace-launch","endsAt":"2026-12-31T21:59:59Z"}
-]
-```
+1. Create two distinct ILS catalog items for the monthly and annual terms, and configure the merchant to issue a finalized receipt or tax-invoice receipt after capture. The server sends the total as the unit price for one item and requests a one-hour checkout link. Verify that the merchant displays the same gross amount and can accept the smallest eligible amounts.
+2. Apply the SQL migration to an isolated staging database and deploy the staging API and frontend. Set `SUMIT_COMPANY_ID`, `SUMIT_API_KEY`, `SUMIT_MONTHLY_ITEM_ID`, `SUMIT_ANNUAL_ITEM_ID` and `VOCABAND_LIFECYCLE_TOKEN` on the server. Configure the scheduler with the same job token. Set `VOCABAND_BILLING_ORIGIN` to the HTTPS staging origin. It defaults to `https://vocaband.com`. The repository's hourly workflow targets the production domain.
+3. Enable checkout on staging with `VOCABAND_CHECKOUT_ENABLED=true`. The server creates a one-time order via SUMIT's [hosted payment API](https://help.sumit.co.il/he/articles/15316096). The return and the hourly job both verify completed payments server-to-server. The card entry stays on SUMIT's payment page.
 
 ## Configure teacher mail
 
@@ -46,7 +35,7 @@ Set `RESEND_API_KEY`, `VOCABAND_MAIL_FROM` (a verified sending identity), `VOCAB
 
 ## Merchant acceptance before enabling live sales
 
-Use the processor's test mode and test identities. Verify a first payment, a renewal without a browser redirect, a missed or repeated reconciliation, client cancellation with a transient network error, a declined renewal, a full and partial refund, both sides of the campaign cutoff, and a duplicate checkout. Compare the real provider's payment ID, document type and ID, catalog item, gross ILS amount, customer and standing-order ID to the stored order. Confirm that the return opens the teacher dashboard in a fresh tab. For a prepaid promotion verify that no standing order is created.
+Use the processor's test mode and test identities. Verify monthly and annual payments at ₪0.50 and ₪2, and the annual cap at 35 or more students. Check an abandoned checkout, an expired or resumed link, a duplicate payment, a declined payment, full and partial refunds, and reconciliation without a browser return. Compare the provider's payment and document IDs, catalog item, gross ILS amount and customer to the stored order. Confirm that checkout opens no standing order and the return shows the paid term in the teacher dashboard.
 
 The `teacher_billing_review` table lists payments that need investigation without keeping the cardholder's details. A confirmed first period with a missing standing-order ID is granted and flagged. Validate the standing order against the actual merchant record before linking it. Inspect pending cancellations with a missing schedule promptly. Credits reduce access only when a verified credit receipt identifies the original receipt and payer and the total credited covers the original charge. Reconcile unlinked credits, disputes and chargebacks reported separately by the acquirer against the original merchant receipt. Disabling checkout stops new sales. Keep the API, job, credentials and cancellation access running for existing subscribers.
 
