@@ -5,7 +5,13 @@ import { modalBackStack } from '../utils/modalBackStack';
 
 const mocks = vi.hoisted(() => ({ rpc: vi.fn(), signIn: vi.fn() }));
 vi.mock('../core/supabase', () => ({
-  supabase: { rpc: mocks.rpc, auth: { signInWithPassword: mocks.signIn } },
+  supabase: {
+    rpc: (name: string, args?: unknown) =>
+      name === 'class_pin_availability'
+        ? Promise.resolve({ data: null, error: null })
+        : mocks.rpc(name, args),
+    auth: { signInWithPassword: mocks.signIn },
+  },
 }));
 vi.mock('../hooks/useLanguage', () => ({
   useLanguage: () => ({ language: 'en', dir: 'ltr', isRTL: false }),

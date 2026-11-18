@@ -5,6 +5,8 @@ import { supabase } from '../core/supabase';
 import { useLanguage } from '../hooks/useLanguage';
 import { useBackLayer } from '../hooks/useBackLayer';
 import { classEntryT } from '../locales/class-entry';
+import StudentScanPin, { useScanWindow } from './StudentScanPin';
+import { scanPinT } from '../locales/student/scan-pin';
 import { studentPinLoginT } from '../locales/student/student-pin-login';
 
 interface RosterEntry {
@@ -50,6 +52,10 @@ const StudentPinLoginCard: FC<Props> = ({
 }) => {
   const { language, dir, isRTL } = useLanguage();
   const t = studentPinLoginT[language];
+  const scanCopy = scanPinT[language];
+  const pinWindow = useScanWindow(classCode);
+  const [scan, setScan] = useState<{ id: string; profile: string | null } | null>(null);
+  const [delivered, setDelivered] = useState<string | null>(null);
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [rosterLoading, setRosterLoading] = useState(true);
   const [rosterError, setRosterError] = useState<string | null>(null);
@@ -133,13 +139,14 @@ const StudentPinLoginCard: FC<Props> = ({
   useEffect(() => {
     if (!selected) return;
     const id = window.setTimeout(() => {
-      pinInputRef.current?.focus();
+      if (delivered !== selected.id) pinInputRef.current?.focus();
       pinPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 80);
     return () => window.clearTimeout(id);
-  }, [selected]);
+  }, [selected, delivered]);
 
   const handlePick = (s: RosterEntry) => {
+    setDelivered(null);
     setSelected(s);
     setPin('');
     setPinError(null);
@@ -151,6 +158,7 @@ const StudentPinLoginCard: FC<Props> = ({
   // and return focus to the name list.
   const clearSelection = (): void | false => {
     if (signingIn) return false;
+    setDelivered(null);
     setSelected(null);
     setPin('');
     setPinError(null);
@@ -180,6 +188,7 @@ const StudentPinLoginCard: FC<Props> = ({
           return;
         }
         if (outcome === 'invalid') {
+          setDelivered(null);
           const nextCount = wrongPinCount + 1;
           setWrongPinCount(nextCount);
           setPinError(nextCount >= 3 ? t.wrongPinPersistent : t.wrongPin);
@@ -194,6 +203,7 @@ const StudentPinLoginCard: FC<Props> = ({
       });
       if (error) {
         if (/invalid login/i.test(error.message)) {
+          setDelivered(null);
           const nextCount = wrongPinCount + 1;
           setWrongPinCount(nextCount);
           setPinError(nextCount >= 3 ? t.wrongPinPersistent : t.wrongPin);
@@ -222,8 +232,40 @@ const StudentPinLoginCard: FC<Props> = ({
   const isCoded = roster.length > 0 && roster.every((r) => /^\d/.test(r.displayName));
   const showFilter = roster.length > 8 || isCoded;
 
+  if (scan)
+    return (
+      <StudentScanPin
+        code={classCode}
+        windowId={scan.id}
+        profile={scan.profile}
+        language={language}
+        onBack={() => setScan(null)}
+        onReady={(row) => {
+          consumedPrefillRef.current = true;
+          setSelected({
+            id: row.id,
+            displayName: row.displayName,
+            email: row.email,
+            avatar: row.avatar || '🦊',
+          });
+          setPin(row.pin);
+          setDelivered(row.id);
+          setPinError(null);
+          setScan(null);
+        }}
+      />
+    );
   return (
     <div className="space-y-4 text-[#1d2940]" dir={dir}>
+      {!selected && pinWindow?.can_add && (
+        <button
+          type="button"
+          className="min-h-12 w-full rounded-xl bg-violet-700 px-4 text-base font-extrabold text-white"
+          onClick={() => setScan({ id: pinWindow.id, profile: null })}
+        >
+          {scanCopy.newStudent}
+        </button>
+      )}
       {!selected && (
         <div ref={nameListRef} tabIndex={-1} className="outline-none">
           <h3 className="mb-4 flex items-center gap-2 text-xl font-extrabold">
@@ -252,7 +294,7 @@ const StudentPinLoginCard: FC<Props> = ({
                 {classEntryT[language].retry}
               </button>
             </div>
-          ) : roster.length === 0 ? (
+          ) : roster.length === 0 && pinWindow?.can_add ? null : roster.length === 0 ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-6 text-center">
               <p className="mb-2 text-4xl" aria-hidden="true">
                 🦊
@@ -333,11 +375,12 @@ const StudentPinLoginCard: FC<Props> = ({
           </div>
           <div>
             <label htmlFor="student-pin-input" className="mb-2 block text-base font-bold">
-              {t.typeYourPin}
+              {delivered === selected.id ? scanCopy.delivered : t.typeYourPin}
             </label>
             <input
               ref={pinInputRef}
               id="student-pin-input"
+              data-sentry-block
               name="pin"
               type="text"
               dir="ltr"
@@ -347,6 +390,7 @@ const StudentPinLoginCard: FC<Props> = ({
               spellCheck={false}
               maxLength={PIN_LENGTH}
               disabled={signingIn}
+              readOnly={delivered === selected.id}
               value={pin}
               onChange={(e) => {
                 setPin(
@@ -366,6 +410,16 @@ const StudentPinLoginCard: FC<Props> = ({
               aria-describedby={pinError ? 'pin-error' : undefined}
             />
           </div>
+          {pinWindow && delivered !== selected.id && (
+            <button
+              type="button"
+              className="min-h-11 px-2 font-bold text-violet-700 underline"
+              disabled={signingIn}
+              onClick={() => setScan({ id: pinWindow.id, profile: selected.id })}
+            >
+              {scanCopy.existing}
+            </button>
+          )}
           {pinError && (
             <div
               id="pin-error"

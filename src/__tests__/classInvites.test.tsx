@@ -4,6 +4,7 @@ import ShareClassLinkModal from '../components/ShareClassLinkModal';
 import JoinGameModal from '../components/JoinGameModal';
 import { classEntryT } from '../locales/class-entry';
 
+vi.mock('../core/supabase',()=>({supabase:{rpc:vi.fn().mockResolvedValue({data:null,error:null})}}));
 vi.mock('../hooks/useLanguage', () => ({
   useLanguage: () => ({ language: 'en', dir: 'ltr', isRTL: false }),
 }));
