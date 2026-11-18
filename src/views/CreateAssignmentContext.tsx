@@ -16,6 +16,7 @@ import type React from 'react';
 import type { Word } from '../data/vocabulary';
 import type { AppUser, ClassData, AssignmentData } from '../core/supabase';
 import type { SavedTaskInput, SavedTask } from '../hooks/useSavedTasks';
+import type { AssignmentDraftSession } from '../hooks/useAssignmentDraft';
 import type { View } from '../core/views';
 
 export interface CreateAssignmentSectionDeps {
@@ -29,6 +30,7 @@ export interface CreateAssignmentSectionDeps {
   customWords: Word[];
   setCustomWords: React.Dispatch<React.SetStateAction<Word[]>>;
   assignmentTemplate: SavedTask | null;
+  activeAssignmentDraft: React.RefObject<AssignmentDraftSession | null>;
   assignmentTitle: string;
   setAssignmentTitle: React.Dispatch<React.SetStateAction<string>>;
   assignmentDeadline: string;

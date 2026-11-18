@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import type { DraftValues } from '../../src/hooks/useAssignmentDraft';
 import { test, expect } from '../fixtures/auth.fixture';
 import {
   TEST_CLASS,
@@ -23,7 +24,7 @@ async function prepare(page: Page) {
         'vocaband_privacy_reminder_dismissed',
       ])
         localStorage.setItem(key, '1');
-      for (const guide of ['classroom', 'create-assignment', 'library-intro'])
+      for (const guide of ['classroom', 'create-assignment', 'class-show', 'library-intro'])
         localStorage.setItem('vocaband_guide_seen_' + guide, '1');
       localStorage.setItem('vocaband_consent_version', privacy);
       localStorage.setItem('vocaband_student_visibility_version', visibility);
@@ -31,28 +32,28 @@ async function prepare(page: Page) {
     [PRIVACY_POLICY_VERSION, STUDENT_VISIBILITY_VERSION]
   );
 }
-test('a four-word draft resumes at the same step after refresh and on another device', async ({
-  teacherPage: page,
-  browser,
-  baseURL,
-}) => {
-  let row: {
-    revision: string;
-    payload: { step: number; words: unknown[]; title: string; instructions: string } | null;
-  } | null = null;
-  async function draftRoutes(p: Page) {
-    await p.route(TEST_SUPABASE_URL + '/rest/v1/assignment_drafts**', (r) =>
-      r.fulfill({ json: row ? [row] : [] })
-    );
-    await p.route(TEST_SUPABASE_URL + '/rest/v1/rpc/save_assignment_draft', (r) => {
+function draftServer() {
+  const rows = new Map<string, { revision: string; payload: DraftValues | null }>();
+  async function connect(page: Page) {
+    await page.route(TEST_SUPABASE_URL + '/rest/v1/assignment_drafts**', (r) => {
+      const params = new URL(r.request().url()).searchParams;
+      const row = rows.get(params.get('slot')?.replace(/^eq\./, '') ?? '');
+      return r.fulfill({ json: row ? [row] : [] });
+    });
+    await page.route(TEST_SUPABASE_URL + '/rest/v1/rpc/save_assignment_draft', (r) => {
       const change = r.request().postDataJSON();
+      const row = rows.get(change.p_slot);
       const accepted = (row?.revision ?? null) === change.p_base;
-      if (accepted) row = { revision: change.p_revision, payload: change.p_payload };
+      if (accepted)
+        rows.set(change.p_slot, { revision: change.p_revision, payload: change.p_payload });
       return r.fulfill({ json: accepted });
     });
   }
+  return { rows, connect };
+}
+async function openFourWordDraft(page: Page, server: ReturnType<typeof draftServer>) {
   await prepare(page);
-  await draftRoutes(page);
+  await server.connect(page);
   await page.goto('/');
   await page.getByRole('button', { name: 'New activity', exact: true }).first().click();
   await page.getByPlaceholder('apple, banana, orange, grape').fill('apple, banana, orange, grape');
@@ -61,9 +62,19 @@ test('a four-word draft resumes at the same step after refresh and on another de
   await expect(page.getByRole('button', { name: 'Review', exact: true })).toBeVisible();
   await page.locator('#assignment-title').fill('Class 7 unit two');
   await page.locator('#assignment-instructions').fill('Read each word aloud once.');
-  await expect.poll(() => row?.payload?.instructions).toBe('Read each word aloud once.');
-  expect(row!.payload!.step).toBe(2);
-  expect(row!.payload!.words).toHaveLength(4);
+  await expect
+    .poll(() => server.rows.get('new')?.payload?.instructions)
+    .toBe('Read each word aloud once.');
+}
+test('a four-word draft resumes at the same step after refresh and on another device', async ({
+  teacherPage: page,
+  browser,
+  baseURL,
+}) => {
+  const server = draftServer();
+  await openFourWordDraft(page, server);
+  expect(server.rows.get('new')?.payload?.step).toBe(2);
+  expect(server.rows.get('new')?.payload?.words).toHaveLength(4);
   await page.reload();
   await expect(page.getByRole('button', { name: 'Review', exact: true })).toBeVisible();
   const other = await browser.newContext({ baseURL });
@@ -76,7 +87,7 @@ test('a four-word draft resumes at the same step after refresh and on another de
       FAKE_TEACHER_SESSION
     );
     await mockSupabase(school, 'teacher');
-    await draftRoutes(school);
+    await server.connect(school);
     await school.goto('/');
     await school.getByRole('button', { name: 'New activity', exact: true }).first().click();
     await expect(school.getByRole('button', { name: 'Review', exact: true })).toBeVisible();
@@ -89,6 +100,41 @@ test('a four-word draft resumes at the same step after refresh and on another de
   } finally {
     await other.close();
   }
+});
+test('returning from Class Show keeps the original named draft and its step', async ({
+  teacherPage: page,
+}) => {
+  const server = draftServer();
+  await openFourWordDraft(page, server);
+  await page.getByRole('button', { name: 'Class Show', exact: true }).click();
+  await page.getByRole('button', { name: 'Assignment', exact: true, pressed: false }).click();
+  await expect(page.getByRole('button', { name: 'Review', exact: true })).toBeVisible();
+  await expect(page.locator('#assignment-title')).toHaveValue('Class 7 unit two');
+  await expect(page.locator('#assignment-instructions')).toHaveValue('Read each word aloud once.');
+  expect(new URL(page.url()).searchParams.get('draft')).toBeNull();
+  await page.getByRole('button', { name: /Back/ }).last().click();
+  await expect(page.getByText('4 words selected', { exact: false }).first()).toBeVisible();
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Discard draft' }).click();
+  await expect.poll(() => server.rows.get('new')?.payload).toBeNull();
+  expect([...server.rows.keys()]).toEqual(['new']);
+});
+test('accepting a draft deletion from another device empties the editor without recreating the draft', async ({
+  teacherPage: page,
+}) => {
+  const server = draftServer();
+  await openFourWordDraft(page, server);
+  server.rows.set('new', { revision: 'remote-deletion', payload: null });
+  await page.locator('#assignment-title').fill('Unsent local edit');
+  await page.getByRole('button', { name: 'Open saved version' }).click();
+  await expect(page.getByPlaceholder('apple, banana, orange, grape')).toHaveValue('');
+  await expect(page.getByText('4 words selected', { exact: false })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Discard draft' })).toHaveCount(0);
+  const checked = page.waitForResponse('**/rest/v1/assignment_drafts**');
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await checked;
+  await expect(page.getByRole('button', { name: 'Discard draft' })).toHaveCount(0);
+  expect(server.rows.get('new')).toEqual({ revision: 'remote-deletion', payload: null });
 });
 test('teacher previews only eligible recipients for real in-app follow-ups', async ({
   teacherPage: page,
@@ -296,6 +342,9 @@ test('a template from another device restores the teacher’s text in the chosen
   };
   await page.route('**/rest/v1/classes**', (r) => r.fulfill({ json: [TEST_CLASS, destination] }));
   await page.route('**/rpc/sync_activity_templates', (r) => r.fulfill({ json: [template] }));
+  const drafts = draftServer();
+  drafts.rows.set('template-' + template.id, { revision: 'previously-discarded', payload: null });
+  await drafts.connect(page);
   await page.goto('/');
   await expect(page.getByText(template.title, { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Use', exact: true }).click();

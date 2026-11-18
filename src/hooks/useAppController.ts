@@ -280,7 +280,7 @@ export function useAppController(initialView?: View): AppViewRouterProps {
   // Assignment-builder form fields + Smart Paste dialog state.
   // See useAssignmentBuilderState.
   const {
-    assignmentTemplate, setAssignmentTemplate, assignmentTitle, setAssignmentTitle,
+    activeAssignmentDraft, assignmentTemplate, setAssignmentTemplate, assignmentTitle, setAssignmentTitle,
     assignmentDeadline, setAssignmentDeadline,
     assignmentModes, setAssignmentModes,
     assignmentSentences, setAssignmentSentences,
@@ -290,8 +290,12 @@ export function useAppController(initialView?: View): AppViewRouterProps {
     showTopicPacks, setShowTopicPacks,
   } = useAssignmentBuilderState();
   useEffect(() => {
-    if (view !== "create-assignment") setAssignmentTemplate(null);
-  }, [view, setAssignmentTemplate]);
+    const visitingActivity = activityNavOrigin === "create-assignment" &&
+      ["class-show", "hot-seat", "wheel", "vocabagrut"].includes(view);
+    if (view === "create-assignment" || visitingActivity) return;
+    activeAssignmentDraft.current = null;
+    setAssignmentTemplate(null);
+  }, [view, activityNavOrigin, activeAssignmentDraft, setAssignmentTemplate]);
 
   // Toast notifications — state + showToast (stable identity for dep
   // arrays) + paywall-toast helper. See useToasts.
@@ -1038,7 +1042,7 @@ export function useAppController(initialView?: View): AppViewRouterProps {
   // `view === "create-assignment" && selectedClass` gate.  Hook-free
   // assembly; returns a fresh (un-memoized) bag every render.
   const createAssignmentDeps = useCreateAssignmentDeps({
-    assignmentTemplate,
+    activeAssignmentDraft, assignmentTemplate,
     user, selectedClass,
     allWords: ALL_WORDS, set1Words: SET_1_WORDS, set2Words: SET_2_WORDS, topicPacks: TOPIC_PACKS,
     customWords, setCustomWords,

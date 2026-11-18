@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { supabase } from '../core/supabase';
 import type { Word } from '../data/vocabulary';
 import type { SentenceDifficulty } from '../constants/game';
@@ -28,7 +28,13 @@ interface Cache extends Remote {
   pending: boolean;
 }
 type Status = 'empty' | 'local' | 'saved' | 'conflict' | 'unavailable';
-type Snapshot = { ready: boolean; initial: DraftValues | null; version: number; status: Status };
+type Snapshot = {
+  ready: boolean;
+  initial: DraftValues | null;
+  resetForm: boolean;
+  version: number;
+  status: Status;
+};
 function valid(value: DraftValues | null) {
   return (
     value === null ||
@@ -56,9 +62,9 @@ export class AssignmentDraftSession {
   private listeners = new Set<() => void>();
   private state: Snapshot;
   constructor(
-    private uid: string,
-    private classId: string,
-    private slot: string
+    readonly uid: string,
+    readonly classId: string,
+    readonly slot: string
   ) {
     this.key = 'vocaband_assignment_draft_v1:' + JSON.stringify([uid, classId, slot]);
     try {
@@ -70,6 +76,7 @@ export class AssignmentDraftSession {
     this.state = {
       ready: !!this.row,
       initial: this.row?.payload ?? null,
+      resetForm: false,
       version: 0,
       status: this.row?.pending ? 'local' : this.row?.payload ? 'saved' : 'empty',
     };
@@ -94,12 +101,16 @@ export class AssignmentDraftSession {
     }
   }
   private replace(remote: Remote | null) {
+    // A deletion of the current draft must clear the form. An older deletion in a
+    // freshly opened workspace still allows the teacher to start from a template.
+    const resetForm = !remote?.payload && (!!this.row?.payload || this.state.status === 'conflict');
     this.row = remote ? { ...remote, base: remote.revision, pending: false } : null;
     this.conflict = null;
     this.cache();
     this.publish({
       ready: true,
       initial: remote?.payload ?? null,
+      resetForm,
       version: this.state.version + 1,
       status: remote?.payload ? 'saved' : 'empty',
     });
@@ -150,8 +161,12 @@ export class AssignmentDraftSession {
       payload,
     };
     const cached = this.cache();
-    if (this.state.status === 'conflict') return;
-    this.publish({ status: cached ? 'local' : 'unavailable' });
+    const hasConflict = this.state.status === 'conflict';
+    this.publish({
+      initial: payload,
+      status: hasConflict ? 'conflict' : cached ? 'local' : 'unavailable',
+    });
+    if (hasConflict) return;
     clearTimeout(this.timer);
     this.timer = setTimeout(() => void this.flush(), 450);
   };
@@ -208,11 +223,7 @@ export class AssignmentDraftSession {
     void this.flush();
   };
 }
-export function useAssignmentDraft(uid: string, classId: string, slot: string) {
-  const session = useMemo(
-    () => new AssignmentDraftSession(uid, classId, slot),
-    [uid, classId, slot]
-  );
+export function useAssignmentDraft(session: AssignmentDraftSession) {
   const snapshot = useSyncExternalStore(session.subscribe, session.snapshot, session.snapshot);
   useEffect(() => {
     void session.load();
@@ -223,5 +234,5 @@ export function useAssignmentDraft(uid: string, classId: string, slot: string) {
       window.removeEventListener('focus', session.load);
     };
   }, [session]);
-  return { session, snapshot };
+  return snapshot;
 }

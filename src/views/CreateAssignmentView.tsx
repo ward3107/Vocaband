@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import {
   CreateAssignmentWizard,
   type CreateAssignmentWizardProps,
@@ -8,13 +8,16 @@ import type { ClassData } from '../core/supabase';
 import {
   useAssignmentDraft,
   type DraftValues,
-  type AssignmentDraftSession,
+  AssignmentDraftSession,
 } from '../hooks/useAssignmentDraft';
 import { assignmentWorkflowT } from '../locales/teacher/assignment-workflows';
 import { useLanguage } from '../hooks/useLanguage';
 import { URL_ROUTING_PUSH } from '../utils/urlRouting';
 
-type Props = CreateAssignmentWizardProps & { teacherUid?: string };
+type Props = CreateAssignmentWizardProps & {
+  teacherUid?: string;
+  activeAssignmentDraft: RefObject<AssignmentDraftSession | null>;
+};
 export interface DraftBinding {
   initial: DraftValues | null;
   save: (value: DraftValues) => void;
@@ -33,28 +36,21 @@ function Editor(props: Props & { draft?: DraftBinding }) {
   return <CreateAssignmentWizard {...props} />;
 }
 
-function RestoredEditor({
-  props,
-  initial,
-  session,
-}: {
-  props: Props;
-  initial: DraftValues | null;
-  session: AssignmentDraftSession;
-}) {
-  const [ready, setReady] = useState(!initial);
+function RestoredEditor({ props, session }: { props: Props; session: AssignmentDraftSession }) {
+  const [{ initial, resetForm }] = useState(session.snapshot);
+  const [ready, setReady] = useState(!initial && !resetForm);
   const [failed, setFailed] = useState(false);
   const publishing = useRef(false);
   const { language } = useLanguage();
   useLayoutEffect(() => {
-    if (!initial) return;
-    props.setAssignmentTitle(initial.title);
-    props.setAssignmentDeadline(initial.deadline);
-    props.setAssignmentModes(initial.modes);
-    props.setAssignmentSentences(initial.sentences);
-    props.setSentenceDifficulty(initial.difficulty);
-    props.setSelectedWords(initial.ids);
-    const custom = initial.words.filter((w) => w.id < 0 || w.level === 'Custom');
+    if (!initial && !resetForm) return;
+    props.setAssignmentTitle(initial?.title ?? '');
+    props.setAssignmentDeadline(initial?.deadline ?? '');
+    props.setAssignmentModes(initial?.modes ?? []);
+    props.setAssignmentSentences(initial?.sentences ?? []);
+    props.setSentenceDifficulty(initial?.difficulty ?? 2);
+    props.setSelectedWords(initial?.ids ?? []);
+    const custom = initial?.words.filter((w) => w.id < 0 || w.level === 'Custom') ?? [];
     if (custom.length)
       props.setCustomWords((old) => [
         ...new Map([...old, ...custom].map((w) => [w.id, w])).values(),
@@ -68,6 +64,7 @@ function RestoredEditor({
     <>
       <Editor
         {...props}
+        template={resetForm ? null : props.template}
         draft={{ initial, save: session.save }}
         handleSaveAssignment={async (...args) => {
           if (publishing.current) throw new Error('Publication already in progress');
@@ -120,8 +117,17 @@ function initialSlot(props: Props, classId: string) {
 function Workspace({ props, uid, classId }: { props: Props; uid: string; classId: string }) {
   const { language } = useLanguage();
   const t = assignmentWorkflowT[language];
-  const [slot] = useState(() => initialSlot(props, classId));
-  const { session, snapshot } = useAssignmentDraft(uid, classId, slot);
+  const active = props.activeAssignmentDraft;
+  const [session] = useState(() => {
+    const previous = active.current;
+    if (previous?.uid === uid && previous.classId === classId) return previous;
+    return new AssignmentDraftSession(uid, classId, initialSlot(props, classId));
+  });
+  const slot = session.slot;
+  const snapshot = useAssignmentDraft(session);
+  useLayoutEffect(() => {
+    active.current = session;
+  }, [active, session]);
   useLayoutEffect(() => {
     const original = window.location.href;
     const url = new URL('/create-assignment', window.location.origin);
@@ -154,14 +160,9 @@ function Workspace({ props, uid, classId }: { props: Props; uid: string; classId
     );
   return (
     <>
-      <RestoredEditor
-        key={snapshot.version}
-        props={props}
-        initial={snapshot.initial}
-        session={session}
-      />
+      <RestoredEditor key={snapshot.version} props={props} session={session} />
       {snapshot.status !== 'empty' && (
-        <aside className="mx-auto flex max-w-4xl flex-wrap items-center gap-3 p-4 text-sm">
+        <aside className="mx-auto flex max-w-4xl flex-wrap items-center gap-3 p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] text-sm sm:pb-4">
           <span role="status">
             {snapshot.status === 'conflict'
               ? t.conflict
@@ -173,8 +174,12 @@ function Workspace({ props, uid, classId }: { props: Props; uid: string; classId
           </span>
           {snapshot.status === 'conflict' && (
             <>
-              <button onClick={session.useRemote}>{t.useRemote}</button>
-              <button onClick={session.keepLocal}>{t.keepLocal}</button>
+              <button type="button" className="min-h-11 underline" onClick={session.useRemote}>
+                {t.useRemote}
+              </button>
+              <button type="button" className="min-h-11 underline" onClick={session.keepLocal}>
+                {t.keepLocal}
+              </button>
             </>
           )}
           <button

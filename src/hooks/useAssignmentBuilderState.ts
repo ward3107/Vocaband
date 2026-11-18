@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import type { AssignmentDraftSession } from "./useAssignmentDraft";
 import type { SavedTask } from "./useSavedTasks";
 
 /**
@@ -9,6 +10,7 @@ import type { SavedTask } from "./useSavedTasks";
  * hook.
  */
 export function useAssignmentBuilderState() {
+  const activeAssignmentDraft = useRef<AssignmentDraftSession | null>(null);
   const [assignmentTemplate, setAssignmentTemplate] = useState<SavedTask | null>(null);
   const [assignmentTitle, setAssignmentTitle] = useState("");
   const [assignmentDeadline, setAssignmentDeadline] = useState("");
@@ -20,6 +22,7 @@ export function useAssignmentBuilderState() {
   const [showTopicPacks, setShowTopicPacks] = useState(false);
 
   return {
+    activeAssignmentDraft,
     assignmentTemplate, setAssignmentTemplate,
     assignmentTitle, setAssignmentTitle,
     assignmentDeadline, setAssignmentDeadline,
