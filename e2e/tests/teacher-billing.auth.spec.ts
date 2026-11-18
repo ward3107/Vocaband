@@ -65,7 +65,7 @@ test('teacher can choose the annual Pro plan and add 50 places', async ({ teache
   await page.goto('/');
   await page.getByRole('button', { name: 'Manage subscription' }).click();
   const dialog = page.getByRole('dialog', { name: 'My subscription' });
-  const pro = dialog.locator('section').filter({ has: dialog.getByRole('heading', { name: 'Teacher Pro' }) });
+  const pro = dialog.locator('section').filter({ has: page.getByRole('heading', { name: 'Teacher Pro', exact: true }) });
   await expect(dialog.getByText('30 students')).toBeVisible();
   await expect(pro.locator('strong')).toHaveText(/169/);
   await pro.getByRole('button', { name: /Add 50 places/ }).click();
