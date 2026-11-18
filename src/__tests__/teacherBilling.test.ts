@@ -367,11 +367,19 @@ describe('teacher billing', () => {
       await expect(reserve('annual', 35, 6900)).rejects.toThrow('Checkout being prepared');
       await expect(reserve('monthly', 35, 1750)).rejects.toThrow('Different checkout pending');
       await db.exec(
-        "UPDATE teacher_billing_orders SET checkout_lease_until=now()-interval '1 second'"
+        `UPDATE teacher_billing_orders SET checkout_lease_until=now()-interval '1 second',
+          pending_until=now()+interval '5 seconds'`
       );
       const retry = (await reserve('annual', 35, 6900)).rows[0].order;
       expect(retry.id).toBe(id);
       expect(retry.attempt).not.toBe(attempt);
+      expect(
+        (
+          await db.query(
+            'SELECT pending_until>checkout_lease_until AS reserved FROM teacher_billing_orders'
+          )
+        ).rows[0]
+      ).toEqual({ reserved: true });
       const url = 'https://pay.sumit.co.il/example';
       const save = (token: string | undefined) =>
         db.query<{ saved: boolean }>('SELECT billing_store_checkout($1,$2,$3) AS saved', [

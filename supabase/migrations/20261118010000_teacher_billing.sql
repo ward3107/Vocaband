@@ -207,7 +207,8 @@ BEGIN
    IF existing.checkout_url IS NOT NULL THEN RETURN jsonb_build_object('url',existing.checkout_url); END IF;
    IF existing.checkout_lease_until>now() THEN RAISE EXCEPTION 'Checkout being prepared'; END IF;
    UPDATE public.teacher_billing_orders
-   SET checkout_attempt=attempt,checkout_lease_until=now()+interval '45 seconds'
+   SET checkout_attempt=attempt,checkout_lease_until=now()+interval '45 seconds',
+       pending_until=now()+interval '1 minute'
    WHERE id=existing.id;
  ELSE
    INSERT INTO public.teacher_billing_orders(teacher_uid,offer,item_id,amount_agorot,student_count,months,recurring,
@@ -227,7 +228,7 @@ BEGIN
      pending_until=CASE WHEN p_url IS NULL THEN now() ELSE now()+interval '65 minutes' END,
      checkout_attempt=null,checkout_lease_until=null
  WHERE id=p_id AND checkout_attempt=p_attempt AND checkout_lease_until>now()
-   AND checkout_url IS NULL AND paid_at IS NULL;
+   AND pending_until>now() AND checkout_url IS NULL AND paid_at IS NULL;
  RETURN FOUND;
 END $$;
 
