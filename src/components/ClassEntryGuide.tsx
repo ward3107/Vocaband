@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Copy, Users } from 'lucide-react';
+import { Check, Copy } from 'lucide-react';
 import type { Language } from '../hooks/useLanguage';
 import { classEntryT } from '../locales/class-entry';
 
@@ -9,13 +9,11 @@ export default function ClassEntryGuide({
   className,
   classCode,
   url,
-  onOpenRoster,
 }: {
   language: Language;
   className: string;
   classCode: string;
   url: string;
-  onOpenRoster?: () => void;
 }) {
   const t = classEntryT[language];
   const [copied, setCopied] = useState(false);
@@ -29,16 +27,6 @@ export default function ClassEntryGuide({
           <p className="mt-1 text-sm leading-relaxed text-[var(--vb-text-secondary)]">
             {t.prepareHint}
           </p>
-          {onOpenRoster && (
-            <button
-              type="button"
-              onClick={onOpenRoster}
-              className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--vb-border)] bg-[var(--vb-surface)] px-3 py-2 text-sm font-bold"
-            >
-              <Users size={18} aria-hidden="true" />
-              {t.manage}
-            </button>
-          )}
         </li>
         <li className="rounded-xl bg-[var(--vb-surface-alt)] p-4">
           <p className="text-base font-bold">2. {t.share}</p>
