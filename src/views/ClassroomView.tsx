@@ -66,6 +66,7 @@ interface ClassStudent {
 
 interface ClassroomViewProps {
   user: { displayName?: string; avatar?: string } | null;
+  reportsAvailable?: boolean;
   allScores: ProgressData[];
   teacherAssignments: AssignmentData[];
   classStudents: ClassStudent[];
@@ -100,12 +101,10 @@ export default function ClassroomView(props: ClassroomViewProps) {
     user, allScores, teacherAssignments, classStudents, classes,
     selectedClass, setSelectedClass, selectedWords, setSelectedWords,
     expandedStudent, setExpandedStudent, setView, showToast,
+    reportsAvailable = true,
     initialTab = "pulse",
     subject = "english",
   } = props;
-  // user is consumed by GradebookView/AnalyticsView via spread props below;
-  // referenced in JSX so no unused-var warning.
-  void user;
 
   const { language, dir } = useLanguage();
   const isMobile = useIsMobile();
@@ -113,6 +112,17 @@ export default function ClassroomView(props: ClassroomViewProps) {
   const tViews = teacherViewsT[language];
   const guide = useFirstTimeGuide("classroom");
   const guideStrings = teacherGuidesT[language].classroom;
+
+  const reportsUpgrade = (
+    <div className="rounded-2xl border p-5">
+      <p>{language === 'he' ? 'דוחות התקדמות לאורך זמן כלולים במסלול מורה.' :
+        language === 'ar' ? 'تقارير التقدّم عبر الوقت متاحة في خطة المعلّم.' :
+        'Progress reports over time are included in the Teacher plan.'}</p>
+      <a href="/?billing=1" className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-violet-700 px-4 font-semibold text-white">
+        {language === 'he' ? 'צפייה במסלולים' : language === 'ar' ? 'عرض الخطط' : 'View plans'}
+      </a>
+    </div>
+  );
 
   // Tab metadata depends on `t` (labels + blurbs) so it has to live
   // inside the component.  Static gradients + emojis don't translate.
@@ -459,7 +469,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
                   />
                 </div>
               )}
-              {v2Tab === "reports" && (
+              {v2Tab === "reports" && (reportsAvailable ? (
                 <div className="mt-6 space-y-4">
                   {/* Exports live on the Reports tab only — teachers asked
                       us to stop showing them on Today / Students because
@@ -498,7 +508,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
                     embedded
                   />
                 </div>
-              )}
+              ) : reportsUpgrade)}
             </Suspense>
           </motion.div>
         </motion.div>
@@ -608,7 +618,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
           <Suspense fallback={
             <div className="text-center py-16 text-sm" style={{ color: 'var(--vb-text-muted)' }}>{t.loading}</div>
           }>
-            {legacyTab === "mastery" ? (
+            {legacyTab === "mastery" ? (reportsAvailable ? (
               <AnalyticsView
                 user={user}
                 classes={classes}
@@ -621,7 +631,7 @@ export default function ClassroomView(props: ClassroomViewProps) {
                 setSelectedWords={setSelectedWords}
                 embedded
               />
-            ) : (
+            ) : reportsUpgrade) : (
               <GradebookView
                 user={user}
                 allScores={allScores}

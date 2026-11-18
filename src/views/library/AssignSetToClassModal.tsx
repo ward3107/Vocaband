@@ -13,7 +13,7 @@ import { useBackLayer } from "../../hooks/useBackLayer";
  * synthesized numeric id (stable hash, above the ALL_WORDS range) and
  * are written as level: 'Custom' rows.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Send, Loader2, Check, Users, Languages } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
@@ -81,9 +81,14 @@ export default function AssignSetToClassModal({
   useBackLayer(onClose, { priority: 60 });
   const t = useMemo(() => assignSetT[language], [language]);
 
-  const [selectedClassId, setSelectedClassId] = useState<string | null>(
-    classes.length === 1 ? classes[0].id : null,
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>(
+    classes.length === 1 ? [classes[0].id] : [],
   );
+  const [bulkAllowed, setBulkAllowed] = useState(false);
+  const bulkRequest = useRef<{ id: string; signature: string } | null>(null);
+  const multipleClasses = language === 'he' ? 'בחירת כיתות' : language === 'ar' ? 'اختر الصفوف' : 'Select classes';
+  const sentTo = language === 'he' ? 'המשימה נשלחה לכיתות שנבחרו.' :
+    language === 'ar' ? 'أُرسل الواجب إلى الصفوف المختارة.' : 'Assigned to the selected classes.';
   const [title, setTitle] = useState(set.name);
   const [deadline, setDeadline] = useState<string>("");
   // Which translation(s) the assignment will carry. Defaults to "both" so
@@ -97,6 +102,9 @@ export default function AssignSetToClassModal({
   // assignment row. Cached locally; we don't refetch on retries.
   useEffect(() => {
     let cancelled = false;
+    void supabase.rpc('billing_my_plan').then(({ data }) => {
+      if (!cancelled) setBulkAllowed(['pro', 'trial', 'school'].includes(data?.tier));
+    }, () => undefined);
     listSetWords(set.id)
       .then((rows) => { if (!cancelled) setWords(rows); })
       .catch((err) => {
@@ -107,7 +115,7 @@ export default function AssignSetToClassModal({
   }, [set.id]);
 
   const handleSubmit = useCallback(async () => {
-    if (!selectedClassId) {
+    if (selectedClassIds.length === 0) {
       showToast(t.errorNoClass, "error");
       return;
     }
@@ -116,7 +124,7 @@ export default function AssignSetToClassModal({
       return;
     }
     if (!words) return; // still loading
-    const klass = classes.find((c) => c.id === selectedClassId);
+    const klass = classes.find((c) => c.id === selectedClassIds[0]);
     if (!klass) return;
 
     setBusy(true);
@@ -159,17 +167,27 @@ export default function AssignSetToClassModal({
         return;
       }
 
-      const { error } = await supabase
-        .from("assignments")
-        .insert({
-          class_id: klass.id,
-          word_ids: wordIds,
-          words: assignmentWords,
-          title: title.trim(),
-          deadline: deadline || null,
-          allowed_modes: null,
-          subject: klass.subject ?? "english",
-        });
+      const payload = {
+        word_ids: wordIds, words: assignmentWords, title: title.trim(),
+        deadline: deadline || null, allowed_modes: null,
+      };
+      const selected = [...selectedClassIds].sort();
+      const params = {
+        p_classes: selected, p_title: payload.title, p_due: payload.deadline,
+        p_words: payload.words, p_word_ids: payload.word_ids,
+      };
+      let error;
+      if (selected.length > 1) {
+        const signature = JSON.stringify(params);
+        if (bulkRequest.current?.signature !== signature) {
+          bulkRequest.current = { id: crypto.randomUUID(), signature };
+        }
+        ({ error } = await supabase.rpc('assign_personal_word_set', { ...params, p_request: bulkRequest.current.id }));
+      } else {
+        ({ error } = await supabase.from('assignments').insert({
+          ...payload, class_id: klass.id, subject: klass.subject ?? 'english',
+        }));
+      }
 
       if (error) {
         console.warn("[AssignSetToClassModal] insert failed:", error.message);
@@ -181,7 +199,7 @@ export default function AssignSetToClassModal({
       // Recent tab next time. Fire-and-forget.
       touchSetUsed(set.id);
 
-      showToast(t.toastAssigned(klass.name), "success");
+      showToast(selected.length > 1 ? sentTo : t.toastAssigned(klass.name), "success");
       onAssigned();
     } catch (err) {
       console.warn("[AssignSetToClassModal] insert threw:", err);
@@ -189,7 +207,7 @@ export default function AssignSetToClassModal({
     } finally {
       setBusy(false);
     }
-  }, [selectedClassId, title, deadline, translations, words, classes, set.id, showToast, t, onAssigned]);
+  }, [selectedClassIds, title, deadline, translations, words, classes, set.id, showToast, sentTo, t, onAssigned]);
 
   return (
     <AnimatePresence>
@@ -233,7 +251,7 @@ export default function AssignSetToClassModal({
             {/* Class picker */}
             <section>
               <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--vb-text-secondary)' }}>
-                {t.pickClassHeading}
+                {bulkAllowed ? multipleClasses : t.pickClassHeading}
               </h3>
               {classes.length === 0 ? (
                 <div className="mt-3 rounded-xl border border-dashed p-4 text-center" style={{ borderColor: 'var(--vb-border)', backgroundColor: 'var(--vb-surface-alt)' }}>
@@ -243,12 +261,17 @@ export default function AssignSetToClassModal({
               ) : (
                 <ul className="mt-3 space-y-2">
                   {classes.map((c) => {
-                    const isActive = selectedClassId === c.id;
+                    const isActive = selectedClassIds.includes(c.id);
                     return (
                       <li key={c.id}>
                         <button
                           type="button"
-                          onClick={() => setSelectedClassId(c.id)}
+                          aria-pressed={isActive}
+                          onClick={() => setSelectedClassIds((previous) => {
+                            if (!bulkAllowed || (c.subject ?? 'english') !== 'english') return [c.id];
+                            const english = previous.filter((id) => classes.some((item) => item.id === id && (item.subject ?? 'english') === 'english'));
+                            return isActive ? english.filter((id) => id !== c.id) : [...english, c.id];
+                          })}
                           style={{
                             touchAction: "manipulation",
                             WebkitTapHighlightColor: "transparent",
@@ -379,7 +402,7 @@ export default function AssignSetToClassModal({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={busy || classes.length === 0 || !selectedClassId || !title.trim() || words === null}
+              disabled={busy || classes.length === 0 || selectedClassIds.length === 0 || !title.trim() || words === null}
               className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-violet-600 text-white font-bold text-sm hover:bg-violet-700 disabled:opacity-50"
               style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
             >

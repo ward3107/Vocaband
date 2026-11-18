@@ -9,6 +9,7 @@ import { useAdaptiveTheme } from "../hooks/useAdaptiveTheme";
 // Lazy — pulls in motion/react and only opens for brand-new teachers.
 const TeacherOnboardingWizard = lazyWithRetry(() => import("../components/onboarding/TeacherOnboardingWizard"));
 const TeacherBilling = lazyWithRetry(() => import("../components/dashboard/TeacherBilling"));
+const SchoolWorkspace = lazyWithRetry(() => import("../components/dashboard/SchoolWorkspace"));
 import DashboardOnboarding from "../components/DashboardOnboarding";
 import WorkspaceWelcome from "../components/dashboard/WorkspaceWelcome";
 import TopAppBar from "../components/TopAppBar";
@@ -204,6 +205,7 @@ export default function TeacherDashboardView({
     const params = new URLSearchParams(location.search);
     return params.has("billing") || params.has("og-paymentid");
   });
+  const [schoolOpen, setSchoolOpen] = useState(false);
   const billingButton = user?.role === 'teacher' ? {
     onClick: () => setBillingOpen(true),
     actionLabel: effectiveLanguage === 'he' ? 'ניהול המנוי' : 'Manage subscription',
@@ -357,7 +359,15 @@ export default function TeacherDashboardView({
           userAvatar={user?.avatar}
           onLogout={() => performUserLogout()}
           showScaleControl
-          extraTrailing={headerExtra}
+          extraTrailing={<>
+            {headerExtra}
+            {user?.schoolId && getEffectivePlan(user) === 'school' && (
+              <button type="button" className="min-h-11 rounded-xl px-3 text-sm font-semibold"
+                onClick={() => setSchoolOpen(true)}>
+                {isHebrew ? 'ספריית צוות' : 'Team library'}
+              </button>
+            )}
+          </>}
           planBadge={(() => {
             const trialing = isTrialing(user);
             const daysLeft = trialing ? getTrialDaysLeft(user) : null;
@@ -367,6 +377,7 @@ export default function TeacherDashboardView({
             const effective = getEffectivePlan(user);
             if (effective === "school") return { ...billingButton, label: t.planPillSchool, tone: "school" as const };
             if (effective === "pro") return { ...billingButton, label: t.planPillPro, tone: "pro" as const };
+            if (effective === "teacher") return { ...billingButton, label: effectiveLanguage === "he" ? "מורה" : "Teacher", tone: "pro" as const };
             return { ...billingButton, label: t.planPillFree, tone: "free" as const };
           })()}
         />
@@ -374,7 +385,15 @@ export default function TeacherDashboardView({
         {billingOpen && user?.role === 'teacher' && (
           <Suspense fallback={null}>
             <TeacherBilling language={effectiveLanguage} onClose={() => setBillingOpen(false)}
-              onAccess={(until) => setUser(previous => previous?.uid === user.uid && (previous.billingPaidUntil ?? null) !== until ? {...previous, billingPaidUntil: until} : previous)} />
+              onAccess={(entitlement) => setUser(previous => previous?.uid === user.uid
+                ? {...previous, billingEntitlement: entitlement, billingPaidUntil: entitlement.tier !== 'trial' ? entitlement.until ?? null : null}
+                : previous)} />
+          </Suspense>
+        )}
+
+        {schoolOpen && user?.schoolId && (
+          <Suspense fallback={null}>
+            <SchoolWorkspace user={user} language={effectiveLanguage} onClose={() => setSchoolOpen(false)} />
           </Suspense>
         )}
 

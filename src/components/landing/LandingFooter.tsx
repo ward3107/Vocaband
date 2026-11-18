@@ -19,6 +19,7 @@ import {
   Users,
 } from "lucide-react";
 import { useLanguage } from "../../hooks/useLanguage";
+import { landingPageT } from "../../locales/student/landing-page";
 import { landingSectionsT } from "../../locales/student/landing-sections";
 import { teacherResourcesT } from "../../locales/student/teacher-resources";
 
@@ -81,6 +82,11 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                 >
                   {t.footerTryDemo}
                 </button>
+              </li>
+              <li>
+                <a href="#plans" className="text-white/85 hover:text-white text-sm font-semibold transition-colors">
+                  {landingPageT[language].navPricing}
+                </a>
               </li>
               {!isAuthenticated && (
                 <li>

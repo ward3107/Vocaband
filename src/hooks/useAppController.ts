@@ -557,7 +557,6 @@ export function useAppController(initialView?: View): AppViewRouterProps {
     handleRejectStudent,
     confirmRejectStudent,
   } = useTeacherData({
-    user,
     classes, setClasses,
     setStudentAssignments, setStudentProgress,
     setPendingStudents,

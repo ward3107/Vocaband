@@ -24,6 +24,7 @@ import type React from 'react';
 import { LazyWrapper } from '../components/SuspenseWrapper';
 import SvgSpinner from '../components/svg/SvgSpinner';
 import { hasTeacherAccess, type AppUser, type ClassData, type AssignmentData } from '../core/supabase';
+import { hasPaidClassroom } from '../core/plan';
 import type { VocaId } from '../core/subject';
 import type { View } from '../core/views';
 import ActivityTabsSlot from '../components/setup/ActivityTabsSlot';
@@ -379,6 +380,7 @@ export function renderMiscViews(deps: RenderMiscViewsDeps): ReactNode {
       <LazyWrapper loadingMessage="Loading classroom...">
         <ClassroomView
           user={user}
+          reportsAvailable={hasPaidClassroom(user)}
           classes={visibleClasses}
           allScores={allScores}
           teacherAssignments={visibleAssignments}

@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { supabase } from '../../core/supabase';
-import type { TeacherBillingQuote } from '../../core/plan';
+import { SCHOOL_BILLING, PERSONAL_BILLING, type BillingQuote, type BillingEntitlement } from '../../core/billingCatalog';
 import type { Language } from '../../hooks/useLanguage';
 
 const strings = {
@@ -125,12 +125,41 @@ const strings = {
     saved: 'Preferences saved.',
   },
 };
+const packageLabels = {
+  he: {
+    schoolTitle: 'רישיון בית הספר', teacher: 'מורה', pro: 'מורה Pro', school: 'צוות אנגלית בבית ספר',
+    pilot: 'פיילוט לשישה שבועות', seats: 'תלמידים', staff: 'מורים',
+    add: 'הוספת 50 מקומות', remove: 'הפחתת 50 מקומות', credit: 'קיזוז הפיילוט',
+    upgrade: 'עלות השדרוג עד סוף התקופה', current: 'מקומות במנוי הנוכחי',
+    tooMany: 'המסלול קטן ממספר המשתתפים הנוכחי.', largeSchool: 'לקבלת הצעה לצוות גדול יותר אפשר לפנות אלינו.',
+    details: 'תשלום אחד לתקופה הנבחרת. ניתן לבחור מועד חידוש בסיום התקופה.',
+    pilotUsed: 'הפיילוט מיועד להתחלה חד־פעמית של צוות חדש.',
+    selectTerm: 'תקופת מנוי', abovePilot: 'כולל חשבונות Pro, ספריית צוות, משימות משותפות ודוחות לרכזת.',
+  },
+  en: {
+    schoolTitle: 'School subscription', teacher: 'Teacher', pro: 'Teacher Pro', school: 'School English team',
+    pilot: 'Six-week school pilot', seats: 'students', staff: 'teachers',
+    add: 'Add 50 places', remove: 'Remove 50 places', credit: 'Pilot credit',
+    upgrade: 'Upgrade through the end of this term', current: 'Places in your current plan',
+    tooMany: 'Current enrollment exceeds this plan’s capacity.', largeSchool: 'Contact us for a larger team.',
+    details: 'One payment for the selected period. Choose whether to renew when the period ends.',
+    pilotUsed: 'The six-week pilot is a one-time offer for a new team.',
+    selectTerm: 'Billing period', abovePilot: 'Includes Pro accounts, a shared library, shared assignments and coordinator reports.',
+  },
+  ar: {
+    schoolTitle: 'اشتراك المدرسة', teacher: 'معلّم', pro: 'معلّم Pro', school: 'طاقم الإنجليزية في المدرسة',
+    pilot: 'تجربة مدرسية لستة أسابيع', seats: 'طالبًا', staff: 'معلّمين',
+    add: 'إضافة 50 مكانًا', remove: 'تقليل 50 مكانًا', credit: 'خصم قيمة التجربة',
+    upgrade: 'تكلفة الترقية حتى نهاية الفترة', current: 'الأماكن في خطتك الحالية',
+    tooMany: 'عدد المشاركين الحالي أكبر من سعة الخطة.', largeSchool: 'تواصلوا معنا لعرض يناسب طاقمًا أكبر.',
+    details: 'دفعة واحدة للفترة المختارة. يمكن اختيار التجديد عند انتهائها.',
+    pilotUsed: 'التجربة لستة أسابيع عرض لمرة واحدة للطاقم الجديد.',
+    selectTerm: 'مدة الاشتراك', abovePilot: 'يشمل حسابات Pro ومكتبة مشتركة وواجبات مشتركة وتقارير للمنسّق.',
+  },
+};
 type State = {
-  quote: TeacherBillingQuote | null;
+  quote: BillingQuote;
   checkoutEnabled: boolean;
-  covered: boolean;
-  until: string | null;
-  trialEndsAt: string | null;
   emailEnabled: boolean;
   language: Language | null;
   subscription: {
@@ -161,13 +190,16 @@ export default function TeacherBilling({
   language,
   onClose,
   onAccess,
+  institution = false,
 }: {
   language: Language;
   onClose: () => void;
-  onAccess: (until: string | null) => void;
+  onAccess?: (entitlement: BillingEntitlement) => void;
+  institution?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
-  const access = useEffectEvent(onAccess);
+  const initialLoad = useRef(true);
+  const access = useEffectEvent((plan: BillingEntitlement) => onAccess?.(plan));
   const [state, setState] = useState<State | null>(null);
   const [quotedAt, setQuotedAt] = useState(0);
   const [lang, setLang] = useState(language);
@@ -177,7 +209,11 @@ export default function TeacherBilling({
   >('');
   const [busy, setBusy] = useState(false);
   const [load, setLoad] = useState(0);
+  const [extra, setExtra] = useState(0);
+  const [period, setPeriod] = useState<1 | 12>(12);
+  const [quotedExtra, setQuotedExtra] = useState(0);
   const t = strings[lang];
+  const labels = packageLabels[lang];
   const date = (s: string) =>
     new Intl.DateTimeFormat(lang, { dateStyle: 'medium', timeZone: 'Asia/Jerusalem' }).format(
       new Date(s)
@@ -210,13 +246,18 @@ export default function TeacherBilling({
           });
           if (current) setMessage(verified.state);
         }
-        const data = await request<State>('');
+        const data = await request<State>('?extra=' + extra);
         if (!current) return;
         setState(data);
         setQuotedAt(Date.now());
-        setLang(data.language ?? language);
-        setEnabled(data.emailEnabled);
-        access(data.until);
+        setQuotedExtra(extra);
+        if (initialLoad.current) {
+          initialLoad.current = false;
+          setLang(data.language ?? language);
+          setEnabled(data.emailEnabled);
+          setPeriod(data.quote.entitlement.months === 1 ? 1 : 12);
+        }
+        access(data.quote.entitlement);
       } catch {
         if (current) setMessage('error');
       }
@@ -225,7 +266,7 @@ export default function TeacherBilling({
     return () => {
       current = false;
     };
-  }, [language, load]);
+  }, [extra, language, load]);
   const action = async (fn: () => Promise<void>) => {
     if (busy) return;
     setBusy(true);
@@ -240,7 +281,8 @@ export default function TeacherBilling({
         case 'Checkout being prepared':
           setMessage('prepare');
           break;
-        case 'Student count changed':
+        case 'Quote changed':
+        case 'Offer unavailable':
           setMessage('updated');
           setLoad((n) => n + 1);
           break;
@@ -261,11 +303,12 @@ export default function TeacherBilling({
     history.replaceState(history.state, '', url);
     onClose();
   };
-  const hasPaid = Date.parse(state?.until ?? '') > quotedAt;
-  const trialing = Date.parse(state?.trialEndsAt ?? '') > quotedAt;
-  const renewing = !!state?.subscription?.recurring && !state.subscription.canceled_at;
   const quote = state?.quote;
+  const hasPaid = Date.parse(quote?.until ?? '') > quotedAt;
+  const trialing = Date.parse(quote?.trialEndsAt ?? '') > quotedAt;
+  const renewing = !!state?.subscription?.recurring && !state.subscription.canceled_at;
   const button = 'min-h-11 rounded-xl border px-4 py-2 font-semibold';
+  const offers = quote?.offers.filter((offer) => institution || offer.months === period) ?? [];
   return (
     <dialog
       ref={ref}
@@ -276,7 +319,7 @@ export default function TeacherBilling({
     >
       <div className="flex items-center justify-between gap-3">
         <h2 id="teacher-billing-title" className="text-xl font-bold">
-          {t.title}
+          {institution ? labels.schoolTitle : t.title}
         </h2>
         <button className={button} onClick={close}>
           {t.close}
@@ -298,12 +341,12 @@ export default function TeacherBilling({
       {state && (
         <>
           <p>
-            {state.covered
+            {quote?.covered
               ? t.covered
               : hasPaid
-                ? t.paid + date(state.until!)
+                ? t.paid + date(quote!.until!)
                 : trialing
-                  ? t.trial + date(state.trialEndsAt!)
+                  ? t.trial + date(quote!.trialEndsAt!)
                   : t.free}
           </p>
           {state.subscription?.canceled_at && <p>{t.canceled}</p>}
@@ -325,73 +368,77 @@ export default function TeacherBilling({
               {t.cancel}
             </button>
           )}
-          {!state.covered && !hasPaid && !renewing && quote && (
-            <div className="my-4">
-              {quote.students === 0 ? (
-                <p>{t.noStudents}</p>
-              ) : (
-                <>
-                  <p className="font-semibold">
-                    {quote.students} {t.students}
-                  </p>
-                  {(['annual', 'monthly'] as const).map((offer) => {
-                    const annual = offer === 'annual';
-                    const amount = annual ? quote.annualAgorot : quote.monthlyAgorot;
-                    const rate = annual ? quote.annualUnitAgorot : quote.monthlyUnitAgorot;
-                    const period = annual ? t.annually : t.monthly;
-                    return (
-                      <section
-                        key={offer}
-                        className={`my-3 space-y-2 rounded-xl border p-3 ${annual ? 'border-violet-300 bg-violet-50' : ''}`}
-                      >
-                        <h3 className="font-bold">{annual ? t.year : t.month}</h3>
-                        <p>
-                          <strong className="text-2xl">{money(amount)}</strong> {period}
-                        </p>
-                        <p className="text-sm">
-                          {money(rate)} {t.perStudent} {period}
-                        </p>
-                        {annual && (
-                          <div className="text-sm">
-                            <p>
-                              {t.cap} · {money(quote.annualCapAgorot)}
-                            </p>
-                            <p className="font-semibold">
-                              {t.saveAmount} · {money(12 * quote.monthlyAgorot - amount)}
-                            </p>
-                          </div>
-                        )}
-                        {state.checkoutEnabled && !trialing && (
-                          <button
-                            className={button}
-                            disabled={busy}
-                            onClick={() =>
-                              void action(async () => {
-                                const result = await request<{ url: string }>('/checkout', {
-                                  offer,
-                                  students: quote.students,
-                                  amount,
-                                });
-                                location.assign(result.url);
-                              })
-                            }
-                          >
-                            {t.buy}
-                          </button>
-                        )}
-                      </section>
-                    );
-                  })}
-                  <p className="text-sm">{t.prepaid}</p>
-                  {trialing ? (
-                    <p className="mt-2">{t.buyAfterTrial}</p>
-                  ) : (
-                    !state.checkoutEnabled && <p className="mt-2">{t.off}</p>
-                  )}
-                </>
+          {quote && !quote.covered && !renewing && (
+            <div className="my-4 space-y-3">
+              <p className="font-semibold">
+                {quote.schoolName && <span className="block">{quote.schoolName}</span>}
+                {quote.students} {labels.seats}
+                {institution && <span> · {quote.staff} {labels.staff}</span>}
+              </p>
+              {hasPaid && quote.capacity && <p>{labels.current} · {quote.capacity}</p>}
+              {!institution && !hasPaid && (
+                <div role="group" aria-label={labels.selectTerm} className="flex gap-2">
+                  {([12, 1] as const).map((months) => (
+                    <button type="button" key={months} className={button} aria-pressed={period === months}
+                      onClick={() => setPeriod(months)}>
+                      {months === 12 ? t.annually : t.monthly}
+                    </button>
+                  ))}
+                </div>
               )}
+              {offers.map((offer) => {
+                const annual = offer.months === 12;
+                const pilot = offer.code === 'school_pilot';
+                const label = pilot ? labels.pilot : labels[offer.tier];
+                const minimum = Math.max(0, Math.ceil((Math.max(quote.students, institution ? 0 : quote.capacity ?? 0) - PERSONAL_BILLING.pro.seats) / PERSONAL_BILLING.proExtension.seats));
+                const oversubscribed = offer.seatLimit < quote.students ||
+                  (offer.staffLimit !== null && (quote.staff ?? 0) > offer.staffLimit);
+                return (
+                  <section key={offer.code} className={`space-y-2 rounded-xl border p-3 ${annual ? 'border-violet-300 bg-violet-50' : ''}`}>
+                    <h3 className="font-bold">{label}</h3>
+                    <p><strong className="text-2xl">{money(offer.upgrade && offer.available ? offer.amount : offer.fullAmount)}</strong>
+                      {' '}{offer.upgrade && offer.available ? labels.upgrade : pilot ? '' : annual ? t.annually : t.monthly}</p>
+                    <p className="text-sm">{offer.seatLimit} {labels.seats}
+                      {offer.staffLimit !== null && <span> · {offer.staffLimit} {labels.staff}</span>}
+                    </p>
+                    {institution && <p className="text-sm">{labels.abovePilot}</p>}
+                    {offer.credit > 0 && (
+                      <p className="text-sm font-semibold">{labels.credit} {money(offer.credit)} · {t.buy} {money(offer.amount)}</p>
+                    )}
+                    {offer.tier === 'pro' && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button type="button" className={button} aria-label={labels.remove}
+                          disabled={busy || extra !== quotedExtra || quote.blocks <= minimum}
+                          onClick={() => setExtra(quote.blocks - 1)}>−</button>
+                        <button type="button" className={button}
+                          disabled={busy || extra !== quotedExtra || quote.blocks >= 100}
+                          onClick={() => setExtra(quote.blocks + 1)}>
+                          {labels.add} · {money(annual ? PERSONAL_BILLING.proExtension.annual : PERSONAL_BILLING.proExtension.monthly)}
+                        </button>
+                      </div>
+                    )}
+                    {oversubscribed && <p role="status" className="text-sm">{labels.tooMany}</p>}
+                    {pilot && !offer.available && !oversubscribed && <p className="text-sm">{labels.pilotUsed}</p>}
+                    {state.checkoutEnabled && offer.available && (
+                      <button type="button" className={button} disabled={busy || extra !== quotedExtra}
+                        onClick={() => void action(async () => {
+                          const result = await request<{ url: string }>('/checkout', {
+                            offer: offer.code, students: quote.students, amount: offer.amount, extra,
+                          });
+                          location.assign(result.url);
+                        })}>{t.buy}</button>
+                    )}
+                  </section>
+                );
+              })}
+              {institution && ((quote.staff ?? 0) > SCHOOL_BILLING.staff || quote.students > SCHOOL_BILLING.seats) &&
+                <p>{labels.largeSchool}</p>}
+              <p className="text-sm">{labels.details}</p>
+              {trialing ? <p>{t.buyAfterTrial}</p> : !state.checkoutEnabled && <p>{t.off}</p>}
             </div>
           )}
+          {!institution && (
+            <>
           <label className="my-4 flex items-start gap-2">
             <input
               className="mt-1"
@@ -413,11 +460,13 @@ export default function TeacherBilling({
           >
             {t.save}
           </button>
+            </>
+          )}
         </>
       )}
       {((!state && message === 'error') ||
         (state &&
-          !state.covered &&
+          !quote?.covered &&
           (!state.checkoutEnabled || state.subscription?.cancel_requested_at))) && (
         <a
           className="my-3 inline-block underline"

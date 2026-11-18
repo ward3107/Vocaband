@@ -1,32 +1,8 @@
-/**
- * plan.ts — runtime evaluation of a teacher's effective plan.
- *
- * The DB stores `plan` (paid state: 'free' | 'pro' | 'school') and
- * `trial_ends_at` (when the 14-day Pro trial expires).  This module
- * resolves the EFFECTIVE plan a teacher should experience right now
- * and exposes the limits that gate Free-tier teachers in the UI.
- *
- * Doing this at runtime (rather than via a daily cron that flips
- * trialing → free) keeps the DB declarative: the trial naturally
- * "expires" at midnight without any background job touching rows.
- *
- * Server-side enforcement of these gates is a follow-up — see
- * docs/PRICING-MODEL.md Status section.  Client gates are the first
- * line of defense + the UX layer (toasts, paywall hints).
- */
-
+/* Resolve the signed-in teacher's access for display. The database controls
+ * purchases, class capacity, assignments and premium operations. */
 import type { AppUser } from "./supabase";
 
-export type EffectivePlan = "free" | "pro" | "school";
-
-export type TeacherBillingQuote = {
-  students: number;
-  monthlyAgorot: number;
-  annualAgorot: number;
-  monthlyUnitAgorot: number;
-  annualUnitAgorot: number;
-  annualCapAgorot: number;
-};
+export type EffectivePlan = "free" | "teacher" | "pro" | "school";
 
 /**
  * What plan should this teacher experience RIGHT NOW?
@@ -36,7 +12,8 @@ export type TeacherBillingQuote = {
  *   whose license is active (a paid school or an unexpired school-wide trial) —
  *   "whole school = all Pro", mirrors is_pro_or_trialing() in the DB and
  *   requireProTeacher on the server
- * - `pro` if they paid OR they're inside their own 14-day trial window
+ * - `teacher` for the base paid plan
+ * - `pro` for Pro and the 14-day trial
  * - `free` otherwise
  *
  * Students always read as `free` — plan only applies to teachers,
@@ -68,7 +45,10 @@ export function getEffectivePlan(user: AppUser | null | undefined): EffectivePla
   ) {
     return "school";
   }
-  if (user.plan === "pro" || (user.billingPaidUntil && Date.parse(user.billingPaidUntil) > Date.now())) return "pro";
+  const paid = user.billingEntitlement;
+  if (paid && paid.tier !== "free" && paid.tier !== "trial" &&
+      (paid.until == null || Date.parse(paid.until) > Date.now())) return paid.tier;
+  if (user.plan === "pro" || (!paid && user.billingPaidUntil && Date.parse(user.billingPaidUntil) > Date.now())) return "pro";
   if (user.trialEndsAt && new Date(user.trialEndsAt).getTime() > Date.now()) {
     return "pro";
   }
@@ -79,6 +59,10 @@ export function getEffectivePlan(user: AppUser | null | undefined): EffectivePla
 export function isPro(user: AppUser | null | undefined): boolean {
   const p = getEffectivePlan(user);
   return p === "pro" || p === "school";
+}
+
+export function hasPaidClassroom(user: AppUser | null | undefined): boolean {
+  return getEffectivePlan(user) !== "free";
 }
 
 /** Is the teacher inside their 14-day trial window? (Used for the "X
@@ -93,7 +77,9 @@ export function isTrialing(user: AppUser | null | undefined): boolean {
   if (user.role === "admin") return false;
   if (user.role !== "teacher") return false;
   if (user.plan !== "free") return false;
-  if (user.schoolPlan === "school" || Date.parse(user.schoolTrialEndsAt ?? "") > Date.now() || Date.parse(user.billingPaidUntil ?? "") > Date.now()) return false;
+  const effective = getEffectivePlan(user);
+  if (effective === "teacher" || effective === "school" ||
+      Date.parse(user.billingPaidUntil ?? "") > Date.now()) return false;
   if (!user.trialEndsAt) return false;
   return new Date(user.trialEndsAt).getTime() > Date.now();
 }
@@ -111,7 +97,7 @@ export function getTrialDaysLeft(user: AppUser | null | undefined): number | nul
 
 // ─── Free-tier limits ───────────────────────────────────────────────
 // These are the hard caps shown on the public pricing card.  Keep in
-// sync with src/locales/student/landing-page.ts pricingFreeFeature*.
+// sync with the public pricing cards and the database limits.
 
 export const FREE_TIER_LIMITS = {
   /** Max classes a Free teacher can own.  Pro/School are unlimited. */

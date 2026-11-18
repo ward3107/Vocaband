@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import type { Express, Request, Response } from 'express';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { TeacherBillingQuote } from '../../src/core/plan';
+import { OFFER_IDS, type BillingQuote, type OfferId } from '../../src/core/billingCatalog';
 import {
   checkoutCatalog,
   confirmedCredit,
@@ -41,50 +41,30 @@ export function registerTeacherBilling(
   };
   app.get(
     '/api/teacher/billing',
-    teacher(async (uid, _req, res, db) => {
-      const [profile, access, preference, active] = await Promise.all([
-        db
-          .from('users')
-          .select('role,plan,trial_ends_at,schools(plan,trial_ends_at)')
-          .eq('uid', uid)
-          .single(),
-        db.rpc('billing_access_until', { p_teacher: uid }),
-        db
-          .from('teacher_mail_preferences')
-          .select('offers,language')
-          .eq('teacher_uid', uid)
-          .maybeSingle(),
-        db
-          .from('teacher_billing_orders')
-          .select('recurring,paid_at,cancel_requested_at,canceled_at,months')
-          .eq('teacher_uid', uid)
-          .not('paid_at', 'is', null)
-          .order('paid_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
-      if (profile.error || access.error || preference.error || active.error)
-        throw new Error('Account unavailable');
-      const school = Array.isArray(profile.data.schools)
-        ? profile.data.schools[0]
-        : profile.data.schools;
-      const institutional =
-        profile.data.role !== 'teacher' ||
-        ['school', 'pro'].includes(profile.data.plan) ||
-        school?.plan === 'school' ||
-        Date.parse(school?.trial_ends_at) > Date.now();
-      let quote: TeacherBillingQuote | null = null;
-      if (!institutional) {
-        const result = await db.rpc('billing_teacher_quote', { p_teacher: uid });
-        if (result.error) throw result.error;
-        quote = result.data;
+    teacher(async (uid, req, res, db) => {
+      const extra = Number(req.query.extra ?? 0);
+      if (!Number.isSafeInteger(extra) || extra < 0 || extra > 100) {
+        res.sendStatus(400);
+        return;
       }
+      const [result, preference, active] = await Promise.all([
+        db.rpc('billing_plan_quotes', { p_uid: uid, p_extra: extra }),
+        db.from('teacher_mail_preferences').select('offers,language').eq('teacher_uid', uid).maybeSingle(),
+        db.from('teacher_billing_orders')
+          .select('recurring,paid_at,cancel_requested_at,canceled_at,months')
+          .eq('teacher_uid', uid).is('school_id', null).eq('recurring', true)
+          .not('paid_at', 'is', null).order('paid_at', { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      if (result.error || preference.error || active.error) throw new Error('Account unavailable');
+      const quote = result.data as BillingQuote | null;
+      if (!quote) {
+        res.sendStatus(403);
+        return;
+      }
+      const catalog = checkoutCatalog(env);
       res.json({
         quote,
-        checkoutEnabled: !institutional && !!checkoutCatalog(env),
-        covered: institutional,
-        until: access.data,
-        trialEndsAt: profile.data.trial_ends_at,
+        checkoutEnabled: quote.schoolId ? !!catalog?.school : !!catalog,
         subscription: active.data,
         emailEnabled: preference.data?.offers ?? false,
         language: preference.data?.language ?? null,
@@ -94,23 +74,20 @@ export function registerTeacherBilling(
   app.post(
     '/api/teacher/billing/checkout',
     teacher(async (uid, req, res, db) => {
-      const { offer, students, amount } = (req.body ?? {}) as Record<string, unknown>;
+      const { offer, students, amount, extra } = (req.body ?? {}) as Record<string, unknown>;
       if (
-        (offer !== 'monthly' && offer !== 'annual') ||
-        typeof students !== 'number' ||
-        !Number.isSafeInteger(students) ||
-        students < 1 ||
-        typeof amount !== 'number' ||
-        !Number.isSafeInteger(amount) ||
-        amount < 1 ||
-        amount > 2147483647 ||
-        students > 2147483647
+        typeof offer !== 'string' || !OFFER_IDS.includes(offer as OfferId) ||
+        typeof students !== 'number' || !Number.isSafeInteger(students) || students < 0 || students > 2147483647 ||
+        typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount <= 0 || amount > 2147483647 ||
+        typeof extra !== 'number' || !Number.isSafeInteger(extra) || extra < 0 || extra > 100
       ) {
         res.sendStatus(400);
         return;
       }
+      const institutional = offer.startsWith('school_');
       const catalog = checkoutCatalog(env);
-      if (!catalog) {
+      const item = institutional ? catalog?.school : offer.endsWith('_annual') ? catalog?.annual : catalog?.monthly;
+      if (!item) {
         res.status(409).json({ error: 'Offer unavailable' });
         return;
       }
@@ -121,55 +98,37 @@ export function registerTeacherBilling(
         res.status(409).json({ error: 'Verify your email' });
         return;
       }
-      const item = catalog[offer];
       const result = await db.rpc('billing_open_order', {
-        p_teacher: uid,
-        p_offer: offer,
-        p_item: item,
-        p_students: students,
-        p_amount: amount,
+        p_uid: uid, p_offer: offer, p_item: item, p_students: students, p_amount: amount, p_extra: extra,
       });
       if (result.error) {
-        const known = [
-          'Different checkout pending',
-          'Checkout being prepared',
-          'Already covered',
-          'Student count changed',
-          'Trial is active',
-        ].find((message) => result.error.message.includes(message));
+        const known = ['Different checkout pending', 'Checkout being prepared', 'Quote changed', 'Offer unavailable']
+          .find((message) => result.error.message.includes(message));
         if (!known) throw result.error;
         res.status(409).json({ error: known });
         return;
       }
-      const { id, attempt, url: existingUrl } = result.data ?? {};
+      const { id, attempt, url: existingUrl, schoolId, schoolName } = result.data ?? {};
       if (existingUrl) {
         res.json({ url: hostedPage(existingUrl).href });
         return;
       }
-      if (!uuid.test(id) || !uuid.test(attempt)) throw new Error('Order unavailable');
-      const name = user.user_metadata?.full_name ?? user.user_metadata?.display_name;
+      if (!uuid.test(id) || !uuid.test(attempt) || (institutional && !uuid.test(schoolId))) {
+        throw new Error('Order unavailable');
+      }
+      const name = schoolName ?? user.user_metadata?.full_name ?? user.user_metadata?.display_name;
       let url: string;
       try {
         url = await merchantApi(env).beginCheckout({
-          id,
-          teacher: uid,
+          id, teacher: uid, school: schoolId ?? undefined,
           name: typeof name === 'string' && name.trim() ? name.trim().slice(0, 100) : user.email,
-          email: user.email,
-          term: offer,
-          item,
-          students,
-          amount,
+          email: user.email, term: offer as OfferId, item, students, amount,
         });
       } catch (error) {
-        // No link reached the teacher. Unblock a new attempt even if the provider timed out.
         await db.rpc('billing_store_checkout', { p_id: id, p_attempt: attempt, p_url: null });
         throw error;
       }
-      const saved = await db.rpc('billing_store_checkout', {
-        p_id: id,
-        p_attempt: attempt,
-        p_url: url,
-      });
+      const saved = await db.rpc('billing_store_checkout', { p_id: id, p_attempt: attempt, p_url: url });
       if (saved.error || saved.data !== true) throw new Error('Order unavailable');
       res.json({ url });
     })
@@ -178,6 +137,8 @@ export function registerTeacherBilling(
     '/api/teacher/billing/preferences',
     teacher(async (uid, req, res, db) => {
       const { enabled, language } = req.body ?? {};
+      const profile = await db.from('users').select('role').eq('uid', uid).single();
+      if (profile.error || profile.data.role !== 'teacher') { res.sendStatus(403); return; }
       if (typeof enabled !== 'boolean' || !['he', 'ar', 'en'].includes(language)) {
         res.sendStatus(400);
         return;

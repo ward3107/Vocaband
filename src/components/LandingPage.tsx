@@ -50,6 +50,7 @@ const SchoolInquiryModal = lazyWithRetry(() => import("./SchoolInquiryModal"));
 const LandingHowItWorks = lazyWithRetry(() => import("./landing/LandingHowItWorks"));
 const LandingVocas = lazyWithRetry(() => import("./landing/LandingVocas"));
 const LandingSchools = lazyWithRetry(() => import("./landing/LandingSchools"));
+const LandingPlans = lazyWithRetry(() => import("./landing/LandingPlans"));
 const LandingFinalCTA = lazyWithRetry(() => import("./landing/LandingFinalCTA"));
 const LandingFAQ = lazyWithRetry(() => import("./landing/LandingFAQ"));
 const LandingFooter = lazyWithRetry(() => import("./landing/LandingFooter"));
@@ -449,6 +450,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
         <DeferredSection id="vocas" className="scroll-mt-20" minHeight={500}>
           <Suspense fallback={null}>
             <LandingVocas onOpenSubjectRequest={() => setIsSubjectModalOpen(true)} />
+          </Suspense>
+        </DeferredSection>
+
+        <DeferredSection id="plans" className="scroll-mt-20" minHeight={360}>
+          <Suspense fallback={null}>
+            <LandingPlans onTeacher={onTeacherLogin} onSchool={() => setIsSchoolModalOpen(true)} />
           </Suspense>
         </DeferredSection>
 

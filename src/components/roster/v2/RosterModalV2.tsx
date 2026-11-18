@@ -20,6 +20,7 @@ import { logAudit } from "../../../utils/audit";
 import { useLanguage } from "../../../hooks/useLanguage";
 import { useIsMobile } from "../../../hooks/useIsMobile";
 import { useFeatureFlag } from "../../../hooks/useFeatureFlags";
+import { billingLimitMessage } from "../../../locales/teacher/billing-limits";
 import { classRosterT } from "../../../locales/teacher/roster";
 import AddStudentRow, { TipCard } from "./AddStudentRow";
 import BulkAddCodedRow from "./BulkAddCodedRow";
@@ -255,8 +256,9 @@ export default function RosterModalV2({
       void loadRoster();
       return true;
     } catch (e) {
-      const msg = e instanceof Error ? e.message : t.errorAddFailed;
-      if (/free_tier_cap/i.test(msg)) setError(t.bulkCapError);
+      const msg = e && typeof e === 'object' && 'message' in e ? String(e.message) : t.errorAddFailed;
+      const limit = billingLimitMessage(msg, language);
+      if (limit) setError(limit);
       else if (/invalid (grade|branch|count)/i.test(msg)) setError(t.bulkInvalid);
       else setError(msg);
       return false;

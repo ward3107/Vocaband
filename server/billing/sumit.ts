@@ -1,5 +1,7 @@
+import type { OfferId } from '../../src/core/billingCatalog';
+
 type Environment = Record<string, string | undefined>;
-export type BillingTerm = 'monthly' | 'annual';
+export type BillingTerm = OfferId | 'monthly' | 'annual';
 
 export function hostedPage(value: string): URL {
   const url = new URL(value);
@@ -20,13 +22,14 @@ export function hostedPage(value: string): URL {
 export function checkoutCatalog(env: Environment) {
   const monthly = Number(env.SUMIT_MONTHLY_ITEM_ID);
   const annual = Number(env.SUMIT_ANNUAL_ITEM_ID);
+  const school = Number(env.SUMIT_SCHOOL_ITEM_ID);
   return env.VOCABAND_CHECKOUT_ENABLED === 'true' &&
     positive(Number(env.SUMIT_COMPANY_ID)) &&
     !!env.SUMIT_API_KEY &&
     positive(monthly) &&
     positive(annual) &&
     monthly !== annual
-    ? { monthly, annual }
+    ? { monthly, annual, ...(positive(school) && school !== monthly && school !== annual ? { school } : {}) }
     : null;
 }
 
@@ -78,6 +81,7 @@ export function merchantApi(env: Environment, transport = fetch) {
     async beginCheckout(order: {
       id: string;
       teacher: string;
+      school?: string;
       name: string;
       email: string;
       term: BillingTerm;
@@ -93,7 +97,7 @@ export function merchantApi(env: Environment, transport = fetch) {
         Customer: {
           Name: order.name,
           EmailAddress: order.email,
-          ExternalIdentifier: 'vocaband-teacher-' + order.teacher,
+          ExternalIdentifier: order.school ? 'vocaband-school-' + order.school : 'vocaband-teacher-' + order.teacher,
           SearchMode: 2, // Match only the Vocaband teacher reference.
         },
         Items: [
@@ -102,7 +106,7 @@ export function merchantApi(env: Environment, transport = fetch) {
             Quantity: 1,
             UnitPrice: order.amount / 100,
             Currency: 0,
-            Description: `Vocaband Pro · ${order.term} · ${order.students} students`,
+            Description: `Vocaband · ${order.term.replaceAll("_", " ")}`,
           },
         ],
         VATIncluded: true,

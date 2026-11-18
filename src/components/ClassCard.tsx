@@ -4,7 +4,7 @@ import { Check, Copy, Trash2, Zap, BookOpen, GraduationCap, MoreVertical, Chevro
 import { CLASS_AVATAR_GROUPS } from "../constants/game";
 import type { Word } from "../data/vocabulary";
 import type { VocaId } from "../core/subject";
-import type { CompetitionData } from "../core/supabase";
+import { supabase, type CompetitionData } from "../core/supabase";
 import { useLanguage } from "../hooks/useLanguage";
 import { readableTextOn } from "../utils/contrast";
 import { teacherDashboardT } from "../locales/teacher/dashboard";
@@ -27,6 +27,7 @@ interface Assignment {
   title: string;
   wordIds: number[];
   deadline?: string | null;
+  closedAt?: string | null;
   words?: Word[];
   sentences?: string[];
   allowedModes?: string[];
@@ -153,6 +154,25 @@ const ClassCard: React.FC<ClassCardProps> = ({
   // their VocaHebrew classes (matches the unified dashboard rule).
   const effectiveLanguage = subject === "hebrew" ? "he" : language;
   const t = teacherDashboardT[effectiveLanguage];
+  const [closedAssignments, setClosedAssignments] = useState<string[]>([]);
+  const [closingAssignment, setClosingAssignment] = useState<string | null>(null);
+  const [closeError, setCloseError] = useState(false);
+  const closeLabel = effectiveLanguage === 'he' ? 'סגירת משימה' : effectiveLanguage === 'ar' ? 'إغلاق الواجب' : 'Close assignment';
+  const closedLabel = effectiveLanguage === 'he' ? 'משימה סגורה' : effectiveLanguage === 'ar' ? 'واجب مغلق' : 'Closed';
+  async function closeAssignment(assignmentId: string) {
+    setCloseError(false);
+    setClosingAssignment(assignmentId);
+    try {
+      const { data, error } = await supabase.rpc('close_my_assignment', { p_id: assignmentId });
+      if (error || data !== true) throw new Error('Assignment unavailable');
+      setClosedAssignments((previous) => [...previous, assignmentId]);
+    } catch {
+      setCloseError(true);
+    } finally {
+      setClosingAssignment(null);
+    }
+  }
+
   const entry = classEntryT[effectiveLanguage];
   const tComp = competitionsT[effectiveLanguage];
   // When a class has a custom tint, the default --vb-text-* vars are
@@ -964,6 +984,14 @@ const ClassCard: React.FC<ClassCardProps> = ({
                     <span className="hidden sm:inline">{t.printShortLabel}</span>
                   </button>
                 )}
+                {(onEditAssignment || onDeleteAssignment) && (
+                  assignment.closedAt || closedAssignments.includes(assignment.id) ?
+                    <span className="inline-flex items-center px-2 text-xs font-semibold">{closedLabel}</span> :
+                    <button type="button" title={closeLabel} className="min-h-11 rounded-lg px-2 text-xs font-semibold"
+                      disabled={!!closingAssignment} onClick={() => void closeAssignment(assignment.id)}>
+                      {closeLabel}
+                    </button>
+                )}
                 {onDeleteAssignment && (
                   <button
                     onClick={() => onDeleteAssignment(assignment)}
@@ -982,6 +1010,9 @@ const ClassCard: React.FC<ClassCardProps> = ({
         </div>
       )}
     </div>
+    {closeError && <p role="alert" className="px-3 text-sm text-[var(--vb-danger)]">
+      {effectiveLanguage === 'he' ? 'לא הצלחנו לסגור את המשימה.' : effectiveLanguage === 'ar' ? 'تعذّر إغلاق الواجب.' : 'Could not close the assignment.'}
+    </p>}
     <ShareClassLinkModal
       language={effectiveLanguage}
       open={shareModalOpen}
