@@ -59,7 +59,7 @@ export function getEffectivePlan(user: AppUser | null | undefined): EffectivePla
   ) {
     return "school";
   }
-  if (user.plan === "pro") return "pro";
+  if (user.plan === "pro" || (user.billingPaidUntil && Date.parse(user.billingPaidUntil) > Date.now())) return "pro";
   if (user.trialEndsAt && new Date(user.trialEndsAt).getTime() > Date.now()) {
     return "pro";
   }
@@ -84,6 +84,7 @@ export function isTrialing(user: AppUser | null | undefined): boolean {
   if (user.role === "admin") return false;
   if (user.role !== "teacher") return false;
   if (user.plan !== "free") return false;
+  if (user.schoolPlan === "school" || Date.parse(user.schoolTrialEndsAt ?? "") > Date.now() || Date.parse(user.billingPaidUntil ?? "") > Date.now()) return false;
   if (!user.trialEndsAt) return false;
   return new Date(user.trialEndsAt).getTime() > Date.now();
 }

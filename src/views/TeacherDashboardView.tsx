@@ -8,6 +8,7 @@ import { useAdaptiveTheme } from "../hooks/useAdaptiveTheme";
 // toggle in the bottom-right corner.
 // Lazy — pulls in motion/react and only opens for brand-new teachers.
 const TeacherOnboardingWizard = lazyWithRetry(() => import("../components/onboarding/TeacherOnboardingWizard"));
+const TeacherBilling = lazyWithRetry(() => import("../components/dashboard/TeacherBilling"));
 import DashboardOnboarding from "../components/DashboardOnboarding";
 import WorkspaceWelcome from "../components/dashboard/WorkspaceWelcome";
 import TopAppBar from "../components/TopAppBar";
@@ -199,6 +200,18 @@ export default function TeacherDashboardView({
   const dir = isHebrew ? "rtl" : "ltr";
   const t = teacherDashboardT[effectiveLanguage];
 
+  const [billingOpen, setBillingOpen] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    return params.has("billing") || params.has("og-paymentid");
+  });
+  const billingButton = user?.role === 'teacher' ? {
+    onClick: () => setBillingOpen(true),
+    actionLabel: effectiveLanguage === 'he' ? 'ניהול המנוי' : 'Manage subscription',
+  } : {};
+  const trialEndTime = Date.parse(user?.trialEndsAt ?? '');
+  const now = Date.now();
+  const showTrialNotice = user?.role === 'teacher' && user.plan === 'free' && getEffectivePlan(user) !== 'school'
+    && !(Date.parse(user.billingPaidUntil ?? '') > now) && trialEndTime > now - 2 * 86400000 && trialEndTime <= now + 3 * 86400000;
   // One-time "what's new" intro for the Vocabulary Library. Surfaces
   // once per teacher account (tracked via users.guides_seen), suppressed
   // while the brand-new-teacher onboarding wizard is on screen so the
@@ -349,14 +362,29 @@ export default function TeacherDashboardView({
             const trialing = isTrialing(user);
             const daysLeft = trialing ? getTrialDaysLeft(user) : null;
             if (trialing && daysLeft !== null) {
-              return { label: t.planPillTrial(daysLeft), tone: "trial" as const };
+              return { ...billingButton, label: t.planPillTrial(daysLeft), tone: "trial" as const };
             }
             const effective = getEffectivePlan(user);
-            if (effective === "school") return { label: t.planPillSchool, tone: "school" as const };
-            if (effective === "pro") return { label: t.planPillPro, tone: "pro" as const };
-            return { label: t.planPillFree, tone: "free" as const };
+            if (effective === "school") return { ...billingButton, label: t.planPillSchool, tone: "school" as const };
+            if (effective === "pro") return { ...billingButton, label: t.planPillPro, tone: "pro" as const };
+            return { ...billingButton, label: t.planPillFree, tone: "free" as const };
           })()}
         />
+
+        {billingOpen && user?.role === 'teacher' && (
+          <Suspense fallback={null}>
+            <TeacherBilling language={effectiveLanguage} onClose={() => setBillingOpen(false)}
+              onAccess={(until) => setUser(previous => previous?.uid === user.uid && (previous.billingPaidUntil ?? null) !== until ? {...previous, billingPaidUntil: until} : previous)} />
+          </Suspense>
+        )}
+
+        {showTrialNotice && (
+            <p className="vb-content py-2 text-sm" role="status">
+              {trialEndTime > now
+                ? (isHebrew ? 'תקופת הניסיון מסתיימת ב־' : 'Your Pro trial ends on ') + new Date(trialEndTime).toLocaleDateString(effectiveLanguage)
+                : isHebrew ? 'תקופת הניסיון הסתיימה. המסלול החינמי זמין לך.' : 'Your trial has ended. Your free plan is available.'}
+            </p>
+          )}
 
         {/* Greeting hero — kept for VocaHebrew (its dashboard hasn't
             been redesigned yet).  English path skips it because the

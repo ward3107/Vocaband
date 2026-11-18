@@ -223,6 +223,7 @@ export interface AppUser {
    *  plan='free', the teacher has Pro features.  NULL for users who
    *  never had a trial (e.g. plan='pro' set manually). */
   trialEndsAt?: string | null;
+  billingPaidUntil?: string | null;
   /** Which Vocas the school's principal has assigned this teacher.
    *  The single Voca this teacher belongs to.  Defaults to 'english'.
    *  Admins ignore this field — admin role grants entry to all Vocas
@@ -516,7 +517,12 @@ export async function fetchUserProfile(
       .maybeSingle();
     if (userRow) {
       const user = mapUser(userRow);
-      await attachSchoolPlan(user);
+      await Promise.all([
+        attachSchoolPlan(user),
+        user.role === 'teacher' && user.plan === 'free'
+          ? supabase.rpc('billing_my_access_until').then(({data}) => { if (typeof data === 'string') user.billingPaidUntil = data; }, () => undefined)
+          : undefined,
+      ]);
       return user;
     }
     if (!error) return null;

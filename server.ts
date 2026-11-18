@@ -69,6 +69,7 @@ Sentry.init({
   },
 });
 
+import { registerTeacherBilling } from "./server/billing/routes";
 import express from "express";
 import { createServer } from "http";
 import { BlockList } from "node:net";
@@ -1375,6 +1376,7 @@ async function startServer() {
 
   // Parse JSON request bodies (required for /api/translate endpoint)
   app.use(express.json({ limit: '50kb' }));
+  registerTeacherBilling(app, supabaseAdmin, requireAuthenticatedTeacher);
 
   // Multer for OCR image uploads (in-memory, no temp files)
   // 15 MB limit: mobile photos are typically 3-8 MB, and the client compresses
@@ -4981,8 +4983,11 @@ ${JSON.stringify(uncachedOriginalCase)}`;
         !!school &&
         (school.plan === "school" ||
           (!!school.trial_ends_at && new Date(school.trial_ends_at).getTime() > Date.now()));
-      const isPaid = plan === "pro" || plan === "school" || schoolPaid;
       const isTrialing = !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
+      const legacyPaid = plan === "pro" || plan === "school" || schoolPaid;
+      const personal = !legacyPaid && !isTrialing && role === "teacher"
+        ? await supabaseAdmin.rpc("billing_access_until", { p_teacher: baseAuth.uid }) : null;
+      const isPaid = legacyPaid || (!!personal?.data && Date.parse(personal.data) > Date.now());
       const isAdmin = role === "admin";
       const isDev = isDevEmail(email);
       // Admin per-teacher kill-switch wins over plan/trial/admin so an operator
@@ -5743,8 +5748,11 @@ Quality rules:
       !!school &&
       (school.plan === "school" ||
         (!!school.trial_ends_at && new Date(school.trial_ends_at).getTime() > Date.now()));
-    const isPaid = plan === "pro" || plan === "school" || schoolPaid;
     const isTrialing = !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
+    const legacyPaid = plan === "pro" || plan === "school" || schoolPaid;
+    const personal = !legacyPaid && !isTrialing && role === "teacher"
+      ? await supabaseAdmin.rpc("billing_access_until", { p_teacher: authData.uid }) : null;
+    const isPaid = legacyPaid || (!!personal?.data && Date.parse(personal.data) > Date.now());
     const isAdmin = role === "admin";
     const isDev = isDevEmail(email);
     // Admin per-teacher kill-switch — mirrors requireProTeacher so the AI

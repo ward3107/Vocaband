@@ -35,6 +35,8 @@ interface TopAppBarProps {
    *  School.  Omit for non-teacher contexts (student dashboards etc). */
   planBadge?: {
     label: string;
+    onClick?: () => void;
+    actionLabel?: string;
     tone: "free" | "trial" | "pro" | "school";
   };
 }
@@ -314,14 +316,15 @@ const PLAN_BADGE_TONES: Record<
   school: "bg-indigo-100 text-indigo-900 ring-indigo-300",
 };
 
-const PlanBadge: React.FC<NonNullable<TopAppBarProps["planBadge"]>> = ({ label, tone }) => {
+const PlanBadge: React.FC<NonNullable<TopAppBarProps["planBadge"]>> = ({ label, tone, onClick, actionLabel }) => {
+  const Tag = onClick ? "button" : "span";
   return (
-    <span
+    <Tag onClick={onClick} aria-label={actionLabel} type={onClick ? "button" : undefined}
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider ring-1 whitespace-nowrap ${PLAN_BADGE_TONES[tone]}`}
     >
       <Crown size={10} className="shrink-0" />
       {label}
-    </span>
+    </Tag>
   );
 };
 
