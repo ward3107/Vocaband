@@ -89,6 +89,7 @@ const LandingFAQ: React.FC = () => {
                       type="button"
                       onClick={() => toggleFaq(item.id)}
                       aria-expanded={isOpen}
+                      aria-controls={`landing-faq-${item.id}`}
                       className={`w-full px-5 md:px-6 py-4 md:py-5 flex items-center gap-4 hover:bg-white/5 transition-colors ${isRTL ? "flex-row-reverse text-right" : "text-left"}`}
                     >
                       <CircleHelp size={22} className="text-violet-400 flex-shrink-0" />
@@ -102,6 +103,8 @@ const LandingFAQ: React.FC = () => {
                         height with no JS animation runtime. The inner
                         wrapper must be overflow-hidden for the collapse. */}
                     <div
+                      id={`landing-faq-${item.id}`}
+                      aria-hidden={!isOpen}
                       className="grid transition-[grid-template-rows] duration-200 ease-out"
                       style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
                     >

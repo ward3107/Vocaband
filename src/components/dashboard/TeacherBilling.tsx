@@ -434,6 +434,12 @@ export default function TeacherBilling({
               {institution && ((quote.staff ?? 0) > SCHOOL_BILLING.staff || quote.students > SCHOOL_BILLING.seats) &&
                 <p>{labels.largeSchool}</p>}
               <p className="text-sm">{labels.details}</p>
+              {state.checkoutEnabled && (
+                <a className="inline-flex min-h-11 items-center font-semibold text-violet-800 underline"
+                  href={lang === 'en' ? '/terms' : `/terms?lang=${lang}`} target="_blank" rel="noreferrer">
+                  {lang === 'he' ? 'תנאי התשלום והביטול' : lang === 'ar' ? 'شروط الدفع والإلغاء' : 'Payment and cancellation terms'}
+                </a>
+              )}
               {trialing ? <p>{t.buyAfterTrial}</p> : !state.checkoutEnabled && <p>{t.off}</p>}
             </div>
           )}

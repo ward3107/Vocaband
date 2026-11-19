@@ -12,6 +12,7 @@ import {
   supabase, fetchManagerOverview, fetchManagerEngagement, fetchManagerTeacherDetail, fetchManagerClassDetail,
   type AppUser, type ManagerOverview, type ManagerEngagement, type ManagerTeacherDetail, type ManagerClassDetail,
 } from '../core/supabase';
+import SchoolWeeklySummary from '../components/dashboard/SchoolWeeklySummary';
 import { useLanguage, type Language } from '../hooks/useLanguage';
 import { useTeacherTheme } from '../hooks/useTeacherTheme';
 import type { View } from '../core/views';
@@ -224,6 +225,9 @@ export default function ManagerConsoleView({ user, setView, setUser }: Props) {
               {/* OVERVIEW */}
               {tab === 'overview' && (
                 <div className="space-y-5">
+                  {user?.role === 'manager' && user.schoolId && (
+                    <SchoolWeeklySummary key={user.schoolId} language={language} />
+                  )}
                   <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
                     <Kpi icon={<Users className="w-4 h-4" />} label={t.kTeachers} value={`${totals.teachers}`} grad="from-indigo-500 to-violet-500" />
                     <Kpi icon={<BookOpen className="w-4 h-4" />} label={t.kClasses} value={`${totals.classes}`} grad="from-sky-500 to-blue-500" />

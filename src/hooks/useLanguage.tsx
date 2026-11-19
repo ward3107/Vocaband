@@ -14,7 +14,8 @@ export const LANGUAGE_KEY = 'vocaband_legal_language';
 //
 // Deliberately ignores the browser/device language, any previously saved
 // choice, AND the ?lang= deep-link param: every visitor (public or
-// logged-in, on any device, arriving from any link) opens in English.
+// logged-in, on any device) opens in English. Legal-page links can explicitly
+// set their language so the shared information opens in the intended one.
 // Vocaband teaches ENGLISH, and the UI is the learner's main exposure to
 // the target language during a lesson, so an English-first surface is the
 // product default. Hebrew/Arabic are still fully available, but only as an
@@ -24,7 +25,13 @@ export const LANGUAGE_KEY = 'vocaband_legal_language';
 // SEO note: worker/index.ts still localizes the CRAWLED HTML metadata for
 // ?lang=he|ar|ru so Google snippets stay localized. That is server-side,
 // for crawlers, and independent of this client-side UI default.
-let globalLanguage: Language = 'en';
+function legalPageLanguage(): Language {
+  if (typeof window === 'undefined' || !/^\/(privacy|terms|security|accessibility-statement)\/?$/.test(location.pathname)) return 'en';
+  const lang = new URLSearchParams(location.search).get('lang');
+  return lang === 'he' || lang === 'ar' ? lang : 'en';
+}
+
+let globalLanguage: Language = legalPageLanguage();
 const listeners: Set<(lang: Language) => void> = new Set();
 
 // A full page load initializes globalLanguage to English. Components that
@@ -34,12 +41,19 @@ const listeners: Set<(lang: Language) => void> = new Set();
 const getInitialLanguage = (): Language => globalLanguage;
 
 // Initialize the document attributes for the English default. The initial
-// language is always English (getInitialLanguage), so the first paint is
-// unconditionally lang="en" / dir="ltr"; a later in-app toggle updates both
-// via setGlobalLanguage.
+// document attributes should match the initial language, including deep links
+// to translated legal pages.
+function setSkipLinkLanguage(lang: Language) {
+  const link = document.querySelector('a.skip-link');
+  if (link) link.textContent = {
+    en: 'Skip to main content', he: 'דילוג לתוכן הראשי', ar: 'تخطّ إلى المحتوى الرئيسي',
+  }[lang];
+}
+
 if (typeof window !== 'undefined') {
   document.documentElement.setAttribute('lang', globalLanguage);
-  document.documentElement.setAttribute('dir', 'ltr');
+  document.documentElement.setAttribute('dir', globalLanguage === 'en' ? 'ltr' : 'rtl');
+  setSkipLinkLanguage(globalLanguage);
 }
 
 const setGlobalLanguage = (lang: Language) => {
@@ -55,6 +69,7 @@ const setGlobalLanguage = (lang: Language) => {
     // Set dir attribute for RTL support (Hebrew/Arabic)
     const dir = (lang === 'he' || lang === 'ar') ? 'rtl' : 'ltr';
     document.documentElement.setAttribute('dir', dir);
+    setSkipLinkLanguage(lang);
     // Heebo + Fredoka are NOT in index.html's blocking <link> for
     // English-default visitors. When a user toggles to HE/AR for the
     // first time in a session, boot-debug.js's window-scoped loader

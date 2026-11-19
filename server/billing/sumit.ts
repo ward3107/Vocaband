@@ -92,7 +92,7 @@ export function merchantApi(env: Environment, transport = fetch) {
       const origin = new URL(env.VOCABAND_BILLING_ORIGIN ?? 'https://vocaband.com');
       if (origin.protocol !== 'https:' || origin.username || origin.password)
         throw new Error('Invalid billing return origin');
-      const returnUrl = new URL('/?billing=1', origin.origin).href;
+      const returnUrl = new URL(order.school ? '/manager?billing=1' : '/?billing=1', origin.origin).href;
       const data = await call<{ RedirectURL: string }>('/billing/payments/beginredirect/', {
         Customer: {
           Name: order.name,

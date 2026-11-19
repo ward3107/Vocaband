@@ -5,7 +5,7 @@ import StudentTopBar from "../components/dashboard/StudentTopBar";
 import PetCompanion from "../components/dashboard/PetCompanion";
 import RewardInboxCard from "../components/dashboard/RewardInboxCard";
 import PushOptInCard from "../components/PushOptInCard";
-import JoinGameModal from "../components/JoinGameModal";
+import { lazyWithRetry } from "../utils/lazyWithRetry";
 import StudentVisibilityConsent from "../components/StudentVisibilityConsent";
 import StudentAssignmentsList from "../components/dashboard/StudentAssignmentsList";
 import NextUpCard from "../components/dashboard/NextUpCard";
@@ -24,13 +24,15 @@ import type { AppUser, AssignmentData, ProgressData } from "../core/supabase";
 import type { Word } from "../data/vocabulary";
 import type { View } from "../core/views";
 import type { RetentionState } from "../hooks/useRetention";
-import { pickNextAssignment } from "../utils/pickNextAssignment";
+import { indexAssignmentProgress, pickNextAssignment } from "../utils/pickNextAssignment";
 import { resolveAssignmentWords } from "../utils/resolveAssignmentWords";
 import { trackAutoError } from "../errorTracking";
 import React from "react";
 import { useLanguage } from "../hooks/useLanguage";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
+
+const JoinGameModal = lazyWithRetry(() => import("../components/JoinGameModal"));
 
 interface StudentDashboardViewProps {
   className?: string;
@@ -139,7 +141,11 @@ export default function StudentDashboardView({
   // Same picker the assignments list uses internally — re-derived here so
   // the orbital Play circle launches the single most-relevant target on
   // tap. Null when nothing is eligible, in which case Play renders disabled.
-  const nextPick = pickNextAssignment(studentAssignments, studentProgress, user.uid);
+  const progressByAssignment = React.useMemo(() => indexAssignmentProgress(studentProgress), [studentProgress]);
+  const nextPick = React.useMemo(
+    () => pickNextAssignment(studentAssignments, studentProgress, user.uid, progressByAssignment),
+    [studentAssignments, studentProgress, user.uid, progressByAssignment],
+  );
   const launchNextAssignment = nextPick
     ? async () => {
         const filteredWords = await resolveAssignmentWords(nextPick.assignment);
@@ -228,8 +234,8 @@ export default function StudentDashboardView({
   const remainingTasks = studentAssignments.filter((a) => {
     const modes = (a.allowedModes || ALL_GAME_MODES).filter((m) => m !== "flashcards");
     const done = new Set(
-      studentProgress
-        .filter((p) => p.assignmentId === a.id && p.mode !== "flashcards")
+      (progressByAssignment.get(a.id) ?? [])
+        .filter((p) => p.mode !== "flashcards")
         .map((p) => p.mode),
     ).size;
     return done < modes.length;
@@ -379,7 +385,7 @@ export default function StudentDashboardView({
         )}
       </AnimatePresence>
       <AnimatePresence>
-        {joinOpen && <JoinGameModal onClose={() => setJoinOpen(false)} />}
+        {joinOpen && <React.Suspense fallback={null}><JoinGameModal onClose={() => setJoinOpen(false)} /></React.Suspense>}
       </AnimatePresence>
       <PetCompanion
         open={petCardOpen}

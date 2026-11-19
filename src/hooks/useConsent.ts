@@ -25,7 +25,7 @@
 import { useCallback } from "react";
 import { supabase, type AppUser } from "../core/supabase";
 import { trackError } from "../errorTracking";
-import { PRIVACY_POLICY_VERSION, CLIENT_STORAGE_KEYS } from "../config/privacy-config";
+import { PRIVACY_POLICY_VERSION, TERMS_VERSION, CLIENT_STORAGE_KEYS } from "../config/privacy-config";
 
 export type ConsentMode = 'consent' | 'reminder';
 
@@ -92,7 +92,7 @@ export function useConsent(params: UseConsentParams) {
           await supabase.from('consent_log').insert({
             uid: user.uid,
             policy_version: PRIVACY_POLICY_VERSION,
-            terms_version: PRIVACY_POLICY_VERSION,
+            terms_version: TERMS_VERSION,
             action: 'accept',
           });
         } catch {

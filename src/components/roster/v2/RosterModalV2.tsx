@@ -189,6 +189,7 @@ export default function RosterModalV2({
         p_pin: pin,
       });
       if (rpcError) throw rpcError;
+      window.dispatchEvent(new Event('vocaband:roster-changed'));
       const created = Array.isArray(data) ? data[0] : data;
       const newRow: RawRosterRow = {
         id: created.id,
@@ -232,6 +233,7 @@ export default function RosterModalV2({
         p_count: count,
       });
       if (rpcError) throw rpcError;
+      window.dispatchEvent(new Event('vocaband:roster-changed'));
       const created = (data ?? []) as { structured_id: string; pin: string }[];
       const newRows: RawRosterRow[] = created.map((c) => ({
         id: `tmp-${c.structured_id}`,

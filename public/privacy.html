@@ -41,31 +41,29 @@
 
   <h1>Privacy Policy</h1>
   <div class="meta">
-    <p><strong>Effective Date:</strong> 2026-06-25 | <strong>Version:</strong> 2.1</p>
+    <p><strong>Effective Date:</strong> 2026-11-19 | <strong>Version:</strong> 3.0</p>
     <p><strong>Legal Basis:</strong> Privacy Protection Law, 5741-1981 (Israel), Amendment 13 (תיקון 13 לחוק הגנת הפרטיות)</p>
   </div>
 
   <div class="highlight">
-    <strong>Summary:</strong> Vocaband is designed for Israeli schools. Student accounts are anonymous — no email or personal identification required. Teachers sign in with Google OAuth or an email one-time code. We don't sell data, show ads, or track users for marketing.
+    <strong>Summary:</strong> Vocaband is designed for Israeli schools. Students enter with a class code or link and a personal PIN. Vocaband stores a display name or student code, class membership and practice results for learning and feedback. Teachers sign in with Google or a one-time email code.
   </div>
 
   <!-- Section 1: Data Controller + DPO -->
-  <h2>1. Data Controller (בעל המאגר) &amp; Data Protection Officer</h2>
+  <h2>1. Data Controller and Privacy Contact</h2>
   <p>Under the Israeli Privacy Protection Law (Amendment 13), the data controller for Vocaband is:</p>
   <ul>
     <li><strong>Entity:</strong> Vocaband</li>
     <li><strong>Country:</strong> Israel</li>
     <li><strong>General Contact:</strong> <a href="mailto:contact@vocaband.com">contact@vocaband.com</a></li>
-    <li><strong>Database Registration:</strong> As required under Section 18 of the Privacy Protection Law</li>
   </ul>
 
-  <h3>Data Protection Officer (ממונה על הגנת הפרטיות)</h3>
-  <p>Amendment 13 requires a public, accountable privacy contact. For Vocaband, that is:</p>
+  <h3>Privacy requests</h3>
+  <p>Contact us for access, correction, deletion requests or privacy concerns.</p>
   <ul>
     <li><strong>Name:</strong> Waseem Abu Akel</li>
-    <li><strong>Role:</strong> Founder &amp; Data Protection Officer</li>
+    <li><strong>Role:</strong> Privacy contact</li>
     <li><strong>Privacy Email:</strong> <a href="mailto:privacy@vocaband.com">privacy@vocaband.com</a></li>
-    <li><strong>Response SLA:</strong> 24 hours for security incident reports; 30 days for data-subject rights requests (access, deletion, rectification).</li>
   </ul>
 
   <!-- Section 2: Legal Basis -->
@@ -81,20 +79,23 @@
     <tr><td>Audit and consent records</td><td>Legal obligation (Amendment 13 §§ 8, 11)</td><td>Compliance and accountability</td></tr>
   </table>
 
+  <p>Optional browser error and performance diagnostics require an analytics preference. To review or update it, use the
+    <a href="/privacy">privacy page</a>. Browser session recordings are disabled.</p>
+
   <!-- Section 3: Data We Collect -->
   <h2>3. Data We Collect</h2>
 
-  <h3>3.1 For Students (Anonymous / PIN-Based Accounts)</h3>
+  <h3>3.1 For Students (Class Accounts with a PIN)</h3>
   <p>Student accounts are designed to minimize personal data. We collect:</p>
   <ul>
     <li><strong>Display name</strong> — chosen by the student or assigned by the teacher; does not need to be a real name (first names or nicknames are encouraged)</li>
     <li><strong>Avatar</strong> — an emoji selected by the student</li>
-    <li><strong>Class code</strong> — the 6-digit code used to join a class</li>
+    <li><strong>Class code</strong> — the code assigned to your class</li>
     <li><strong>Game scores and progress</strong> — scores, game modes played, word-level mistake data</li>
     <li><strong>Badges, streaks, XP</strong> — gamification metrics</li>
   </ul>
   <p><strong>Synthetic internal email:</strong> For PIN-based student accounts, the auth system generates an internal placeholder address (e.g., <code>student-&lt;uuid&gt;@class-&lt;code&gt;.vocaband.local</code>). This address is never delivered to a real inbox and is not used to contact the student. It exists only to satisfy the authentication system's unique-identifier requirement.</p>
-  <p><strong>We do NOT collect from students:</strong> real email addresses, phone numbers, physical addresses, photos, government IDs, or any other personally identifiable information.</p>
+  <p><strong>We do NOT collect from students:</strong> Personal email addresses, phone numbers, government IDs and photos are not requested from students by the class PIN form.</p>
 
   <h3>3.2 For Teachers</h3>
   <p>Teachers sign in via Google OAuth <em>or</em> email + one-time code (OTP). We collect:</p>
@@ -113,7 +114,7 @@
 
   <!-- Section 4: Sub-processors -->
   <h2>4. Third-Party Sub-processors</h2>
-  <p>Vocaband uses the following third-party services. All processors are bound by data processing agreements. Independent controllers (e.g., Google OAuth, Google Fonts) are noted as such. This list is the authoritative registry from our internal configuration — any new service is added here <em>before</em> it is used in production.</p>
+  <p>These providers process data for the purposes listed below. Some features, including payment and teacher mail, must first be enabled.</p>
   <table class="table">
     <tr><th>Service</th><th>Purpose</th><th>Data Categories</th><th>Hosting Region</th><th>Endpoint</th></tr>
     <tr>
@@ -181,10 +182,24 @@
     </tr>
     <tr>
       <td><strong>Sentry</strong></td>
-      <td>Application error tracking and performance monitoring (browser SPA + Node server)</td>
-      <td>JavaScript error messages and stack traces (scrubbed by `src/utils/scrubPii.ts` before send: emails, JWTs, Bearer tokens, Supabase keys removed); browser metadata (User-Agent, viewport, URL path); user UID when authenticated (no email, no name — only the opaque UUID, attached via Sentry.setUser); session-replay snippets (DOM masked, inputs masked) when the user has not opted out</td>
+      <td>Server diagnostics and optional browser error and performance diagnostics</td>
+      <td>error and performance metadata with sensitive fields redacted</td>
       <td>EU (Germany) — *.ingest.de.sentry.io</td>
-      <td>o*.ingest.de.sentry.io, browser.sentry-cdn.com</td>
+      <td>Sentry EU ingest</td>
+    </tr>
+    <tr>
+      <td><strong>SUMIT</strong></td>
+      <td>Hosted payment, payment verification and receipts when paid checkout is enabled</td>
+      <td>buyer identity and contact; order reference and price; payment and receipt status</td>
+      <td>Per merchant configuration and provider terms</td>
+      <td>SUMIT hosted checkout and payment API</td>
+    </tr>
+    <tr>
+      <td><strong>Resend</strong></td>
+      <td>Deliver opted-in teacher notices when email delivery is enabled</td>
+      <td>teacher email address; message content; delivery and unsubscribe references</td>
+      <td>Per provider configuration and terms</td>
+      <td>api.resend.com</td>
     </tr>
     <tr>
       <td><strong>Google Fonts</strong></td>
@@ -233,7 +248,7 @@
 
   <!-- Section 7: Cross-Border Transfers -->
   <h2>7. Cross-Border Data Transfers</h2>
-  <p>Some processing occurs outside Israel and the EEA. Below is the destination for each sub-processor, with the lawful transfer mechanism (under GDPR Chapter V + Schrems II), the vendor's published Data Processing Agreement, the result of our per-vendor Transfer Impact Assessment (TIA), and the date the mechanism was last reviewed:</p>
+  <p>Some processing occurs outside Israel and the EEA. The table lists documented provider information and public links. Processing locations and transfer arrangements depend on the enabled feature, provider contract and applicable market.</p>
   <table class="table">
     <tr><th>Destination</th><th>Service</th><th>Safeguards &amp; transfer mechanism</th></tr>
     <tr>
@@ -287,6 +302,16 @@
       <td>Processor under DPA; encryption in transit + at rest</td>
     </tr>
     <tr>
+      <td>Per merchant configuration and provider terms</td>
+      <td>SUMIT</td>
+      <td>Independent controller for this surface; encryption in transit</td>
+    </tr>
+    <tr>
+      <td>Per provider configuration and terms</td>
+      <td>Resend</td>
+      <td>Processor under DPA; encryption in transit + at rest</td>
+    </tr>
+    <tr>
       <td>Global edge network</td>
       <td>Google Fonts</td>
       <td>EU-US Data Privacy Framework (DPF) certified — verify at <a href="https://www.dataprivacyframework.gov/s/participant-search/participant-detail?id=a2zt000000001L5AAI" target="_blank" rel="noopener">vendor record</a>. DPA: <a href="https://developers.google.com/fonts/faq/privacy" target="_blank" rel="noopener">link</a>. TIA risk: low. Last reviewed: 2026-05-22.</td>
@@ -296,7 +321,7 @@
 
   <!-- Section 8: Your Rights -->
   <h2>8. Your Rights (Data Subject Rights)</h2>
-  <p>Under Israeli Privacy Protection Law (Amendment 13) and international standards (GDPR-compatible), you have the right to:</p>
+  <p>Applicable privacy law may give you rights to access or correct your information. You can also ask us about the following:</p>
   <table class="table">
     <tr><th>Right</th><th>Description</th><th>How to Exercise</th></tr>
     <tr><td><strong>Access</strong></td><td>Receive a copy of all your personal data</td><td>Privacy Settings → "Export My Data", or email <a href="mailto:privacy@vocaband.com">privacy@vocaband.com</a></td></tr>
@@ -313,7 +338,7 @@
   <p>Vocaband is designed for students in Israeli schools, many of whom are minors under applicable law.</p>
 
   <h3>9.1 School Authorization</h3>
-  <p>The educational institution (school) authorizes student use of Vocaband as part of the educational curriculum. By providing a class code to students, the teacher (acting on behalf of the school) authorizes student access.</p>
+  <p>Schools arrange classroom use and inform families. A class code brings the student to the class and a personal PIN is used to access the student account.</p>
 
   <h3>9.2 Minimal Data Collection</h3>
   <ul>

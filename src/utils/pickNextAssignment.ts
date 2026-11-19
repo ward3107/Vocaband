@@ -10,6 +10,17 @@ export interface NextAssignmentPick {
   state: NextAssignmentState;
 }
 
+export function indexAssignmentProgress(progress: ProgressData[]) {
+  const byAssignment = new Map<string, ProgressData[]>();
+  for (const result of progress) {
+    if (!result.assignmentId) continue;
+    const attempts = byAssignment.get(result.assignmentId);
+    if (attempts) attempts.push(result);
+    else byAssignment.set(result.assignmentId, [result]);
+  }
+  return byAssignment;
+}
+
 // Picks the single most-relevant assignment to surface as the "do this
 // now" target.  Priority: in-progress (highest %) → unstarted → mastered
 // but still replayable.  Locked assignments (3 rounds completed) are
@@ -19,6 +30,7 @@ export function pickNextAssignment(
   assignments: AssignmentData[],
   progress: ProgressData[],
   userUid: string,
+  byAssignment = indexAssignmentProgress(progress),
 ): NextAssignmentPick | null {
   if (assignments.length === 0) return null;
 
@@ -28,12 +40,9 @@ export function pickNextAssignment(
         (m) => m !== "flashcards",
       );
       const totalModes = Math.max(allowedModes.length, 1);
-      const completedModes = new Set(
-        progress
-          .filter((p) => p.assignmentId === a.id && p.mode !== "flashcards")
-          .map((p) => p.mode),
-      ).size;
-      const totalPlays = resolveAssignmentPlays(userUid, a.id, progress);
+      const attempts = byAssignment.get(a.id) ?? [];
+      const completedModes = new Set(attempts.filter((p) => p.mode !== "flashcards").map((p) => p.mode)).size;
+      const totalPlays = resolveAssignmentPlays(userUid, a.id, attempts);
       const locked = isAssignmentLocked(totalPlays, totalModes);
       const percent = Math.min(
         100,

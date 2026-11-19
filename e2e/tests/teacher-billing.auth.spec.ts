@@ -131,7 +131,7 @@ test('a school manager sees the credited amount before paying', async ({ manager
       }],
     },
   }}));
-  await page.goto('/?billing=1');
+  await page.goto('/manager?billing=1');
   const dialog = page.getByRole('dialog', { name: 'School subscription' });
   await expect(dialog.getByText(/Pilot credit/)).toHaveText(/590.*1,900/);
   await expect(dialog.getByRole('checkbox')).toHaveCount(0);

@@ -210,7 +210,7 @@ CREATE TRIGGER billing_check_assignment_limit BEFORE INSERT OR UPDATE OF class_i
 
 CREATE FUNCTION public.billing_check_roster_limit() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path='' AS $$
-DECLARE owner_uid text; school uuid; active_class text; scope_school uuid; seat_limit integer; access jsonb; old_profile uuid;
+DECLARE owner_uid text; school uuid; scope_school uuid; seat_limit integer; access jsonb; old_profile uuid;
 BEGIN
  IF NEW.status NOT IN ('approved','active') THEN RETURN NEW; END IF;
  IF TG_OP='UPDATE' THEN
@@ -229,16 +229,14 @@ BEGIN
  seat_limit:=(access->>'capacity')::integer;
  IF seat_limit IS NULL THEN RETURN NEW; END IF;
  scope_school:=CASE WHEN access->>'tier'='school' THEN school END;
- active_class:=CASE WHEN access->>'tier'='free' THEN NEW.class_code END;
  IF (SELECT count(DISTINCT coalesce(sp.auth_uid,sp.id)) FROM public.student_profiles sp
      JOIN public.classes c ON c.code=sp.class_code JOIN public.users u ON u.uid=c.teacher_uid
      WHERE c.archived_at IS NULL AND sp.status IN ('approved','active')
-       AND (active_class IS NULL OR c.code=active_class)
        AND ((scope_school IS NULL AND c.teacher_uid=owner_uid) OR u.school_id=scope_school)
        AND sp.id IS DISTINCT FROM old_profile
        AND coalesce(sp.auth_uid,sp.id)<>coalesce(NEW.auth_uid,NEW.id))>=seat_limit
  THEN
-   IF active_class IS NOT NULL THEN RAISE EXCEPTION 'free_tier_student_cap'; END IF;
+   IF access->>'tier'='free' THEN RAISE EXCEPTION 'free_tier_student_cap'; END IF;
    RAISE EXCEPTION 'plan_student_cap';
  END IF;
  RETURN NEW;

@@ -11,6 +11,7 @@ const TeacherOnboardingWizard = lazyWithRetry(() => import("../components/onboar
 const TeacherBilling = lazyWithRetry(() => import("../components/dashboard/TeacherBilling"));
 const SchoolWorkspace = lazyWithRetry(() => import("../components/dashboard/SchoolWorkspace"));
 import DashboardOnboarding from "../components/DashboardOnboarding";
+import TeacherSeatUsage from "../components/dashboard/TeacherSeatUsage";
 import WorkspaceWelcome from "../components/dashboard/WorkspaceWelcome";
 import TopAppBar from "../components/TopAppBar";
 import PageHero from "../components/PageHero";
@@ -433,6 +434,9 @@ export default function TeacherDashboardView({
               school Wi-Fi tell us which leg is actually broken instead
               of guessing. */}
           {subject === "english" && <WorkspaceWelcome name={firstName} language={effectiveLanguage} classCount={classes.length} assignmentCount={teacherAssignments.length} onStart={onQuickPlayClick} onCreate={onNewClass} />}
+          {user?.role === 'teacher' && !billingOpen && (
+            <TeacherSeatUsage key={user.uid} onUpgrade={() => setBillingOpen(true)} />
+          )}
           <div className="mb-4 flex justify-end">
             <NetworkDiagnosticButton />
           </div>

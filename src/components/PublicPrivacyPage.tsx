@@ -6,7 +6,7 @@ import BackButton from "./BackButton";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { useLanguage } from "../hooks/useLanguage";
 import { privacyTranslations, uiTranslations } from "../config/translations/legalTranslations";
-import { DATA_PROTECTION_OFFICER } from "../config/privacy-config";
+import { DATA_CONTROLLER, DATA_PROTECTION_OFFICER } from "../config/privacy-config";
 
 interface PublicPrivacyPageProps {
   onNavigate: (page: "home" | "terms" | "privacy" | "security") => void;
@@ -82,7 +82,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
           <section className="bg-white p-8 rounded-xl shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60">
             <h2 className={`text-xl font-black text-slate-900 mb-4 font-headline flex items-center gap-3`}>
               <span className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center text-violet-700 text-sm font-black">1</span>
-              {language === 'en' ? 'Data Controller (בעל המאגר)' : language === 'he' ? 'בעל המאגר' : 'مراقب البيانات (בעל המאגר)'}
+              {language === 'en' ? 'Data controller' : language === 'he' ? 'בעל השליטה במידע' : 'مراقب البيانات (בעל המאגר)'}
             </h2>
             <div className={`text-slate-600 leading-relaxed space-y-4`}>
               <p>
@@ -91,33 +91,18 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                  'بموجب قانون حماية الخصوصية الإسرائيلي (التعديل 13)، مراقب بيانات Vocaband هو:'}
               </p>
               <ul className={`space-y-2`}>
-                <li><strong>{language === 'en' ? 'Entity:' : language === 'he' ? 'גוף:' : 'الكيان:'}</strong> Vocaband Educational Technologies</li>
+                <li><strong>{language === 'en' ? 'Entity:' : language === 'he' ? 'גוף:' : 'الكيان:'}</strong> {DATA_CONTROLLER.name}</li>
                 <li><strong>{language === 'en' ? 'Address:' : language === 'he' ? 'כתובת:' : 'العنوان:'}</strong> {language === 'en' ? 'Israel' : language === 'he' ? 'ישראל' : 'إسرائيل'}</li>
                 <li><strong>{language === 'en' ? 'Privacy Contact:' : language === 'he' ? 'יצירת קשר לפרטיות:' : 'جهة اتصال الخصوصية:'}</strong> <span className="text-violet-600">contact@vocaband.com</span></li>
               </ul>
               <p>
-                {language === 'en' ? 'For privacy inquiries, data access requests, or complaints, contact us at the email above. We will respond within 30 days as required by law.' :
-                 language === 'he' ? 'לפניות פרטיות, בקשות גישה לנתונים או תלונות, צרו איתנו קשר בכתובת למעלה. נשיב תוך 30 יום כנדרש על פי חוק.' :
-                 'لاستفسارات الخصوصية أو طلبات الوصول إلى البيانات أو الشكاوى، تواصل معنا عبر البريد أعلاه. سنرد خلال 30 يومًا كما يقتضي القانون.'}
+                {language === 'en' ? 'For privacy questions, to access or correct your information, or to request deletion, contact us here:' :
+                 language === 'he' ? 'לפנייה בנושא פרטיות, לעיון ולתיקון מידע או לבקשת מחיקה, כתבו לנו:' :
+                 'للاستفسارات، أو للاطلاع على معلوماتك وتصحيحها أو طلب حذفها، راسلنا:'}{' '}
+                <a href={`mailto:${DATA_PROTECTION_OFFICER.email}`} className="font-semibold text-violet-800 underline">
+                  {DATA_PROTECTION_OFFICER.email}
+                </a>
               </p>
-
-              {/* Data Protection Officer (ממונה על הגנת הפרטיות).
-                  Required to be public-facing under תיקון 13.  Sourced
-                  from DATA_PROTECTION_OFFICER in privacy-config.ts so
-                  this stays in sync if the role-holder changes. */}
-              <h3 className="font-bold text-lg mt-6 mb-2">
-                {language === 'en' ? 'Data Protection Officer' :
-                 language === 'he' ? 'ממונה על הגנת הפרטיות' :
-                 'مسؤول حماية البيانات'}
-              </h3>
-              <ul className={`space-y-2`}>
-                <li><strong>{language === 'en' ? 'Name:' : language === 'he' ? 'שם:' : 'الاسم:'}</strong> {DATA_PROTECTION_OFFICER.name}</li>
-                <li><strong>{language === 'en' ? 'Role:' : language === 'he' ? 'תפקיד:' : 'الدور:'}</strong> {DATA_PROTECTION_OFFICER.role}</li>
-                <li><strong>{language === 'en' ? 'Privacy Email:' : language === 'he' ? 'אימייל לפרטיות:' : 'بريد الخصوصية:'}</strong> <span className="text-violet-600">{DATA_PROTECTION_OFFICER.email}</span></li>
-                <li><strong>{language === 'en' ? 'Response SLA:' : language === 'he' ? 'זמן תגובה מובטח:' : 'وقت الاستجابة:'}</strong> {language === 'en' ? `${DATA_PROTECTION_OFFICER.responseSlaHours} hours for incident reports; 30 days for data-subject rights requests.` :
-                 language === 'he' ? `${DATA_PROTECTION_OFFICER.responseSlaHours} שעות לדיווחי אירועי אבטחה; 30 יום לבקשות זכויות נושאי מידע.` :
-                 `${DATA_PROTECTION_OFFICER.responseSlaHours} ساعة لتقارير الحوادث؛ 30 يومًا لطلبات حقوق أصحاب البيانات.`}</li>
-              </ul>
             </div>
           </section>
 
@@ -141,7 +126,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                     <>
                       <li>• <strong>Display name</strong> — chosen by student</li>
                       <li>• <strong>Avatar</strong> — emoji selection</li>
-                      <li>• <strong>Class code</strong> — 6-digit code</li>
+                      <li>• <strong>Class code</strong> — code assigned to your class</li>
                       <li>• <strong>Progress</strong> — scores, streaks, XP</li>
                       <li>• <strong>Badges</strong> — achievements earned</li>
                     </>
@@ -149,7 +134,7 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                     <>
                       <li>• <strong>שם תצוגה</strong> — נבחר על ידי התלמיד</li>
                       <li>• <strong>אווטר</strong> — בחירת אימוג'י</li>
-                      <li>• <strong>קוד כיתה</strong> — קוד בן 6 ספרות</li>
+                      <li>• <strong>קוד כיתה</strong> — הקוד שניתן לכיתה</li>
                       <li>• <strong>התקדמות</strong> — ציונים, רצפים, XP</li>
                       <li>• <strong>תגים</strong> — הישגים שהושגו</li>
                     </>
@@ -299,12 +284,14 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                 </tbody>
               </table>
             </div>
-            <div className="mt-4 p-4 bg-red-50 rounded-lg">
-              <p className={`text-sm text-red-700 font-medium`}>
-                {language === 'en' ? 'We do NOT: Sell data • Show ads • Create profiles • Share with brokers • Use tracking cookies' :
-                 language === 'he' ? 'איננו: מוכרים נתונים • מציגים פרסומות • יוצרים פרופילים • משתפים עם מתווכים • משתמשים בעוגיות מעקב' :
-                 'نحن لا: نبيع البيانات • نعرض الإعلانات • ننشئ ملفات تعريف • نشارك مع الوسطاء • نستخدم ملفات تعريف الارتباط للتتبع'}
-              </p>
+            <div className="mt-4 rounded-lg bg-slate-100 p-4 text-sm text-slate-800">
+              <p>{language === 'en' ? 'Device storage keeps your sign-in and preferences. Optional browser diagnostics send error and performance information only after you enable analytics. You can change that choice at any time.' :
+                language === 'he' ? 'נשמרים במכשיר פרטי התחברות והעדפות. אבחון תקלות וביצועים בדפדפן נשלח רק אם בחרתם לאפשר מדידה. אפשר לשנות את הבחירה בכל עת.' :
+                'يحفظ الجهاز تسجيل الدخول والتفضيلات. لا تُرسل تشخيصات الأخطاء والأداء من المتصفح إلا عند تفعيل التحليلات. يمكنك تغيير هذا الاختيار في أي وقت.'}</p>
+              <button type="button" className="mt-2 min-h-11 font-semibold text-violet-800 underline"
+                onClick={() => window.dispatchEvent(new Event('vocaband:open-cookie-settings'))}>
+                {language === 'he' ? 'שינוי העדפות מדידה' : language === 'ar' ? 'تغيير تفضيلات التحليلات' : 'Change analytics preferences'}
+              </button>
             </div>
           </section>
 
@@ -384,6 +371,21 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
               </table>
             </div>
 
+            <dl className="mt-4 space-y-3 text-sm text-slate-700">
+              <div><dt className="font-bold">SUMIT</dt><dd>{language === 'he' ?
+                'כשהסליקה מופעלת, פרטי כרטיס האשראי מוזנים אצל SUMIT. ל־Vocaband נמסרים פרטי הזמנה ותוצאות תשלום וקבלה.' :
+                language === 'ar' ? 'عند تفعيل الدفع تُدخل بيانات البطاقة لدى SUMIT، وتتلقّى Vocaband مراجع الطلب والدفع والإيصال.' :
+                'When checkout is enabled, card details are entered on SUMIT. Vocaband receives order, payment and receipt references.'}</dd></div>
+              <div><dt className="font-bold">Resend</dt><dd>{language === 'he' ?
+                'כאשר המשלוח מופעל, ספק הדיוור מקבל את כתובת המורה ותוכן ההודעה לצורך משלוח שהמורה אישר.' :
+                language === 'ar' ? 'عند تفعيل المراسلات يتلقّى مزوّد البريد عنوان المعلّم ومحتوى الرسالة لإرسال الرسائل التي اختارها المعلّم.' :
+                'When email delivery is enabled, the provider receives the teacher’s email address and message content to send notices the teacher opted in to.'}</dd></div>
+              <div><dt className="font-bold">Sentry</dt><dd>{language === 'he' ?
+                'פרטי אבחון של השרת ומדידת שגיאות וביצועים בדפדפן לפי ההעדפה שבחרתם.' :
+                language === 'ar' ? 'تشخيصات الخادم وأخطاء المتصفح وأداؤه وفق تفضيلات التحليلات.' :
+                'Server diagnostics and optional browser error and performance information, according to your analytics preference.'}</dd></div>
+            </dl>
+
             {/* Notifications disclosure (push). Co-located with the processor
                 table because the push transit services above (FCM, Mozilla)
                 exist only for this feature. Functional-only, opt-in, PII-free,
@@ -410,19 +412,19 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
               {language === 'en' ? 'Data Retention' : language === 'he' ? 'שמירת נתונים' : 'الاحتفاظ بالبيانات'}
             </h2>
             <ul className="space-y-3 text-on-surface-variant">
-              <li className={`flex items-center justify-between py-2 border-b border-surface-container/50`}>
+              <li className={`flex flex-wrap items-start justify-between gap-2 py-2 border-b border-surface-container/50`}>
                 <span>{ui.dataRetention.studentProgress}</span>
                 <span className="font-bold text-on-surface">{language === 'en' ? '365 days' : language === 'he' ? '365 יום' : '365 يوم'}</span>
               </li>
-              <li className={`flex items-center justify-between py-2 border-b border-surface-container/50`}>
+              <li className={`flex flex-wrap items-start justify-between gap-2 py-2 border-b border-surface-container/50`}>
                 <span>{ui.dataRetention.orphanedAccounts}</span>
                 <span className="font-bold text-on-surface">{language === 'en' ? '90 days' : language === 'he' ? '90 יום' : '90 يوم'}</span>
               </li>
-              <li className={`flex items-center justify-between py-2 border-b border-surface-container/50`}>
+              <li className={`flex flex-wrap items-start justify-between gap-2 py-2 border-b border-surface-container/50`}>
                 <span>{ui.dataRetention.teacherAccounts}</span>
-                <span className="font-bold text-on-surface">{language === 'en' ? 'Active + 2 years' : language === 'he' ? 'פעיל + 2 שנים' : 'نشط + 2 سنة'}</span>
+                <span className="font-bold text-on-surface">{language === 'en' ? 'While needed for the account or a documented obligation' : language === 'he' ? 'כל עוד נדרש לניהול החשבון או לחובה מתועדת' : 'ما دام مطلوبًا للحساب أو لالتزام موثّق'}</span>
               </li>
-              <li className={`flex items-center justify-between py-2`}>
+              <li className={`flex flex-wrap items-start justify-between gap-2 py-2`}>
                 <span>{ui.dataRetention.auditLogs}</span>
                 <span className="font-bold text-on-surface">{language === 'en' ? '2 years' : language === 'he' ? '2 שנים' : '2 سنة'}</span>
               </li>
@@ -474,9 +476,9 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
               {language === 'en' ? "Children's Privacy" : language === 'he' ? 'פרטיות ילדים' : 'خصوصية الأطفال'}
             </h2>
             <p className={`text-slate-600 leading-relaxed mb-4`}>
-              {language === 'en' ? 'Vocaband is designed for students in schools worldwide. The educational institution (school) authorizes student use. By providing a class code, the teacher (on behalf of the school) authorizes student access.' :
-               language === 'he' ? 'Vocaband מיועד לתלמידים בבתי ספר ברחבי העולם. המוסד החינוכי (בית הספר) מאשר שימוש תלמידים. על ידי מתן קוד כיתה, המורה (מטעם בית הספר) מאשר גישת תלמידים.' :
-               'Vocaband مصمم للطلاب في المدارس حول العالم. المؤسسة التعليمية (المدرسة) تصرح باستخدام الطلاب. من خلال تقديم رمز الفصل، يصرح المعلم (نيابة عن المدرسة) بوصول الطلاب.'}
+              {language === 'en' ? 'Schools arrange classroom use and inform families. A class code is used to reach the class and a PIN identifies the student’s account. A parent or guardian can ask the school or contact our privacy team about student information.' :
+               language === 'he' ? 'בית הספר מסדיר את השימוש בכיתה ומיידע משפחות. קוד הכיתה מוביל לכיתה והקוד האישי משמש לכניסה לחשבון התלמיד. הורים או אפוטרופוסים יכולים לפנות לבית הספר או לאיש הקשר שלנו לפרטיות.' :
+               'تنظّم المدرسة الاستخدام في الصف وتُبلغ العائلات. يقود رمز الصف إلى الصف ويتيح رمز PIN الدخول إلى حساب الطالب. يمكن للأهل أو الأوصياء التواصل مع المدرسة أو جهة الخصوصية لدينا.'}
             </p>
             <div className="bg-green-50 p-4 rounded-lg">
               <p className={`text-sm text-green-800 font-medium`}>

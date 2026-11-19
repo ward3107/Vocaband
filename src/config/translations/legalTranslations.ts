@@ -1,4 +1,5 @@
-import { Language } from "../../hooks/useLanguage";
+import type { Language } from "../../hooks/useLanguage";
+import { PRIVACY_POLICY_VERSION, TERMS_VERSION } from "../privacy-config";
 
 // UI Translations (shared between Privacy and Terms)
 export const uiTranslations: Record<Language, {
@@ -38,8 +39,8 @@ export const uiTranslations: Record<Language, {
   en: {
     forStudents: "For Students",
     forTeachers: "For Teachers",
-    anonymous: "Anonymous",
-    googleOAuth: "Google OAuth",
+    anonymous: "Class code and PIN",
+    googleOAuth: "Google or email code",
     purpose: "Purpose",
     legalBasis: "Legal Basis",
     service: "Service",
@@ -82,8 +83,8 @@ export const uiTranslations: Record<Language, {
       "Responsible for class management",
     ],
     studentAccountRules: [
-      "Anonymous account with display name only",
-      "Access via 6-digit class code",
+      "An account with a display name or student code",
+      "Access through a class link or code and a personal PIN",
       "No email or personal info required",
       "Should not use real full name",
     ],
@@ -112,7 +113,7 @@ export const uiTranslations: Record<Language, {
   he: {
     forStudents: "לתלמידים",
     forTeachers: "למורים",
-    anonymous: "אנונימי",
+    anonymous: "קוד כיתה וקוד אישי",
     googleOAuth: "Google OAuth",
     purpose: "מטרה",
     legalBasis: "בסיס משפטי",
@@ -146,7 +147,7 @@ export const uiTranslations: Record<Language, {
     serviceDescription: [
       "מתוכנן לשימוש בכיתות ESL בפיקוח מורים",
       "רמות אוצר מילים מותאמות ל-CEFR A1–B2 (שלוש סטים מקיפים)",
-      "בנוי לתמיכה בחשבונות תלמידים אנונימיים",
+      "בנוי לתמיכה בחשבונות תלמידים ללא דוא״ל אישי",
       "מיועד למטרות חינוכיות בלבד",
     ],
     teacherAccountRules: [
@@ -156,8 +157,8 @@ export const uiTranslations: Record<Language, {
       "אחריות לניהול הכיתה",
     ],
     studentAccountRules: [
-      "חשבון אנונימי עם שם תצוגה בלבד",
-      "גישה דרך קוד כיתה בן 6 ספרות",
+      "חשבון עם שם תצוגה או קוד תלמיד",
+      "כניסה דרך קישור או קוד כיתה וקוד אישי",
       "ללא דוא\"ל או מידע אישי נדרש",
       "אין להשתמש בשם מלא אמיתי",
     ],
@@ -186,7 +187,7 @@ export const uiTranslations: Record<Language, {
   ar: {
     forStudents: "للطلاب",
     forTeachers: "للمعلمين",
-    anonymous: "مجهول",
+    anonymous: "رمز الصف ورمز PIN",
     googleOAuth: "Google OAuth",
     purpose: "الغرض",
     legalBasis: "الأساس القانوني",
@@ -220,7 +221,7 @@ export const uiTranslations: Record<Language, {
     serviceDescription: [
       "مصمم للاستخدام في فصول ESL تحت إشراف المعلم",
       "مستويات المفردات متوافقة مع CEFR A1–B2 (ثلاث مجموعات شاملة)",
-      "مبني لدعم حسابات الطلاب المجهولة",
+      "يدعم حسابات الطلاب دون بريد إلكتروني شخصي",
       "مخصص للأغراض التعليمية فقط",
     ],
     teacherAccountRules: [
@@ -230,7 +231,7 @@ export const uiTranslations: Record<Language, {
       "مسؤول عن إدارة الفصل",
     ],
     studentAccountRules: [
-      "حساب مجهول مع اسم عرض فقط",
+      "حساب باسم عرض أو رمز طالب",
       "الوصول عبر رمز فصل مكون من 6 أرقام",
       "لا يلزم بريد إلكتروني أو معلومات شخصية",
       "يجب عدم استخدام الاسم الكامل الحقيقي",
@@ -282,16 +283,16 @@ export const privacyTranslations: Record<Language, {
   en: {
     title: "Privacy",
     titleHighlight: "Policy",
-    effective: "Effective: April 2026",
-    version: "Version 2.1",
+    effective: `Updated ${PRIVACY_POLICY_VERSION}`,
+    version: "Version 3.0",
     legalBasis: "Legal Basis: Privacy Protection Law, 5741-1981 (Israel), Amendment 13",
     summary: {
       badge: "Summary",
-      text: "Vocaband is designed for ESL classrooms worldwide. Student accounts are anonymous—no email or personal identification required. Teachers sign in with Google. We don't sell data, show ads, or track users for marketing.",
+      text: "Students enter a class with a code or link and a personal PIN. We store a display name or student code, class membership and practice results for learning and feedback. Teachers can sign in with Google or a one-time email code. The service contains no advertising.",
     },
     footer: {
       haveQuestions: "Have Questions?",
-      responseTime: "Our privacy team responds within 30 days.",
+      responseTime: "Contact us to discuss your request.",
       related: "Related:",
       termsLink: "Terms of Service",
       acceptButton: "Accept & Continue",
@@ -301,16 +302,16 @@ export const privacyTranslations: Record<Language, {
   he: {
     title: "מדיניות",
     titleHighlight: "פרטיות",
-    effective: "תוקף: אפריל 2026",
-    version: "גרסה 2.1",
+    effective: `עדכון ${PRIVACY_POLICY_VERSION}`,
+    version: "גרסה 3.0",
     legalBasis: "בסיס חוקי: חוק הגנת הפרטיות, התשמ\"א-1981 (ישראל), תיקון 13",
     summary: {
       badge: "תקציר",
-      text: "Vocaband מתוכנן לכיתות ESL ברחבי העולם. חשבונות תלמידים הם אנונימיים - ללא דוא\"ל או זיהוי אישי. מורים נכנסים עם Google. איננו מוכרים מידע, מציגים פרסומות, או עוקבים אחר משתמשים לצורכי שיווק.",
+      text: "תלמידים נכנסים לכיתה דרך קוד או קישור וקוד אישי. אנחנו שומרים שם תצוגה או קוד תלמיד, שיוך לכיתה ותוצאות תרגול לצורך הלמידה והמשוב. מורים נכנסים דרך Google או בקוד חד־פעמי בדוא״ל. השירות פועל ללא פרסומות.",
     },
     footer: {
       haveQuestions: "יש לך שאלות?",
-      responseTime: "צוות הפרטיות שלנו משיב תוך 30 יום.",
+      responseTime: "אפשר לפנות אלינו עם בקשה בנושא פרטיות.",
       related: "קשור:",
       termsLink: "תנאי שימוש",
       acceptButton: "קבל והמשך",
@@ -320,16 +321,16 @@ export const privacyTranslations: Record<Language, {
   ar: {
     title: "سياسة",
     titleHighlight: "الخصوصية",
-    effective: "ساري المفعول: أبريل 2026",
-    version: "الإصدار 2.1",
+    effective: `آخر تحديث ${PRIVACY_POLICY_VERSION}`,
+    version: "الإصدار 3.0",
     legalBasis: "الأساس القانوني: قانون حماية الخصوصية، 5741-1981 (إسرائيل)، التعديل 13",
     summary: {
       badge: "ملخص",
-      text: "تم تصميم Vocaband لفصول ESL في جميع أنحاء العالم. حسابات الطلاب مجهولة - لا حاجة للبريد الإلكتروني أو الهوية الشخصية. يسجل المعلمون عبر Google. نحن لا نبيع البيانات أو نعرض الإعلانات أو نتتبع المستخدمين للتسويق.",
+      text: "يدخل الطلاب عبر رابط الصف أو رمزه ورمز PIN شخصي. نحفظ اسم العرض أو رمز الطالب والانتماء إلى الصف ونتائج التدريب للتعلّم وتقديم الملاحظات. يدخل المعلّمون عبر Google أو رمز لمرة واحدة بالبريد الإلكتروني. الخدمة خالية من الإعلانات.",
     },
     footer: {
       haveQuestions: "هل لديك أسئلة؟",
-      responseTime: "فريق الخصوصية لدينا يرد خلال 30 يومًا.",
+      responseTime: "تواصل معنا بشأن طلب الخصوصية.",
       related: "ذات صلة:",
       termsLink: "شروط الخدمة",
       acceptButton: "قبول ومتابعة",
@@ -357,9 +358,9 @@ export const termsTranslations: Record<Language, {
   en: {
     title: "Terms of",
     titleHighlight: "Service",
-    effective: "Effective: April 2026",
-    version: "Version 2.1",
-    intro: "Vocaband is an educational vocabulary platform for ESL classrooms worldwide. Students use anonymous accounts; teachers sign in with Google.",
+    effective: `Updated ${TERMS_VERSION}`,
+    version: "Version 3.0",
+    intro: "Vocaband is an educational vocabulary platform. Students use a class link or code and a personal PIN. Teachers can sign in with Google or a one-time email code.",
     footer: {
       questions: "Questions?",
       contact: "Contact us about these Terms.",
@@ -372,9 +373,9 @@ export const termsTranslations: Record<Language, {
   he: {
     title: "תנאי",
     titleHighlight: "שימוש",
-    effective: "תוקף: אפריל 2026",
-    version: "גרסה 2.1",
-    intro: "Vocaband היא פלטפורמה חינוכית לאוצר מילים לכיתות ESL ברחבי העולם. תלמידים משתמשים בחשבונות אנונימיים; מורים נכנסים עם Google.",
+    effective: `עדכון ${TERMS_VERSION}`,
+    version: "גרסה 3.0",
+    intro: "Vocaband היא פלטפורמה ללימוד אוצר מילים. תלמידים נכנסים באמצעות קישור או קוד כיתה וקוד אישי. מורים נכנסים דרך Google או בקוד חד־פעמי בדוא״ל.",
     footer: {
       questions: "שאלות?",
       contact: "צור איתנו קשר לגבי תנאים אלה.",
@@ -387,9 +388,9 @@ export const termsTranslations: Record<Language, {
   ar: {
     title: "شروط",
     titleHighlight: "الخدمة",
-    effective: "ساري المفعول: أبريل 2026",
-    version: "الإصدار 2.1",
-    intro: "Vocaband هي منصة تعليمية للمفردات لفصول ESL في جميع أنحاء العالم. يستخدم الطلاب حسابات مجهولة؛ يسجل المعلمون عبر Google.",
+    effective: `آخر تحديث ${TERMS_VERSION}`,
+    version: "الإصدار 3.0",
+    intro: "Vocaband منصة لتعلّم المفردات. يدخل الطلاب عبر رابط الصف أو رمزه ورمز PIN شخصي، ويدخل المعلّمون عبر Google أو رمز لمرة واحدة بالبريد الإلكتروني.",
     footer: {
       questions: "أسئلة؟",
       contact: "تواصل معنا بشأن هذه الشروط.",
@@ -419,51 +420,51 @@ export const accessibilityTranslations: Record<Language, {
   contact: { title: string; intro: string; email: string; response: string };
 }> = {
   en: {
-    title: "Accessibility Statement", lastUpdated: "Last updated: April 2026", back: "Back",
-    commitment: { title: "Our Commitment", text: "Vocaband is committed to ensuring digital accessibility for all users, including students, teachers, and parents with disabilities. We strive to meet WCAG 2.0 Level AA and the Israeli Standard IS 5568 for web accessibility. Our goal is to provide an inclusive learning experience where every student can practice English vocabulary effectively." },
+    title: "Accessibility Statement", lastUpdated: "Updated 2026-11-19", back: "Back",
+    commitment: { title: "Our Commitment", text: "We are improving access for students, teachers and parents. We apply the standards below as we revise and test the service." },
     features: { title: "Accessibility Features",
       toolbar: { title: "Accessibility Toolbar", intro: "A floating accessibility button (bottom-right corner) provides 10 adjustable settings:", items: ["Font Size — Scale text from 88% to 200%", "High Contrast — Black background with gold text and cyan links", "Dyslexia Font — Switch to OpenDyslexic or Comic Sans MS", "Readable Font — Switch to Open Sans / Helvetica Neue", "Reduce Motion — Minimize all animations and transitions", "Highlight Links — Underline and add borders to all links", "Large Cursor — 32px custom cursor with 44px minimum touch targets", "Line Height — Adjust spacing between lines (1.5 to 2.0)", "Letter Spacing — Adjust spacing between letters (normal to extra-wide)", "Focus Indicators — Enhanced focus outlines on all interactive elements"] },
-      keyboard: { title: "Keyboard Navigation", items: ["Skip links at the top of every page", "All interactive elements reachable by Tab key", "Buttons respond to Enter and Space keys", "Modals trap focus and close with Escape key", "Visible focus indicators with blue outline"] },
+      keyboard: { title: "Keyboard Navigation", items: ["Skip to the main content on supported pages", "Tab navigation and visible focus in the class entry form", "The public demo can be closed with Escape"] },
       screenReader: { title: "Screen Readers", items: ["ARIA landmarks for page structure", "Descriptive labels on buttons, icons, and controls", "Live regions for dynamic content updates", "Form fields with associated labels and error announcements"] },
       rtl: { title: "Language & RTL Support", items: ["Full support for English, Hebrew, and Arabic", "Automatic right-to-left layout for Hebrew and Arabic", "Bidirectional text handling in vocabulary displays and games"] },
-      visual: { title: "Visual Design", items: ["Color contrast ratios meet WCAG AA requirements", "Information is not conveyed by color alone", "Respects prefers-reduced-motion system setting", "Text can be resized up to 200% without loss of content", "Responsive design from 320px to desktop"] },
+      visual: { title: "Visual Design", items: ["A contrast control is available in the accessibility menu", "The app provides layouts for small screens and an option to reduce visual motion"] },
       audio: { title: "Audio & Pronunciation", items: ["Word pronunciation triggered by user action, not automatically", "All audio content has visual equivalents", "Volume controls available in Quick Play sessions"] },
     },
-    standards: { title: "Standards Compliance", items: ["WCAG 2.0 Level AA — verified (Israeli Standard IS 5568 baseline; full completion summary at docs/WCAG_COMPLETION_SUMMARY.md)", "WCAG 2.1 Level AA — in progress, per-criterion readiness tracked in the same completion summary (EU Accessibility Act 2025 alignment, EN 301 549)", "Section 508 — US federal accessibility requirements"] },
-    limitations: { title: "Known Limitations", items: ["Some game modes involve quick responses which may be challenging for users needing extra time. Flashcard mode has no time pressure.", "Quick Play join via QR code requires a camera. Students can also enter the session code manually.", "Google OAuth login and Google Fonts are loaded from external services with their own accessibility policies."] },
-    testing: { title: "Testing", intro: "We test accessibility using automated tools and manual testing:", items: ["Chrome Lighthouse accessibility audit", "Keyboard-only navigation testing", "Screen reader testing with NVDA and VoiceOver", "High contrast and reduced motion mode testing", "Mobile device testing on iOS and Android"] },
+    standards: { title: "Standards used for review", items: ["Israeli Standard 5568, as applicable to the service.", "WCAG 2.2 AA is our engineering target for new and updated web interfaces."] },
+    limitations: { title: "Known Limitations", items: ["Some timed games can be difficult if you need extra time. Flashcards offer an untimed option.", "Some downloadable PDFs still need accessibility review. Contact us for an alternative format.", "Class and game codes can be entered by hand."] },
+    testing: { title: "Testing", intro: "We check key journeys by keyboard and continue testing mobile layouts, assistive technologies and downloads.", items: [] },
     contact: { title: "Feedback & Contact", intro: "If you encounter any accessibility barriers, please contact us:", email: "accessibility@vocaband.com", response: "We aim to respond within 5 business days and resolve issues within 30 days." },
   },
   he: {
-    title: "הצהרת נגישות", lastUpdated: "עדכון אחרון: אפריל 2026", back: "חזרה",
-    commitment: { title: "המחויבות שלנו", text: "Vocaband מחויבת להבטיח נגישות דיגיטלית לכל המשתמשים, כולל תלמידים, מורים והורים עם מוגבלויות. אנו שואפים לעמוד בתקן WCAG 2.0 רמה AA ובתקן הישראלי ת\"י 5568 לנגישות אתרי אינטרנט. המטרה שלנו היא לספק חוויית למידה מכלילה שבה כל תלמיד יכול לתרגל אוצר מילים באנגלית בצורה יעילה." },
+    title: "הצהרת נגישות", lastUpdated: "עודכן ב־19.11.2026", back: "חזרה",
+    commitment: { title: "המחויבות שלנו", text: "אנחנו משפרים את הנגישות לתלמידים, למורים ולהורים. בבדיקות ובעדכוני השירות אנחנו משתמשים בתקנים המפורטים בהמשך." },
     features: { title: "תכונות נגישות",
       toolbar: { title: "סרגל נגישות", intro: "כפתור נגישות צף (בפינה הימנית התחתונה) מספק 10 הגדרות מתכווננות:", items: ["גודל גופן — שינוי גודל טקסט מ-88% עד 200%", "ניגודיות גבוהה — רקע שחור עם טקסט זהב וקישורים בצבע ציאן", "גופן לדיסלקציה — מעבר לגופן OpenDyslexic או Comic Sans MS", "גופן קריא — מעבר לגופן Open Sans / Helvetica Neue", "הפחתת תנועה — מזעור כל האנימציות והמעברים", "הדגשת קישורים — קו תחתון וגבולות לכל הקישורים", "סמן גדול — סמן מותאם בגודל 32px עם יעדי מגע מינימליים של 44px", "גובה שורה — כוונון ריווח בין שורות (1.5 עד 2.0)", "ריווח אותיות — כוונון ריווח בין אותיות (רגיל עד רחב במיוחד)", "מחווני מיקוד — מסגרות מיקוד משופרות על כל האלמנטים האינטראקטיביים"] },
-      keyboard: { title: "ניווט מקלדת", items: ["קישורי דילוג בראש כל עמוד", "כל האלמנטים האינטראקטיביים נגישים באמצעות מקש Tab", "כפתורים מגיבים למקשי Enter ו-Space", "חלונות קופצים לוכדים מיקוד ונסגרים עם Escape", "מחווני מיקוד גלויים עם מסגרת כחולה"] },
+      keyboard: { title: "ניווט מקלדת", items: ["דילוג לתוכן הראשי בעמודים התומכים בכך", "ניווט עם Tab ומיקוד גלוי בטופס הכניסה לכיתה", "אפשר לסגור את ההדגמה באמצעות Escape"] },
       screenReader: { title: "קוראי מסך", items: ["סימוני ARIA למבנה העמוד", "תיאורים על כפתורים, סמלים ופקדים", "אזורים חיים לעדכוני תוכן דינמיים", "שדות טופס עם תוויות משויכות והודעות שגיאה"] },
       rtl: { title: "תמיכה בשפות ו-RTL", items: ["תמיכה מלאה באנגלית, עברית וערבית", "פריסה אוטומטית מימין לשמאל לעברית ולערבית", "טיפול בטקסט דו-כיווני בתצוגות אוצר מילים ומשחקים"] },
-      visual: { title: "עיצוב חזותי", items: ["יחסי ניגודיות צבע עומדים בדרישות WCAG AA", "מידע לא מועבר באמצעות צבע בלבד", "מכבד הגדרת מערכת להפחתת תנועה", "ניתן להגדיל טקסט עד 200% ללא אובדן תוכן", "עיצוב רספונסיבי מ-320px ועד שולחן עבודה"] },
+      visual: { title: "עיצוב חזותי", items: ["אפשר לשנות ניגודיות דרך תפריט הנגישות", "השירות כולל פריסה למסכים קטנים ואפשרות להפחתת תנועה"] },
       audio: { title: "שמע והגייה", items: ["הגיית מילים מופעלת על ידי פעולת משתמש, לא אוטומטית", "לכל תוכן שמע יש מקבילה חזותית", "פקדי עוצמת קול זמינים בסשנים של Quick Play"] },
     },
-    standards: { title: "עמידה בתקנים", items: ["WCAG 2.0 רמה AA — אומת (תקן ישראלי ת\"י 5568 כבסיס; סיכום מלא ב-docs/WCAG_COMPLETION_SUMMARY.md)", "WCAG 2.1 רמה AA — בתהליך, מצב מוכנות לפי קריטריון נעקב באותו סיכום (התאמה לחוק הנגישות האירופי 2025, EN 301 549)", "Section 508 — דרישות נגישות פדרליות של ארה\"ב"] },
-    limitations: { title: "מגבלות ידועות", items: ["חלק ממצבי המשחק כוללים תגובות מהירות שעלולות להיות מאתגרות למשתמשים שזקוקים לזמן נוסף. מצב כרטיסיות ללא לחץ זמן.", "הצטרפות ל-Quick Play דרך QR דורשת מצלמה. תלמידים יכולים גם להזין קוד סשן ידנית.", "התחברות Google OAuth וגופני Google נטענים משירותים חיצוניים עם מדיניות נגישות משלהם."] },
-    testing: { title: "בדיקות", intro: "אנו בודקים נגישות באמצעות כלים אוטומטיים ובדיקות ידניות:", items: ["ביקורת נגישות Chrome Lighthouse", "בדיקת ניווט מקלדת בלבד", "בדיקת קורא מסך עם NVDA ו-VoiceOver", "בדיקת ניגודיות גבוהה ומצב הפחתת תנועה", "בדיקת מכשירים ניידים ב-iOS ו-Android"] },
+    standards: { title: "תקנים המשמשים לבדיקה", items: ["תקן ישראלי 5568, בהתאם לתחולתו על השירות.", "WCAG 2.2 AA הוא יעד ההנדסה שלנו לממשקים חדשים ומעודכנים."] },
+    limitations: { title: "מגבלות ידועות", items: ["חלק מהמשחקים מוגבלים בזמן. כרטיסיות זמינות ללא מגבלת זמן.", "חלק מקובצי ה־PDF עדיין דורשים בדיקת נגישות. אפשר לפנות אלינו לקבלת פורמט חלופי.", "אפשר להקליד קוד כיתה או משחק במקלדת."] },
+    testing: { title: "בדיקות", intro: "אנחנו בודקים מסלולים מרכזיים במקלדת וממשיכים לבדוק תצוגה בנייד, טכנולוגיות מסייעות וקבצים להורדה.", items: [] },
     contact: { title: "משוב ויצירת קשר", intro: "אם נתקלתם בחסמי נגישות, אנא צרו קשר:", email: "accessibility@vocaband.com", response: "אנו שואפים להגיב תוך 5 ימי עסקים ולפתור בעיות תוך 30 יום." },
   },
   ar: {
-    title: "بيان إمكانية الوصول", lastUpdated: "آخر تحديث: أبريل 2026", back: "رجوع",
-    commitment: { title: "التزامنا", text: "تلتزم Vocaband بضمان إمكانية الوصول الرقمي لجميع المستخدمين، بما في ذلك الطلاب والمعلمين وأولياء الأمور ذوي الإعاقة. نسعى لتلبية معيار WCAG 2.0 المستوى AA والمعيار الإسرائيلي IS 5568 لإمكانية الوصول إلى الويب. هدفنا توفير تجربة تعلم شاملة حيث يمكن لكل طالب ممارسة مفردات اللغة الإنجليزية بفعالية." },
+    title: "بيان إمكانية الوصول", lastUpdated: "آخر تحديث 2026-11-19", back: "رجوع",
+    commitment: { title: "التزامنا", text: "نعمل على تحسين إمكانية الوصول للطلاب والمعلمين والأهل. نستخدم المعايير أدناه عند مراجعة الخدمة واختبارها." },
     features: { title: "ميزات إمكانية الوصول",
       toolbar: { title: "شريط أدوات إمكانية الوصول", intro: "زر إمكانية الوصول العائم (في الزاوية اليمنى السفلية) يوفر 10 إعدادات قابلة للتعديل:", items: ["حجم الخط — تغيير حجم النص من 88% إلى 200%", "تباين عالٍ — خلفية سوداء مع نص ذهبي وروابط سماوية", "خط عسر القراءة — التبديل إلى OpenDyslexic أو Comic Sans MS", "خط مقروء — التبديل إلى Open Sans / Helvetica Neue", "تقليل الحركة — تقليل جميع الرسوم المتحركة والانتقالات", "تمييز الروابط — خط سفلي وحدود لجميع الروابط", "مؤشر كبير — مؤشر 32px مع أهداف لمس بحد أدنى 44px", "ارتفاع السطر — ضبط المسافة بين الأسطر (1.5 إلى 2.0)", "تباعد الأحرف — ضبط المسافة بين الأحرف (عادي إلى واسع جداً)", "مؤشرات التركيز — إطارات تركيز محسنة على جميع العناصر التفاعلية"] },
-      keyboard: { title: "التنقل بلوحة المفاتيح", items: ["روابط تخطي في أعلى كل صفحة", "جميع العناصر التفاعلية قابلة للوصول بمفتاح Tab", "الأزرار تستجيب لمفاتيح Enter و Space", "النوافذ المنبثقة تحبس التركيز وتُغلق بمفتاح Escape", "مؤشرات تركيز مرئية بإطار أزرق"] },
+      keyboard: { title: "التنقل بلوحة المفاتيح", items: ["تخطي إلى المحتوى الرئيسي في الصفحات المدعومة", "التنقّل بزر Tab والتركيز المرئي في نموذج دخول الصف", "يمكن إغلاق العرض التجريبي بزر Escape"] },
       screenReader: { title: "قارئات الشاشة", items: ["علامات ARIA لهيكل الصفحة", "أوصاف على الأزرار والأيقونات وعناصر التحكم", "مناطق حية لتحديثات المحتوى الديناميكي", "حقول النموذج مع تسميات مرتبطة وإعلانات الأخطاء"] },
       rtl: { title: "دعم اللغات و RTL", items: ["دعم كامل للإنجليزية والعبرية والعربية", "تخطيط تلقائي من اليمين لليسار للعبرية والعربية", "معالجة النص ثنائي الاتجاه في عروض المفردات والألعاب"] },
-      visual: { title: "التصميم المرئي", items: ["نسب تباين الألوان تلبي متطلبات WCAG AA", "المعلومات لا تُنقل باللون وحده", "يحترم إعداد النظام لتقليل الحركة", "يمكن تكبير النص حتى 200% دون فقدان المحتوى", "تصميم متجاوب من 320px إلى سطح المكتب"] },
+      visual: { title: "التصميم المرئي", items: ["يمكن تعديل التباين من قائمة إمكانية الوصول", "تتوفّر واجهة للشاشات الصغيرة وخيار تقليل الحركة"] },
       audio: { title: "الصوت والنطق", items: ["نطق الكلمات يتم بإجراء المستخدم، وليس تلقائياً", "جميع المحتويات الصوتية لها مكافئات مرئية", "عناصر التحكم في الصوت متاحة في جلسات Quick Play"] },
     },
-    standards: { title: "الامتثال للمعايير", items: ["WCAG 2.0 المستوى AA — مُتحقَّق منه (المعيار الإسرائيلي IS 5568 كأساس؛ ملخَّص الإنجاز الكامل في docs/WCAG_COMPLETION_SUMMARY.md)", "WCAG 2.1 المستوى AA — قيد التنفيذ، يتم تتبُّع جاهزية كل معيار في الملخَّص نفسه (مواءمة قانون إمكانية الوصول للاتحاد الأوروبي 2025، EN 301 549)", "القسم 508 — متطلبات إمكانية الوصول الفيدرالية الأمريكية"] },
-    limitations: { title: "القيود المعروفة", items: ["بعض أوضاع اللعبة تتضمن استجابات سريعة قد تكون صعبة لمن يحتاجون وقتاً إضافياً. وضع البطاقات بدون ضغط وقت.", "الانضمام عبر QR يتطلب كاميرا. يمكن للطلاب إدخال رمز الجلسة يدوياً.", "تسجيل الدخول عبر Google وخطوط Google تُحمّل من خدمات خارجية لها سياسات وصول خاصة."] },
-    testing: { title: "الاختبار", intro: "نختبر إمكانية الوصول باستخدام أدوات آلية واختبار يدوي:", items: ["تدقيق إمكانية الوصول من Chrome Lighthouse", "اختبار التنقل بلوحة المفاتيح فقط", "اختبار قارئ الشاشة مع NVDA و VoiceOver", "اختبار التباين العالي ووضع تقليل الحركة", "اختبار الأجهزة المحمولة على iOS و Android"] },
+    standards: { title: "المعايير التي نستخدمها للمراجعة", items: ["المعيار الإسرائيلي 5568 وفق نطاق انطباقه على الخدمة.", "نعتمد WCAG 2.2 AA هدفًا هندسيًا للواجهات الجديدة والمحدّثة."] },
+    limitations: { title: "القيود المعروفة", items: ["بعض الألعاب محدودة بوقت. تتوفّر البطاقات دون حدّ زمني.", "تحتاج بعض ملفات PDF إلى مراجعة إمكانية الوصول. تواصل معنا لطلب نسخة بديلة.", "يمكن إدخال رموز الصف واللعبة يدويًا."] },
+    testing: { title: "الاختبار", intro: "نختبر المسارات الأساسية بلوحة المفاتيح ونواصل مراجعة الهواتف والتقنيات المساعدة والملفات القابلة للتنزيل.", items: [] },
     contact: { title: "الملاحظات والتواصل", intro: "إذا واجهت عوائق في إمكانية الوصول، يرجى الاتصال بنا:", email: "accessibility@vocaband.com", response: "نهدف للرد خلال 5 أيام عمل وحل المشكلات خلال 30 يوماً." },
   },
 };

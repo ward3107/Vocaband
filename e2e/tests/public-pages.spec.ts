@@ -62,4 +62,24 @@ test.describe('Public Pages', () => {
     await expect(page.getByRole('heading', { name: 'Enter your class', exact: true })).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Class code or link from your teacher' })).toBeVisible();
   });
+
+  test('opens the Hebrew information for parents and accessibility statement by their links', async ({ publicPage: page }) => {
+    await page.goto('/parents-he.html');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'he');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(/הורים/);
+    await page.goto('/accessibility-statement?lang=he');
+    await expect(page.getByRole('heading', { name: 'הצהרת נגישות', exact: true })).toBeVisible();
+    await expect(page.locator('a.skip-link')).toHaveText('דילוג לתוכן הראשי');
+  });
+
+  test('opens the student demo as a keyboard-dismissable dialog with a direct practice action', async ({ publicPage: page }) => {
+    await goToLanding(page);
+    await page.getByRole('button', { name: /Try the live demo/i }).click();
+    const demo = page.getByRole('dialog', { name: /Demo Mode/ });
+    await expect(demo).toBeVisible();
+    await expect(demo.getByRole('button', { name: 'Try a vocabulary round' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(demo).toHaveCount(0);
+  });
+
 });

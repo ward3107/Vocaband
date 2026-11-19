@@ -256,6 +256,7 @@ export function useTeacherData(params: UseTeacherDataParams) {
       // doesn't emit an Amendment-13-style audit row, so we add it
       // here.  Profile id goes in metadata; auth UID isn't returned
       // by the RPC (yet) so we don't attempt to populate targetUid.
+      window.dispatchEvent(new Event('vocaband:roster-changed'));
       void logAudit('approve_student', 'users', { metadata: { profile_id: studentId } });
 
       // Refresh the list

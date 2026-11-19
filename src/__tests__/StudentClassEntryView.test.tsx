@@ -98,7 +98,7 @@ describe('guided student class entry', () => {
       expect.objectContaining({ classCode: 'ABCD2345' })
     );
   });
-  it('offers the correct game path rather than using a six-character code as a classroom', () => {
+  it('offers the correct game path rather than using a six-character code as a classroom', async () => {
     render(<StudentClassEntryView {...props()} />);
     fireEvent.change(screen.getByLabelText(classEntryT.en.codeLabel), {
       target: { value: 'ABCD23' },
@@ -107,7 +107,7 @@ describe('guided student class entry', () => {
     expect(screen.getByText(classEntryT.en.gameHint)).toBeTruthy();
     expect(mocks.pinProps).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: classEntryT.en.joinGame }));
-    expect(screen.getByText('Game: ABCD23')).toBeTruthy();
+    expect(await screen.findByText('Game: ABCD23')).toBeTruthy();
   });
   it('lets another child choose a different class without retaining a personal invite id', () => {
     window.history.replaceState(

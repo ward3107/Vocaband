@@ -36,7 +36,7 @@ export default function AccessibilityStatement({ onNavigate, onGetStarted, onTea
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 font-body" dir={isRTL ? 'rtl' : 'ltr'}>
       <PublicNav currentPage="accessibility" onNavigate={onNavigate} onGetStarted={onGetStarted} onTeacherLogin={onTeacherLogin} />
 
-      <main id="main-content" className="max-w-3xl mx-auto px-4 sm:px-6 pt-28 pb-24">
+      <main id="main-content" tabIndex={-1} className="max-w-3xl mx-auto px-4 sm:px-6 pt-28 pb-24">
         <div className="flex items-center gap-4 mb-6">
           <button onClick={onBack} className="flex items-center gap-2 text-violet-300 hover:text-violet-200 font-bold hover:underline">
             <ArrowLeft size={18} className={isRTL ? 'rotate-180' : ''} /> {t.back}
@@ -48,34 +48,10 @@ export default function AccessibilityStatement({ onNavigate, onGetStarted, onTea
         <h1 className="text-3xl sm:text-4xl font-black text-white mb-1 drop-shadow-lg">{t.title}</h1>
         <p className="text-white/70 text-sm">{t.lastUpdated}</p>
 
-        {/* Top metadata strip — WCAG conformance level + last audit
-            date + designated coordinator.  Required by IS 5568 / Israeli
-            Equal Rights for People with Disabilities Act (2013 amend.). */}
-        <div className="mt-3 mb-8 flex flex-wrap gap-2 text-xs">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-200 border border-emerald-400/30 font-bold">
-            <CheckCircle2 size={12} />
-            {language === 'en' ? 'WCAG 2.1 Level AA' : language === 'he' ? 'WCAG 2.1 רמה AA' : 'WCAG 2.1 المستوى AA'}
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-500/15 text-violet-200 border border-violet-400/30 font-bold">
-            <Shield size={12} />
-            {language === 'en' ? 'IS 5568 (Israel)' : language === 'he' ? 'תקן ישראלי 5568' : 'المعيار الإسرائيلي 5568'}
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-500/15 text-sky-200 border border-sky-400/30 font-bold">
-            {language === 'en' ? 'Last audit: 2026-05-08' : language === 'he' ? 'ביקורת אחרונה: 08/05/2026' : 'آخر تدقيق: 2026-05-08'}
-          </span>
-        </div>
-
         <div className="space-y-5">
           {/* Commitment */}
           <Section icon={<Shield size={20} className="text-violet-600" />} title={t.commitment.title}>
             <p className="text-slate-600 text-sm leading-relaxed">{t.commitment.text}</p>
-            <p className="mt-3 text-sm text-slate-700 font-semibold leading-relaxed">
-              {language === 'en'
-                ? 'Vocaband conforms to WCAG 2.1 Level AA and Israeli Standard 5568, except where noted in the Limitations section.'
-                : language === 'he'
-                ? 'Vocaband עומדת בדרישות WCAG 2.1 רמה AA ובתקן הישראלי 5568, למעט במקומות המצוינים בסעיף המגבלות.'
-                : 'تتوافق Vocaband مع WCAG 2.1 المستوى AA والمعيار الإسرائيلي 5568، باستثناء ما هو مذكور في قسم القيود.'}
-            </p>
           </Section>
 
           {/* Features */}

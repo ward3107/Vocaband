@@ -345,14 +345,13 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
                 </button>
               </li>
               <li>
-                <button
-                  onClick={() => onNavigate("accessibility")}
-                  type="button"
+                <a
+                  href={language === "en" ? "/accessibility-statement" : `/accessibility-statement?lang=${language}`}
                   className="inline-flex items-center gap-2 text-white/85 hover:text-white text-sm font-semibold transition-colors"
                 >
                   <Accessibility size={14} aria-hidden="true" />
                   {t.footerAccessibility}
-                </button>
+                </a>
               </li>
               <li>
                 <button
@@ -374,12 +373,6 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
             {t.footerCopyright(new Date().getFullYear())}
           </p>
 
-          {/* Trust strip — three small badges showing the things
-              we CAN factually claim (SSL Labs grade, TLS 1.3,
-              EU hosting).  The SSL Labs badge deep-links to a
-              live report so visitors can verify it.  See
-              docs/SECURITY-OVERVIEW.md for what we are/are NOT
-              claiming. */}
           <div className="flex flex-wrap items-center justify-center gap-2 order-1 md:order-2">
             <a
               href="https://www.ssllabs.com/ssltest/analyze.html?d=vocaband.com"
@@ -397,7 +390,7 @@ const LandingFooter: React.FC<LandingFooterProps> = ({
             </span>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-500/15 text-violet-200 border border-violet-400/30 font-bold text-[11px]">
               <Globe size={11} />
-              EU-hosted
+              {language === "he" ? "מסד נתונים באירופה" : language === "ar" ? "قاعدة البيانات في أوروبا" : "EU database"}
             </span>
           </div>
         </div>

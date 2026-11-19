@@ -177,69 +177,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate, onGetStarted, onT
       />
 
       <main id="main-content">
-        {/*
-          SEO discovery block — invisible to sighted users, read by
-          screen readers and indexed by crawlers. Covers the three
-          ways people fail to land on vocaband.com via search:
-          - Brand variants / typos: "voca band", "vokaband", etc.
-          - Keyboard-layout transliterations: someone typing "vocaband"
-            with a HE / AR / RU / FA / EL keyboard layout active hits
-            different characters ("הםבשנשמג", "رخؤشلاشىي", "мщсфифтв",
-            "رخزشذشدی", "ωοψαβανδ"); we surface those strings here so
-            Google can map them back to the canonical brand.
-          - Brand transliterated into each script + category keywords
-            so non-English speakers searching "learn English" in their
-            own language find the app.
-          The full keyword bundle also lives in index.html <meta name="keywords">
-          and the JSON-LD alternateName array, but having it in the
-          rendered DOM strengthens the signal Google actually trusts
-          (meta keywords are largely deprecated; on-page content isn't).
-        */}
-        {/* SR-only SEO block sits BEFORE the hero in DOM order so
-            crawlers reach the alt-spelling keywords first. Was an <h2>
-            until 2026-05-28; demoted to a strong paragraph because an
-            h2 ahead of the page's only <h1> tripped the heading-order
-            heuristic (Lighthouse a11y manual check, WCAG 1.3.1).
-            SEO impact is negligible — Google indexes the keywords by
-            presence in DOM, not by heading level — and the visible
-            layout is unchanged because the wrapper is sr-only. */}
-        <div className="sr-only" aria-hidden="false">
-          <p><strong>Vocaband — also searched as</strong></p>
-          <p>
-            Vocaband, Voca, Voca Band, VocaBand, voca band, voca-band,
-            vocabandapp, vocaband.com, vokaband, vocabend, vocband,
-            vocaaband, vocabnd. The English vocabulary app for all ages.
-          </p>
-          <p>
-            Brand spelled in other scripts: ווקאבנד, וקאבנד, ווקה בנד,
-            ווקאבאנד, فوكاباند, ڤوكاباند, فوكا باند, вокабанд, вока банд,
-            وکابند, βοκαμπαντ, ቮካባንድ, वोकाबैंड, ভোকাব্যান্ড, 보카밴드, ボカバンド,
-            โวคาแบนด์, vokabant, wokaband.
-          </p>
-          <p>
-            Keyboard-layout transliterations of vocaband and voca:
-            הםבשנשמג, הםבש (Hebrew layout); رخؤشلاشىي, رخؤش (Arabic
-            layout); мщсфифтв, мщсف (Russian / Ukrainian layout);
-            رخزشذشدی, رخزش (Persian layout); ωοψαβανδ, ωοψα (Greek
-            layout); vocqbqnd, vocq (French AZERTY).
-          </p>
-          <p>
-            Learn English vocabulary online for all ages — kids, teens,
-            and adults. אנגלית לילדים, משחקי אנגלית, מורה לאנגלית, לימוד
-            אנגלית, אוצר מילים אנגלית, אנגלית למבוגרים, שיפור אנגלית,
-            אפליקציית אנגלית, תרגול אנגלית, אנגלית אונליין, אנגלית חינם,
-            מילון אנגלית, אנגלית מדוברת. تعلم الإنجليزية, مفردات إنجليزية,
-            إنجليزي للكبار, إنجليزي للأطفال, تطبيق إنجليزي, ألعاب
-            إنجليزية, قاموس انجليزي, محادثة انجليزي. учить английский,
-            английский для взрослых, английский для детей, словарный
-            запас английский, приложение английский, английский с нуля,
-            английский онлайн, бесплатный английский. Aprender inglés,
-            vocabulario inglés, inglés gratis. Apprendre l'anglais,
-            vocabulaire anglais. Englisch lernen, englisch vokabeln.
-            Aprender inglês, imparare inglese, ingilizce öğren.
-          </p>
-        </div>
-
         {/* Hero — "pick your lane and sign in." Two equal sign-in lanes:
             staff (teachers + principals; role-routed to the right console
             on login) and students (class code). The live demo is a clear

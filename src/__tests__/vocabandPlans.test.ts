@@ -67,7 +67,7 @@ beforeAll(async () => {
        allowed_modes text[],deadline text,subject text,sentences text[],sentence_difficulty smallint,created_at timestamptz DEFAULT now()
     );
     CREATE TABLE public.progress(
-       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),assignment_id uuid REFERENCES assignments(id),class_code text,student_uid text,mode text
+       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),assignment_id uuid REFERENCES assignments(id),class_code text,student_uid text,mode text,completed_at timestamptz DEFAULT now()
     );
     CREATE TABLE public.vocabulary_collections(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),teacher_uid text);
     ALTER TABLE public.vocabulary_collections ENABLE ROW LEVEL SECURITY;
@@ -103,7 +103,7 @@ beforeAll(async () => {
   `);
   for (const file of [
     '20261118010000_teacher_billing.sql', '20261118030000_vocaband_subscription_plans.sql',
-    '20261118040000_vocaband_school_workspace.sql',
+    '20261118040000_vocaband_school_workspace.sql', '20261119010000_plan_usage_and_school_week.sql',
   ]) await db.exec(readFileSync('supabase/migrations/' + file, 'utf8'));
 }, 30000);
 afterAll(() => db.close());
@@ -235,4 +235,34 @@ describe('Vocaband subscription plans and school workspace', () => {
     expect((await asUser(free, () => db.query('SELECT * FROM get_assignments_for_class($1)', [freeClass]))).rows)
       .toHaveLength(4);
   });
+
+  it('returns only the signed-in teacher’s seat count and licensed school totals', async () => {
+    expect(await asUser(free, () => scalar('SELECT billing_my_usage() AS value')))
+      .toEqual({ scope: 'teacher', used: 1, capacity: 30 });
+    const pooled = await asUser(teacherA, () => scalar('SELECT billing_my_usage() AS value'));
+    expect(pooled).toMatchObject({ scope: 'school', used: 1, capacity: 400 });
+    expect(await asUser(student, () => scalar('SELECT billing_my_usage() AS value'))).toBeNull();
+  });
+
+  it('counts students once, requires every assigned mode and restricts weekly summaries to the current school', async () => {
+    const otherStudent = uuid(852);
+    await db.query("INSERT INTO student_profiles(auth_uid,class_code,status) VALUES ($1,'CLASS01','approved')", [otherStudent]);
+    const assignment = uuid(853);
+    await db.query("INSERT INTO assignments(id,class_id,title,allowed_modes) VALUES ($1,$2,'Two game modes',ARRAY['spelling','listening'])", [assignment, first]);
+    await db.query(`INSERT INTO progress(assignment_id,class_code,student_uid,mode)
+      VALUES ($1,'CLASS01',$2,'spelling'), ($1,'CLASS01',$2,'spelling')`, [assignment, otherStudent]);
+    const week = (uid: string, previous = false) => asUser(uid, () =>
+      scalar('SELECT school_weekly_activity($1) AS value', [previous])
+    );
+    expect(await week(manager)).toMatchObject({ classesPracticed: 1, studentsCompleted: 1,
+      classes: [{ name: 'Grade 7A', practiced: 2, completed: 1 }, { name: 'Grade 7B', practiced: 0 } ],
+    });
+    await db.query("INSERT INTO progress(assignment_id,class_code,student_uid,mode) VALUES ($1,'CLASS01',$2,'listening')", [assignment, otherStudent]);
+    expect(await week(manager)).toMatchObject({ studentsCompleted: 2 });
+    expect(await week(manager, true)).toMatchObject({ classesPracticed: 0, studentsCompleted: 0 });
+    expect(await week(outsideManager)).toMatchObject({ classes: [] });
+    expect(await week(teacherA)).toBeNull();
+    expect(await week(student)).toBeNull();
+  });
+
 });
