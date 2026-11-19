@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
 import { migrationUrl, migrationTransaction, migrationState, releaseClassEntry, statusQuery, version } from './release-class-entry-migration.mjs';
+import { releaseScanPins, scanPinMigrationUrl, scanPinStatusQuery, scanPinVersion } from './release-class-entry-migration-pins.mjs';
 
 const sql = await readFile(migrationUrl, 'utf8');
 const fixture = `
@@ -17,6 +18,37 @@ CREATE PUBLICATION supabase_realtime;
 CREATE SCHEMA supabase_migrations;
 CREATE TABLE supabase_migrations.schema_migrations (version text PRIMARY KEY, name text, statements text[]);
 `;
+
+test('releases the reviewed classroom PIN migration and verifies protected tables and functions', async () => {
+  const scanSql = await readFile(scanPinMigrationUrl, 'utf8');
+  const db = new PGlite();
+  try {
+    await db.exec(`${fixture}
+      ALTER TABLE public.classes ADD COLUMN archived_at timestamptz;
+      ALTER TABLE public.student_profiles ADD COLUMN id uuid PRIMARY KEY, ADD COLUMN anon_seq int;
+      CREATE FUNCTION public.teacher_create_roster_student(text,text,text,text) RETURNS uuid LANGUAGE sql AS $$SELECT null::uuid$$;
+      CREATE FUNCTION public.is_pro_or_trialing() RETURNS boolean LANGUAGE sql AS $$SELECT false$$;
+    `);
+    let writes = 0;
+    const request = async body => {
+      if (body.query === scanPinStatusQuery) return (await db.query(body.query)).rows;
+      writes++;
+      await db.exec(body.query);
+      return [];
+    };
+    await assert.rejects(releaseScanPins({ request, sql: `${scanSql} `, apply: true }), /differs from the reviewed release/);
+    assert.equal(await releaseScanPins({ request, sql: scanSql }), 'pending');
+    assert.equal(writes, 0);
+    assert.equal(await releaseScanPins({ request, sql: scanSql, apply: true }), 'applied');
+    assert.deepEqual((await db.query('SELECT version, name, statements FROM supabase_migrations.schema_migrations')).rows,
+      [{ version: scanPinVersion, name: 'class_scan_pins', statements: [scanSql] }]);
+    assert.equal(await releaseScanPins({ request, sql: scanSql, apply: true }), 'applied');
+    assert.equal(writes, 1);
+    await db.exec('GRANT EXECUTE ON FUNCTION public.teacher_open_pin_window(text) TO anon');
+    await assert.rejects(releaseScanPins({ request, sql: scanSql, apply: true }), /permission checks/);
+    assert.equal(writes, 1);
+  } finally { await db.close(); }
+});
 
 test('applies the approved SQL with the original history version and verifies real PostgreSQL objects', async () => {
   const db = new PGlite();
