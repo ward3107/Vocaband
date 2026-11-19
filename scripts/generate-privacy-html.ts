@@ -205,22 +205,25 @@ const html = `<!DOCTYPE html>
 
   <!-- Section 5: How We Use Data -->
   <h2>5. How We Use Your Data</h2>
-  <p>Your data is used solely to deliver the learning service:</p>
+  <p>We use personal data for these purposes:</p>
   <ul>
     <li>Provide vocabulary games and persist progress</li>
     <li>Show teachers a gradebook of their students' progress</li>
     <li>Power live leaderboards during in-class challenges (scores held in memory only, never written to disk by the live-challenge server)</li>
     <li>Authenticate teachers</li>
     <li>Prevent abuse (rate limiting, security logs)</li>
-    <li>On explicit teacher action: AI sentence generation (Anthropic) and OCR of uploaded worksheets (Google Cloud Gemini). Uploaded images are discarded after the API call returns the extracted text.</li>
+    <li>On teacher request: AI sentence generation (Anthropic), vocabulary image processing and teacher help questions (Google Gemini). Please leave names and other personal details out of uploads and help questions.</li>
+    <li>Manage subscriptions and process payments when purchasing is enabled</li>
+    <li>Deliver optional emails to teachers who choose to receive them, when delivery is enabled</li>
+    <li>Diagnose errors and improve performance. Browser diagnostics depend on your analytics preference.</li>
   </ul>
   <p><strong>We do NOT:</strong></p>
   <ul>
     <li>Sell or rent personal data</li>
-    <li>Use data for advertising or marketing</li>
+    <li>Use student data for advertising or marketing</li>
     <li>Create user profiles for commercial purposes</li>
     <li>Share data with data brokers</li>
-    <li>Use tracking cookies or third-party analytics</li>
+    <li>Use tracking cookies for behavioral advertising</li>
   </ul>
 
   <!-- Section 6: Retention -->
@@ -231,7 +234,7 @@ const html = `<!DOCTYPE html>
     <tr><td>Student progress records</td><td>${RETENTION_PERIODS.progressRecordsDays} days after assignment completion</td><td>Class deletion, account deletion, or scheduled cleanup</td></tr>
     <tr><td>Orphaned student accounts (no class membership)</td><td>${RETENTION_PERIODS.orphanedStudentDays} days after last login</td><td>Automatic cleanup</td></tr>
     <tr><td>Audit log entries</td><td>${RETENTION_PERIODS.auditLogDays} days (≈ 2 years)</td><td>Automatic deletion</td></tr>
-    <tr><td>Consent log entries</td><td>${RETENTION_PERIODS.consentLogDays} days (≈ 10 years)</td><td>Legal requirement</td></tr>
+    <tr><td>Consent log entries</td><td>${RETENTION_PERIODS.consentLogDays} days (≈ 10 years)</td><td>End of the documented retention period</td></tr>
     <tr><td>Quick Play guest resume hint (browser local storage only — no server-side state)</td><td>${RETENTION_PERIODS.quickPlayResumeHintMinutes} minutes after last activity</td><td>Automatic — silently dropped by the browser when the timer expires</td></tr>
     <tr><td>Database provider platform backups (Supabase PITR / daily snapshots)</td><td>Up to ${RETENTION_PERIODS.backupSupabasePlatformDays} days</td><td>Automatic rotation by the provider</td></tr>
     <tr><td>Off-site disaster-recovery archive (encrypted weekly <code>pg_dump</code> in Cloudflare R2)</td><td>Up to ${RETENTION_PERIODS.backupOffsiteR2Days} days (≈ ${Math.round(RETENTION_PERIODS.backupOffsiteR2Days / 30)} months)</td><td>R2 lifecycle policy — automatic deletion at ${RETENTION_PERIODS.backupOffsiteR2Days} days</td></tr>
@@ -244,7 +247,7 @@ const html = `<!DOCTYPE html>
   <table class="table">
     <tr><th>Destination</th><th>Service</th><th>Safeguards &amp; transfer mechanism</th></tr>${crossBorderRows}
   </table>
-  <p>All transfers additionally use encryption in transit (TLS 1.3) and at rest. For the full transfer register, change history, and subscription instructions, see the human-readable companion doc <a href="https://github.com/ward3107/vocaband/blob/main/docs/SUBPROCESSORS.md" target="_blank" rel="noopener">docs/SUBPROCESSORS.md</a>.</p>
+  <p>See the <a href="https://github.com/ward3107/vocaband/blob/main/docs/SUBPROCESSORS.md" target="_blank" rel="noopener">vendor register</a> for transfer details and the change history.</p>
 
   <!-- Section 8: Your Rights -->
   <h2>8. Your Rights (Data Subject Rights)</h2>
@@ -289,7 +292,7 @@ const html = `<!DOCTYPE html>
   <!-- Section 10: Security -->
   <h2>10. Security Measures</h2>
   <ul>
-    <li><strong>Encryption in transit:</strong> All traffic over HTTPS (TLS 1.3)</li>
+    <li><strong>Encryption in transit:</strong> The website uses HTTPS</li>
     <li><strong>Encryption at rest:</strong> Database and storage encrypted by Supabase</li>
     <li><strong>Access control:</strong> Row-Level Security (RLS) policies ensure users can only access their own data</li>
     <li><strong>Authentication:</strong> Teachers via Google OAuth or email OTP; students via class code + PIN</li>
@@ -305,16 +308,15 @@ const html = `<!DOCTYPE html>
   <table class="table">
     <tr><th>Storage Key</th><th>Purpose</th></tr>${storageRows}
   </table>
-  <p>Cloudflare Web Analytics is used for traffic measurement; it stores no cookies and does not identify individual users.</p>
+  <p>You can manage optional browser diagnostics in the <a href="/privacy">privacy page</a> under analytics preferences.</p>
 
   <!-- Section 12: Changes -->
   <h2>12. Changes to This Policy</h2>
   <ul>
     <li>The "Effective Date" and version number above will change</li>
     <li>Users will be notified via in-app consent modal</li>
-    <li>Continued use after material changes constitutes acceptance</li>
   </ul>
-  <p>Material policy changes trigger a re-consent prompt as required by Amendment 13.</p>
+  <p>When a policy version changes and requires renewed consent, the app asks for your choice.</p>
 
   <!-- Section 13: Complaints -->
   <h2>13. Complaints and Regulatory Authority</h2>

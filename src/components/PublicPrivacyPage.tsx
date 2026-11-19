@@ -339,8 +339,12 @@ const PublicPrivacyPage: React.FC<PublicPrivacyPageProps> = ({
                   </tr>
                   <tr className="border-b border-surface-container/50">
                     <td className="py-2 pr-4 font-medium">Google Cloud (Gemini)</td>
-                    <td className="py-2 pr-4">{language === 'en' ? 'OCR for teacher-uploaded vocabulary images' : language === 'he' ? 'OCR לתמונות אוצר מילים שמורים מעלים' : 'OCR لصور مفردات يحملها المعلمون'}</td>
-                    <td className="py-2 pr-4">{language === 'en' ? 'EU (europe-west)' : language === 'he' ? 'אירופה' : 'الاتحاد الأوروبي'}</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'Vocabulary images uploaded by teachers and questions submitted to the teacher help assistant' :
+                      language === 'he' ? 'עיבוד תמונות אוצר מילים שמורים מעלים ושאלות שנשלחות לכלי העזרה למורים' :
+                      'معالجة صور المفردات التي يرفعها المعلمون والأسئلة المرسلة إلى مساعد المعلمين'}</td>
+                    <td className="py-2 pr-4">{language === 'en' ? 'Depends on the configured Google service. Processing may occur outside Europe.' :
+                      language === 'he' ? 'תלוי בשירות Google שמוגדר. המידע עשוי להיות מעובד מחוץ לאירופה.' :
+                      'يتوقف على خدمة Google المُعدّة. قد تُعالج البيانات خارج أوروبا.'}</td>
                   </tr>
                   <tr className="border-b border-surface-container/50">
                     <td className="py-2 pr-4 font-medium">Google Cloud (Text-to-Speech)</td>

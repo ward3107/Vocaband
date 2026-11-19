@@ -71,13 +71,9 @@ export const HOSTING_REGIONS = {
   cloudflare: "Global edge network",
   googleAuth: "Global (US-anchored)",
   anthropic: "United States",
-  // Gemini OCR currently runs on the AI Studio API
-  // (generativelanguage.googleapis.com), which is NOT regionally
-  // pinned — see audit finding H-5 (2026-05-23) and the operator
-  // task "Migrate Gemini to Vertex AI" in docs/operator-tasks.md
-  // for the region-pinned + no-training migration plan.  Text-to-
-  // Speech is also Google-global on the public v1 endpoint.
-  googleCloud: "Google-global (AI Studio API; not regionally pinned — migration to Vertex AI EU pending)",
+  // The server supports both Vertex AI and AI Studio. Confirm the active service,
+  // model and contract before claiming a specific processing location.
+  googleCloud: "Depends on the configured Google service. Processing may occur outside Europe.",
   googleFonts: "Global edge network",
   sentry: "EU (Germany) — *.ingest.de.sentry.io",
   // Firebase Cloud Messaging routes Web Push to Android/Chrome devices.
@@ -253,11 +249,11 @@ export const THIRD_PARTY_REGISTRY: ThirdPartyEntry[] = [
   {
     name: "Google Cloud (Gemini API)",
     purpose: "Server-side OCR of teacher-uploaded vocabulary list images (replaces previous in-process Tesseract.js), and the teacher dashboard AI Help Assistant (answers free-text / spoken how-to questions)",
-    dataCategories: ["uploaded image bytes (typically a worksheet photo containing only English words)", "teacher-typed or spoken help questions plus minimal non-identifying UI context (interface language, a hasClasses boolean, and the pending-approvals count — no names, class codes, or student data)"],
+    dataCategories: ["teacher-uploaded vocabulary images", "teacher help questions and basic interface context (language, whether the teacher has classes, and the number of pending approvals)"],
     processorOnly: true,
     hostingRegion: HOSTING_REGIONS.googleCloud,
-    endpoint: "generativelanguage.googleapis.com (AI Studio API)",
-    notes: "Triggered only on explicit teacher action.  Image discarded after the API returns the extracted text; not stored on Vocaband infrastructure.  AI Help Assistant (/api/teacher-assistant): only the teacher's free-text question and the minimal UI context above are sent — tapping a preset question is answered fully locally with no API call, and no student personal data is ever transmitted.  CURRENT TIER (2026-05-23): AI Studio API via aistudio.google.com — Google's Pay-As-You-Go terms apply when billing is enabled in the GCP project; the free tier may use prompts for product improvement and model training.  Operator action: verify the project's billing status and enable Pay-As-You-Go before processing any data the audit cycle has not blessed for free-tier disclosure.  Migration to Vertex AI Gemini (region-pinned, no-training contract) is tracked at docs/operator-tasks.md.",
+    endpoint: "Google AI Studio API or Vertex AI, depending on configuration",
+    notes: "Used on teacher request. Preset help questions are answered locally. Teachers should leave personal information out of uploads and help questions. Verify the active Google service, applicable terms, and processing region before permitting confidential or personal information.",
     transfer: {
       destination: "Google-global (AI Studio API endpoint; US parent entity)",
       mechanism: "dpf",
