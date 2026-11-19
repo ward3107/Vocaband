@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
+import { releaseScanPins, scanPinMigrationUrl, scanPinVersion } from './release-class-entry-migration-pins.mjs';
 
 export const version = '20261019175511';
 export const migrationUrl = new URL(`../supabase/migrations/${version}_class_live_entry.sql`, import.meta.url);
@@ -197,6 +198,10 @@ async function main() {
     if (!Array.isArray(rows)) throw new Error('Unexpected Supabase database response.');
     return rows;
   };
+  if (ref !== 'ilbeskwldyrleltnxyrp') throw new Error('This release requires the Vocaband production project.');
+  const scanSql = await readFile(scanPinMigrationUrl, 'utf8');
+  const scanState = await releaseScanPins({ request, sql: scanSql, apply: mode === 'apply' });
+  console.log(`Classroom PIN migration ${scanPinVersion}: ${scanState}.`);
   const state = await releaseClassEntry({ request, sql, apply: mode === 'apply' });
   console.log(`Class entry migration ${version}: ${state}.`);
   if (state === 'applied') console.log('Verified history, RLS, complete function and policy definitions, columns, constraints, indexes, close trigger, Realtime, authenticated/service privileges and anonymous-access denial.');
