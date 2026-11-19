@@ -37,6 +37,7 @@ export default function QrScannerModal({ onDetect, onCancel, onUnsupported }: Qr
     language === "he" ? he : language === "ar" ? ar : en;
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -56,6 +57,14 @@ export default function QrScannerModal({ onDetect, onCancel, onUnsupported }: Qr
     }
   }, []);
   useBackLayer(() => { stop(); onCancel(); }, { priority: 10000 });
+
+  useEffect(() => {
+    const previous = document.activeElement;
+    closeRef.current?.focus();
+    return () => {
+      if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
+    };
+  }, []);
 
   useEffect(() => {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -135,9 +144,21 @@ export default function QrScannerModal({ onDetect, onCancel, onUnsupported }: Qr
       role="dialog"
       aria-modal="true"
       aria-label={L("Scan QR code", "סריקת קוד QR", "مسح رمز QR")}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key !== 'Tab') return;
+        const buttons = e.currentTarget.querySelectorAll<HTMLButtonElement>('button');
+        const first = buttons[0];
+        const last = buttons[buttons.length - 1];
+        if (document.activeElement === (e.shiftKey ? first : last)) {
+          e.preventDefault();
+          (e.shiftKey ? last : first)?.focus();
+        }
+      }}
     >
       <div className="absolute top-0 inset-x-0 z-10 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/60 to-transparent">
         <button
+          ref={closeRef}
           type="button"
           onClick={() => { stop(); onCancel(); }}
           aria-label={L("Close", "סגור", "إغلاق")}

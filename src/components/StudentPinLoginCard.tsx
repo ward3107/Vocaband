@@ -18,6 +18,7 @@ interface RosterEntry {
 
 interface Props {
   classCode: string;
+  guidedJoin?: boolean;
   onStepChange?: (step: 'name' | 'pin') => void;
   onBusyChange?: (busy: boolean) => void;
   /** Optional student_profiles.id from `?s=` on the teacher invite link.
@@ -44,6 +45,7 @@ const PIN_REGEX = /^[A-HJ-KM-NP-Z2-9]{6}$/;
 
 const StudentPinLoginCard: FC<Props> = ({
   classCode,
+  guidedJoin = false,
   prefilledStudentId,
   onSuccess,
   onTier2Login,
@@ -53,8 +55,9 @@ const StudentPinLoginCard: FC<Props> = ({
   const { language, dir, isRTL } = useLanguage();
   const t = studentPinLoginT[language];
   const scanCopy = scanPinT[language];
-  const pinWindow = useScanWindow(classCode);
-  const [scan, setScan] = useState<{ id: string; profile: string | null } | null>(null);
+  const [scan, setScan] = useState<{ profile: string | null } | null>(null);
+  const availability = useScanWindow(classCode, Boolean(scan));
+  const [showRoster, setShowRoster] = useState(!guidedJoin);
   const [delivered, setDelivered] = useState<string | null>(null);
   const [roster, setRoster] = useState<RosterEntry[]>([]);
   const [rosterLoading, setRosterLoading] = useState(true);
@@ -78,7 +81,7 @@ const StudentPinLoginCard: FC<Props> = ({
   const nameListRef = useRef<HTMLDivElement>(null);
   const pinInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Load the class roster on mount (or when classCode changes).
+  // Shared invites need the class list only once a returning student chooses it.
   const loadRoster = useCallback(async () => {
     if (!classCode || classCode.length < 3) {
       setRoster([]);
@@ -107,9 +110,8 @@ const StudentPinLoginCard: FC<Props> = ({
   }, [classCode, t]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadRoster();
-  }, [loadRoster]);
+    if (showRoster) void loadRoster();
+  }, [loadRoster, showRoster]);
 
   // Teacher-invite-link prefill: once the roster has loaded, if the URL
   // carried a ?s=<student_profile_id> and it matches a row, pre-select
@@ -136,14 +138,16 @@ const StudentPinLoginCard: FC<Props> = ({
   // panel into view — on mobile this cues the keyboard and makes sure the
   // freshly-revealed field isn't below the fold.
   const pinPanelRef = useRef<HTMLDivElement | null>(null);
+  const enterRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
-    if (!selected) return;
+    if (!selected || scan) return;
     const id = window.setTimeout(() => {
-      if (delivered !== selected.id) pinInputRef.current?.focus();
+      if (delivered === selected.id) enterRef.current?.focus();
+      else pinInputRef.current?.focus();
       pinPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 80);
     return () => window.clearTimeout(id);
-  }, [selected, delivered]);
+  }, [selected, delivered, scan]);
 
   const handlePick = (s: RosterEntry) => {
     setDelivered(null);
@@ -152,6 +156,7 @@ const StudentPinLoginCard: FC<Props> = ({
     setPinError(null);
     // Different student selected → start the wrong-PIN counter fresh.
     setWrongPinCount(0);
+    if (guidedJoin) setScan({ profile: s.id });
   };
 
   // "Not me" / change — clear the selection to collapse the PIN panel
@@ -166,6 +171,15 @@ const StudentPinLoginCard: FC<Props> = ({
     requestAnimationFrame(() => nameListRef.current?.focus());
   };
   useBackLayer(clearSelection, { enabled: Boolean(selected), priority: 20, escape: false });
+  const returnToChoices = () => {
+    setShowRoster(false);
+    setFilter('');
+  };
+  useBackLayer(returnToChoices, {
+    enabled: guidedJoin && showRoster && !selected,
+    priority: 15,
+    escape: false,
+  });
 
   const handleSubmit = async () => {
     if (!selected || signingIn) return;
@@ -231,15 +245,31 @@ const StudentPinLoginCard: FC<Props> = ({
   // code rather than hunt the grid.
   const isCoded = roster.length > 0 && roster.every((r) => /^\d/.test(r.displayName));
   const showFilter = roster.length > 8 || isCoded;
+  const canOfferNewPin = availability.window?.can_add !== false;
+  const deliveredPin = selected !== null && delivered === selected.id;
+  const newStudentButton = (
+    <button
+      type="button"
+      className="min-h-12 w-full rounded-xl bg-violet-700 px-4 py-3 text-base font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-700"
+      onClick={() => setScan({ profile: null })}
+    >
+      {scanCopy.newStudent}
+    </button>
+  );
 
   if (scan)
     return (
       <StudentScanPin
         code={classCode}
-        windowId={scan.id}
+        availability={availability}
         profile={scan.profile}
         language={language}
-        onBack={() => setScan(null)}
+        onRetryWindow={availability.refresh}
+        onBack={() => {
+          if (guidedJoin && scan.profile) clearSelection();
+          setScan(null);
+        }}
+        onUsePin={scan.profile ? () => setScan(null) : undefined}
         onReady={(row) => {
           consumedPrefillRef.current = true;
           setSelected({
@@ -257,21 +287,27 @@ const StudentPinLoginCard: FC<Props> = ({
     );
   return (
     <div className="space-y-4 text-[#1d2940]" dir={dir}>
-      {!selected && pinWindow?.can_add && (
-        <button
-          type="button"
-          className="min-h-12 w-full rounded-xl bg-violet-700 px-4 text-base font-extrabold text-white"
-          onClick={() => setScan({ id: pinWindow.id, profile: null })}
-        >
-          {scanCopy.newStudent}
-        </button>
+      {!selected && !showRoster && (
+        <div className="grid gap-3">
+          {canOfferNewPin && newStudentButton}
+          <button
+            type="button"
+            className="min-h-12 w-full rounded-xl border border-violet-200 px-4 py-3 text-base font-bold text-violet-800 hover:bg-violet-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-700"
+            onClick={() => setShowRoster(true)}
+          >
+            {scanCopy.returning}
+          </button>
+        </div>
       )}
-      {!selected && (
+      {!selected && showRoster && (
         <div ref={nameListRef} tabIndex={-1} className="outline-none">
-          <h3 className="mb-4 flex items-center gap-2 text-xl font-extrabold">
+          {!guidedJoin && availability.window?.can_add && (
+            <div className="mb-4">{newStudentButton}</div>
+          )}
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-bold">
             <KeyRound size={20} className="text-violet-600" aria-hidden="true" />
-            {t.pickYourName}
-          </h3>
+            {isCoded ? t.findYourCode : t.pickYourName}
+          </h2>
           {rosterLoading ? (
             <p role="status" className="py-8 text-center text-sm text-[#606b7e]">
               {t.loading}
@@ -294,13 +330,10 @@ const StudentPinLoginCard: FC<Props> = ({
                 {classEntryT[language].retry}
               </button>
             </div>
-          ) : roster.length === 0 && pinWindow?.can_add ? null : roster.length === 0 ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-6 text-center">
-              <p className="mb-2 text-4xl" aria-hidden="true">
-                🦊
-              </p>
-              <p className="font-bold text-amber-900">{t.emptyRosterTitle}</p>
-              <p className="mt-2 text-sm text-amber-800">{t.emptyRosterBody}</p>
+          ) : roster.length === 0 ? (
+            <div className="rounded-xl bg-slate-50 px-4 py-3">
+              <p className="font-bold">{t.emptyRosterTitle}</p>
+              <p className="mt-1 text-sm text-slate-700">{t.emptyRosterBody}</p>
             </div>
           ) : (
             <>
@@ -321,21 +354,21 @@ const StudentPinLoginCard: FC<Props> = ({
                   />
                 </div>
               )}
-              <div className="grid max-h-[40dvh] grid-cols-2 gap-3 overflow-y-auto p-1">
-                {filtered.map((student, i) => (
+              <div className="grid max-h-[45dvh] gap-2 overflow-y-auto p-1 sm:grid-cols-2">
+                {filtered.map((student) => (
                   <button
                     key={student.id}
                     type="button"
                     onClick={() => handlePick(student)}
-                    className="group flex min-h-24 touch-manipulation flex-col items-center justify-center gap-2 rounded-2xl border border-[#dfe2e9] bg-white px-2 py-3 text-center transition-colors hover:border-violet-500 hover:bg-[#f8f5ff] focus-visible:outline-2 focus-visible:outline-violet-600"
+                    className="flex min-h-12 min-w-0 touch-manipulation items-center gap-2 rounded-xl border border-[#dfe2e9] bg-white px-3 py-2 text-start hover:bg-violet-50 focus-visible:outline-2 focus-visible:outline-violet-600"
                   >
                     <span
                       aria-hidden="true"
-                      className={`grid h-12 w-12 place-items-center rounded-2xl text-3xl ${['bg-[#eef4db]', 'bg-[#ebe5ff]', 'bg-[#fff0d3]', 'bg-[#ffebe1]'][i % 4]}`}
+                      className="grid size-8 shrink-0 place-items-center rounded-lg bg-slate-50 text-xl"
                     >
                       {student.avatar}
                     </span>
-                    <span className="break-words text-base font-extrabold">
+                    <span className="min-w-0 break-words text-base font-bold">
                       {student.displayName}
                     </span>
                   </button>
@@ -348,20 +381,29 @@ const StudentPinLoginCard: FC<Props> = ({
               </div>
             </>
           )}
+          {guidedJoin && (
+            <button
+              type="button"
+              className="mt-1 min-h-11 px-2 text-sm font-bold text-violet-800 underline"
+              onClick={returnToChoices}
+            >
+              {scanCopy.cancel}
+            </button>
+          )}
         </div>
       )}
       {selected && (
         <div ref={pinPanelRef} className="space-y-5">
-          <div className="flex items-center gap-3 rounded-2xl bg-[#f2f5e9] p-4">
+          <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
             <span
-              className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white text-4xl"
+              className="grid size-9 shrink-0 place-items-center rounded-lg bg-white text-xl"
               aria-hidden="true"
             >
               {selected.avatar}
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold text-[#606b7e]">{t.signingInAs}</p>
-              <p className="mt-0.5 break-words text-xl font-extrabold">{selected.displayName}</p>
+              <p className="mt-0.5 break-words text-base font-bold">{selected.displayName}</p>
             </div>
             <button
               type="button"
@@ -373,49 +415,58 @@ const StudentPinLoginCard: FC<Props> = ({
               {t.notMe}
             </button>
           </div>
-          <div>
-            <label htmlFor="student-pin-input" className="mb-2 block text-base font-bold">
-              {delivered === selected.id ? scanCopy.delivered : t.typeYourPin}
-            </label>
-            <input
-              ref={pinInputRef}
-              id="student-pin-input"
-              data-sentry-block
-              name="pin"
-              type="text"
-              dir="ltr"
-              inputMode="text"
-              autoComplete="one-time-code"
-              autoCapitalize="characters"
-              spellCheck={false}
-              maxLength={PIN_LENGTH}
-              disabled={signingIn}
-              readOnly={delivered === selected.id}
-              value={pin}
-              onChange={(e) => {
-                setPin(
-                  e.target.value
-                    .toUpperCase()
-                    .replace(/[^A-Z0-9]/g, '')
-                    .slice(0, PIN_LENGTH)
-                );
-                if (pinError) setPinError(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && pin.length === PIN_LENGTH) handleSubmit();
-              }}
-              placeholder="••••••"
-              className="min-h-16 w-full rounded-2xl border-2 border-[#cdd1db] bg-[#f8f9fc] px-3 py-4 text-center font-mono text-3xl font-black tracking-[.25em] text-[#1d2940] placeholder:text-[#adb4c2] focus:border-violet-600 focus:outline-2 focus:outline-violet-200"
-              aria-invalid={Boolean(pinError)}
-              aria-describedby={pinError ? 'pin-error' : undefined}
-            />
-          </div>
-          {pinWindow && delivered !== selected.id && (
+          {deliveredPin ? (
+            <div className="rounded-2xl bg-violet-50 p-4 text-center" data-sentry-block>
+              <p className="text-sm font-semibold text-slate-700">{scanCopy.pin}</p>
+              <bdi dir="ltr" className="select-all font-mono text-4xl font-black tracking-widest">
+                {pin}
+              </bdi>
+              <p className="text-sm text-slate-700">{scanCopy.delivered}</p>
+            </div>
+          ) : (
+            <div>
+              <label htmlFor="student-pin-input" className="mb-2 block text-base font-bold">
+                {t.typeYourPin}
+              </label>
+              <input
+                ref={pinInputRef}
+                id="student-pin-input"
+                data-sentry-block
+                name="pin"
+                type="text"
+                dir="ltr"
+                inputMode="text"
+                autoComplete="one-time-code"
+                autoCapitalize="characters"
+                spellCheck={false}
+                maxLength={PIN_LENGTH}
+                disabled={signingIn}
+                value={pin}
+                onChange={(e) => {
+                  setPin(
+                    e.target.value
+                      .toUpperCase()
+                      .replace(/[^A-Z0-9]/g, '')
+                      .slice(0, PIN_LENGTH)
+                  );
+                  if (pinError) setPinError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && pin.length === PIN_LENGTH) handleSubmit();
+                }}
+                placeholder="••••••"
+                className="min-h-16 w-full rounded-2xl border-2 border-[#cdd1db] bg-[#f8f9fc] px-3 py-4 text-center font-mono text-3xl font-black tracking-[.25em] text-[#1d2940] placeholder:text-[#adb4c2] focus:border-violet-600 focus:outline-2 focus:outline-violet-200"
+                aria-invalid={Boolean(pinError)}
+                aria-describedby={pinError ? 'pin-error' : undefined}
+              />
+            </div>
+          )}
+          {!deliveredPin && (
             <button
               type="button"
               className="min-h-11 px-2 font-bold text-violet-700 underline"
               disabled={signingIn}
-              onClick={() => setScan({ id: pinWindow.id, profile: selected.id })}
+              onClick={() => setScan({ profile: selected.id })}
             >
               {scanCopy.existing}
             </button>
@@ -432,14 +483,13 @@ const StudentPinLoginCard: FC<Props> = ({
           )}
           <button
             type="button"
+            ref={enterRef}
             onClick={handleSubmit}
             disabled={pin.length !== PIN_LENGTH || signingIn}
-            className="flex min-h-14 w-full touch-manipulation items-center justify-between gap-3 rounded-2xl bg-[#1d2940] p-3 ps-5 text-lg font-extrabold text-white hover:bg-[#303f5b] disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+            className="flex min-h-12 w-full touch-manipulation items-center justify-center gap-2 rounded-xl bg-violet-700 px-4 py-3 text-lg font-bold text-white hover:bg-violet-800 disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-700"
           >
-            {signingIn ? t.signingIn : t.letsGo}
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#d8f36a] text-[#1d2940]">
-              <ArrowRight size={20} aria-hidden="true" className="rtl:rotate-180" />
-            </span>
+            {signingIn ? t.signingIn : deliveredPin ? scanCopy.enterClass : t.letsGo}
+            <ArrowRight size={18} aria-hidden="true" className="rtl:rotate-180" />
           </button>
         </div>
       )}
