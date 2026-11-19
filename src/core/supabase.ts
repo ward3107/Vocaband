@@ -521,7 +521,7 @@ export async function fetchUserProfile(
     if (userRow) {
       const user = mapUser(userRow);
       await Promise.all([
-        attachSchoolPlan(user),
+        user.role === 'teacher' ? attachSchoolPlan(user) : undefined,
         user.role === 'teacher' && user.plan === 'free'
           ? supabase.rpc('billing_my_plan').then(({data}) => {
               if (!data?.tier) return;
