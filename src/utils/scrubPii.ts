@@ -6,9 +6,8 @@
  * Closes QA framework item #9 (PII-in-logs audit + Sentry filter).
  *
  * Defends against INCIDENTAL leaks — emails in error messages, JWTs
- * in URLs, Authorization headers in breadcrumbs.  Deliberate identity
- * tagging via `Sentry.setUser({ email })` is still allowed because
- * it's a UX-vs-privacy tradeoff the operator can flip per-environment.
+ * in URLs, Authorization headers in breadcrumbs. The browser attaches
+ * the opaque account ID explicitly when a user signs in.
  *
  * Strategy:
  *   1. Walk the entire event JSON recursively.

@@ -108,9 +108,21 @@ export function initSentry(): void {
     // line from feeding String.replace a megabyte-long input and
     // amplifying any per-character work into a stack overflow.
     maxValueLength: 4096,
-    // Don't send default PII (cookies, IP). We attach the Supabase uid
-    // explicitly via setSentryUser() when a teacher/student signs in.
-    sendDefaultPii: false,
+    // The v11 browser SDK opts into these categories by default. Classroom
+    // error reports use the URL path, browser metadata and an opaque user ID.
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: { request: { allow: ["user-agent"] }, response: false },
+      httpBodies: [],
+      urlQueryParams: false,
+      graphQL: { document: false, variables: false },
+      genAI: { inputs: false, outputs: false },
+      mcp: { inputs: false, outputs: false },
+      databaseQueryData: false,
+      queues: false,
+      stackFrameVariables: false,
+    },
     // Defensive PII scrubber for incidental leaks — see
     // `src/utils/scrubPii.ts` and `src/__tests__/scrubPii.test.ts`.
     // Strips emails, JWTs, Bearer tokens, Supabase keys, and the
@@ -207,12 +219,8 @@ export function addReplayIntegrationLazy(): void {
 
 /** Attach the signed-in user to subsequent Sentry events.
  * Call after a successful login so issues show "this affected user X". */
-export function setSentryUser(user: { uid: string; role?: string; email?: string }): void {
-  Sentry.setUser({
-    id: user.uid,
-    email: user.email,
-    username: user.role,
-  });
+export function setSentryUser(uid: string): void {
+  Sentry.setUser({ id: uid });
 }
 
 /** Clear user context on sign-out so a subsequent anonymous error
