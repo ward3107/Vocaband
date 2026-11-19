@@ -5,6 +5,8 @@ import { useLanguage, type Language } from '../hooks/useLanguage';
 import { teacherDashboardT } from '../locales/teacher/dashboard';
 import { buildClassJoinUrl } from '../utils/classJoin';
 import { classEntryT } from '../locales/class-entry';
+import TeacherScanPins from './TeacherScanPins';
+import { scanPinT } from '../locales/student/scan-pin';
 import ClassEntryGuide from './ClassEntryGuide';
 import ClassEntryLanguagePicker from './ClassEntryLanguagePicker';
 import ModalShell, { ModalPrimaryButton } from './ui/ModalShell';
@@ -46,7 +48,11 @@ function ShareClassLinkContent({
   const [copied, setCopied] = useState<'link' | 'code' | null>(null);
   const [copyFailed, setCopyFailed] = useState(false);
   const url = buildClassJoinUrl(code, { className, assignmentId, playMode });
-  const instructions = entry.instructions(className, url, code);
+  const [scanActive, setScanActive] = useState(false);
+  const scanCopy = scanPinT[language];
+  const instructions = scanActive
+    ? [className, url, '🏫 ' + t.shareClassLinkCodeLabel + ': ' + code, scanCopy.share].join('\n')
+    : entry.instructions(className, url, code);
   const baseInvite = !assignmentId && !playMode;
   const L = (en: string, he: string, ar: string) =>
     language === 'he' ? he : language === 'ar' ? ar : en;
@@ -94,8 +100,14 @@ function ShareClassLinkContent({
         onClick={() => void copy(code, 'code')}
         className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 font-mono text-xl font-bold"
       >
-        <bdi dir="ltr" className="select-all">{code}</bdi>
-        {copied === 'code' ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
+        <bdi dir="ltr" className="select-all">
+          {code}
+        </bdi>
+        {copied === 'code' ? (
+          <Check size={16} aria-hidden="true" />
+        ) : (
+          <Copy size={16} aria-hidden="true" />
+        )}
       </button>
     </div>
   );
@@ -112,7 +124,9 @@ function ShareClassLinkContent({
       closeAriaLabel={L('Close', 'סגירה', 'إغلاق')}
       subtitle={
         baseInvite
-          ? entry.shareHint
+          ? scanActive
+            ? scanCopy.teacherHint
+            : entry.shareHint
           : L(
               'The link opens this activity after the student enters their class.',
               'הקישור פותח את הפעילות אחרי כניסת התלמיד לכיתה.',
@@ -144,6 +158,7 @@ function ShareClassLinkContent({
           </div>
         </div>
       )}
+      {baseInvite && <TeacherScanPins code={code} language={language} onActive={setScanActive} />}
       {!baseInvite && <p className="mb-3 text-base font-bold">{entry.share}</p>}
       <a
         href={`https://wa.me/?text=${encodeURIComponent(instructions)}`}
@@ -193,7 +208,13 @@ function ShareClassLinkContent({
             {entry.teacherHelp}
           </summary>
           <div className="pb-3">
-            <ClassEntryGuide language={language} className={className} classCode={code} url={url} />
+            <ClassEntryGuide
+              language={language}
+              className={className}
+              classCode={code}
+              url={url}
+              scanInstructions={scanActive ? instructions : undefined}
+            />
           </div>
         </details>
       )}

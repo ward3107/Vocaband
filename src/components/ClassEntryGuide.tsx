@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Check, Copy } from 'lucide-react';
 import type { Language } from '../hooks/useLanguage';
+import { scanPinT } from '../locales/student/scan-pin';
 import { classEntryT } from '../locales/class-entry';
 
 /** One instruction next to each action, with the same words students see. */
@@ -9,35 +10,37 @@ export default function ClassEntryGuide({
   className,
   classCode,
   url,
+  scanInstructions,
 }: {
   language: Language;
   className: string;
   classCode: string;
   url: string;
+  scanInstructions?: string;
 }) {
   const t = classEntryT[language];
   const [copied, setCopied] = useState(false);
   const [failed, setFailed] = useState(false);
-  const instructions = t.instructions(className, url, classCode);
+  const instructions = scanInstructions ?? t.instructions(className, url, classCode);
   return (
     <div className="space-y-3">
       <ol className="space-y-3 text-[var(--vb-text-primary)]">
         <li className="rounded-xl bg-[var(--vb-surface-alt)] p-4">
           <p className="text-base font-bold">1. {t.prepare}</p>
           <p className="mt-1 text-sm leading-relaxed text-[var(--vb-text-secondary)]">
-            {t.prepareHint}
+            {scanInstructions ? scanPinT[language].teacherHint : t.prepareHint}
           </p>
         </li>
         <li className="rounded-xl bg-[var(--vb-surface-alt)] p-4">
           <p className="text-base font-bold">2. {t.share}</p>
           <p className="mt-1 text-sm leading-relaxed text-[var(--vb-text-secondary)]">
-            {t.shareHint}
+            {scanInstructions ? t.fixedLink : t.shareHint}
           </p>
         </li>
         <li className="rounded-xl bg-[var(--vb-surface-alt)] p-4">
           <p className="text-base font-bold">3. {t.explain}</p>
           <p className="mt-1 text-sm leading-relaxed text-[var(--vb-text-secondary)]">
-            {t.explainHint}
+            {scanInstructions ? scanPinT[language].share : t.explainHint}
           </p>
         </li>
       </ol>
