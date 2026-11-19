@@ -8,6 +8,21 @@ export const LAST_CLASS_KEY = 'vocaband_last_class';
 
 export type JoinTarget = { kind: 'class' | 'game'; code: string };
 
+const PIN_VERIFICATION_PREFIX = 'vocaband-pin:';
+
+export function buildPinVerificationQr(requestId: string, challenge: string) {
+  return `${PIN_VERIFICATION_PREFIX}${requestId}/${challenge}`;
+}
+
+/** An approval QR carries only the one-time verification number, never a login PIN. */
+export function parsePinVerificationQr(raw: string) {
+  if (!raw.startsWith(PIN_VERIFICATION_PREFIX)) return null;
+  const [requestId, challenge, extra] = raw.slice(PIN_VERIFICATION_PREFIX.length).split('/');
+  if (extra !== undefined || !STUDENT_ID.test(requestId) || !/^\d{6}$/.test(challenge ?? ''))
+    return null;
+  return { requestId, challenge };
+}
+
 export function parseJoinTarget(raw: string, preferred?: JoinTarget['kind']): JoinTarget | null {
   const input = raw
     .trim()

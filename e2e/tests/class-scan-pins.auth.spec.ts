@@ -1,6 +1,8 @@
 import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures/auth.fixture';
 import { mockSupabase, presetLocalStorage } from '../fixtures/supabase-mock';
+import { FAKE_AUTH_SESSION, TEST_CLASS, TEST_SUPABASE_URL } from '../fixtures/test-data';
+import { buildClassJoinUrl } from '../../src/utils/classJoin';
 import {
   PRIVACY_POLICY_VERSION,
   STUDENT_VISIBILITY_VERSION,
@@ -43,7 +45,9 @@ for (const kind of ['new', 'existing'] as const) {
           approved = false,
           consumed = false,
           device = '',
-          opened = false;
+          opened = false,
+          signIns = 0,
+          rosterReads = 0;
         const name = kind === 'new' ? 'Mint Fox' : 'Blue Owl';
         const row = { id: requestId, display_name: name, is_new: kind === 'new' };
         const profile = {
@@ -52,6 +56,15 @@ for (const kind of ['new', 'existing'] as const) {
           email: 'fixture@school.example',
           avatar: '🦊',
         };
+        await phone.route(`${TEST_SUPABASE_URL}/auth/v1/token**`, async (route) => {
+          expect(new URL(route.request().url()).searchParams.get('grant_type')).toBe('password');
+          expect(route.request().postDataJSON()).toMatchObject({
+            email: profile.email,
+            password: 'ABCD23',
+          });
+          signIns += 1;
+          await route.fulfill({ json: FAKE_AUTH_SESSION });
+        });
         for (const client of [teacherPage, phone]) {
           await client.route('**/rest/v1/rpc/*', async (route) => {
             const fn = route.request().url().split('/').pop();
@@ -65,6 +78,7 @@ for (const kind of ['new', 'existing'] as const) {
               case 'class_pin_availability':
                 return route.fulfill({ json: opened ? { id: windowId, can_add: true } : null });
               case 'class_roster_for_login':
+                rosterReads += 1;
                 return route.fulfill({ json: kind === 'new' ? [] : [profile] });
               case 'teacher_pending_pin_requests':
                 return route.fulfill({ json: waiting && !approved ? [row] : [] });
@@ -116,46 +130,80 @@ for (const kind of ['new', 'existing'] as const) {
             }
           });
         }
+        const shared = new URL(
+          buildClassJoinUrl(TEST_CLASS.code, { origin: baseURL, className: TEST_CLASS.name })
+        );
+        await phone.goto(shared.pathname + shared.search);
+        const newStudent = phone.getByRole('button', { name: 'I’m new to this class · Get a PIN' });
+        await expect(newStudent).toBeVisible();
+        await expect(
+          phone.getByRole('button', { name: 'I’m already in this class' })
+        ).toBeVisible();
+        await expect(phone.getByRole('heading', { name: 'Pick your name' })).toHaveCount(0);
+        await expect(phone.getByRole('textbox')).toHaveCount(0);
+        expect(rosterReads).toBe(0);
+        if (kind === 'new') {
+          await newStudent.click();
+          await expect(phone.getByText(/Ask your teacher to open Add students/)).toBeVisible();
+          await expect(phone.getByRole('textbox', { name: 'My class nickname' })).toHaveCount(0);
+        }
+
         await teacherPage.goto('/');
         await teacherPage.getByRole('button', { name: 'Add students', exact: true }).click();
         const dialog = teacherPage.getByRole('dialog');
         await expect(dialog.getByText(/Keep this window open/).first()).toBeVisible();
+        await expect(
+          dialog.getByText('Students can scan the QR code. Requests will appear here.')
+        ).toBeVisible();
         const message = new URL(
           (await dialog.getByRole('link', { name: /WhatsApp/ }).getAttribute('href'))!
         ).searchParams.get('text')!;
-        const shared = new URL(message.split('\n')[1]);
-        expect(shared.searchParams.get('class')).toBe('TEST01');
+        expect(message.split('\n')[1]).toBe(shared.href);
         expect(message).not.toContain('ABCD23');
-        await phone.goto(shared.pathname + shared.search);
         if (kind === 'new') {
-          await phone.getByRole('button', { name: 'I’m new to this class · Get a PIN' }).click();
+          // The open session is detected without re-scanning the link or typing a class code.
+          await expect(phone.getByRole('textbox', { name: 'My class nickname' })).toBeVisible({
+            timeout: 15000,
+          });
           await phone.getByRole('textbox', { name: 'My class nickname' }).fill(name);
           await phone.getByRole('button', { name: 'Get my PIN', exact: true }).click();
           await expect(phone.getByText('ABCD23', { exact: true })).toBeVisible();
+          await expect(phone.getByText('Waiting for teacher approval')).toBeVisible();
           await expect(dialog.getByRole('button', { name: 'Add to class' })).toBeVisible({
             timeout: 15000,
           });
           await dialog.getByRole('button', { name: 'Add to class' }).click();
         } else {
+          await phone.getByRole('button', { name: 'I’m already in this class' }).click();
           await phone.getByRole('button', { name: new RegExp(name) }).click();
-          await phone.getByRole('button', { name: 'Show my PIN on this phone' }).click();
           await expect(phone.getByText('304528')).toBeVisible();
+          await expect(
+            phone.getByRole('img', { name: 'Scan the QR code on the student’s phone' })
+          ).toBeVisible();
           await expect(phone.getByText('ABCD23')).toHaveCount(0);
           const verify = dialog.getByRole('textbox', {
             name: /Verify the student’s identity/,
           });
-          await expect(verify).toBeVisible({ timeout: 15000 });
+          await expect(
+            dialog.getByRole('button', { name: 'Scan the QR code on the student’s phone' })
+          ).toBeVisible({ timeout: 15000 });
+          await expect(verify).toHaveCount(0);
+          await dialog.getByRole('button', { name: 'Enter verification number' }).click();
           await expect(dialog.getByRole('button', { name: 'Approve and send PIN' })).toBeDisabled();
           await expect(dialog.getByText('304528')).toHaveCount(0);
           await verify.fill('304528');
           await dialog.getByRole('button', { name: 'Approve and send PIN' }).click();
         }
-        await expect(phone.locator('#student-pin-input')).toHaveValue('ABCD23', { timeout: 15000 });
-        await expect(phone.locator('#student-pin-input')).toHaveAttribute('readonly', '');
+        const enter = phone.getByRole('button', { name: 'Enter the class', exact: true });
+        await expect(enter).toBeEnabled({ timeout: 15000 });
+        await expect(phone.getByText('ABCD23', { exact: true })).toBeVisible();
+        await expect(phone.locator('#student-pin-input')).toHaveCount(0);
         await expect.poll(() => consumed).toBe(true);
         expect(phone.url()).not.toContain('ABCD23');
         expect(phone.url()).not.toContain(device);
         await expect(dialog.getByText('ABCD23')).toHaveCount(0);
+        await enter.click();
+        await expect.poll(() => signIns).toBe(1);
       } finally {
         await phone.context().close();
       }
