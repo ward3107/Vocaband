@@ -1,0 +1,22 @@
+name: Teacher billing and notices
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: teacher-billing-and-notices
+  cancel-in-progress: false
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Reconcile payments and deliver opted-in teacher notices
+        env:
+          JOB_TOKEN: ${{ secrets.VOCABAND_LIFECYCLE_TOKEN }}
+        run: |
+          if [ -z "$JOB_TOKEN" ]; then exit 0; fi
+          curl --silent --show-error --fail --max-time 480 --request POST \
+            --header "Authorization: Bearer $JOB_TOKEN" \
+            https://vocaband.com/api/teacher/billing/run

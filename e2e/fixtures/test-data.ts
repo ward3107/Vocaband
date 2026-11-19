@@ -122,6 +122,7 @@ export const TEST_MANAGER = {
   email: 'principal@test.com',
   display_name: 'Principal',
   role: 'manager',
+  school_id: 'school-test',
   class_code: null,
   avatar: null,
   badges: [],

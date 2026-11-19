@@ -285,6 +285,19 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onGetStarted }) => {
   const { language, setLanguage, dir, isRTL, textAlign } = useLanguage();
   const t = demoTranslations[language];
 
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const quickCopy = {
+    en: { start: 'Try a vocabulary round', customize: 'Choose an avatar and game', guest: 'Demo learner' },
+    he: { start: 'מתחילים סבב תרגול', customize: 'בחירת דמות ומשחק', guest: 'תלמיד לדוגמה' },
+    ar: { start: 'جرّب جولة كلمات', customize: 'اختر شخصية ولعبة', guest: 'طالب تجريبي' },
+  }[language];
+
+  useEffect(() => {
+    const element = dialogRef.current;
+    element?.showModal();
+    return () => element?.close();
+  }, []);
+
   const [view, setView] = useState<DemoView>("welcome");
   const [shopTab, setShopTab] = useState<ShopTab>("avatars");
   const [avatar, setAvatar] = useState("🦊");
@@ -869,7 +882,10 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onGetStarted }) => {
   const xpTitle = getXpTitle(xp);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 overflow-auto" dir={dir}>
+    <dialog ref={dialogRef} aria-label={t.demoMode}
+      onCancel={(event) => { event.preventDefault(); onClose(); }}
+      className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none overflow-auto border-0 bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 p-0 text-white"
+      dir={dir}>
       {/* Ambient gradient mesh blobs — soft brand-color depth behind
           the demo content. Kept STATIC: the looping scale/rotate/drift
           read as a constant pulse behind every screen which, stacked
@@ -999,15 +1015,19 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onGetStarted }) => {
               </div>
 
               <motion.button
-                onClick={() => setView("avatar")}
+                onClick={() => { setDisplayName(quickCopy.guest); startGame("classic"); }}
                 type="button"
                 style={{ touchAction: 'manipulation' }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 className="w-full bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white py-4 rounded-xl font-black text-lg transition-all shadow-xl shadow-violet-500/40 border-2 border-white/30"
               >
-                {t.letsGo}
+                {quickCopy.start}
               </motion.button>
+              <button type="button" onClick={() => { setDisplayName(''); setView("avatar"); }}
+                className="mt-3 min-h-11 w-full rounded-xl border border-white/20 bg-white/10 px-3 text-sm font-bold text-white">
+                {quickCopy.customize}
+              </button>
 
               {/* Secondary CTA — the demo's audience is teachers, so offer a
                   direct path to the teacher-facing preview from the very
@@ -2888,7 +2908,7 @@ const DemoMode: React.FC<DemoModeProps> = ({ onClose, onGetStarted }) => {
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </dialog>
   );
 };
 

@@ -21,6 +21,7 @@
 // three hosts at the same time or events silently disappear.
 
 import * as Sentry from "@sentry/react";
+import { getCookieConsent } from "../hooks/useCookieConsent";
 import { scrubPii } from "../utils/scrubPii";
 
 // Same DSN as the Fly server uses (see SENTRY_DSN secret). Errors
@@ -64,12 +65,6 @@ export function initSentry(): void {
       /^https:\/\/(?:www\.|api\.|auth\.|audio\.)?vocaband\.com/,
       /^https:\/\/.*\.supabase\.co/,
     ],
-    // Replay sample rates picked up by the lazily-added replay
-    // integration (see addReplayIntegrationLazy).  Setting them here
-    // means the integration starts honouring them the instant it
-    // loads from the CDN, without re-passing them.
-    replaysSessionSampleRate: 0.1,
-    replaysOnErrorSampleRate: 1.0,
     // Auto-capture console errors and unhandled rejections (defaults).
     // Browser extensions inject scripts that throw in our context; we
     // silence the most common false positives so the issue list stays
@@ -122,10 +117,10 @@ export function initSentry(): void {
     // explicit cast (which would have to track the SDK's type
     // renames — `Event` → `ErrorEvent` between v7 and v9).
     beforeSend(event) {
-      return scrubPii(event);
+      return getCookieConsent()?.analytics ? scrubPii(event) : null;
     },
     beforeSendTransaction(event) {
-      return scrubPii(event);
+      return getCookieConsent()?.analytics ? scrubPii(event) : null;
     },
   });
 }
@@ -160,59 +155,9 @@ export function addBrowserTracingLazy(): void {
   });
 }
 
-/** Lazily add Sentry's session-replay integration AFTER first paint.
- *
- * Replay is ~50 KB gzipped — bundling it eagerly would blow up the
- * entry chunk and undo the school-Wi-Fi gains from R1-R4.  Instead
- * we let Sentry pull it from `browser.sentry-cdn.com` when the page
- * is idle, so it never competes with the user's first interaction.
- *
- * Privacy: `maskAllText` + `blockAllMedia` means recordings never
- * contain student names, chat, or media — defensible under the
- * Israeli MoE student-data rules and any future GDPR scrutiny.
- *
- * On any failure (school firewall blocks sentry-cdn, CSP mismatch,
- * offline at boot), this swallows silently.  Replay is opportunistic;
- * normal error capture continues regardless.
- */
-export function addReplayIntegrationLazy(): void {
-  if (!import.meta.env.PROD) return;
-  if (typeof window === "undefined") return;
-
-  const schedule = (cb: () => void): void => {
-    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
-    if (typeof ric === "function") {
-      ric(cb, { timeout: 5000 });
-    } else {
-      // Safari < 16.4 doesn't ship requestIdleCallback yet.  A small
-      // setTimeout still keeps us out of the user's critical path.
-      setTimeout(cb, 2000);
-    }
-  };
-
-  schedule(async () => {
-    try {
-      const replayIntegration = await Sentry.lazyLoadIntegration("replayIntegration");
-      Sentry.addIntegration(
-        replayIntegration({
-          maskAllText: true,
-          blockAllMedia: true,
-        }),
-      );
-    } catch {
-      // Best-effort — see comment above.
-    }
-  });
-}
-
-/** Attach the signed-in user to subsequent Sentry events.
- * Call after a successful login so issues show "this affected user X". */
+// Use the account role for diagnostics without linking student identities.
 export function setSentryUser(user: { uid: string; role?: string; email?: string }): void {
-  Sentry.setUser({
-    id: user.uid,
-    email: user.email,
-    username: user.role,
-  });
+  Sentry.setUser(user.role === 'student' ? null : { username: user.role });
 }
 
 /** Clear user context on sign-out so a subsequent anonymous error

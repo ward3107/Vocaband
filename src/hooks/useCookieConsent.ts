@@ -19,7 +19,7 @@
  * deferred-init telemetry (Sentry, Web Analytics) wake up the moment
  * the user opts in — without forcing a page reload.
  */
-import { useCallback, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useState, type MouseEvent } from "react";
 import type { CookiePreferences } from "../components/CookieBanner";
 
 const STORAGE_KEY = "vocaband_cookie_consent";
@@ -65,6 +65,12 @@ function persistAndNotify(preferences: CookiePreferences): void {
 
 export function useCookieConsent() {
   const [showCookieBanner, setShowCookieBanner] = useState(() => getCookieConsent() === null);
+  useEffect(() => {
+    const open = () => setShowCookieBanner(true);
+    window.addEventListener('vocaband:open-cookie-settings', open);
+    return () => window.removeEventListener('vocaband:open-cookie-settings', open);
+  }, []);
+
 
   const handleCookieAccept = useCallback((eventOrPreferences?: CookiePreferences | MouseEvent) => {
     // Ignore React events — they were accidentally passed before the fix.

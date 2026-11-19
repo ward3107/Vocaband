@@ -1,4 +1,4 @@
-import { useRef, useState, type ComponentProps } from 'react';
+import { Suspense, useRef, useState, type ComponentProps } from 'react';
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -9,7 +9,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import StudentPinLoginCard from '../components/StudentPinLoginCard';
-import JoinGameModal from '../components/JoinGameModal';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import ClassCodeForm from '../components/ClassCodeForm';
 import { useLanguage, ALL_LANGUAGES, languageNames } from '../hooks/useLanguage';
 import { classEntryT } from '../locales/class-entry';
@@ -24,6 +24,8 @@ import BrandWordmark from '../components/BrandWordmark';
 import { useBackLayer } from '../hooks/useBackLayer';
 import { modalBackStack } from '../utils/modalBackStack';
 import type StudentAccountLoginView from './StudentAccountLoginView';
+
+const JoinGameModal = lazyWithRetry(() => import('../components/JoinGameModal'));
 
 // Presentation-only replacement: the existing PIN card, auth listener,
 // account restoration and Tier-2 fallback still own authentication.
@@ -118,7 +120,7 @@ export default function StudentClassEntryView(
         className="mx-auto grid w-full max-w-6xl gap-8 px-4 pb-8 pt-2 sm:px-8 lg:grid-cols-[1fr_1.05fr] lg:items-center lg:gap-16 lg:py-10"
       >
         <div className="relative lg:pb-14">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#dfe4ce] bg-[#eef4db] px-3 py-1.5 text-xs font-extrabold tracking-wide text-[#455523]">
+          <div className="mb-3 hidden items-center gap-2 lg:inline-flex rounded-full border border-[#dfe4ce] bg-[#eef4db] px-3 py-1.5 text-xs font-extrabold tracking-wide text-[#455523]">
             <Sparkles size={14} aria-hidden="true" /> {t.entryPass}
           </div>
           <h1 className="max-w-lg font-headline text-4xl font-extrabold leading-[1.12] tracking-tight sm:text-5xl lg:text-6xl">
@@ -186,7 +188,7 @@ export default function StudentClassEntryView(
                 <li
                   key={step}
                   aria-current={currentStep === i ? 'step' : undefined}
-                  className={`flex items-center justify-center gap-1.5 ${currentStep === i ? 'text-[#1d2940]' : 'text-[#798171]'}`}
+                  className={`flex items-center justify-center gap-1.5 ${currentStep === i ? 'text-[#1d2940]' : 'text-[#52604b]'}`}
                 >
                   <span
                     className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${currentStep > i ? 'bg-[#d8f36a] text-[#354218]' : currentStep === i ? 'bg-[#1d2940] text-white' : 'border border-[#d9ddd0]'}`}
@@ -296,6 +298,11 @@ export default function StudentClassEntryView(
             <span className="flex-1">{t.game}</span>
             <ArrowUpRight size={18} className="shrink-0 rtl:-scale-x-100" aria-hidden="true" />
           </button>
+            <p className="mt-2 px-2 text-center text-sm leading-relaxed text-[#52604b]">
+              {t.dataNotice}{' '}
+              <a className="font-semibold text-violet-800 underline" href={language === 'en' ? '/parents.html' : `/parents-${language}.html`}
+                target="_blank" rel="noreferrer">{t.parentInfo}</a>
+            </p>
           <details className="mt-3 px-2 text-[#606b7e]">
             <summary className="min-h-11 cursor-pointer py-3 text-sm font-bold">
               {t.needHelp}
@@ -305,7 +312,9 @@ export default function StudentClassEntryView(
         </div>
       </main>
       {gameOpen && (
-        <JoinGameModal initialCode={gameCode ?? undefined} onClose={() => setGameOpen(false)} />
+        <Suspense fallback={<p role="status" className="fixed bottom-4 start-4 rounded-lg bg-white p-3">{t.classLoading}</p>}>
+          <JoinGameModal initialCode={gameCode ?? undefined} onClose={() => setGameOpen(false)} />
+        </Suspense>
       )}
       {cookieBannerOverlay}
     </div>

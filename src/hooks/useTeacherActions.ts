@@ -20,7 +20,9 @@ import { trackAutoError } from "../errorTracking";
 import { compressImageForUpload } from "../utils/compressImage";
 import { logAudit } from "../utils/audit";
 import { pushNotify } from "../utils/pushNotify";
-import { isPro, FREE_TIER_LIMITS } from "../core/plan";
+import { useLanguage } from "./useLanguage";
+import { billingLimitMessage } from "../locales/teacher/billing-limits";
+import { hasPaidClassroom, isPro, FREE_TIER_LIMITS } from "../core/plan";
 import { createCompetition } from "./useCompetitions";
 
 export interface UseTeacherActionsParams {
@@ -79,6 +81,7 @@ export interface UseTeacherActionsParams {
 }
 
 export function useTeacherActions(params: UseTeacherActionsParams) {
+  const { language } = useLanguage();
   const {
     user, activeVoca, classes, setClasses,
     newClassName, setNewClassName,
@@ -107,14 +110,9 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
   const handleCreateClass = async () => {
     if (!newClassName || !user) return;
 
-    // Free-tier gate: 1 class max.  Pro/School/trialing teachers are
-    // unlimited.  This is the client-side gate; server-side enforcement
-    // is a follow-up (RLS or RPC) per docs/PRICING-MODEL.md Status.
-    if (!isPro(user) && classes.length >= FREE_TIER_LIMITS.MAX_CLASSES) {
-      showToast(
-        `Free plan is limited to ${FREE_TIER_LIMITS.MAX_CLASSES} class. Upgrade to Pro for unlimited classes.`,
-        "error",
-      );
+    // Match the active-class limit before opening a write to the server.
+    if (!hasPaidClassroom(user) && classes.length >= FREE_TIER_LIMITS.MAX_CLASSES) {
+      showToast(billingLimitMessage('free_tier_class_cap', language)!, "error");
       setShowCreateClassModal(false);
       return;
     }
@@ -158,7 +156,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
       setCreatedClassCode(code);
     } catch (error) {
       console.error("Error creating class:", error);
-      showToast("Failed to create class.", "error");
+      showToast(billingLimitMessage(error, language) ?? "Failed to create class.", "error");
     }
   };
 
@@ -567,9 +565,9 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
       // actually persisted. Awaiting it logs the full Supabase error
       // (message | details | hint | code) to the console and rejects.
       showToast(
-        editingAssignment
-          ? "Couldn't save your changes — please try again."
-          : "Couldn't create the assignment — please try again.",
+        billingLimitMessage(error, language) ?? (editingAssignment
+          ? "Couldn't save your changes. Please try again."
+          : "Couldn't create the assignment. Please try again."),
         "error",
       );
       await handleDbError(error, editingAssignment ? OperationType.UPDATE : OperationType.CREATE, "assignments");

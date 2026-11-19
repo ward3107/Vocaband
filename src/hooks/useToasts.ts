@@ -41,13 +41,13 @@ export function useToasts() {
 
   // Paywall toast — used when an AI / OCR endpoint returns 403
   // ai_requires_pro.  Adds an "Upgrade" button that opens the same
-  // mailto the dashboard's trial-expired banner uses.
+  // membership screen as the dashboard plan button.
   const showPaywallToast = useCallback((message: string) => {
     showToast(message, "error", {
       action: {
         label: "Upgrade",
         onClick: () => {
-          window.location.href = "mailto:contact@vocaband.com?subject=Upgrade%20to%20Pro";
+          window.location.assign("/?billing=1");
         },
       },
     });

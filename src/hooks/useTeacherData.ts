@@ -29,12 +29,12 @@ import {
   CLASS_COLUMNS,
   ASSIGNMENT_COLUMNS,
   PROGRESS_COLUMNS,
-  type AppUser,
   type AssignmentData,
   type ClassData,
   type ProgressData,
 } from "../core/supabase";
-import { isPro, FREE_TIER_LIMITS } from "../core/plan";
+import { useLanguage } from "./useLanguage";
+import { billingLimitMessage } from "../locales/teacher/billing-limits";
 import { cachedRead } from "../core/readCache";
 import { trackAutoError } from "../errorTracking";
 import { logAudit } from "../utils/audit";
@@ -48,9 +48,6 @@ interface PendingStudent {
 }
 
 export interface UseTeacherDataParams {
-  /** Current teacher.  Null during initial load.  Used by the approval
-   *  handler to enforce the Free-tier 30-students-per-class cap. */
-  user: AppUser | null;
   classes: ClassData[];
   setClasses: Dispatch<SetStateAction<ClassData[]>>;
   setStudentAssignments: Dispatch<SetStateAction<AssignmentData[]>>;
@@ -65,8 +62,9 @@ export interface UseTeacherDataParams {
 }
 
 export function useTeacherData(params: UseTeacherDataParams) {
+  const { language } = useLanguage();
   const {
-    user, classes, setClasses,
+    classes, setClasses,
     setStudentAssignments, setStudentProgress, setPendingStudents,
     showToast, setRejectStudentModal,
   } = params;
@@ -244,32 +242,6 @@ export function useTeacherData(params: UseTeacherDataParams) {
   // status to 'approved' atomically.
   const handleApproveStudent = useCallback(async (studentId: string, displayName: string) => {
     try {
-      // Free-tier gate: max 30 approved students per class.  We only
-      // run this query for Free teachers — Pro/School/trialing skip
-      // the round-trip entirely.  Look up the pending student's class
-      // first, then count approved siblings.
-      if (!isPro(user)) {
-        const { data: pending } = await supabase
-          .from('student_profiles')
-          .select('class_code')
-          .eq('id', studentId)
-          .maybeSingle();
-        if (pending?.class_code) {
-          const { count } = await supabase
-            .from('student_profiles')
-            .select('id', { count: 'exact', head: true })
-            .eq('class_code', pending.class_code)
-            .in('status', ['active', 'approved']);
-          if ((count ?? 0) >= FREE_TIER_LIMITS.MAX_STUDENTS_PER_CLASS) {
-            showToast(
-              `Free plan is limited to ${FREE_TIER_LIMITS.MAX_STUDENTS_PER_CLASS} students per class. Upgrade to Pro for unlimited students.`,
-              "error",
-            );
-            return;
-          }
-        }
-      }
-
       const { error } = await supabase.rpc('approve_student', {
         p_profile_id: studentId,
       });
@@ -284,6 +256,7 @@ export function useTeacherData(params: UseTeacherDataParams) {
       // doesn't emit an Amendment-13-style audit row, so we add it
       // here.  Profile id goes in metadata; auth UID isn't returned
       // by the RPC (yet) so we don't attempt to populate targetUid.
+      window.dispatchEvent(new Event('vocaband:roster-changed'));
       void logAudit('approve_student', 'users', { metadata: { profile_id: studentId } });
 
       // Refresh the list
@@ -292,9 +265,9 @@ export function useTeacherData(params: UseTeacherDataParams) {
       showToast(`Approved ${displayName}! They can now log in and start learning.`, "success");
     } catch (error) {
       console.error('Error approving student:', error);
-      showToast("Could not approve student. Please try again.", "error");
+      showToast(billingLimitMessage(error, language) ?? "Could not approve student. Please try again.", "error");
     }
-  }, [user, loadPendingStudents, showToast]);
+  }, [language, loadPendingStudents, showToast]);
 
   // Reject: opens a confirmation modal first; the actual flip happens
   // in confirmRejectStudent below.

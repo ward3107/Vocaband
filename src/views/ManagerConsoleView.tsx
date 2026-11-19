@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type ReactNode, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
+import { Suspense, lazy, useState, useEffect, useCallback, type ReactNode, type CSSProperties, type Dispatch, type SetStateAction } from 'react';
 import { motion } from 'motion/react';
 import {
   School, LayoutDashboard, Users, BookOpen, Activity, GraduationCap, Star,
@@ -12,6 +12,7 @@ import {
   supabase, fetchManagerOverview, fetchManagerEngagement, fetchManagerTeacherDetail, fetchManagerClassDetail,
   type AppUser, type ManagerOverview, type ManagerEngagement, type ManagerTeacherDetail, type ManagerClassDetail,
 } from '../core/supabase';
+import SchoolWeeklySummary from '../components/dashboard/SchoolWeeklySummary';
 import { useLanguage, type Language } from '../hooks/useLanguage';
 import { useTeacherTheme } from '../hooks/useTeacherTheme';
 import type { View } from '../core/views';
@@ -101,6 +102,9 @@ function Spinner({ msg }: { msg: string }) {
   return <div className="flex flex-col items-center justify-center py-20 text-[var(--vb-text-muted)]"><RefreshCw className="w-7 h-7 animate-spin mb-3" /><span className="text-sm font-medium">{msg}</span></div>;
 }
 
+const SchoolWorkspace = lazy(() => import('../components/dashboard/SchoolWorkspace'));
+const SchoolBilling = lazy(() => import('../components/dashboard/TeacherBilling'));
+
 interface Props { user: AppUser | null; setView: Dispatch<SetStateAction<View>>; setUser: Dispatch<SetStateAction<AppUser | null>>; }
 
 export default function ManagerConsoleView({ user, setView, setUser }: Props) {
@@ -118,6 +122,11 @@ export default function ManagerConsoleView({ user, setView, setUser }: Props) {
   const rowR = isRTL ? 'flex-row-reverse' : '';
   const Caret = isRTL ? ArrowLeft : ArrowRight;
 
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [billingOpen, setBillingOpen] = useState(() => new URLSearchParams(location.search).get('billing') === '1');
+  const schoolLabels = language === 'he' ? ['ספריית צוות', 'רישיון בית הספר']
+    : language === 'ar' ? ['مكتبة الطاقم', 'اشتراك المدرسة']
+    : ['Team library', 'School subscription'];
   const [tab, setTab] = useState<'overview' | 'teachers' | 'classes' | 'engagement'>('overview');
   const [teacherId, setTeacherId] = useState<string | null>(null);
   const [classId, setClassId] = useState<string | null>(null);
@@ -153,9 +162,9 @@ export default function ManagerConsoleView({ user, setView, setUser }: Props) {
   const topTeacher = overview?.xp_by_teacher[0];
 
   return (
-    <div dir={dir} className={`min-h-screen bg-[var(--vb-surface-alt)] flex ${rowR}`}>
+    <div dir={dir} className={`min-h-screen bg-[var(--vb-surface-alt)] flex flex-col ${isRTL ? 'lg:flex-row-reverse' : 'lg:flex-row'}`}>
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 bg-[var(--vb-surface)] flex flex-col" style={{ [isRTL ? 'borderLeft' : 'borderRight']: '1px solid var(--vb-border)' } as CSSProperties}>
+      <aside className="w-full lg:w-64 shrink-0 bg-[var(--vb-surface)] flex flex-col" style={{ [isRTL ? 'borderLeft' : 'borderRight']: '1px solid var(--vb-border)' } as CSSProperties}>
         <div className={`p-5 flex items-center gap-3 ${rowR}`}>
           <div className="flex items-center justify-center w-11 h-11 rounded-2xl text-white bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 shrink-0"><School className="w-6 h-6" /></div>
           <div className={`min-w-0 ${ta}`}><div className="font-bold text-[var(--vb-text-primary)] truncate text-sm">{overview?.school?.name ?? 'Vocaband'}</div><div className="text-xs text-[var(--vb-text-muted)]">{t.role}</div></div>
@@ -175,7 +184,22 @@ export default function ManagerConsoleView({ user, setView, setUser }: Props) {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 min-w-0 p-6">
+      {user?.role === 'manager' && (workspaceOpen || billingOpen) && (
+        <Suspense fallback={null}>
+          {workspaceOpen && <SchoolWorkspace user={user} language={language} onClose={() => setWorkspaceOpen(false)} />}
+          {billingOpen && <SchoolBilling institution language={language} onClose={() => setBillingOpen(false)} />}
+        </Suspense>
+      )}
+
+      <main className="flex-1 min-w-0 p-3 sm:p-6">
+        {user?.role === 'manager' && user.schoolId && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            <button type="button" className="min-h-11 rounded-xl bg-violet-700 px-4 text-sm font-bold text-white"
+              onClick={() => setWorkspaceOpen(true)}>{schoolLabels[0]}</button>
+            <button type="button" className="min-h-11 rounded-xl border px-4 text-sm font-bold"
+              onClick={() => setBillingOpen(true)}>{schoolLabels[1]}</button>
+          </div>
+        )}
         <div className={`flex items-center justify-between mb-5 ${rowR}`}>
           <h1 className={`text-xl font-extrabold text-[var(--vb-text-primary)] ${ta}`}>
             {tab === 'overview' && t.navOverview}
@@ -201,6 +225,9 @@ export default function ManagerConsoleView({ user, setView, setUser }: Props) {
               {/* OVERVIEW */}
               {tab === 'overview' && (
                 <div className="space-y-5">
+                  {user?.role === 'manager' && user.schoolId && (
+                    <SchoolWeeklySummary key={user.schoolId} language={language} />
+                  )}
                   <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
                     <Kpi icon={<Users className="w-4 h-4" />} label={t.kTeachers} value={`${totals.teachers}`} grad="from-indigo-500 to-violet-500" />
                     <Kpi icon={<BookOpen className="w-4 h-4" />} label={t.kClasses} value={`${totals.classes}`} grad="from-sky-500 to-blue-500" />

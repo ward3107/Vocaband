@@ -124,31 +124,29 @@ const html = `<!DOCTYPE html>
 
   <h1>Privacy Policy</h1>
   <div class="meta">
-    <p><strong>Effective Date:</strong> ${escape(PRIVACY_POLICY_VERSION)} | <strong>Version:</strong> 2.1</p>
+    <p><strong>Effective Date:</strong> ${escape(PRIVACY_POLICY_VERSION)} | <strong>Version:</strong> 3.0</p>
     <p><strong>Legal Basis:</strong> Privacy Protection Law, 5741-1981 (Israel), Amendment 13 (תיקון 13 לחוק הגנת הפרטיות)</p>
   </div>
 
   <div class="highlight">
-    <strong>Summary:</strong> Vocaband is designed for Israeli schools. Student accounts are anonymous — no email or personal identification required. Teachers sign in with Google OAuth or an email one-time code. We don't sell data, show ads, or track users for marketing.
+    <strong>Summary:</strong> Vocaband is designed for Israeli schools. Students enter with a class code or link and a personal PIN. Vocaband stores a display name or student code, class membership and practice results for learning and feedback. Teachers sign in with Google or a one-time email code.
   </div>
 
   <!-- Section 1: Data Controller + DPO -->
-  <h2>1. Data Controller (בעל המאגר) &amp; Data Protection Officer</h2>
+  <h2>1. Data Controller and Privacy Contact</h2>
   <p>Under the Israeli Privacy Protection Law (Amendment 13), the data controller for Vocaband is:</p>
   <ul>
     <li><strong>Entity:</strong> ${escape(DATA_CONTROLLER.name)}</li>
     <li><strong>Country:</strong> ${escape(DATA_CONTROLLER.country)}</li>
     <li><strong>General Contact:</strong> <a href="mailto:${escape(DATA_CONTROLLER.contactEmail)}">${escape(DATA_CONTROLLER.contactEmail)}</a></li>
-    <li><strong>Database Registration:</strong> As required under Section 18 of the Privacy Protection Law</li>
   </ul>
 
-  <h3>Data Protection Officer (ממונה על הגנת הפרטיות)</h3>
-  <p>Amendment 13 requires a public, accountable privacy contact. For Vocaband, that is:</p>
+  <h3>Privacy requests</h3>
+  <p>Contact us for access, correction, deletion requests or privacy concerns.</p>
   <ul>
     <li><strong>Name:</strong> ${escape(DATA_PROTECTION_OFFICER.name)}</li>
     <li><strong>Role:</strong> ${escape(DATA_PROTECTION_OFFICER.role)}</li>
     <li><strong>Privacy Email:</strong> <a href="mailto:${escape(DATA_PROTECTION_OFFICER.email)}">${escape(DATA_PROTECTION_OFFICER.email)}</a></li>
-    <li><strong>Response SLA:</strong> ${DATA_PROTECTION_OFFICER.responseSlaHours} hours for security incident reports; 30 days for data-subject rights requests (access, deletion, rectification).</li>
   </ul>
 
   <!-- Section 2: Legal Basis -->
@@ -164,20 +162,23 @@ const html = `<!DOCTYPE html>
     <tr><td>Audit and consent records</td><td>Legal obligation (Amendment 13 §§ 8, 11)</td><td>Compliance and accountability</td></tr>
   </table>
 
+  <p>Optional browser error and performance diagnostics require an analytics preference. To review or update it, use the
+    <a href="/privacy">privacy page</a>. Browser session recordings are disabled.</p>
+
   <!-- Section 3: Data We Collect -->
   <h2>3. Data We Collect</h2>
 
-  <h3>3.1 For Students (Anonymous / PIN-Based Accounts)</h3>
+  <h3>3.1 For Students (Class Accounts with a PIN)</h3>
   <p>Student accounts are designed to minimize personal data. We collect:</p>
   <ul>
     <li><strong>Display name</strong> — chosen by the student or assigned by the teacher; does not need to be a real name (first names or nicknames are encouraged)</li>
     <li><strong>Avatar</strong> — an emoji selected by the student</li>
-    <li><strong>Class code</strong> — the 6-digit code used to join a class</li>
+    <li><strong>Class code</strong> — the code assigned to your class</li>
     <li><strong>Game scores and progress</strong> — scores, game modes played, word-level mistake data</li>
     <li><strong>Badges, streaks, XP</strong> — gamification metrics</li>
   </ul>
   <p><strong>Synthetic internal email:</strong> For PIN-based student accounts, the auth system generates an internal placeholder address (e.g., <code>student-&lt;uuid&gt;@class-&lt;code&gt;.vocaband.local</code>). This address is never delivered to a real inbox and is not used to contact the student. It exists only to satisfy the authentication system's unique-identifier requirement.</p>
-  <p><strong>We do NOT collect from students:</strong> real email addresses, phone numbers, physical addresses, photos, government IDs, or any other personally identifiable information.</p>
+  <p><strong>We do NOT collect from students:</strong> Personal email addresses, phone numbers, government IDs and photos are not requested from students by the class PIN form.</p>
 
   <h3>3.2 For Teachers</h3>
   <p>Teachers sign in via Google OAuth <em>or</em> email + one-time code (OTP). We collect:</p>
@@ -196,7 +197,7 @@ const html = `<!DOCTYPE html>
 
   <!-- Section 4: Sub-processors -->
   <h2>4. Third-Party Sub-processors</h2>
-  <p>Vocaband uses the following third-party services. All processors are bound by data processing agreements. Independent controllers (e.g., Google OAuth, Google Fonts) are noted as such. This list is the authoritative registry from our internal configuration — any new service is added here <em>before</em> it is used in production.</p>
+  <p>These providers process data for the purposes listed below. Some features, including payment and teacher mail, must first be enabled.</p>
   <table class="table">
     <tr><th>Service</th><th>Purpose</th><th>Data Categories</th><th>Hosting Region</th><th>Endpoint</th></tr>${subProcessorRows}
   </table>
@@ -204,22 +205,25 @@ const html = `<!DOCTYPE html>
 
   <!-- Section 5: How We Use Data -->
   <h2>5. How We Use Your Data</h2>
-  <p>Your data is used solely to deliver the learning service:</p>
+  <p>We use personal data for these purposes:</p>
   <ul>
     <li>Provide vocabulary games and persist progress</li>
     <li>Show teachers a gradebook of their students' progress</li>
     <li>Power live leaderboards during in-class challenges (scores held in memory only, never written to disk by the live-challenge server)</li>
     <li>Authenticate teachers</li>
     <li>Prevent abuse (rate limiting, security logs)</li>
-    <li>On explicit teacher action: AI sentence generation (Anthropic) and OCR of uploaded worksheets (Google Cloud Gemini). Uploaded images are discarded after the API call returns the extracted text.</li>
+    <li>On teacher request: AI sentence generation (Anthropic), vocabulary image processing and teacher help questions (Google Gemini). Please leave names and other personal details out of uploads and help questions.</li>
+    <li>Manage subscriptions and process payments when purchasing is enabled</li>
+    <li>Deliver optional emails to teachers who choose to receive them, when delivery is enabled</li>
+    <li>Diagnose errors and improve performance. Browser diagnostics depend on your analytics preference.</li>
   </ul>
   <p><strong>We do NOT:</strong></p>
   <ul>
     <li>Sell or rent personal data</li>
-    <li>Use data for advertising or marketing</li>
+    <li>Use student data for advertising or marketing</li>
     <li>Create user profiles for commercial purposes</li>
     <li>Share data with data brokers</li>
-    <li>Use tracking cookies or third-party analytics</li>
+    <li>Use tracking cookies for behavioral advertising</li>
   </ul>
 
   <!-- Section 6: Retention -->
@@ -230,7 +234,7 @@ const html = `<!DOCTYPE html>
     <tr><td>Student progress records</td><td>${RETENTION_PERIODS.progressRecordsDays} days after assignment completion</td><td>Class deletion, account deletion, or scheduled cleanup</td></tr>
     <tr><td>Orphaned student accounts (no class membership)</td><td>${RETENTION_PERIODS.orphanedStudentDays} days after last login</td><td>Automatic cleanup</td></tr>
     <tr><td>Audit log entries</td><td>${RETENTION_PERIODS.auditLogDays} days (≈ 2 years)</td><td>Automatic deletion</td></tr>
-    <tr><td>Consent log entries</td><td>${RETENTION_PERIODS.consentLogDays} days (≈ 10 years)</td><td>Legal requirement</td></tr>
+    <tr><td>Consent log entries</td><td>${RETENTION_PERIODS.consentLogDays} days (≈ 10 years)</td><td>End of the documented retention period</td></tr>
     <tr><td>Quick Play guest resume hint (browser local storage only — no server-side state)</td><td>${RETENTION_PERIODS.quickPlayResumeHintMinutes} minutes after last activity</td><td>Automatic — silently dropped by the browser when the timer expires</td></tr>
     <tr><td>Database provider platform backups (Supabase PITR / daily snapshots)</td><td>Up to ${RETENTION_PERIODS.backupSupabasePlatformDays} days</td><td>Automatic rotation by the provider</td></tr>
     <tr><td>Off-site disaster-recovery archive (encrypted weekly <code>pg_dump</code> in Cloudflare R2)</td><td>Up to ${RETENTION_PERIODS.backupOffsiteR2Days} days (≈ ${Math.round(RETENTION_PERIODS.backupOffsiteR2Days / 30)} months)</td><td>R2 lifecycle policy — automatic deletion at ${RETENTION_PERIODS.backupOffsiteR2Days} days</td></tr>
@@ -239,15 +243,15 @@ const html = `<!DOCTYPE html>
 
   <!-- Section 7: Cross-Border Transfers -->
   <h2>7. Cross-Border Data Transfers</h2>
-  <p>Some processing occurs outside Israel and the EEA. Below is the destination for each sub-processor, with the lawful transfer mechanism (under GDPR Chapter V + Schrems II), the vendor's published Data Processing Agreement, the result of our per-vendor Transfer Impact Assessment (TIA), and the date the mechanism was last reviewed:</p>
+  <p>Some processing occurs outside Israel and the EEA. The table lists documented provider information and public links. Processing locations and transfer arrangements depend on the enabled feature, provider contract and applicable market.</p>
   <table class="table">
     <tr><th>Destination</th><th>Service</th><th>Safeguards &amp; transfer mechanism</th></tr>${crossBorderRows}
   </table>
-  <p>All transfers additionally use encryption in transit (TLS 1.3) and at rest. For the full transfer register, change history, and subscription instructions, see the human-readable companion doc <a href="https://github.com/ward3107/vocaband/blob/main/docs/SUBPROCESSORS.md" target="_blank" rel="noopener">docs/SUBPROCESSORS.md</a>.</p>
+  <p>See the <a href="https://github.com/ward3107/vocaband/blob/main/docs/SUBPROCESSORS.md" target="_blank" rel="noopener">vendor register</a> for transfer details and the change history.</p>
 
   <!-- Section 8: Your Rights -->
   <h2>8. Your Rights (Data Subject Rights)</h2>
-  <p>Under Israeli Privacy Protection Law (Amendment 13) and international standards (GDPR-compatible), you have the right to:</p>
+  <p>Applicable privacy law may give you rights to access or correct your information. You can also ask us about the following:</p>
   <table class="table">
     <tr><th>Right</th><th>Description</th><th>How to Exercise</th></tr>
     <tr><td><strong>Access</strong></td><td>Receive a copy of all your personal data</td><td>Privacy Settings → "Export My Data", or email <a href="mailto:${escape(DATA_PROTECTION_OFFICER.email)}">${escape(DATA_PROTECTION_OFFICER.email)}</a></td></tr>
@@ -264,7 +268,7 @@ const html = `<!DOCTYPE html>
   <p>Vocaband is designed for students in Israeli schools, many of whom are minors under applicable law.</p>
 
   <h3>9.1 School Authorization</h3>
-  <p>The educational institution (school) authorizes student use of Vocaband as part of the educational curriculum. By providing a class code to students, the teacher (acting on behalf of the school) authorizes student access.</p>
+  <p>Schools arrange classroom use and inform families. A class code brings the student to the class and a personal PIN is used to access the student account.</p>
 
   <h3>9.2 Minimal Data Collection</h3>
   <ul>
@@ -288,7 +292,7 @@ const html = `<!DOCTYPE html>
   <!-- Section 10: Security -->
   <h2>10. Security Measures</h2>
   <ul>
-    <li><strong>Encryption in transit:</strong> All traffic over HTTPS (TLS 1.3)</li>
+    <li><strong>Encryption in transit:</strong> The website uses HTTPS</li>
     <li><strong>Encryption at rest:</strong> Database and storage encrypted by Supabase</li>
     <li><strong>Access control:</strong> Row-Level Security (RLS) policies ensure users can only access their own data</li>
     <li><strong>Authentication:</strong> Teachers via Google OAuth or email OTP; students via class code + PIN</li>
@@ -304,16 +308,15 @@ const html = `<!DOCTYPE html>
   <table class="table">
     <tr><th>Storage Key</th><th>Purpose</th></tr>${storageRows}
   </table>
-  <p>Cloudflare Web Analytics is used for traffic measurement; it stores no cookies and does not identify individual users.</p>
+  <p>You can manage optional browser diagnostics in the <a href="/privacy">privacy page</a> under analytics preferences.</p>
 
   <!-- Section 12: Changes -->
   <h2>12. Changes to This Policy</h2>
   <ul>
     <li>The "Effective Date" and version number above will change</li>
     <li>Users will be notified via in-app consent modal</li>
-    <li>Continued use after material changes constitutes acceptance</li>
   </ul>
-  <p>Material policy changes trigger a re-consent prompt as required by Amendment 13.</p>
+  <p>When a policy version changes and requires renewed consent, the app asks for your choice.</p>
 
   <!-- Section 13: Complaints -->
   <h2>13. Complaints and Regulatory Authority</h2>

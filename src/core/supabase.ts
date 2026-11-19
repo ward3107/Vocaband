@@ -1,3 +1,4 @@
+import type { BillingEntitlement } from "./billingCatalog";
 import { createClient } from '@supabase/supabase-js';
 import { getPublicSupabaseUrl } from './supabasePublicUrl';
 
@@ -156,7 +157,7 @@ export const USER_COLUMNS =
   'uid,email,role,display_name,class_code,avatar,badges,xp,coins,streak,unlocked_avatars,unlocked_themes,power_ups,active_theme,active_frame,active_title,teacher_dashboard_theme,first_rating,first_rating_at,rating_dismissed_at,onboarded_at,plan,trial_ends_at,subject,guides_seen,school_id';
 export const CLASS_COLUMNS = 'id,name,code,teacher_uid,avatar,subject,school_name,school_logo_url,background_color';
 export const ASSIGNMENT_COLUMNS =
-  'id,class_id,word_ids,words,title,deadline,allowed_modes,sentences,sentence_difficulty,created_at,subject';
+  'id,class_id,word_ids,words,title,deadline,allowed_modes,sentences,sentence_difficulty,created_at,subject,closed_at';
 export const PROGRESS_COLUMNS =
   'id,student_name,student_uid,assignment_id,class_code,score,mode,completed_at,mistakes,avatar,play_count';
 export const FEATURE_FLAG_COLUMNS = 'name,enabled,enabled_for_classes,description,updated_at';
@@ -223,6 +224,8 @@ export interface AppUser {
    *  plan='free', the teacher has Pro features.  NULL for users who
    *  never had a trial (e.g. plan='pro' set manually). */
   trialEndsAt?: string | null;
+  billingPaidUntil?: string | null;
+  billingEntitlement?: BillingEntitlement | null;
   /** Which Vocas the school's principal has assigned this teacher.
    *  The single Voca this teacher belongs to.  Defaults to 'english'.
    *  Admins ignore this field — admin role grants entry to all Vocas
@@ -398,6 +401,7 @@ export interface AssignmentData {
   wordIds: number[];
   words?: import('../data/vocabulary').Word[];
   title: string;
+  closedAt?: string | null;
   deadline?: string | null;
   createdAt?: string;
   allowedModes?: string[];
@@ -516,7 +520,18 @@ export async function fetchUserProfile(
       .maybeSingle();
     if (userRow) {
       const user = mapUser(userRow);
-      await attachSchoolPlan(user);
+      await Promise.all([
+        user.role === 'teacher' ? attachSchoolPlan(user) : undefined,
+        user.role === 'teacher' && user.plan === 'free'
+          ? supabase.rpc('billing_my_plan').then(({data}) => {
+              if (!data?.tier) return;
+              user.billingEntitlement = data;
+              if (data.tier === 'teacher' || data.tier === 'pro' || data.tier === 'school') {
+                user.billingPaidUntil = data.until ?? null;
+              }
+            }, () => undefined)
+          : undefined,
+      ]);
       return user;
     }
     if (!error) return null;
@@ -602,6 +617,7 @@ export function mapAssignment(row: any): AssignmentData {
     wordIds: row.word_ids ?? [],
     words: row.words,
     title: row.title,
+    closedAt: row.closed_at ?? null,
     deadline: row.deadline,
     allowedModes: row.allowed_modes,
     sentences: row.sentences ?? [],

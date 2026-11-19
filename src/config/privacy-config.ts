@@ -12,49 +12,23 @@
 // ---------------------------------------------------------------------------
 
 export const DATA_CONTROLLER = {
-  name: "Vocaband",  // Legal entity name
+  name: "Vocaband",  // Public service name
   country: "Israel",
   contactEmail: "contact@vocaband.com",       // Amendment 13 accountability contact
   legalEmail: "contact@vocaband.com",         // Legal inquiries
 } as const;
 
-// ─── Data Protection Officer (ממונה על הגנת הפרטיות) ──────────────
-// Public contact for privacy questions, data-subject rights requests
-// (export / delete / rectify), and breach notifications.
-//
-// Required to be public-facing under תיקון 13 (Privacy Protection
-// Law Amendment 13, 2025).  The role can be filled by the founder
-// for a small company — no separate hire needed at this stage.
-//
-// `name` is shown in the privacy page so a regulator / parent can
-// verify a real human is accountable.  Use the full legal name as
-// it would appear on a חוזה / business registration.
-//
-// `email` is the dedicated privacy address.  Aliasing it to the
-// founder's main inbox is fine; just make sure it's monitored on
-// the 24h SLA published in INCIDENT-RESPONSE.md.
+// Address for privacy requests and security incident reports. The operator
+// keeps any required formal appointment and response procedures separately.
 export const DATA_PROTECTION_OFFICER = {
-  name: "Waseem Abu Akel",   // ⚠️ EDIT THIS before merging
-  role: "Founder & Data Protection Officer",
-  email: "privacy@vocaband.com",              // alias forwards to founder's inbox
+  name: "Waseem Abu Akel",
+  role: "Privacy contact",
+  email: "privacy@vocaband.com",
   responseSlaHours: 24,
 } as const;
 
-// ---------------------------------------------------------------------------
-// 2. Privacy policy versioning
-// ---------------------------------------------------------------------------
-
-// Bumped 2026-06-25 — disclosed opt-in push notifications: the Web Push
-// transit services (Google FCM for Chrome/Android, Mozilla autopush for
-// Firefox) and the new "Notifications" policy section. Push ships OFF by
-// default behind a feature flag and is opt-in + PII-free; this disclosure
-// must be ratified by the lawyer before the feature is enabled for real
-// students (see docs/legal/PUSH-NOTIFICATIONS-COMPLIANCE.md).
-// ⚠️ This bump triggers a consent re-prompt on deploy — keep it tied to the
-// go-live deploy that follows legal sign-off, not before.
-// (Prev: 2026-06-23 — AI Help Assistant. 2026-05-23 — EU hosting region.)
-export const PRIVACY_POLICY_VERSION = "2026-06-25";  // Version 2.5 - opt-in push notifications disclosed
-export const TERMS_VERSION = "2026-05-23";            // Version 2.3 - terms unchanged this round
+export const PRIVACY_POLICY_VERSION = "2026-11-19";
+export const TERMS_VERSION = "2026-11-19";
 
 /**
  * Student "teacher can see my plays" acknowledgement version.
@@ -97,13 +71,9 @@ export const HOSTING_REGIONS = {
   cloudflare: "Global edge network",
   googleAuth: "Global (US-anchored)",
   anthropic: "United States",
-  // Gemini OCR currently runs on the AI Studio API
-  // (generativelanguage.googleapis.com), which is NOT regionally
-  // pinned — see audit finding H-5 (2026-05-23) and the operator
-  // task "Migrate Gemini to Vertex AI" in docs/operator-tasks.md
-  // for the region-pinned + no-training migration plan.  Text-to-
-  // Speech is also Google-global on the public v1 endpoint.
-  googleCloud: "Google-global (AI Studio API; not regionally pinned — migration to Vertex AI EU pending)",
+  // The server supports both Vertex AI and AI Studio. Confirm the active service,
+  // model and contract before claiming a specific processing location.
+  googleCloud: "Depends on the configured Google service. Processing may occur outside Europe.",
   googleFonts: "Global edge network",
   sentry: "EU (Germany) — *.ingest.de.sentry.io",
   // Firebase Cloud Messaging routes Web Push to Android/Chrome devices.
@@ -279,11 +249,11 @@ export const THIRD_PARTY_REGISTRY: ThirdPartyEntry[] = [
   {
     name: "Google Cloud (Gemini API)",
     purpose: "Server-side OCR of teacher-uploaded vocabulary list images (replaces previous in-process Tesseract.js), and the teacher dashboard AI Help Assistant (answers free-text / spoken how-to questions)",
-    dataCategories: ["uploaded image bytes (typically a worksheet photo containing only English words)", "teacher-typed or spoken help questions plus minimal non-identifying UI context (interface language, a hasClasses boolean, and the pending-approvals count — no names, class codes, or student data)"],
+    dataCategories: ["teacher-uploaded vocabulary images", "teacher help questions and basic interface context (language, whether the teacher has classes, and the number of pending approvals)"],
     processorOnly: true,
     hostingRegion: HOSTING_REGIONS.googleCloud,
-    endpoint: "generativelanguage.googleapis.com (AI Studio API)",
-    notes: "Triggered only on explicit teacher action.  Image discarded after the API returns the extracted text; not stored on Vocaband infrastructure.  AI Help Assistant (/api/teacher-assistant): only the teacher's free-text question and the minimal UI context above are sent — tapping a preset question is answered fully locally with no API call, and no student personal data is ever transmitted.  CURRENT TIER (2026-05-23): AI Studio API via aistudio.google.com — Google's Pay-As-You-Go terms apply when billing is enabled in the GCP project; the free tier may use prompts for product improvement and model training.  Operator action: verify the project's billing status and enable Pay-As-You-Go before processing any data the audit cycle has not blessed for free-tier disclosure.  Migration to Vertex AI Gemini (region-pinned, no-training contract) is tracked at docs/operator-tasks.md.",
+    endpoint: "Google AI Studio API or Vertex AI, depending on configuration",
+    notes: "Used on teacher request. Preset help questions are answered locally. Teachers should leave personal information out of uploads and help questions. Verify the active Google service, applicable terms, and processing region before permitting confidential or personal information.",
     transfer: {
       destination: "Google-global (AI Studio API endpoint; US parent entity)",
       mechanism: "dpf",
@@ -312,12 +282,29 @@ export const THIRD_PARTY_REGISTRY: ThirdPartyEntry[] = [
   },
   {
     name: "Sentry",
-    purpose: "Application error tracking and performance monitoring (browser SPA + Node server)",
-    dataCategories: ["JavaScript error messages and stack traces (scrubbed by `src/utils/scrubPii.ts` before send: emails, JWTs, Bearer tokens, Supabase keys removed)", "browser metadata (User-Agent, viewport, URL path)", "user UID when authenticated (no email, no name — only the opaque UUID, attached via Sentry.setUser)", "session-replay snippets (DOM masked, inputs masked) when the user has not opted out"],
+    purpose: "Server diagnostics and optional browser error and performance diagnostics",
+    dataCategories: ["error and performance metadata with sensitive fields redacted"],
     processorOnly: true,
     hostingRegion: HOSTING_REGIONS.sentry,
-    endpoint: "o*.ingest.de.sentry.io, browser.sentry-cdn.com",
-    notes: "Sentry DSN points to the EU region (Germany) — no transatlantic transfer for error telemetry.  Before-send scrubber redacts PII on every event payload server-side (server.ts) and client-side (src/core/sentry.ts).  Sentry DPA at https://sentry.io/legal/dpa/.  Session-replay is gated by user-consent and lazy-loaded after first paint to honour the 'no telemetry before interaction' guarantee.",
+    endpoint: "Sentry EU ingest",
+    notes: "Browser diagnostics require analytics consent. Browser session recordings are disabled.",
+  },
+  {
+    name: "SUMIT",
+    purpose: "Hosted payment, payment verification and receipts when paid checkout is enabled",
+    dataCategories: ["buyer identity and contact", "order reference and price", "payment and receipt status"],
+    processorOnly: false,
+    hostingRegion: "Per merchant configuration and provider terms",
+    endpoint: "SUMIT hosted checkout and payment API",
+    notes: "SUMIT receives payment-card details on its own checkout. Vocaband receives order, payment and receipt references.",
+  },
+  {
+    name: "Resend",
+    purpose: "Deliver opted-in teacher notices when email delivery is enabled",
+    dataCategories: ["teacher email address", "message content", "delivery and unsubscribe references"],
+    processorOnly: true,
+    hostingRegion: "Per provider configuration and terms",
+    endpoint: "api.resend.com",
   },
   {
     name: "Google Fonts",

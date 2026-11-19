@@ -36,6 +36,7 @@ import {
   type VocabularyCollection,
   type VocabularySet,
 } from "../core/vocabularyLibrary";
+import { hasPaidClassroom } from "../core/plan";
 import SetBuildWizard from "./library/SetBuildWizard";
 import VocabularySetDetailModal from "./library/VocabularySetDetailModal";
 import MoveItemModal, { type MovableItem } from "./library/MoveItemModal";
@@ -66,6 +67,7 @@ export default function VocabularyLibraryView({
   collectionId = null,
 }: VocabularyLibraryViewProps) {
   const { language, isRTL, textAlign, dir } = useLanguage();
+  const canSaveSets = hasPaidClassroom(user);
   const t = useMemo(() => vocabularyLibraryT[language], [language]);
 
   const [activeTab, setActiveTab] = useState<Tab>("all");
@@ -385,7 +387,7 @@ export default function VocabularyLibraryView({
               (see the tabs row), so a first-time teacher isn't asked to
               choose between two concepts they don't yet need. */}
           <div className="mt-5">
-            <motion.button
+            {canSaveSets ? <motion.button
               type="button"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
@@ -396,7 +398,13 @@ export default function VocabularyLibraryView({
             >
               <Plus className="w-5 h-5" />
               {t.newSet}
-            </motion.button>
+            </motion.button> : (
+              <a href="/?billing=1" className="vb-button w-full bg-white! text-indigo-800! shadow-sm">
+                {language === "he" ? "לשמירת רשימות חדשות, בחרו מסלול מורה"
+                  : language === "ar" ? "لحفظ قوائم جديدة، اختر خطة المعلّم"
+                  : "Choose a Teacher plan to save new lists"}
+              </a>
+            )}
           </div>
         </motion.div>
 
@@ -444,7 +452,7 @@ export default function VocabularyLibraryView({
           })}
           {/* Optional "group into folders" action — only once folders are
               relevant, so it never clutters the first-run experience. */}
-          {showFolders && (
+          {showFolders && canSaveSets && (
             <button
               type="button"
               onClick={handleNewCollection}

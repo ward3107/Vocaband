@@ -79,14 +79,14 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
             </h2>
             <div className={`text-slate-600 leading-relaxed space-y-4 ${isRTL ? 'text-right' : ''}`}>
               <p>
-                {language === 'en' ? 'By accessing or using Vocaband ("the Service"), you acknowledge that you have read, understood, and agree to be bound by these Terms of Service and our Privacy Policy. These Terms constitute a legally binding agreement between you and Vocaband Educational Technologies.' :
-                 language === 'he' ? 'על ידי גישה או שימוש ב-Vocaband ("השירות"), אתה מאשר שקראת, הבנת ומסכים להיות מחויב על פי תנאי שירות אלה ומדיניות הפרטיות שלנו. תנאים אלה מהווים הסכם מחייב מבחינה משפטית בינך לבין Vocaband טכנולוגיות חינוכיות.' :
-                 'بالدخول أو استخدام Vocaband ("الخدمة")، فإنك تقر بأنك قد قرأت وفهمت ووافقت على الالتزام بشروط الخدمة هذه وسياسة الخصوصية الخاصة بنا. تشكل هذه الشروط اتفاقية ملزمة قانونًا بينك وبين Vocaband للتقنيات التعليمية.'}
+                {language === 'en' ? 'By accessing or using Vocaband ("the Service"), you acknowledge that you have read, understood, and agree to be bound by these Terms of Service and our Privacy Policy. These Terms constitute a legally binding agreement between you and Vocaband.' :
+                 language === 'he' ? 'על ידי גישה או שימוש ב-Vocaband ("השירות"), אתה מאשר שקראת, הבנת ומסכים להיות מחויב על פי תנאי שירות אלה ומדיניות הפרטיות שלנו. תנאים אלה מהווים הסכם מחייב מבחינה משפטית בינך לבין Vocaband.' :
+                 'بالدخول أو استخدام Vocaband ("الخدمة")، فإنك تقر بأنك قد قرأت وفهمت ووافقت على الالتزام بشروط الخدمة هذه وسياسة الخصوصية الخاصة بنا. تشكل هذه الشروط اتفاقية ملزمة قانونًا بينك وبين Vocaband.'}
               </p>
               <p>
-                {language === 'en' ? 'We may modify these Terms at any time. Material changes will be communicated through the Service, and your continued use after such changes constitutes acceptance. As required by Israeli Privacy Protection Law (Amendment 13), significant changes will require your explicit consent.' :
-                 language === 'he' ? 'אנו רשאים לשנות תנאים אלה בכל עת. שינויים מהותיים יתקשרו דרך השירות, והמשך השימוש שלך לאחר שינויים כאלה מהווה הסכמה. כנדרש על פי חוק הגנת הפרטיות (תיקון 13), שינויים משמעותיים ידרשו את הסכמתך המפורשת.' :
-                 'يجوز لنا تعديل هذه الشروط في أي وقت. سيتم إبلاغ التغييرات الجوهرية عبر الخدمة، واستمرارك في الاستخدام بعد هذه التغييرات يشكل قبولاً. كما يقتضي قانون حماية الخصوصية الإسرائيلي (التعديل 13)، ستتطلب التغييرات المهمة موافقتك الصريحة.'}
+                {language === 'en' ? 'We publish dated terms and notify users in the service about material changes.' :
+                 language === 'he' ? 'אנו מפרסמים תנאים עם תאריך ומעדכנים את המשתמשים בשירות על שינויים מהותיים.' :
+                 'ننشر شروطًا مؤرّخة ونبلغ المستخدمين في الخدمة بالتغييرات الجوهرية.'}
               </p>
             </div>
           </section>
@@ -110,6 +110,24 @@ const TermsPage: React.FC<TermsPageProps> = ({ onNavigate, onGetStarted, onTeach
                 </li>
               ))}
             </ul>
+          </section>
+
+          <section className="rounded-xl bg-white p-5 shadow-2xl shadow-violet-950/20 ring-1 ring-slate-200/60 sm:p-8">
+            <h2 className="mb-3 text-xl font-black text-slate-900">
+              {language === 'he' ? 'מסלולים, תשלום וביטול' : language === 'ar' ? 'الخطط والدفع والإلغاء' : 'Plans, payment and cancellation'}
+            </h2>
+            <div className="space-y-3 leading-relaxed text-slate-700">
+              <p>{language === 'he' ?
+                'כל רכישה חדשה מכסה תקופה אחת. לפני המעבר לסליקה מוצגים המחיר הכולל בשקלים, התקופה, המכסה וזיכוי הפיילוט כשחל. עם סיום התקופה אפשר לבחור אם לרכוש תקופה נוספת.' :
+                language === 'ar' ? 'تغطّي كل عملية شراء جديدة فترة واحدة. قبل الانتقال للدفع يظهر السعر الإجمالي بالشيكل والفترة والسعة وخصم التجربة عند انطباقه. يمكنك اختيار شراء فترة أخرى بعد انتهائها.' :
+                'Each new purchase covers one term. The plan screen shows the total in ILS, the term, capacity and any pilot credit before checkout. You can choose to buy another term when the current one ends.'}</p>
+              <p>{language === 'he' ?
+                'אפשר לפנות בדוא״ל בנוגע לביטול או להחזר באמצעות כתובת התמיכה. חידוש של מנוי ותיק מנוהל במסך המנוי. הזכויות לפי הדין החל נשמרות.' :
+                language === 'ar' ? 'تواصل مع الدعم بالبريد الإلكتروني بشأن الإلغاء أو الاسترداد. يمكن إدارة تجديد أي اشتراك قديم من صفحة الاشتراك. تبقى الحقوق بموجب القانون الساري محفوظة.' :
+                'Contact support by email for cancellation or refund requests. The subscription screen manages renewal for any older recurring plan. Rights under applicable law apply.'}{' '}
+                <a className="font-semibold text-violet-800 underline" href="mailto:contact@vocaband.com">contact@vocaband.com</a>
+              </p>
+            </div>
           </section>
 
           {/* Section 3: User Accounts */}

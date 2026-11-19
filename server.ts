@@ -69,6 +69,7 @@ Sentry.init({
   },
 });
 
+import { registerTeacherBilling } from "./server/billing/routes";
 import express from "express";
 import { createServer } from "http";
 import { BlockList } from "node:net";
@@ -638,7 +639,7 @@ async function isAiDisabledByAdmin(uid: string): Promise<boolean> {
   }
 }
 
-type UserRole = "teacher" | "student" | "admin";
+type UserRole = "teacher" | "student" | "admin" | "manager";
 
 async function getUserRoleAndClass(uid: string): Promise<{ role: UserRole; classCode: string | null } | null> {
   if (!supabaseAdmin) {
@@ -1375,6 +1376,7 @@ async function startServer() {
 
   // Parse JSON request bodies (required for /api/translate endpoint)
   app.use(express.json({ limit: '50kb' }));
+  registerTeacherBilling(app, supabaseAdmin, (req, res) => requireAuthenticatedTeacher(req, res, true));
 
   // Multer for OCR image uploads (in-memory, no temp files)
   // 15 MB limit: mobile photos are typically 3-8 MB, and the client compresses
@@ -4913,7 +4915,7 @@ ${JSON.stringify(uncachedOriginalCase)}`;
       });
   }
 
-  async function requireAuthenticatedTeacher(req: express.Request, res: express.Response): Promise<{ uid: string } | null> {
+  async function requireAuthenticatedTeacher(req: express.Request, res: express.Response, allowManager = false): Promise<{ uid: string } | null> {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
       logAuthzFailure(req, req.originalUrl || req.url, "missing_bearer");
@@ -4927,7 +4929,7 @@ ${JSON.stringify(uncachedOriginalCase)}`;
       return null;
     }
     const userData = await getUserRoleAndClass(uid);
-    if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
+    if (!userData || (userData.role !== "teacher" && userData.role !== "admin" && !(allowManager && userData.role === "manager"))) {
       logAuthzFailure(req, req.originalUrl || req.url, "wrong_role_or_missing", {
         metadata: { observed_role: userData?.role ?? null, uid },
       });
@@ -4981,8 +4983,11 @@ ${JSON.stringify(uncachedOriginalCase)}`;
         !!school &&
         (school.plan === "school" ||
           (!!school.trial_ends_at && new Date(school.trial_ends_at).getTime() > Date.now()));
-      const isPaid = plan === "pro" || plan === "school" || schoolPaid;
       const isTrialing = !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
+      const legacyPaid = plan === "pro" || plan === "school" || schoolPaid;
+      const personal = !legacyPaid && !isTrialing && role === "teacher"
+        ? await supabaseAdmin.rpc("billing_entitlement", { p_uid: baseAuth.uid }) : null;
+      const isPaid = legacyPaid || ["pro", "school"].includes(personal?.data?.tier);
       const isAdmin = role === "admin";
       const isDev = isDevEmail(email);
       // Admin per-teacher kill-switch wins over plan/trial/admin so an operator
@@ -5014,6 +5019,19 @@ ${JSON.stringify(uncachedOriginalCase)}`;
       res.status(500).json({ error: "Plan lookup failed" });
       return null;
     }
+  }
+
+  async function reserveTeacherWork(uid: string, res: express.Response): Promise<boolean> {
+    const result = await supabaseAdmin?.rpc("billing_use_work_quota", { p_uid: uid });
+    if (!result || result.error) {
+      res.status(503).json({ error: "teacher_quota_unavailable" });
+      return false;
+    }
+    if (result.data !== true) {
+      res.status(429).json({ error: "teacher_monthly_work_quota", message: "Monthly AI and scan allowance reached." });
+      return false;
+    }
+    return true;
   }
 
   // Admin-only gate for the Developer Dashboard's server-side endpoints.
@@ -5373,6 +5391,8 @@ ${JSON.stringify(uncachedOriginalCase)}`;
         message: "GOOGLE_AI_API_KEY is not set. See docs/operator-tasks.md → 'Migrate Gemini OCR to Vertex AI' for the recommended setup.",
       });
     }
+
+    if (!(await reserveTeacherWork(auth.uid, res))) return;
 
     try {
       // Trim whitespace — common paste error in env var consoles
@@ -5743,8 +5763,11 @@ Quality rules:
       !!school &&
       (school.plan === "school" ||
         (!!school.trial_ends_at && new Date(school.trial_ends_at).getTime() > Date.now()));
-    const isPaid = plan === "pro" || plan === "school" || schoolPaid;
     const isTrialing = !!trialEndsAt && new Date(trialEndsAt).getTime() > Date.now();
+    const legacyPaid = plan === "pro" || plan === "school" || schoolPaid;
+    const personal = !legacyPaid && !isTrialing && role === "teacher"
+      ? await supabaseAdmin.rpc("billing_entitlement", { p_uid: authData.uid }) : null;
+    const isPaid = legacyPaid || ["pro", "school"].includes(personal?.data?.tier);
     const isAdmin = role === "admin";
     const isDev = isDevEmail(email);
     // Admin per-teacher kill-switch — mirrors requireProTeacher so the AI
@@ -6257,8 +6280,7 @@ Teacher's question: "${question}"`;
   // Vocabulary Set. Distinct from the legacy /api/generate-sentences
   // (which is Pro-gated, Claude-based, sentence-builder game mode):
   //
-  //   - Free for all authenticated teachers (rate-limited via
-  //     ai_usage_counters daily quota).
+  //   - Requires an advanced teaching entitlement and reserves monthly work.
   //   - Returns CANDIDATES (up to 3 per word) so the teacher picks
   //     instead of regenerating in a loop.
   //   - Each candidate ships as BOTH a full sentence and a fill-in-the-
@@ -6320,21 +6342,9 @@ Teacher's question: "${question}"`;
   }
 
   app.post("/api/library/generate-sentences", aiRateLimiter, async (req, res) => {
-    const ip = req.ip || "unknown";
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Authentication required" });
-    }
-    const token = authHeader.substring(7);
-    const uid = await verifyToken(token);
-    if (!uid) return res.status(401).json({ error: "Invalid token" });
-
-    // Teachers + admins only. Anonymous + students rejected.
-    const userData = await getUserRoleAndClass(uid);
-    if (!userData || (userData.role !== "teacher" && userData.role !== "admin")) {
-      console.warn(`[library/generate-sentences] non-teacher caller: ip=${ip} uid=${uid}`);
-      return res.status(403).json({ error: "Only teachers can generate sentences" });
-    }
+    const auth = await requireProTeacher(req, res);
+    if (!auth) return;
+    const { uid } = auth;
 
     const { setId, level, candidateCount, wordIds } = req.body ?? {};
     if (typeof setId !== "string" || !setId) {
@@ -6383,7 +6393,7 @@ Teacher's question: "${question}"`;
     if (setErr || !setRow) {
       return res.status(404).json({ error: "Set not found" });
     }
-    if (setRow.teacher_uid !== uid && userData.role !== "admin") {
+    if (setRow.teacher_uid !== uid) {
       return res.status(403).json({ error: "You don't own this set" });
     }
 
@@ -6429,6 +6439,8 @@ Teacher's question: "${question}"`;
     }
 
     // Build the prompt. Set context (full word list) + cultural + theme
+    if (!(await reserveTeacherWork(uid, res))) return;
+
     // give Gemini the signal it needs to produce coherent, themed,
     // level-appropriate sentences.
     const themeRaw = (setRow.sentence_preset as { theme?: string } | null)?.theme;
@@ -6696,7 +6708,7 @@ Return JSON: an array, one item per word, each with the target word string and a
     if (setErr || !setRow) {
       return res.status(404).json({ error: "Set not found" });
     }
-    if (setRow.teacher_uid !== uid && userData.role !== "admin") {
+    if (setRow.teacher_uid !== uid) {
       return res.status(403).json({ error: "You don't own this set" });
     }
 
@@ -6939,6 +6951,7 @@ Return JSON: an array, one item per word, each with { word, distractors: [string
 
       // Call AI for uncached words
       if (uncachedWords.length > 0) {
+        if (!(await reserveTeacherWork(uid, res))) return;
         const anthropic = new Anthropic({ apiKey });
         const response = await anthropic.messages.create({
           model: "claude-haiku-4-5-20251001",
@@ -7099,6 +7112,7 @@ CRITICAL RULES — every sentence must satisfy ALL of these. Rule 1 is the most-
       console.log(`[AI Text] uid=${auth.uid}: cache hit`);
       return res.json(cachedText);
     }
+    if (!(await reserveTeacherWork(auth.uid, res))) return;
 
     try {
       console.log(`[AI Text] uid=${auth.uid}: processing text (${text.length} chars) level=${level}`);
@@ -7322,6 +7336,7 @@ Output ONLY the JSON, no markdown, no explanations.
       console.log(`[AI Lesson] uid=${auth.uid}: cache hit`);
       return res.json(cachedLesson);
     }
+    if (!(await reserveTeacherWork(auth.uid, res))) return;
 
     try {
       console.log(`[AI Lesson] uid=${auth.uid}: ${words.length} words, ${config.wordCount || 200} target words`);

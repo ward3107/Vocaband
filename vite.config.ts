@@ -339,6 +339,7 @@ export default defineConfig(() => {
             /^\/poster(\.html)?(\?|$)/,
             /^\/terms(\.html)?(\?|$)/,
             /^\/privacy(\.html)?(\?|$)/,
+            /^\/parents(?:-he|-ar|-ru)?(\.html)?(\?|$)/,
             // Quick Play join URL. Same "redirected response" bug as
             // poster/privacy/terms — the SW cached a navigation that
             // went through the Cloudflare apex→www redirect, then
@@ -396,7 +397,7 @@ export default defineConfig(() => {
               // in navigateFallbackDenylist above. NetworkOnly means the
               // SW never touches the response, so there's no cached
               // redirect for it to re-serve and choke on.
-              urlPattern: /\/(poster|privacy|terms|quick-play)(\.html)?(\?|$)/,
+              urlPattern: /\/(poster|privacy|terms|quick-play|parents(?:-he|-ar|-ru)?)(\.html)?(\?|$)/,
               handler: 'NetworkOnly',
             },
             {

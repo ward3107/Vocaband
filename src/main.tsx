@@ -72,6 +72,11 @@ function loadSentryDeferred() {
 
   schedule(async () => {
     try {
+      if (!getCookieConsent()?.analytics) {
+        sentryLoadStarted = false;
+        waitForConsentThenLoadSentry();
+        return;
+      }
       const sentry = await import('./core/sentry');
       sentry.initSentry();
       sentryLoaded = true;
@@ -88,7 +93,6 @@ function loadSentryDeferred() {
         } catch { /* best-effort */ }
       }
       errorBuffer.length = 0;
-      sentry.addReplayIntegrationLazy();
       sentry.addBrowserTracingLazy();
     } catch {
       // Sentry chunk failed to load (blocked CDN, offline, CSP). Not

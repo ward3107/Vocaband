@@ -35,6 +35,8 @@ servers:
     description: Local dev (vite proxy points here for /api/*)
 
 tags:
+  - name: Teacher subscriptions
+    description: Individual teacher billing and optional email notices
   - name: Health
     description: Liveness and dependency probes; no auth required
   - name: AI
@@ -58,6 +60,93 @@ security:
   - bearerAuth: []
 
 paths:
+  /api/teacher/billing:
+    get:
+      tags: [Teacher subscriptions]
+      summary: Read plan access, ILS quotes and preferences for the signed-in teacher or school coordinator
+      parameters:
+        - in: query
+          name: extra
+          schema: {type: integer, minimum: 0, maximum: 100, default: 0}
+          description: Requested 50-student capacity blocks for personal Pro
+      responses:
+        '200': {description: Subscription status with amounts in agorot}
+        '403': {description: Teacher or school coordinator access required}
+  /api/teacher/billing/checkout:
+    post:
+      tags: [Teacher subscriptions]
+      summary: Validate the signed-in buyer's quote and reserve a hosted SUMIT URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [offer, students, amount, extra]
+              properties:
+                offer: {type: string, enum: [teacher_monthly, teacher_annual, pro_monthly, pro_annual, school_pilot, school_annual]}
+                students: {type: integer, minimum: 0, description: Approved students shown in the quote}
+                amount: {type: integer, minimum: 1, description: Quoted amount due in agorot}
+                extra: {type: integer, minimum: 0, maximum: 100, description: Requested 50-student capacity blocks}
+      responses:
+        '200': {description: Hosted checkout URL}
+        '400': {description: Missing or invalid quote parameters}
+        '409': {description: 'Quote changed, trial active, coverage active or checkout unavailable'}
+  /api/teacher/billing/confirm:
+    post:
+      tags: [Teacher subscriptions]
+      summary: Verify the signed-in buyer's returned order against the merchant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [order, payment], properties: {order: {type: string, format: uuid}, payment: {oneOf: [{type: integer}, {type: string}]}}}
+      responses:
+        '200': {description: Confirmed}
+        '202': {description: Pending}
+        '404': {description: Order unavailable}
+        '409': {description: Merchant reference differs from the order}
+  /api/teacher/billing/cancel:
+    post:
+      tags: [Teacher subscriptions]
+      summary: Request cancellation of the teacher's future renewals
+      responses:
+        '204': {description: Renewal stopped or already canceled}
+        '202': {description: Cancellation pending}
+  /api/teacher/billing/preferences:
+    post:
+      tags: [Teacher subscriptions]
+      summary: Save consent and language for optional teacher mail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [enabled, language], properties: {enabled: {type: boolean}, language: {type: string, enum: [he, ar, en]}}}
+      responses:
+        '204': {description: Preferences saved}
+  /api/teacher/mail/unsubscribe/{token}:
+    parameters:
+      - {name: token, in: path, required: true, schema: {type: string, format: uuid}}
+    get:
+      security: []
+      tags: [Teacher subscriptions]
+      summary: Display the unsubscribe confirmation form
+      responses:
+        '200': {description: Confirmation form}
+    post:
+      security: []
+      tags: [Teacher subscriptions]
+      summary: Disable teacher email using the unsubscribe token
+      responses:
+        '200': {description: Unsubscribe recorded}
+  /api/teacher/billing/run:
+    post:
+      security: [{teacherLifecycleJob: []}]
+      tags: [Teacher subscriptions]
+      summary: Reconcile payments, process requested cancellations and deliver eligible notices
+      responses:
+        '204': {description: Job completed}
+        '503': {description: A job component requires retry}
   # ──────────────────────────── Health ────────────────────────────
   /api/health:
     get:
@@ -572,6 +661,10 @@ paths:
 
 components:
   securitySchemes:
+    teacherLifecycleJob:
+      type: http
+      scheme: bearer
+      description: Private scheduler token stored on the server and in GitHub Actions
     bearerAuth:
       type: http
       scheme: bearer
