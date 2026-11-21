@@ -1,3 +1,4 @@
+import StudentFollowups from '../components/dashboard/StudentFollowups';
 import { useBackLayer } from "../hooks/useBackLayer";
 import StudentOnboarding from "../components/StudentOnboarding";
 import FloatingButtons from "../components/FloatingButtons";
@@ -247,6 +248,24 @@ export default function StudentDashboardView({
     orbitItems.push({ key: "practice", onClick: () => setView("student-practice"), badge: dueReviews.dueCount || undefined });
   }
 
+  const followups = user.classCode && !user.isGuest ? (
+    <StudentFollowups
+      key={user.uid + '-' + user.classCode}
+      uid={user.uid}
+      classCode={user.classCode}
+      assignments={studentAssignments}
+      inTasks={tasksOpen}
+      openTasks={() => setTasksOpen(true)}
+      launch={(assignment, words) => {
+        setTasksOpen(false);
+        setActiveAssignment(assignment);
+        setAssignmentWords(words);
+        setShowModeSelection(true);
+        setView('game');
+      }}
+    />
+  ) : null;
+
   // ── DASHBOARD RENDER ──────────────────────────────────────────────
   // Circular hub: the pet-evolution core sits at the centre of the
   // orbital ring; the student's destinations orbit it as tappable
@@ -272,6 +291,7 @@ export default function StudentDashboardView({
         topBar={<StudentTopBar onRequestLogout={onRequestLogout} />}
         trophyRoad={<>
           <StudentClassCard uid={user.uid} className={className} onJoinLesson={onJoinLesson} onJoin={() => setJoinOpen(true)} onSwitchStudent={onRequestLogout} />
+          {!tasksOpen && followups}
           {!studentDataLoading && (
           <NextUpCard
             studentAssignments={studentAssignments}
@@ -363,6 +383,7 @@ export default function StudentDashboardView({
                   <X size={22} />
                 </button>
               </div>
+              {followups}
               <StudentAssignmentsList
                 studentAssignments={studentAssignments}
                 studentProgress={studentProgress}

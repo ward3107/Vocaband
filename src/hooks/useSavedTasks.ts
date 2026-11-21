@@ -1,33 +1,6 @@
-/**
- * useSavedTasks — teacher-side "task templates" stored in localStorage.
- *
- * A SavedTask captures the full configuration the teacher built in the
- * SetupWizard (words + game modes + instructions + sentence settings)
- * so they can rebuild the same task in 1 tap instead of clicking through
- * the 3-step wizard again.
- *
- * Why localStorage and not the DB:
- *   1. Templates are intrinsically per-device-per-teacher, no cross-device
- *      sync needed in v1.  Same pattern as `vocaband_saved_groups` (the
- *      existing word-list saver in WordInputStep), keeps the persistence
- *      layer consistent.
- *   2. Avoids a Supabase migration + RLS policy churn for what is
- *      essentially a UX shortcut.  We can promote to DB later when
- *      teachers ask for cross-device sync.
- *
- * Storage key is scoped per uid so two teachers sharing one staffroom
- * laptop don't see each other's templates.
- *
- * Ordering returned to the UI:
- *   1. Pinned first (manual override — keeps a favourite at the top
- *      regardless of usage),
- *   2. Highest `timesUsed` next (templates the teacher actually
- *      reuses bubble up automatically),
- *   3. Most recent `lastUsedAt` (reuse-recency tiebreaker),
- *   4. Most recent `createdAt` (newest brand-new template last).
- */
-
 import { useCallback, useEffect, useState } from 'react';
+import { supabase } from '../core/supabase';
+import type { Word } from '../data/vocabulary';
 import type { SentenceDifficulty } from '../constants/game';
 
 export interface SavedTask {
@@ -35,6 +8,7 @@ export interface SavedTask {
   title: string;
   mode: 'quick-play' | 'assignment';
   wordIds: number[];
+  words?: Word[];
   modes: string[];
   timesUsed: number;
   pinned: boolean;
@@ -94,25 +68,113 @@ function sortTasks(tasks: SavedTask[]): SavedTask[] {
   });
 }
 
+interface TemplateChange {
+  token: string;
+  op: 'save' | 'pin' | 'use' | 'remove';
+  stamp: number;
+  task: SavedTask;
+}
+const inFlight = new Map<string, Promise<void>>();
+const changed = 'vocaband-template-change';
+function readChanges(uid: string): TemplateChange[] {
+  try {
+    const value = JSON.parse(localStorage.getItem('vocaband_template_changes_' + uid) ?? '[]');
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+function writeChanges(uid: string, changes: TemplateChange[]) {
+  try {
+    localStorage.setItem('vocaband_template_changes_' + uid, JSON.stringify(changes));
+  } catch {
+    /* offline storage unavailable */
+  }
+}
+function mergeChange(tasks: SavedTask[], change: TemplateChange): SavedTask[] {
+  const other = tasks.filter((t) => t.id !== change.task.id);
+  return change.op === 'remove' ? other : [...other, change.task];
+}
+// The existing local list is imported once per device. Server-side tombstones
+// prevent an old offline cache from restoring a template the teacher deleted.
+function synchronize(uid: string): Promise<void> {
+  const running = inFlight.get(uid);
+  if (running) return running;
+  let retry = false;
+  const run = (async () => {
+    let migrate = true;
+    try {
+      migrate = localStorage.getItem('vocaband_templates_imported_' + uid) !== '1';
+    } catch {
+      /* optional cache */
+    }
+    const changes = readChanges(uid);
+    const imports = migrate ? readAll(uid).map((task) => ({ task, op: 'save', stamp: 0 })) : [];
+    const { data, error } = await supabase.rpc('sync_activity_templates', {
+      p_changes: [...imports, ...changes],
+    });
+    if (error || !Array.isArray(data)) return;
+    const sent = new Set(changes.map((c) => c.token));
+    const pending = readChanges(uid).filter((c) => !sent.has(c.token));
+    writeChanges(uid, pending);
+    try {
+      localStorage.setItem('vocaband_templates_imported_' + uid, '1');
+    } catch {
+      /* optional cache */
+    }
+    writeAll(uid, pending.reduce(mergeChange, data));
+    window.dispatchEvent(new CustomEvent(changed, { detail: uid }));
+    retry = pending.length > 0;
+  })()
+    .catch(() => {})
+    .finally(() => {
+      inFlight.delete(uid);
+      if (retry) void synchronize(uid);
+    });
+  inFlight.set(uid, run);
+  return run;
+}
 export function useSavedTasks(uid: string | undefined) {
   const [tasks, setTasks] = useState<SavedTask[]>(() => sortTasks(readAll(uid)));
-
   useEffect(() => {
-    setTasks(sortTasks(readAll(uid)));
+    const refresh = () => setTasks(sortTasks(readAll(uid)));
+    const sync = () => {
+      if (uid) void synchronize(uid);
+    };
+    const onChange = (e: Event) => {
+      if ((e as CustomEvent).detail === uid) refresh();
+    };
+    const storage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY_PREFIX + uid) refresh();
+    };
+    refresh();
+    sync();
+    window.addEventListener(changed, onChange);
+    window.addEventListener('online', sync);
+    window.addEventListener('focus', sync);
+    window.addEventListener('storage', storage);
+    return () => {
+      window.removeEventListener(changed, onChange);
+      window.removeEventListener('online', sync);
+      window.removeEventListener('focus', sync);
+      window.removeEventListener('storage', storage);
+    };
   }, [uid]);
-
-  const persist = useCallback(
-    (next: SavedTask[]) => {
-      const sorted = sortTasks(next);
-      writeAll(uid, sorted);
-      setTasks(sorted);
+  const mutate = useCallback(
+    (op: TemplateChange['op'], task: SavedTask) => {
+      if (!uid) return;
+      const change = { op, task, stamp: Date.now(), token: generateId() };
+      writeChanges(uid, [...readChanges(uid), change]);
+      writeAll(uid, mergeChange(readAll(uid), change));
+      setTasks(sortTasks(readAll(uid)));
+      window.dispatchEvent(new CustomEvent(changed, { detail: uid }));
+      void synchronize(uid);
     },
-    [uid],
+    [uid]
   );
-
   const save = useCallback(
-    (input: SavedTaskInput): SavedTask => {
-      const next: SavedTask = {
+    (input: SavedTaskInput) => {
+      const task: SavedTask = {
         ...input,
         id: generateId(),
         timesUsed: 0,
@@ -120,38 +182,31 @@ export function useSavedTasks(uid: string | undefined) {
         createdAt: Date.now(),
         lastUsedAt: null,
       };
-      persist([...readAll(uid), next]);
-      return next;
+      mutate('save', task);
+      return task;
     },
-    [uid, persist],
+    [mutate]
   );
-
   const remove = useCallback(
     (id: string) => {
-      persist(readAll(uid).filter(t => t.id !== id));
+      const t = readAll(uid).find((t) => t.id === id);
+      if (t) mutate('remove', t);
     },
-    [uid, persist],
+    [uid, mutate]
   );
-
   const togglePin = useCallback(
     (id: string) => {
-      persist(readAll(uid).map(t => (t.id === id ? { ...t, pinned: !t.pinned } : t)));
+      const t = readAll(uid).find((t) => t.id === id);
+      if (t) mutate('pin', { ...t, pinned: !t.pinned });
     },
-    [uid, persist],
+    [uid, mutate]
   );
-
   const bumpUse = useCallback(
     (id: string) => {
-      persist(
-        readAll(uid).map(t =>
-          t.id === id
-            ? { ...t, timesUsed: t.timesUsed + 1, lastUsedAt: Date.now() }
-            : t,
-        ),
-      );
+      const t = readAll(uid).find((t) => t.id === id);
+      if (t) mutate('use', { ...t, timesUsed: t.timesUsed + 1, lastUsedAt: Date.now() });
     },
-    [uid, persist],
+    [uid, mutate]
   );
-
   return { tasks, save, remove, togglePin, bumpUse };
 }

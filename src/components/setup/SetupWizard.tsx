@@ -94,7 +94,10 @@ const Stepper = memo(({ currentStep, mode }: StepperProps) => {
 
 Stepper.displayName = 'Stepper';
 
+import type { DraftBinding } from '../../views/CreateAssignmentView';
+
 export interface SetupWizardProps {
+  draft?: DraftBinding;
   mode: WizardMode;
   allWords: Word[];
   set1Words?: Word[];
@@ -188,6 +191,7 @@ export interface SetupWizardProps {
     title: string;
     mode: WizardMode;
     wordIds: number[];
+    words?: Word[];
     modes: string[];
     instructions?: string;
     sentenceDifficulty?: SentenceDifficulty;
@@ -263,7 +267,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   onLogout,
   isProUser = false,
   onSwitchActivity,
-  hideEnglishOnlyActivityTabs = false,
+  hideEnglishOnlyActivityTabs = false, draft,
 }) => {
   const { language } = useLanguage();
   const t = teacherWizardsT[language];
@@ -274,12 +278,12 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   const guide = useFirstTimeGuide('create-assignment');
   const guideStrings = teacherGuidesT[language].createAssignment;
   // ── Step State ─────────────────────────────────────────────────────────────
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(draft?.initial?.step ?? 1);
   // Competition toggle lives at the wizard level (not ReviewStep) so it
   // survives a back-and-forth between steps if the teacher edits and
   // returns.  Only meaningful in assignment mode with a deadline set —
   // ReviewStep enforces the deadline gate visually.
-  const [enableCompetition, setEnableCompetition] = useState(false);
+  const [enableCompetition, setEnableCompetition] = useState(draft?.initial?.competition ?? false);
   // Pulse-highlight the Deadline picker in ConfigureStep when the
   // teacher tapped the Competition toggle on Review without a deadline.
   // Auto-clears after 4 seconds so it doesn't stay glowing forever if
@@ -306,7 +310,8 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   }, [currentStep]);
 
   // ── Core Shared State ───────────────────────────────────────────────────────
-  const [selectedWords, setSelectedWords] = useState<Word[]>([]);
+  const [selectedWords, setSelectedWords] = useState<Word[]>(draft?.initial?.words ?? []);
+  const [paste, setPaste] = useState(draft?.initial?.paste ?? '');
   // Both flows default to "everything except Sentence Builder" — the
   // assignment flow already does this; aligning Quick Play closes the
   // teacher feedback "the default in the online game should match what
@@ -315,13 +320,38 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   // setup (sentence difficulty + bank), and teachers don't want to
   // land in that UI by accident every time.
   const [selectedModes, setSelectedModes] = useState<string[]>(
-    initialSelectedModes && initialSelectedModes.length > 0
+    draft?.initial ? draft.initial.modes : initialSelectedModes && initialSelectedModes.length > 0
       ? [...initialSelectedModes]
       : [...DEFAULT_ASSIGNMENT_MODE_IDS]
   );
 
   // AI-generated lesson state (when teacher uses AI Lesson Builder)
-  const [aiGeneratedLesson, setAiGeneratedLesson] = useState<any>(null);
+  const [aiGeneratedLesson, setAiGeneratedLesson] = useState<any>(draft?.initial?.lesson ?? null);
+  const saveDraft = draft?.save;
+  const draftStarted = useRef(!!draft?.initial);
+  useEffect(() => {
+    if (!saveDraft) return;
+    const hasInput = selectedWords.length || paste || assignmentTitle || assignmentDeadline || assignmentInstructions;
+    if (!hasInput && !draftStarted.current && currentStep === 1) return;
+    draftStarted.current = true;
+    saveDraft({
+      step: currentStep,
+      words: selectedWords,
+      ids: selectedWords.map(w => w.id),
+      modes: selectedModes,
+      title: assignmentTitle,
+      deadline: assignmentDeadline,
+      instructions: assignmentInstructions,
+      sentences: assignmentSentences,
+      difficulty: sentenceDifficulty,
+      competition: enableCompetition,
+      lesson: aiGeneratedLesson,
+      paste,
+    });
+  }, [
+    saveDraft, currentStep, selectedWords, selectedModes, assignmentTitle, assignmentDeadline,
+    assignmentInstructions, assignmentSentences, sentenceDifficulty, enableCompetition, aiGeneratedLesson, paste,
+  ]);
 
   // ── Pre-populate from editing assignment ─────────────────────────────────────
   // LATCHED per assignment id. This effect depends on `editingAssignment`,
@@ -367,7 +397,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
   // fresh reference each render — wiping the user's in-wizard
   // selection (e.g. words just added via OCR).  Latch with a ref so
   // we only seed once.
-  const seededInitialRef = useRef(false);
+  const seededInitialRef = useRef(!!draft?.initial);
   useEffect(() => {
     if (seededInitialRef.current) return;
     if (initialSelectedWords && initialSelectedWords.length > 0) {
@@ -424,6 +454,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
           title,
           mode,
           wordIds: selectedWords.map(w => w.id),
+          words: selectedWords,
           modes: selectedModes,
           instructions: assignmentInstructions || undefined,
           sentenceDifficulty,
@@ -503,6 +534,8 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({
           {currentStep === 1 && (
             <WordInputStep2026
               key="step1-2026"
+              pasteText={draft ? paste : undefined}
+              onPasteChange={draft ? setPaste : undefined}
               allWords={allWords}
               selectedWords={selectedWords}
               onSelectedWordsChange={(words) => {

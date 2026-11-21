@@ -331,6 +331,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     wordsOverride?: number[],
     modesOverride?: string[],
     enableCompetition?: boolean,
+    wordSnapshot?: Word[],
   ) => {
     // Use override values if provided (e.g. from SetupWizard completion)
     // so the wizard's latest in-memory picks take effect even if they
@@ -345,7 +346,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
 
     if (!selectedClass || !hasWords || !assignmentTitle) {
       showToast("Please enter a title and select words.", "error");
-      return;
+      throw new Error("Assignment validation failed");
     }
 
     // Check if there's at least one database word (not custom/session-only)
@@ -354,12 +355,12 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
     const hasDbWords = wordsToCheck.some(id => id > 0);
     if (!hasDbWords && !editingAssignment) {
       showToast("Please select at least one word from the vocabulary database.", "error");
-      return;
+      throw new Error("Assignment validation failed");
     }
     // For editing, if no database words, ensure we have at least one custom word
     if (!hasDbWords && editingAssignment && customWords.length === 0 && wordsToCheck.length === 0) {
       showToast("Please select at least one word (database or custom).", "error");
-      return;
+      throw new Error("Assignment validation failed");
     }
 
     // Source of truth for the `words` JSONB column.  English assignments
@@ -399,11 +400,11 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
       // The Hebrew branch above already awaited its corpus; this one
       // silently didn't.
       const { ALL_WORDS } = getCachedVocabulary() ?? (await ensureVocabulary());
-      allPossibleWords = [...ALL_WORDS, ...customWords] as ReadonlyArray<{ id: number }>;
+      allPossibleWords = [...ALL_WORDS, ...customWords, ...(wordSnapshot ?? [])];
     }
-    const uniqueWords = Array.from(new Map(allPossibleWords.map(w => [w.id, w])).values());
-    const wordsToCheckSet = new Set(wordsToCheck);
-    const wordsToSave = uniqueWords.filter(w => wordsToCheckSet.has(w.id));
+    const wordById = new Map(allPossibleWords.map(w => [w.id, w]));
+    const wordsToSave = Array.from(new Set(wordsToCheck), id => wordById.get(id))
+      .filter((word): word is { id: number } => !!word);
 
     // Refuse to persist an assignment whose word list resolved to nothing.
     // The validation above only proved the teacher SELECTED ids; this
@@ -415,7 +416,7 @@ export function useTeacherActions(params: UseTeacherActionsParams) {
         "Could not load the vocabulary for these words. Please check your connection and try saving again.",
         "error",
       );
-      return;
+      throw new Error("Assignment validation failed");
     }
 
     const assignmentData = {

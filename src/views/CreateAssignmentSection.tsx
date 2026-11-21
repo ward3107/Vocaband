@@ -25,7 +25,7 @@ export function CreateAssignmentSection(): ReactNode {
   const {
     user, selectedClass, allWords, set1Words, set2Words, topicPacks,
     customWords, setCustomWords,
-    assignmentTitle, setAssignmentTitle,
+    activeAssignmentDraft, assignmentTemplate, assignmentTitle, setAssignmentTitle,
     assignmentDeadline, setAssignmentDeadline,
     assignmentModes, setAssignmentModes,
     selectedWords, setSelectedWords,
@@ -44,6 +44,9 @@ export function CreateAssignmentSection(): ReactNode {
   return (
     <LazyWrapper loadingMessage="Loading assignment wizard...">
       <CreateAssignmentView
+        teacherUid={user?.uid}
+        activeAssignmentDraft={activeAssignmentDraft}
+        template={assignmentTemplate}
         selectedClass={selectedClass}
         allWords={allWords}
         set1Words={set1Words}

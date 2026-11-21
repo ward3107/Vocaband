@@ -67,7 +67,8 @@ export default function GameModeSelectionView({
   const allowedModes = activeAssignment?.allowedModes ?? MODE_META.map(mode => mode.id);
   const available = MODE_META.filter(mode => allowedModes.includes(mode.id));
   const practiceModes = available.filter(mode => mode.id !== 'flashcards');
-  const rowsFor = (id: string) => studentProgress.filter(row => row.assignmentId === activeAssignment?.id && row.mode === id);
+  const isFocusedPractice = !!activeAssignment?.followupProfileId;
+  const rowsFor = (id: string) => isFocusedPractice ? [] : studentProgress.filter(row => row.assignmentId === activeAssignment?.id && row.mode === id);
   const isCompleted = (id: string) => rowsFor(id).length > 0 || (isQuickPlayGuest && quickPlayCompletedModes.has(id));
   const isLocked = (id: string) => isQuickPlayGuest && quickPlayCompletedModes.has(id);
   const bestScore = (id: string) => {
@@ -150,7 +151,7 @@ export default function GameModeSelectionView({
           </div>
           <div className="relative z-10 mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold text-sky-100/90">
             <span>{a.modeCount(completedCount, available.length)}</span>
-            {activeAssignment && <span>{ROUND[language]} {currentRound}/{MAX_ASSIGNMENT_ROUNDS}</span>}
+            {activeAssignment && !isFocusedPractice && <span>{ROUND[language]} {currentRound}/{MAX_ASSIGNMENT_ROUNDS}</span>}
           </div>
           <div role="progressbar" aria-label={a.modeCount(completedCount, available.length)} aria-valuemin={0} aria-valuemax={available.length} aria-valuenow={completedCount}
             className="relative z-10 mt-2 h-2 overflow-hidden rounded-full bg-white/15">

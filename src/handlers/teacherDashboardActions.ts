@@ -9,6 +9,7 @@ import type { Word } from '../data/vocabulary';
 import type { ClassData, AssignmentData } from '../core/supabase';
 import { ALL_GAME_MODES } from '../constants/game';
 import type { SavedTask } from '../hooks/useSavedTasks';
+import { resolveAssignmentWords } from '../utils/resolveAssignmentWords';
 import type { View } from '../core/views';
 import { createCategoryRaceSession, createSpeedRoundSession, createWordHuntArenaSession } from './quickPlaySession';
 import { URL_ROUTING_PUSH } from '../utils/urlRouting';
@@ -236,7 +237,7 @@ export function loadAssignmentIntoCreateForm(
   deps.setSelectedWords([...assignment.wordIds, ...customIds]);
   deps.setCustomWords(unknownWords);
   deps.setAssignmentTitle(asDuplicate ? assignment.title + ' (copy)' : assignment.title);
-  deps.setAssignmentDeadline(assignment.deadline || '');
+  deps.setAssignmentDeadline(asDuplicate ? '' : assignment.deadline || '');
   deps.setAssignmentModes(assignment.allowedModes ?? ALL_GAME_MODES);
   deps.setAssignmentSentences(assignment.sentences ?? []);
   deps.setSentenceDifficulty((assignment.sentenceDifficulty ?? 2) as 1 | 2 | 3 | 4);
@@ -256,7 +257,9 @@ export function loadAssignmentIntoCreateForm(
 
 export interface UseSavedTaskDeps {
   allWords: Word[];
+  setCustomWords?: React.Dispatch<React.SetStateAction<Word[]>>;
   classes: ClassData[];
+  setAssignmentTemplate?: (task: SavedTask) => void;
   selectedClass: ClassData | null;
   savedTasksBumpUse: (id: string) => void;
   setQuickPlaySelectedWords: React.Dispatch<React.SetStateAction<Word[]>>;
@@ -280,10 +283,25 @@ export interface UseSavedTaskDeps {
  * allWords are silently skipped — that happens if the teacher deleted
  * a custom word after saving the template.
  */
-export function applySavedTask(task: SavedTask, deps: UseSavedTaskDeps): void {
+export async function applySavedTask(task: SavedTask, deps: UseSavedTaskDeps): Promise<void> {
   const { allWords, classes, selectedClass, savedTasksBumpUse, showToast } = deps;
+  const targetClass = selectedClass ?? (classes.length === 1 ? classes[0] : undefined);
+  if (task.mode === 'assignment' && !targetClass) {
+    showToast('Create a class first to use this template.', 'info');
+    return;
+  }
+  let available = allWords;
+  if (!available.length) {
+    try {
+      available = await resolveAssignmentWords(task);
+    } catch {
+      showToast('Could not load this word list. Please try again.', 'error');
+      return;
+    }
+  }
+  const wordLookup = new Map([...available, ...(task.words ?? [])].map(w => [w.id, w]));
   const resolvedWords = task.wordIds
-    .map((id) => allWords.find((w) => w.id === id))
+    .map(id => wordLookup.get(id))
     .filter((w): w is Word => Boolean(w));
   const resolvedIds = resolvedWords.map((w) => w.id);
 
@@ -296,15 +314,9 @@ export function applySavedTask(task: SavedTask, deps: UseSavedTaskDeps): void {
     return;
   }
 
-  // Assignment template — needs a class context.  Default to the
-  // teacher's first class so the wizard can render; the teacher can
-  // change class via the Back button if needed.
-  const targetClass = selectedClass ?? classes[0];
-  if (!targetClass) {
-    showToast('Create a class first to use this template.', 'info');
-    return;
-  }
-
+  if (!targetClass) return;
+  deps.setAssignmentTemplate?.(task);
+  deps.setCustomWords?.(resolvedWords.filter(w => w.level === 'Custom' || w.id < 0));
   deps.setSelectedClass(targetClass);
   deps.setSelectedWords(resolvedIds);
   deps.setAssignmentTitle(task.title);
