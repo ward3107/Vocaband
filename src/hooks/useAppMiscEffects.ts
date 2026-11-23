@@ -91,11 +91,11 @@ export function useAppMiscEffects(deps: UseAppMiscEffectsDeps): void {
   // 2. Sentry user pipe
   useEffect(() => {
     if (user?.uid) {
-      setSentryUser({ uid: user.uid, role: user.role ?? undefined, email: user.email ?? undefined });
+      setSentryUser(user.uid);
     } else {
       clearSentryUser();
     }
-  }, [user?.uid, user?.role, user?.email]);
+  }, [user?.uid]);
 
   // 3. Feedback-timeout cleanup on unmount
   useEffect(() => {
